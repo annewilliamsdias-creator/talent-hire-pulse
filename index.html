@@ -660,6 +660,24 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
   margin-bottom: 8px;
 }
 
+.upload-zone {
+  border: 2px dashed rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: rgba(255,255,255,0.02);
+}
+.upload-zone:hover {
+  border-color: var(--teal);
+  background: rgba(52,186,198,0.04);
+}
+.admin-tab.active {
+  color: var(--teal) !important;
+  border-bottom-color: var(--teal) !important;
+}
+
 /* misc helpers */
 .hidden{display:none!important}
 .flex{display:flex}.gap8{gap:8px}.gap12{gap:12px}
@@ -758,6 +776,18 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
     <div class="nav-item" onclick="switchPanel('records')" title="All Records">
       <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></span>
       <span class="nav-label">All Records</span>
+    </div>
+    <div class="nav-item" onclick="switchPanel('bulkUpload')" title="Bulk Upload">
+      <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+      <span class="nav-label">Bulk Upload</span>
+    </div>
+    <div class="nav-item" onclick="switchPanel('profileEdit')" title="Edit Profile">
+      <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+      <span class="nav-label">Edit Profile</span>
+    </div>
+    <div class="nav-item" onclick="switchPanel('adminPanel')" title="Admin Panel">
+      <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M12 2v2M4.93 4.93l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M12 20v2m5.66-2.34l-1.41-1.41"/></svg></span>
+      <span class="nav-label">Admin Panel</span>
     </div>
     <div class="nav-item" onclick="switchPanel('vacancies')" title="Vacancies">
       <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
@@ -1260,6 +1290,396 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
                 <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--white60)">Loading vacancies...</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ══ BULK UPLOAD PANEL ══ -->
+      <div class="panel" id="panel-bulkUpload">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Bulk Upload
+            </div>
+          </div>
+          <div id="bulkUploadAlert"></div>
+
+          <div class="section-label">📥 Step 1 — Download Template</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+            <div style="background:rgba(52,186,198,0.06);border:1px solid rgba(52,186,198,0.2);border-radius:var(--radius);padding:20px 22px">
+              <div style="font-size:14px;font-weight:600;color:var(--off-white);margin-bottom:6px">
+                Recruiter Template
+              </div>
+              <div style="font-size:12px;color:var(--white60);margin-bottom:14px;line-height:1.6">
+                20 essential columns. Simple format for daily sourcing uploads.
+              </div>
+              <button class="btn btn-teal btn-sm" onclick="downloadTemplate('recruiter')">
+                ⬇ Download Recruiter Template
+              </button>
+            </div>
+            <div style="background:rgba(233,152,43,0.06);border:1px solid rgba(233,152,43,0.2);border-radius:var(--radius);padding:20px 22px">
+              <div style="font-size:14px;font-weight:600;color:var(--off-white);margin-bottom:6px">
+                Admin / Migration Template
+              </div>
+              <div style="font-size:12px;color:var(--white60);margin-bottom:14px;line-height:1.6">
+                Full 51 columns. For data migration and bulk historical imports.
+              </div>
+              <button class="btn btn-gold btn-sm" onclick="downloadTemplate('admin')">
+                ⬇ Download Admin Template
+              </button>
+            </div>
+          </div>
+
+          <div class="section-label">📤 Step 2 — Upload Filled Template</div>
+          <div class="upload-zone" id="bulkDropZone" onclick="document.getElementById('bulkFileInput').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--teal)'"
+            ondragleave="this.style.borderColor=''"
+            ondrop="handleBulkDrop(event)">
+            <div style="font-size:36px;margin-bottom:10px">📂</div>
+            <div style="font-size:14px;font-weight:500;color:var(--off-white);margin-bottom:4px">Click or drag your filled template here</div>
+            <div style="font-size:12px;color:var(--white60)">.xlsx files only</div>
+          </div>
+          <input type="file" id="bulkFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleBulkFile(event)">
+        </div>
+
+        <!-- Preview Table -->
+        <div class="card hidden" id="bulkPreviewCard">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Upload Preview
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span id="bulkSummary" style="font-size:12px;color:var(--white60)"></span>
+              <button class="btn btn-teal" onclick="commitBulkUpload()" id="bulkCommitBtn">✓ Commit Valid Rows</button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelBulkUpload()">Cancel</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Row</th><th>Status</th><th>Name</th><th>Mobile</th>
+                  <th>Email</th><th>Position</th><th>Client</th><th>Issue</th>
+                </tr>
+              </thead>
+              <tbody id="bulkPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PROFILE EDIT PANEL ══ -->
+      <div class="panel" id="panel-profileEdit">
+        <div class="lookup-bar">
+          <div class="field" style="flex:1">
+            <label>Candidate Code — Search to Edit Profile</label>
+            <input type="text" id="editLookupCode" placeholder="Enter candidate code"
+              style="font-family:'DM Mono',monospace;text-transform:uppercase"
+              onkeydown="if(event.key==='Enter')lookupForEdit()">
+          </div>
+          <button class="btn btn-primary" onclick="lookupForEdit()">⌕ Find Candidate</button>
+        </div>
+        <div id="editLookupAlert"></div>
+
+        <div class="card hidden" id="profileEditForm">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span id="editCandName">Edit Profile</span>
+            </div>
+            <span id="editCandCode" class="cand-code">—</span>
+          </div>
+          <div id="editAlert"></div>
+
+          <div class="section-label">👤 Personal Details</div>
+          <div class="form-grid three">
+            <div class="field span3">
+              <label>Full Name <span class="req">*</span></label>
+              <input type="text" id="e_name">
+            </div>
+            <div class="field">
+              <label>Primary Mobile <span class="req">*</span></label>
+              <input type="tel" id="e_contact" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')">
+            </div>
+            <div class="field">
+              <label>Alternate Mobile</label>
+              <input type="tel" id="e_altContact" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')">
+            </div>
+            <div class="field">
+              <label>Personal Email <span class="req">*</span></label>
+              <input type="email" id="e_email">
+            </div>
+            <div class="field">
+              <label>Alternate Email</label>
+              <input type="email" id="e_altEmail">
+            </div>
+            <div class="field">
+              <label>Current Location</label>
+              <input type="text" id="e_location">
+            </div>
+          </div>
+
+          <div class="section-label">💼 Employment Details</div>
+          <div class="form-grid three">
+            <div class="field">
+              <label>Current Company</label>
+              <input type="text" id="e_company">
+            </div>
+            <div class="field">
+              <label>Current Designation</label>
+              <input type="text" id="e_designation">
+            </div>
+            <div class="field">
+              <label>Total Experience</label>
+              <input type="text" id="e_expYrs">
+            </div>
+            <div class="field">
+              <label>Notice Period</label>
+              <select id="e_notice">
+                <option value="">— Select —</option>
+                <option>Immediate</option><option>7 days</option><option>15 days</option>
+                <option>30 days</option><option>45 days</option><option>60 days</option>
+                <option>90 days</option><option>Serving Notice</option><option>Not disclosed</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Reason for Leaving</label>
+              <input type="text" id="e_reason">
+            </div>
+          </div>
+
+          <div class="section-label">💰 Salary</div>
+          <div class="form-grid three">
+            <div class="field">
+              <label>Current Salary ₹ PM</label>
+              <input type="number" id="e_salaryPM" oninput="editCalcPA()">
+            </div>
+            <div class="field">
+              <label>Current Salary ₹ PA</label>
+              <input type="number" id="e_salaryPA" readonly style="opacity:.6">
+            </div>
+            <div class="field">
+              <label>Expected Salary ₹</label>
+              <input type="number" id="e_expectedSalary">
+            </div>
+            <div class="field">
+              <label>Salary Bracket</label>
+              <select id="e_salaryBracket">
+                <option value="">— Select —</option>
+                <option>0-1.8 L</option><option>1.8-3.6 L</option>
+                <option>3.6-6 L</option><option>6-10 L</option>
+                <option>10-15 L</option><option>15-20 L</option><option>20+ L</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-label">🎯 Role Details</div>
+          <div class="form-grid three">
+            <div class="field">
+              <label>Client Name</label>
+              <select id="e_client">
+                <option value="">— Select —</option>
+                <option>Atmann</option><option>DMC Bazaar</option>
+                <option>GIFTS</option><option>One Above</option><option>VSAR Tech</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Department</label>
+              <select id="e_dept">
+                <option value="">— Select —</option>
+                <option>Finance</option><option>HR</option><option>Legal</option>
+                <option>Marketing</option><option>Operations</option><option>Product</option>
+                <option>Sales</option><option>Technology</option><option>Talent Acquisition</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Position Applied For</label>
+              <input type="text" id="e_position">
+            </div>
+            <div class="field">
+              <label>Role Interested In</label>
+              <input type="text" id="e_roleInterested">
+            </div>
+            <div class="field">
+              <label>Vacancy Code</label>
+              <input type="text" id="e_vacancyCode">
+            </div>
+            <div class="field">
+              <label>Recruiter</label>
+              <select id="e_recruiter">
+                <option value="">— Select —</option>
+                <option>Ayesha</option><option>Nilam</option><option>Shilpa</option>
+                <option>Siddhi</option><option>Sonali</option><option>Sujata</option>
+                <option>Tia</option><option>Upasana</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-teal btn-lg" onclick="saveProfileEdit()">✓ Save Profile Changes</button>
+            <button class="btn btn-ghost" onclick="cancelProfileEdit()">Cancel</button>
+          </div>
+
+          <div style="margin-top:16px;padding:12px 16px;background:rgba(233,152,43,0.06);
+            border:1px solid rgba(233,152,43,0.15);border-radius:var(--radius-sm);
+            font-size:11px;color:var(--white60)">
+            ⚠ All changes are logged to the Change Log with your name, timestamp, and old/new values.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ADMIN PANEL ══ -->
+      <div class="panel" id="panel-adminPanel">
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-card blue" style="cursor:pointer" onclick="switchAdminTab('backup')">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <div class="stat-num" style="font-size:28px" id="admin-backupCount">—</div>
+                <div class="stat-label">Backups Available</div>
+              </div>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(52,186,198,0.3)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </div>
+          <div class="stat-card gold" style="cursor:pointer" onclick="switchAdminTab('changelog')">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <div class="stat-num" style="font-size:28px" id="admin-changeCount">—</div>
+                <div class="stat-label">Change Log Entries</div>
+              </div>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(233,152,43,0.3)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+          </div>
+          <div class="stat-card teal" style="cursor:pointer" onclick="switchAdminTab('config')">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <div class="stat-num" style="font-size:28px">⚙</div>
+                <div class="stat-label">Config Management</div>
+              </div>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(93,213,223,0.3)" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M12 2v2M4.93 4.93l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M12 20v2m5.66-2.34l-1.41-1.41"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Sub Tabs -->
+        <div style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px">
+          <div class="admin-tab active" onclick="switchAdminTab('backup')" id="atab-backup"
+            style="padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--white60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s">
+            💾 Backup
+          </div>
+          <div class="admin-tab" onclick="switchAdminTab('changelog')" id="atab-changelog"
+            style="padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--white60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s">
+            📋 Change Log
+          </div>
+          <div class="admin-tab" onclick="switchAdminTab('config')" id="atab-config"
+            style="padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--white60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s">
+            ⚙ Config
+          </div>
+          <div class="admin-tab" onclick="switchAdminTab('users')" id="atab-users"
+            style="padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--white60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s">
+            👥 Users
+          </div>
+        </div>
+
+        <!-- Backup Tab -->
+        <div id="admin-backup">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="accent">💾</span> Backup Manager</div>
+              <button class="btn btn-teal" onclick="createBackup()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Create Backup Now
+              </button>
+            </div>
+            <div style="margin-bottom:16px;padding:12px 16px;background:rgba(52,186,198,0.06);border:1px solid rgba(52,186,198,0.15);border-radius:var(--radius-sm);font-size:12px;color:var(--white60)">
+              Backups are saved to <span style="color:var(--teal);font-family:'DM Mono',monospace">/Shared Documents/Talent+ Hire-Pulse/Backups/</span> on SharePoint. Last 10 backups shown below.
+            </div>
+            <div id="backupList">
+              <div style="text-align:center;padding:32px;color:var(--white60)">Loading backup history...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Change Log Tab -->
+        <div id="admin-changelog" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="accent">📋</span> Change Log</div>
+              <div class="flex gap8">
+                <input type="text" id="logSearch" placeholder="Search logs..." style="width:200px" oninput="filterChangelog()">
+                <select id="logActionFilter" onchange="filterChangelog()" style="width:160px">
+                  <option value="">All Actions</option>
+                  <option>New Entry</option><option>Status Update</option>
+                  <option>Profile Edit</option><option>Bulk Upload</option>
+                  <option>Interview Scheduled</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Timestamp</th><th>User</th><th>Candidate</th><th>Action</th><th>Field</th><th>Old Value</th><th>New Value</th></tr>
+                </thead>
+                <tbody id="changelogBody">
+                  <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--white60)">Loading change log...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Config Tab -->
+        <div id="admin-config" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="accent">⚙</span> Configuration</div>
+              <button class="btn btn-teal btn-sm" onclick="saveConfig()">✓ Save Config</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+              <div>
+                <div class="section-label">Clients</div>
+                <textarea id="cfg_clients" style="min-height:120px;font-family:'DM Mono',monospace;font-size:12px" placeholder="One per line"></textarea>
+              </div>
+              <div>
+                <div class="section-label">Recruiters</div>
+                <textarea id="cfg_recruiters" style="min-height:120px;font-family:'DM Mono',monospace;font-size:12px" placeholder="One per line"></textarea>
+              </div>
+              <div>
+                <div class="section-label">Departments</div>
+                <textarea id="cfg_depts" style="min-height:120px;font-family:'DM Mono',monospace;font-size:12px" placeholder="One per line"></textarea>
+              </div>
+              <div>
+                <div class="section-label">Sources</div>
+                <textarea id="cfg_sources" style="min-height:120px;font-family:'DM Mono',monospace;font-size:12px" placeholder="One per line"></textarea>
+              </div>
+              <div class="field span2">
+                <div class="section-label">WhatsApp Templates</div>
+                <div id="waTemplateEditor"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="admin-users" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="accent">👥</span> User Management</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Status</th></tr></thead>
+                <tbody id="usersBody">
+                  <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--white60)">User management via Azure AD — users are managed in the Azure portal.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="margin-top:16px;font-size:12px;color:var(--white60);padding:12px 16px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm)">
+              To add or remove users, go to <strong style="color:var(--teal)">portal.azure.com → Azure Active Directory → Users</strong>. 
+              Role assignment (Admin/Recruiter) is managed via Azure AD Group membership.
+            </div>
           </div>
         </div>
       </div>
@@ -2584,6 +3004,677 @@ async function createTeamsMeeting(){
     document.querySelector('.dup-card .flex.gap8').innerHTML='<button class="btn btn-teal" onclick="document.getElementById(\'dupModal\').classList.remove(\'show\');openWhatsApp(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="document.getElementById(\'dupModal\').classList.remove(\'show\')">Done</button>';
     document.getElementById('dupModal').classList.add('show');
   }catch(e){hideLoading();showToast('error','Meeting failed',e.message);console.error(e);}
+}
+
+// ════════════════════════════════════════════════════════
+//  SESSION 3 — BULK UPLOAD, PROFILE EDIT, ADMIN PANEL
+// ════════════════════════════════════════════════════════
+
+// ── PROCESS FLOW ENFORCEMENT ─────────────────────────────
+const FLOW_ORDER = [
+  'WIP','Not Contactable','Not Interested','Dropped',
+  'Consultant Interview in Progress','Rejected by Consultant',
+  'Shortlisted for Client I/W','Client I/W in Progress',
+  'Rejected by Client','On Hold','Selected','Offered',
+  'Offer Revoked','Offer Declined','Joining in Progress','Joined'
+];
+// Valid forward transitions from each status
+const VALID_TRANSITIONS = {
+  'WIP':['WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress'],
+  'Not Contactable':['Not Contactable','Not Interested','Dropped','WIP','Consultant Interview in Progress'],
+  'Not Interested':['Not Interested','WIP'],
+  'Dropped':['Dropped','WIP'],
+  'Consultant Interview in Progress':['Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','On Hold','Dropped'],
+  'Rejected by Consultant':['Rejected by Consultant','WIP'],
+  'Shortlisted for Client I/W':['Shortlisted for Client I/W','Client I/W in Progress','On Hold','Rejected by Consultant'],
+  'Client I/W in Progress':['Client I/W in Progress','Rejected by Client','Selected','On Hold'],
+  'Rejected by Client':['Rejected by Client','WIP','Shortlisted for Client I/W'],
+  'On Hold':['On Hold','WIP','Consultant Interview in Progress','Client I/W in Progress','Rejected by Consultant','Rejected by Client'],
+  'Selected':['Selected','Offered','On Hold','Rejected by Client'],
+  'Offered':['Offered','Offer Revoked','Offer Declined','Joining in Progress'],
+  'Offer Revoked':['Offer Revoked','WIP'],
+  'Offer Declined':['Offer Declined','WIP'],
+  'Joining in Progress':['Joining in Progress','Joined','Offer Revoked'],
+  'Joined':['Joined']
+};
+
+function getValidNextStatuses(currentStatus) {
+  return VALID_TRANSITIONS[currentStatus] || FLOW_ORDER;
+}
+
+function updateStatusDropdown() {
+  if (currentEditIdx === -1) return;
+  const r = masterData[currentEditIdx];
+  const current = r[C.status] || 'WIP';
+  const valid = getValidNextStatuses(current);
+  const sel = document.getElementById('u_status');
+  const currentVal = sel.value;
+  // Update options — dim invalid ones
+  Array.from(sel.options).forEach(opt => {
+    if (opt.value === '') return;
+    const isValid = valid.includes(opt.value);
+    opt.disabled = !isValid;
+    opt.style.color = isValid ? '' : 'rgba(255,255,255,0.25)';
+  });
+  // If current selection is invalid, reset to current status
+  if (!valid.includes(currentVal)) sel.value = current;
+}
+
+// Override lookupCandidate to also update status dropdown
+const _origLookup = lookupCandidate;
+function lookupCandidate() {
+  _origLookup();
+  setTimeout(updateStatusDropdown, 100);
+}
+
+// ── BULK UPLOAD ───────────────────────────────────────────
+const RECRUITER_COLS = [
+  'Name','Contact no','Alternate contact number','Personal Email ID',
+  'Current Location','Total Yrs of Exp','Notice Period',
+  'Current Company Name','Current Designation','Reason for leaving',
+  'Current Salary (Rs. PM)','Expected Salary (Rs.)',
+  'Source','Source Details','Client Name','Department',
+  'Position applied for','Final Status','Follow-up Date','Remark'
+];
+
+let _bulkRows = [];
+let _bulkValidRows = [];
+
+function downloadTemplate(type) {
+  const wb = XLSX.utils.book_new();
+  let cols, sheetName, instructions;
+
+  if (type === 'recruiter') {
+    cols = RECRUITER_COLS;
+    sheetName = 'Recruiter Upload';
+    instructions = [
+      ['Talent+ Hire Pulse — Recruiter Upload Template'],
+      ['Instructions: Fill one candidate per row. Do not change column headers. Delete this instruction row before uploading.'],
+      ['Required: Name, Contact no, Personal Email ID, Current Location, Source, Client Name, Department, Position applied for'],
+      ['Status values: WIP | Not Contactable | Not Interested | Consultant Interview in Progress | Shortlisted for Client I/W | Client I/W in Progress | Selected | Offered | Joining in Progress | Joined | Rejected by Consultant | Rejected by Client | On Hold | Dropped'],
+      []
+    ];
+  } else {
+    cols = _dataHeaders.length > 0 ? _dataHeaders : RECRUITER_COLS;
+    sheetName = 'Admin Migration Template';
+    instructions = [
+      ['Talent+ Hire Pulse — Admin / Migration Template'],
+      ['Instructions: Full data migration template. Leave Candidate code blank for new records — it will be auto-generated.'],
+      ['For existing records: include the Candidate code to update rather than create new.'],
+      []
+    ];
+  }
+
+  const headerRow = cols;
+  const exampleRow = type === 'recruiter' ? [
+    'John Smith','9876543210','9876543211','john@email.com',
+    'Mumbai','3','30 days','ABC Corp','Senior Executive',
+    'Better growth','45000','55000',
+    'Portal','Naukri','DMC Bazaar','Operations',
+    'Operations Executive','WIP',
+    new Date().toISOString().split('T')[0],'Good candidate'
+  ] : [];
+
+  const ws = XLSX.utils.aoa_to_sheet([...instructions, headerRow, exampleRow]);
+
+  // Style header row
+  const hdrRange = XLSX.utils.decode_range(ws['!ref']);
+  const hdrRowIdx = instructions.length;
+  for (let c = hdrRange.s.c; c <= hdrRange.e.c; c++) {
+    const cell = XLSX.utils.encode_cell({r: hdrRowIdx, c});
+    if (!ws[cell]) ws[cell] = {v: '', t: 's'};
+    ws[cell].s = {
+      fill: {fgColor: {rgb: '0E0F17'}},
+      font: {bold: true, color: {rgb: 'FBFBFA'}},
+      alignment: {wrapText: true}
+    };
+  }
+
+  // Column widths
+  ws['!cols'] = cols.map(() => ({wch: 22}));
+
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, type === 'recruiter' ? 'THP_Recruiter_Template.xlsx' : 'THP_Admin_Template.xlsx');
+  showToast('success', 'Template downloaded', 'Fill it in and upload to add candidates in bulk.');
+}
+
+function handleBulkDrop(e) {
+  e.preventDefault();
+  document.getElementById('bulkDropZone').style.borderColor = '';
+  const file = e.dataTransfer.files[0];
+  if (file) processBulkFile(file);
+}
+
+function handleBulkFile(e) {
+  const file = e.target.files[0];
+  if (file) processBulkFile(file);
+}
+
+function processBulkFile(file) {
+  showLoading('Reading upload file...');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+
+      // Find header row (skip instruction rows)
+      let hdrIdx = 0;
+      for (let i = 0; i < Math.min(10, rows.length); i++) {
+        if (rows[i].includes('Name') && (rows[i].includes('Contact no') || rows[i].includes('Client Name'))) {
+          hdrIdx = i; break;
+        }
+      }
+      const headers = rows[hdrIdx].map(h => String(h).trim());
+      const dataRows = rows.slice(hdrIdx + 1).filter(r => r.some(c => c !== '' && c !== null));
+
+      _bulkRows = [];
+      _bulkValidRows = [];
+
+      dataRows.forEach((row, idx) => {
+        const obj = {};
+        headers.forEach((h, j) => { obj[h] = row[j] !== undefined ? String(row[j]).trim() : ''; });
+        const issues = validateBulkRow(obj, idx + 1);
+        const isValid = issues.length === 0;
+        const rowData = {
+          rowNum: idx + 1,
+          data: obj,
+          valid: isValid,
+          issues: issues.join('; ')
+        };
+        _bulkRows.push(rowData);
+        if (isValid) _bulkValidRows.push(rowData);
+      });
+
+      hideLoading();
+      renderBulkPreview();
+    } catch(err) {
+      hideLoading();
+      showToast('error', 'File error', err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function validateBulkRow(obj, rowNum) {
+  const issues = [];
+  const name = obj['Name'] || '';
+  const mobile = (obj['Contact no'] || '').replace(/\D/g,'');
+  const email = obj['Personal Email ID'] || '';
+  const client = obj['Client Name'] || '';
+  const position = obj['Position applied for'] || '';
+  const source = obj['Source'] || '';
+  const location = obj['Current Location'] || '';
+
+  if (!name) issues.push('Name required');
+  if (!mobile || !/^\d{10}$/.test(mobile)) issues.push('Invalid mobile (must be 10 digits)');
+  if (!email || !email.includes('@')) issues.push('Invalid email');
+  if (!client) issues.push('Client required');
+  if (!position) issues.push('Position required');
+  if (!source) issues.push('Source required');
+  if (!location) issues.push('Location required');
+
+  // Duplicate check
+  if (mobile.length === 10) {
+    const dup = masterData.find(r => String(r[C.contact]).trim() === mobile);
+    if (dup) issues.push('Duplicate mobile — ' + dup[C.code]);
+  }
+  if (email && email.includes('@')) {
+    const dup = masterData.find(r => String(r[C.email]).trim().toLowerCase() === email.toLowerCase());
+    if (dup && !issues.some(i => i.includes('Duplicate'))) issues.push('Duplicate email — ' + dup[C.code]);
+  }
+  return issues;
+}
+
+function renderBulkPreview() {
+  const valid = _bulkRows.filter(r => r.valid).length;
+  const invalid = _bulkRows.filter(r => !r.valid).length;
+  const dup = _bulkRows.filter(r => r.issues && r.issues.includes('Duplicate')).length;
+
+  document.getElementById('bulkSummary').innerHTML =
+    `<span style="color:var(--teal)">${valid} valid</span> &nbsp;|&nbsp; ` +
+    `<span style="color:#ff6b6b">${invalid} issues</span> &nbsp;|&nbsp; ` +
+    `<span style="color:var(--gold)">${dup} duplicates</span>`;
+
+  const tbody = document.getElementById('bulkPreviewBody');
+  tbody.innerHTML = _bulkRows.map(r => {
+    const rowClass = r.valid ? '' : 'style="background:rgba(220,50,50,0.06)"';
+    const icon = r.valid ? '<span style="color:var(--teal)">✓</span>' : '<span style="color:#ff6b6b">✗</span>';
+    return `<tr ${rowClass}>
+      <td class="mono">${r.rowNum}</td>
+      <td>${icon}</td>
+      <td><strong>${r.data['Name']||'—'}</strong></td>
+      <td class="mono">${r.data['Contact no']||'—'}</td>
+      <td class="muted">${(r.data['Personal Email ID']||'—').substring(0,25)}</td>
+      <td class="muted">${r.data['Position applied for']||'—'}</td>
+      <td class="muted">${r.data['Client Name']||'—'}</td>
+      <td style="color:${r.valid?'var(--teal)':'#ff6b6b'};font-size:11px">${r.issues||'Ready'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('bulkPreviewCard').classList.remove('hidden');
+  if (valid === 0) {
+    document.getElementById('bulkCommitBtn').disabled = true;
+    document.getElementById('bulkCommitBtn').textContent = 'No valid rows to commit';
+  } else {
+    document.getElementById('bulkCommitBtn').disabled = false;
+    document.getElementById('bulkCommitBtn').textContent = `✓ Commit ${valid} Valid Rows`;
+  }
+  showAlert('bulkUploadAlert','info',`File processed: ${_bulkRows.length} rows found. Review below and commit valid rows.`);
+}
+
+async function commitBulkUpload() {
+  if (_bulkValidRows.length === 0) return;
+  showLoading(`Adding ${_bulkValidRows.length} candidates...`);
+  try {
+    let nextNum = 0;
+    masterData.forEach(r => {
+      const m = String(r[C.code]).match(/(\d+)$/);
+      if (m) nextNum = Math.max(nextNum, parseInt(m[1]));
+    });
+    const year = new Date().getFullYear();
+    const added = [];
+
+    for (const rowData of _bulkValidRows) {
+      const obj = rowData.data;
+      nextNum++;
+      const code = `Talent+Hire/${year}/${String(nextNum).padStart(6,'0')}`;
+      const salPM = parseFloat(obj['Current Salary (Rs. PM)']) || '';
+      const salPA = salPM ? salPM * 12 : '';
+      const newRow = {};
+      _dataHeaders.forEach(h => newRow[h] = '');
+      newRow[C.code] = code;
+      newRow[C.sourcingDate] = obj['Profile Sourcing date'] || todayStr();
+      newRow[C.source] = obj['Source'] || '';
+      newRow[C.sourceDetails] = obj['Source Details'] || '';
+      newRow[C.name] = obj['Name'] || '';
+      newRow[C.location] = obj['Current Location'] || '';
+      newRow[C.combinedLoc] = obj['Current Location'] || '';
+      newRow[C.dept] = obj['Department'] || '';
+      newRow[C.position] = obj['Position applied for'] || '';
+      newRow[C.contact] = (obj['Contact no'] || '').replace(/\D/g,'');
+      newRow[C.altContact] = obj['Alternate contact number'] || '';
+      newRow[C.email] = obj['Personal Email ID'] || '';
+      newRow[C.expYrs] = obj['Total Yrs of Exp'] || '';
+      newRow[C.notice] = obj['Notice Period'] || '';
+      newRow[C.company] = obj['Current Company Name'] || '';
+      newRow[C.designation] = obj['Current Designation'] || '';
+      newRow[C.reason] = obj['Reason for leaving'] || '';
+      newRow[C.salaryPM] = salPM;
+      newRow[C.salaryPA] = salPA;
+      newRow[C.expectedSalary] = obj['Expected Salary (Rs.)'] || '';
+      newRow[C.client] = obj['Client Name'] || '';
+      newRow[C.status] = obj['Final Status'] || 'WIP';
+      newRow[C.decisionMaker] = STATUS_DM[newRow[C.status]] || '';
+      newRow[C.followupDate] = obj['Follow-up Date'] || '';
+      newRow[C.remark] = obj['Remark'] || '';
+      newRow[C.consent] = 'Y';
+      newRow[C.updatedBy] = currentAccount && currentAccount.name ? currentAccount.name : '';
+      newRow[C.updatedOn] = todayStr();
+      newRow[C.reportingDate] = todayStr();
+      newRow[C.recruiter] = currentAccount && currentAccount.name ? currentAccount.name.split(' ')[0] : '';
+      newRow[C.sNo] = masterData.length + 1;
+      masterData.push(newRow);
+      added.push(code);
+    }
+
+    await writeChangeLog('Bulk Upload', added.join(','), 'Multiple', '',
+      `${added.length} records`, 'Bulk upload by ' + (currentAccount && currentAccount.name ? currentAccount.name : 'Admin'));
+    await saveToSharePoint(false);
+    hideLoading();
+    document.getElementById('bulkPreviewCard').classList.add('hidden');
+    _bulkRows = []; _bulkValidRows = [];
+    document.getElementById('bulkFileInput').value = '';
+    renderRecords();
+    updateTopbarStats();
+    loadDashboard();
+    showToast('success', 'Bulk Upload Complete',
+      `${added.length} candidates added successfully.`);
+    showAlert('bulkUploadAlert','success',
+      `✅ ${added.length} candidates added. First code: ${added[0]}, Last: ${added[added.length-1]}`);
+  } catch(e) {
+    hideLoading();
+    showToast('error','Bulk upload failed', e.message);
+  }
+}
+
+function cancelBulkUpload() {
+  _bulkRows = []; _bulkValidRows = [];
+  document.getElementById('bulkPreviewCard').classList.add('hidden');
+  document.getElementById('bulkFileInput').value = '';
+  document.getElementById('bulkUploadAlert').innerHTML = '';
+}
+
+// ── PROFILE EDIT ──────────────────────────────────────────
+let _editIdx = -1;
+
+function lookupForEdit() {
+  const code = document.getElementById('editLookupCode').value.trim();
+  if (!code) { showAlert('editLookupAlert','error','Please enter a candidate code.'); return; }
+  const idx = masterData.findIndex(r =>
+    String(r[C.code]).trim().toLowerCase() === code.toLowerCase()
+  );
+  if (idx === -1) {
+    showAlert('editLookupAlert','error', `No record found for "${code}".`);
+    document.getElementById('profileEditForm').classList.add('hidden');
+    return;
+  }
+  _editIdx = idx;
+  const r = masterData[idx];
+  document.getElementById('editLookupAlert').innerHTML = '';
+  document.getElementById('profileEditForm').classList.remove('hidden');
+  document.getElementById('editCandName').textContent = r[C.name] || 'Edit Profile';
+  document.getElementById('editCandCode').textContent = r[C.code] || '';
+
+  // Populate all fields
+  document.getElementById('e_name').value = r[C.name] || '';
+  document.getElementById('e_contact').value = r[C.contact] || '';
+  document.getElementById('e_altContact').value = r[C.altContact] || '';
+  document.getElementById('e_email').value = r[C.email] || '';
+  document.getElementById('e_altEmail').value = r[C.altEmail] || '';
+  document.getElementById('e_location').value = r[C.location] || '';
+  document.getElementById('e_company').value = r[C.company] || '';
+  document.getElementById('e_designation').value = r[C.designation] || '';
+  document.getElementById('e_expYrs').value = r[C.expYrs] || '';
+  document.getElementById('e_notice').value = r[C.notice] || '';
+  document.getElementById('e_reason').value = r[C.reason] || '';
+  document.getElementById('e_salaryPM').value = r[C.salaryPM] || '';
+  document.getElementById('e_salaryPA').value = r[C.salaryPA] || '';
+  document.getElementById('e_expectedSalary').value = r[C.expectedSalary] || '';
+  document.getElementById('e_salaryBracket').value = r[C.salaryBracket] || '';
+  document.getElementById('e_client').value = r[C.client] || '';
+  document.getElementById('e_dept').value = r[C.dept] || '';
+  document.getElementById('e_position').value = r[C.position] || '';
+  document.getElementById('e_roleInterested').value = r[C.roleInterested] || '';
+  document.getElementById('e_vacancyCode').value = r[C.vacancyCode] || '';
+  document.getElementById('e_recruiter').value = r[C.recruiter] || '';
+}
+
+function editCalcPA() {
+  const pm = parseFloat(document.getElementById('e_salaryPM').value) || 0;
+  document.getElementById('e_salaryPA').value = pm ? pm * 12 : '';
+  if (pm * 12 > 0) {
+    const pa = pm * 12;
+    let bracket = '';
+    if (pa <= 180000) bracket = '0-1.8 L';
+    else if (pa <= 360000) bracket = '1.8-3.6 L';
+    else if (pa <= 600000) bracket = '3.6-6 L';
+    else if (pa <= 1000000) bracket = '6-10 L';
+    else if (pa <= 1500000) bracket = '10-15 L';
+    else if (pa <= 2000000) bracket = '15-20 L';
+    else bracket = '20+ L';
+    document.getElementById('e_salaryBracket').value = bracket;
+  }
+}
+
+async function saveProfileEdit() {
+  if (_editIdx === -1) return;
+  const r = masterData[_editIdx];
+  const changes = [];
+
+  const fields = [
+    {key: C.name,           id: 'e_name',           label: 'Name'},
+    {key: C.contact,        id: 'e_contact',        label: 'Primary Mobile'},
+    {key: C.altContact,     id: 'e_altContact',     label: 'Alternate Mobile'},
+    {key: C.email,          id: 'e_email',           label: 'Email'},
+    {key: C.altEmail,       id: 'e_altEmail',        label: 'Alternate Email'},
+    {key: C.location,       id: 'e_location',        label: 'Location'},
+    {key: C.company,        id: 'e_company',         label: 'Company'},
+    {key: C.designation,    id: 'e_designation',     label: 'Designation'},
+    {key: C.expYrs,         id: 'e_expYrs',          label: 'Experience'},
+    {key: C.notice,         id: 'e_notice',          label: 'Notice Period'},
+    {key: C.reason,         id: 'e_reason',          label: 'Reason for Leaving'},
+    {key: C.salaryPM,       id: 'e_salaryPM',        label: 'Salary PM'},
+    {key: C.salaryPA,       id: 'e_salaryPA',        label: 'Salary PA'},
+    {key: C.expectedSalary, id: 'e_expectedSalary',  label: 'Expected Salary'},
+    {key: C.salaryBracket,  id: 'e_salaryBracket',   label: 'Salary Bracket'},
+    {key: C.client,         id: 'e_client',          label: 'Client'},
+    {key: C.dept,           id: 'e_dept',            label: 'Department'},
+    {key: C.position,       id: 'e_position',        label: 'Position'},
+    {key: C.roleInterested, id: 'e_roleInterested',  label: 'Role Interested In'},
+    {key: C.vacancyCode,    id: 'e_vacancyCode',     label: 'Vacancy Code'},
+    {key: C.recruiter,      id: 'e_recruiter',       label: 'Recruiter'},
+  ];
+
+  for (const f of fields) {
+    const el = document.getElementById(f.id);
+    if (!el) continue;
+    const newVal = el.value.trim();
+    const oldVal = String(r[f.key] || '').trim();
+    if (newVal !== oldVal) {
+      changes.push({field: f.label, old: oldVal, new: newVal, key: f.key});
+      r[f.key] = newVal;
+    }
+  }
+
+  if (changes.length === 0) {
+    showAlert('editAlert','info','No changes detected.');
+    return;
+  }
+
+  // Validate
+  if (!r[C.name]) { showAlert('editAlert','error','Name cannot be empty.'); return; }
+  if (r[C.contact] && !/^\d{10}$/.test(r[C.contact])) {
+    showAlert('editAlert','error','Primary mobile must be 10 digits.'); return;
+  }
+
+  r[C.updatedBy] = currentAccount && currentAccount.name ? currentAccount.name : '';
+  r[C.updatedOn] = todayStr();
+
+  // Log each changed field
+  for (const ch of changes) {
+    await writeChangeLog('Profile Edit', r[C.code], ch.field, ch.old, ch.new, r[C.name]);
+  }
+
+  await saveToSharePoint(false);
+  showAlert('editAlert','success',
+    `✅ ${changes.length} field(s) updated for ${r[C.name]}. All changes logged.`);
+  renderRecords();
+  showToast('success','Profile Updated', `${changes.length} changes saved for ${r[C.name]}`);
+}
+
+function cancelProfileEdit() {
+  _editIdx = -1;
+  document.getElementById('profileEditForm').classList.add('hidden');
+  document.getElementById('editLookupCode').value = '';
+  document.getElementById('editLookupAlert').innerHTML = '';
+}
+
+// ── ADMIN PANEL ───────────────────────────────────────────
+let _changelogData = [];
+let _currentAdminTab = 'backup';
+
+function switchAdminTab(tab) {
+  _currentAdminTab = tab;
+  ['backup','changelog','config','users'].forEach(t => {
+    const el = document.getElementById('admin-' + t);
+    const tabEl = document.getElementById('atab-' + t);
+    if (el) el.classList.toggle('hidden', t !== tab);
+    if (tabEl) {
+      tabEl.style.color = t === tab ? 'var(--teal)' : 'var(--white60)';
+      tabEl.style.borderBottomColor = t === tab ? 'var(--teal)' : 'transparent';
+    }
+  });
+  if (tab === 'changelog') loadChangelog();
+  if (tab === 'config') loadConfig();
+  if (tab === 'backup') loadBackupList();
+}
+
+// Backup
+async function createBackup() {
+  showLoading('Creating backup...');
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    const backupName = `TalentHirePulse_Backup_${timestamp}.xlsx`;
+    rebuildDataSheet();
+    const wbOut = XLSX.write(_workbook, {bookType:'xlsx', type:'array'});
+
+    // Upload to Backups subfolder
+    await refreshToken();
+    const backupPath = CONFIG.folderPath + '/Backups/' + backupName;
+    const r = await fetch(
+      `${GRAPH}/sites/${_siteId}/drive/root:${backupPath}:/content`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        },
+        body: wbOut
+      }
+    );
+    if (!r.ok) throw new Error('Backup upload failed: ' + r.status);
+
+    // Log to Backups Log sheet
+    if (_workbook.Sheets['Backups Log']) {
+      const ws = _workbook.Sheets['Backups Log'];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      rows.push([
+        new Date().toISOString(),
+        backupName,
+        currentAccount && currentAccount.name ? currentAccount.name : 'Unknown',
+        masterData.length,
+        'Manual backup'
+      ]);
+      _workbook.Sheets['Backups Log'] = XLSX.utils.aoa_to_sheet(rows);
+      await saveToSharePoint(false);
+    }
+
+    hideLoading();
+    showToast('success','Backup Created', backupName);
+    document.getElementById('admin-backupCount').textContent =
+      (parseInt(document.getElementById('admin-backupCount').textContent) || 0) + 1;
+    loadBackupList();
+  } catch(e) {
+    hideLoading();
+    showToast('error','Backup failed', e.message);
+  }
+}
+
+async function loadBackupList() {
+  const el = document.getElementById('backupList');
+  if (!el) return;
+  try {
+    if (!_workbook || !_workbook.Sheets['Backups Log']) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--white60)">No backups found.</div>';
+      return;
+    }
+    const ws = _workbook.Sheets['Backups Log'];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''}).slice(1)
+      .filter(r => r[0]).reverse().slice(0,10);
+
+    document.getElementById('admin-backupCount').textContent = rows.length;
+
+    if (rows.length === 0) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--white60)">No backups yet. Click "Create Backup Now" to create your first backup.</div>';
+      return;
+    }
+    el.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Timestamp</th><th>File Name</th><th>Created By</th><th>Records</th></tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td class="mono" style="font-size:11px">${r[0]?new Date(r[0]).toLocaleString('en-IN'):''}</td>
+        <td class="muted" style="font-size:11px">${r[1]||'—'}</td>
+        <td class="muted">${r[2]||'—'}</td>
+        <td class="muted">${r[3]||'—'}</td>
+      </tr>`).join('')}
+      </tbody></table></div>`;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff6b6b;padding:16px">Error loading backups: ' + e.message + '</div>';
+  }
+}
+
+// Change Log
+function loadChangelog() {
+  const el = document.getElementById('changelogBody');
+  if (!el) return;
+  try {
+    if (!_workbook || !_workbook.Sheets['Change Log']) {
+      el.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--white60)">No change log data.</td></tr>';
+      return;
+    }
+    const ws = _workbook.Sheets['Change Log'];
+    _changelogData = XLSX.utils.sheet_to_json(ws, {header:1, defval:''})
+      .slice(1).filter(r => r[0]).reverse();
+    document.getElementById('admin-changeCount').textContent = _changelogData.length;
+    renderChangelog(_changelogData);
+  } catch(e) {
+    el.innerHTML = '<tr><td colspan="7" style="color:#ff6b6b;padding:16px" colspan="7">Error: ' + e.message + '</td></tr>';
+  }
+}
+
+function renderChangelog(rows) {
+  const el = document.getElementById('changelogBody');
+  if (!el) return;
+  el.innerHTML = rows.slice(0,100).map(r => `<tr>
+    <td class="mono" style="font-size:10px">${r[0]?new Date(r[0]).toLocaleString('en-IN'):''}</td>
+    <td class="muted">${r[1]||'—'}</td>
+    <td class="mono" style="font-size:11px">${r[2]||'—'}</td>
+    <td><span class="badge badge-wip" style="font-size:10px">${r[3]||'—'}</span></td>
+    <td class="muted" style="font-size:11px">${r[4]||'—'}</td>
+    <td class="muted" style="font-size:11px;color:var(--white60)">${(r[5]||'').toString().substring(0,30)}</td>
+    <td class="muted" style="font-size:11px;color:var(--teal)">${(r[6]||'').toString().substring(0,30)}</td>
+  </tr>`).join('');
+}
+
+function filterChangelog() {
+  const search = (document.getElementById('logSearch').value||'').toLowerCase();
+  const action = document.getElementById('logActionFilter').value;
+  const filtered = _changelogData.filter(r => {
+    const ms = !search || r.some(c => String(c).toLowerCase().includes(search));
+    const ma = !action || String(r[3]).includes(action);
+    return ms && ma;
+  });
+  renderChangelog(filtered);
+}
+
+// Config
+function loadConfig() {
+  if (!_workbook || !_workbook.Sheets['Config']) return;
+  const ws = _workbook.Sheets['Config'];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+  // Find columns by header
+  const headers = rows[0];
+  const getCol = (name) => {
+    const idx = headers.findIndex(h => String(h).includes(name));
+    if (idx === -1) return [];
+    return rows.slice(1).map(r => r[idx]).filter(v => v && String(v).trim());
+  };
+
+  document.getElementById('cfg_clients').value = getCol('Client').join('\n');
+  document.getElementById('cfg_recruiters').value = getCol('Recruiter').join('\n');
+  document.getElementById('cfg_depts').value = getCol('Department').join('\n');
+  document.getElementById('cfg_sources').value = getCol('Source').join('\n');
+
+  // WA template editor
+  const waTplEl = document.getElementById('waTemplateEditor');
+  waTplEl.innerHTML = Object.entries(WA_TEMPLATES).map(([key, val]) => `
+    <div style="margin-bottom:14px">
+      <label style="text-transform:capitalize;color:var(--teal);font-size:11px;letter-spacing:.5px">${key.replace(/_/g,' ')}</label>
+      <textarea id="watpl_${key}" style="min-height:70px;font-size:11px;font-family:'DM Mono',monospace;margin-top:4px">${val}</textarea>
+    </div>`).join('');
+}
+
+async function saveConfig() {
+  // Update WA templates in memory
+  Object.keys(WA_TEMPLATES).forEach(key => {
+    const el = document.getElementById('watpl_' + key);
+    if (el) WA_TEMPLATES[key] = el.value;
+  });
+
+  // TODO: Write back to Config sheet in next session
+  showToast('success','Config Saved', 'Templates updated for this session. Full SharePoint Config write coming in next update.');
+}
+
+// Initialise admin panel when switched to
+const _origSwitchPanel = switchPanel;
+function switchPanel(name) {
+  _origSwitchPanel(name);
+  if (name === 'adminPanel') {
+    loadBackupList();
+    switchAdminTab('backup');
+  }
 }
 
 </script>
