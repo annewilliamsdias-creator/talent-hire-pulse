@@ -1039,8 +1039,8 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
               <input type="text" id="n_salaryBracket" readonly style="opacity:.6" placeholder="Auto from salary">
             </div>
             <div class="field">
-              <label>Expected Salary ₹</label>
-              <input type="number" id="n_expectedSalary" placeholder="Expected CTC" oninput="calcSalaryIncrease()">
+              <label>Expected Salary ₹ PM <span class="req">*</span></label>
+              <input type="number" id="n_expectedSalary" placeholder="e.g. 45000 per month" oninput="calcSalaryIncrease()">
             </div>
             <div class="field">
               <label>Expected Salary Range <span class="field-hint">(auto)</span></label>
@@ -1699,18 +1699,98 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
           <div class="card">
             <div class="card-header">
               <div class="card-title"><span class="accent">👥</span> User Management</div>
+              <button class="btn btn-teal btn-sm" onclick="openAddUser()">+ Add User</button>
             </div>
+            <div id="userMgmtAlert"></div>
+
+            <!-- Add/Edit User Form -->
+            <div id="userEditForm" class="hidden" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px">
+              <div class="section-label">👤 User Details</div>
+              <div class="form-grid three">
+                <div class="field">
+                  <label>Full Name <span class="req">*</span></label>
+                  <input type="text" id="u_userName" placeholder="e.g. Ayesha Khan">
+                </div>
+                <div class="field">
+                  <label>Email (O-365 login) <span class="req">*</span></label>
+                  <input type="email" id="u_userEmail" placeholder="name@withawill.in">
+                </div>
+                <div class="field">
+                  <label>User Type</label>
+                  <select id="u_userType" onchange="onUserTypeChange()">
+                    <option value="internal">WithAWill Internal</option>
+                    <option value="client">Client</option>
+                  </select>
+                </div>
+                <div class="field" id="u_roleField">
+                  <label>Role <span class="req">*</span></label>
+                  <select id="u_userRole">
+                    <option value="Recruiter">Recruiter</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Super Admin">Super Admin</option>
+                  </select>
+                </div>
+                <div class="field hidden" id="u_clientField">
+                  <label>Client Company <span class="req">*</span></label>
+                  <select id="u_userClient">
+                    <option value="">— Select —</option>
+                    <option>Atmann</option><option>DMC Bazaar</option>
+                    <option>GIFTS</option><option>One Above</option><option>VSAR Tech</option>
+                  </select>
+                </div>
+                <div class="field hidden" id="u_clientRoleField">
+                  <label>Client Role <span class="req">*</span></label>
+                  <select id="u_clientRole">
+                    <option value="Client Recruiter">Recruiter (own records)</option>
+                    <option value="Client Manager">Manager (all records)</option>
+                    <option value="Client Head">Functional Head (all + dashboards)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Status</label>
+                  <select id="u_userStatus">
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              <input type="hidden" id="u_editUserIdx" value="-1">
+              <div class="btn-row">
+                <button class="btn btn-teal" onclick="saveUser()">✓ Save User</button>
+                <button class="btn btn-ghost btn-sm" onclick="closeUserForm()">Cancel</button>
+              </div>
+            </div>
+
+            <!-- Role legend -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+              <div style="background:rgba(52,186,198,0.06);border:1px solid rgba(52,186,198,0.15);border-radius:var(--radius-sm);padding:14px 16px">
+                <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:8px">WITHAWILL ROLES</div>
+                <div style="font-size:12px;color:var(--white60);line-height:1.8">
+                  <strong style="color:var(--off-white)">Super Admin</strong> — Full access, all features, user management<br>
+                  <strong style="color:var(--off-white)">Admin</strong> — Uploads, masters, vacancies, all records. No user mgmt or dashboard config<br>
+                  <strong style="color:var(--off-white)">Recruiter</strong> — Own records, new entry, updates, WhatsApp, Teams
+                </div>
+              </div>
+              <div style="background:rgba(233,152,43,0.06);border:1px solid rgba(233,152,43,0.15);border-radius:var(--radius-sm);padding:14px 16px">
+                <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:1px;margin-bottom:8px">CLIENT ROLES (PHASE 2)</div>
+                <div style="font-size:12px;color:var(--white60);line-height:1.8">
+                  <strong style="color:var(--off-white)">Functional Head</strong> — All company records, dashboards, downloads<br>
+                  <strong style="color:var(--off-white)">Manager</strong> — All company records, no dashboard download<br>
+                  <strong style="color:var(--off-white)">Recruiter</strong> — Own company records only
+                </div>
+              </div>
+            </div>
+
+            <!-- Users Table -->
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Status</th></tr></thead>
+                <thead>
+                  <tr><th>Name</th><th>Email</th><th>Type</th><th>Role</th><th>Client</th><th>Status</th><th>Actions</th></tr>
+                </thead>
                 <tbody id="usersBody">
-                  <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--white60)">User management via Azure AD — users are managed in the Azure portal.</td></tr>
+                  <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--white60)">Loading users...</td></tr>
                 </tbody>
               </table>
-            </div>
-            <div style="margin-top:16px;font-size:12px;color:var(--white60);padding:12px 16px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm)">
-              To add or remove users, go to <strong style="color:var(--teal)">portal.azure.com → Azure Active Directory → Users</strong>. 
-              Role assignment (Admin/Recruiter) is managed via Azure AD Group membership.
             </div>
           </div>
         </div>
@@ -1784,6 +1864,13 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
                     <option value="Cancelled">Cancelled</option>
                   </select>
                 </div>
+                <div class="field">
+                  <label>Active</label>
+                  <select id="v_active">
+                    <option value="Y">Active — visible in dropdowns</option>
+                    <option value="N">Inactive — hidden from dropdowns</option>
+                  </select>
+                </div>
               </div>
               <input type="hidden" id="v_editIdx" value="-1">
               <div class="btn-row">
@@ -1795,7 +1882,7 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Status</th><th>Actions</th></tr>
+                  <tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Status</th><th>Active</th><th>Actions</th></tr>
                 </thead>
                 <tbody id="adminVacanciesBody"></tbody>
               </table>
@@ -2277,6 +2364,9 @@ async function loadFromSharePoint() {
     showToast('error','SharePoint Error', e.message);
     console.error(e);
   }
+  // Load users and resolve role
+  if (typeof loadUsersFromConfig === 'function') loadUsersFromConfig();
+  if (typeof resolveCurrentUserRole === 'function') resolveCurrentUserRole();
 }
 
 function parseWorkbook() {
@@ -2797,37 +2887,7 @@ function renderRecords() {
 function filterRecords() { renderRecords(); }
 
 // ── POSITION / VACANCY MAPPING ─────────────────────────
-function populatePositionDropdown() {
-  const clientVal = document.getElementById('n_client').value;
-  const deptVal   = document.getElementById('n_dept').value;
-  const sel = document.getElementById('n_position');
-  // Save current custom value
-  const customVal = document.getElementById('n_positionCustom').value;
-  sel.innerHTML = '<option value="">— Select from open vacancies —</option>';
-  // Filter vacancies by client and dept if selected
-  const filtered = vacanciesData.filter(v => {
-    const clientMatch = !clientVal || v['Company'] === clientVal;
-    const deptMatch   = !deptVal   || v['Department'] === deptVal;
-    const openMatch   = !v['Current Status'] || 
-      ['Open','open',''].includes(v['Current Status']);
-    return clientMatch && deptMatch && openMatch;
-  });
-  if (filtered.length === 0) {
-    const opt = document.createElement('option');
-    opt.value = ''; opt.textContent = '— No open vacancies for this selection —';
-    sel.appendChild(opt);
-  } else {
-    filtered.forEach(v => {
-      const opt = document.createElement('option');
-      const code = v['Vacancy code'] || v['Vacancy Code'] || '';
-      opt.value = v['Designation'] || '';
-      opt.dataset.code = code;
-      opt.dataset.dept = v['Department'] || '';
-      opt.textContent = `${v['Designation']||'—'} (${code}) — ${v['Company']||'—'}`;
-      sel.appendChild(opt);
-    });
-  }
-}
+// populatePositionDropdown redefined in session5
 
 // onPositionSelect defined in session4.js
 
@@ -3231,63 +3291,7 @@ const RECRUITER_COLS = [
 let _bulkRows = [];
 let _bulkValidRows = [];
 
-function downloadTemplate(type) {
-  const wb = XLSX.utils.book_new();
-  let cols, sheetName, instructions;
-
-  if (type === 'recruiter') {
-    cols = RECRUITER_COLS;
-    sheetName = 'Recruiter Upload';
-    instructions = [
-      ['Talent+ Hire Pulse — Recruiter Upload Template'],
-      ['Instructions: Fill one candidate per row. Do not change column headers. Delete this instruction row before uploading.'],
-      ['Required: Name, Contact no, Personal Email ID, Current Location, Source, Client Name, Department, Position applied for'],
-      ['Status values: WIP | Not Contactable | Not Interested | Consultant Interview in Progress | Shortlisted for Client I/W | Client I/W in Progress | Selected | Offered | Joining in Progress | Joined | Rejected by Consultant | Rejected by Client | On Hold | Dropped'],
-      []
-    ];
-  } else {
-    cols = _dataHeaders.length > 0 ? _dataHeaders : RECRUITER_COLS;
-    sheetName = 'Admin Migration Template';
-    instructions = [
-      ['Talent+ Hire Pulse — Admin / Migration Template'],
-      ['Instructions: Full data migration template. Leave Candidate code blank for new records — it will be auto-generated.'],
-      ['For existing records: include the Candidate code to update rather than create new.'],
-      []
-    ];
-  }
-
-  const headerRow = cols;
-  const exampleRow = type === 'recruiter' ? [
-    'John Smith','9876543210','9876543211','john@email.com',
-    'Mumbai','3','30 days','ABC Corp','Senior Executive',
-    'Better growth','45000','55000',
-    'Portal','Naukri','DMC Bazaar','Operations',
-    'Operations Executive','WIP',
-    new Date().toISOString().split('T')[0],'Good candidate'
-  ] : [];
-
-  const ws = XLSX.utils.aoa_to_sheet([...instructions, headerRow, exampleRow]);
-
-  // Style header row
-  const hdrRange = XLSX.utils.decode_range(ws['!ref']);
-  const hdrRowIdx = instructions.length;
-  for (let c = hdrRange.s.c; c <= hdrRange.e.c; c++) {
-    const cell = XLSX.utils.encode_cell({r: hdrRowIdx, c});
-    if (!ws[cell]) ws[cell] = {v: '', t: 's'};
-    ws[cell].s = {
-      fill: {fgColor: {rgb: '0E0F17'}},
-      font: {bold: true, color: {rgb: 'FBFBFA'}},
-      alignment: {wrapText: true}
-    };
-  }
-
-  // Column widths
-  ws['!cols'] = cols.map(() => ({wch: 22}));
-
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  XLSX.writeFile(wb, type === 'recruiter' ? 'THP_Recruiter_Template.xlsx' : 'THP_Admin_Template.xlsx');
-  showToast('success', 'Template downloaded', 'Fill it in and upload to add candidates in bulk.');
-}
+// downloadTemplate redefined in session5
 
 function handleBulkDrop(e) {
   e.preventDefault();
@@ -3831,6 +3835,38 @@ function populateAllDropdowns() {
       if (cur) sel.value = cur;
     });
   });
+  // Notice period dropdowns
+  // Notice period
+  ['n_notice','e_notice'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    const first = sel.options[0];
+    sel.innerHTML = '';
+    if (first) sel.appendChild(first);
+    else {
+      const o = document.createElement('option');
+      o.value = ''; o.textContent = '— Select —';
+      sel.appendChild(o);
+    }
+    getActive('noticePeriod').forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name; sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+  });
+  // Update role interested dropdown with active departments
+  ['u_roleInterested'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Select —</option>';
+    getActive('departments').forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name; sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+  });
 }
 
 // ── SALARY CALCULATIONS ───────────────────────────────────
@@ -3854,14 +3890,16 @@ function calcSalaryPA() {
 }
 
 function calcSalaryIncrease() {
-  const pa = parseFloat(document.getElementById('n_salaryPA').value) || 0;
-  const exp = parseFloat(document.getElementById('n_expectedSalary').value) || 0;
-  // Expected bracket
-  document.getElementById('n_expectedBracket').value = getSalaryBracket(exp);
-  // % increase
+  const currentPA = parseFloat(document.getElementById('n_salaryPA').value) || 0;
+  const expectedPM = parseFloat(document.getElementById('n_expectedSalary').value) || 0;
+  const expectedPA = expectedPM * 12; // Convert monthly to annual for calculations
+  // Expected salary range (annual)
+  if (document.getElementById('n_expectedBracket'))
+    document.getElementById('n_expectedBracket').value = getSalaryBracket(expectedPA);
+  // % increase (current annual vs expected annual)
   const el = document.getElementById('n_salaryIncrease');
-  if (pa > 0 && exp > 0) {
-    const pct = ((exp - pa) / pa * 100).toFixed(1);
+  if (currentPA > 0 && expectedPA > 0) {
+    const pct = ((expectedPA - currentPA) / currentPA * 100).toFixed(1);
     el.value = (pct >= 0 ? '+' : '') + pct + '%';
     el.style.color = pct >= 0 ? 'var(--teal)' : '#ff6b6b';
   } else {
@@ -3990,22 +4028,7 @@ function loadConfig() {
   }
 }
 
-function renderMasterTable(masterKey, containerId) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  const items = MASTERS[masterKey] || [];
-  el.innerHTML = items.length === 0 ?
-    '<div style="color:var(--white60);font-size:12px;padding:8px">No items yet.</div>' :
-    items.map((item, idx) => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
-        <span style="flex:1;font-size:13px;color:${item.active?'var(--off-white)':'var(--white60)'}">${item.name}</span>
-        <span class="badge ${item.active?'badge-joined':'badge-dropped'}" style="font-size:10px">${item.active?'Active':'Inactive'}</span>
-        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px"
-          onclick="toggleMaster('${masterKey}',${idx})">
-          ${item.active?'Deactivate':'Activate'}
-        </button>
-      </div>`).join('');
-}
+// renderMasterTable redefined in session5
 
 function toggleMaster(masterKey, idx) {
   if (MASTERS[masterKey] && MASTERS[masterKey][idx]) {
@@ -4044,43 +4067,7 @@ async function saveConfig() {
 }
 
 // ── UPGRADE CONFIG HTML WITH MASTER TABLES ───────────────
-function renderConfigTab() {
-  const container = document.getElementById('admin-config');
-  if (!container || container.dataset.rendered) return;
-  container.dataset.rendered = 'true';
-
-  const masterSections = [
-    {key:'clients',    label:'Clients',     inputId:'cfg_add_client'},
-    {key:'recruiters', label:'Recruiters',  inputId:'cfg_add_recruiter'},
-    {key:'departments',label:'Departments', inputId:'cfg_add_dept'},
-    {key:'sources',    label:'Sources',     inputId:'cfg_add_source'},
-    {key:'cities',     label:'Cities',      inputId:'cfg_add_city'},
-  ];
-
-  const masterHTML = masterSections.map(s => `
-    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius);padding:16px 18px">
-      <div class="section-label">${s.label}</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <input type="text" id="${s.inputId}" placeholder="Add new ${s.label.toLowerCase().slice(0,-1)}..."
-          style="flex:1" onkeydown="if(event.key==='Enter')addMasterItem('${s.key}','${s.inputId}','cfg_${s.key}Table')">
-        <button class="btn btn-teal btn-sm" onclick="addMasterItem('${s.key}','${s.inputId}','cfg_${s.key}Table')">+ Add</button>
-      </div>
-      <div id="cfg_${s.key}Table" style="max-height:200px;overflow-y:auto"></div>
-    </div>`).join('');
-
-  const waHTML = `
-    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius);padding:16px 18px;grid-column:span 2">
-      <div class="section-label">WhatsApp Templates</div>
-      <div id="waTemplateEditor"></div>
-      <button class="btn btn-teal btn-sm mt8" onclick="saveConfig()">✓ Save Templates</button>
-    </div>`;
-
-  container.querySelector('.card > div:last-child')?.remove();
-  const grid = document.createElement('div');
-  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:16px';
-  grid.innerHTML = masterHTML + waHTML;
-  container.querySelector('.card').appendChild(grid);
-}
+// renderConfigTab redefined in session5
 
 // ── ADMIN VACANCIES CRUD ─────────────────────────────────
 function openAddVacancy() {
@@ -4171,36 +4158,7 @@ async function saveVacancy() {
     `✅ ${isNew ? 'New vacancy created' : 'Vacancy updated'}: ${vacData['Vacancy code']}`);
 }
 
-function renderAdminVacancies() {
-  const tbody = document.getElementById('adminVacanciesBody');
-  if (!tbody) return;
-  if (!vacanciesData.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--white60)">No vacancies yet.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = vacanciesData.map((v, idx) => {
-    const code = v['Vacancy code'] || v['Vacancy Code'] || '—';
-    const status = v['Current Status'] || '—';
-    return `<tr>
-      <td class="mono" style="font-size:11px">${code}</td>
-      <td class="muted">${v['Company']||'—'}</td>
-      <td><strong>${v['Designation']||'—'}</strong></td>
-      <td class="muted">${v['Department']||'—'}</td>
-      <td class="muted">${v['Location']||'—'}</td>
-      <td class="muted">₹${v['Monthly Budget']||'—'}</td>
-      <td class="muted">${v['Recruiter']||'—'}</td>
-      <td><span class="badge ${statusBadgeClass(status)}">${status}</span></td>
-      <td>
-        <div class="flex gap8">
-          <button class="btn btn-ghost btn-sm" onclick="editVacancy(${idx})">Edit</button>
-          <button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="toggleVacancyStatus(${idx})">
-            ${status==='Open'?'Close':'Reopen'}
-          </button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-}
+// renderAdminVacancies redefined in session5
 
 async function toggleVacancyStatus(idx) {
   const v = vacanciesData[idx];
@@ -4220,23 +4178,7 @@ async function toggleVacancyStatus(idx) {
 }
 
 // ── PATCH switchAdminTab to handle new tabs ───────────────
-function switchAdminTab(tab) {
-  // Handle new tabs not in original function
-  const allTabs = ['backup','changelog','config','vacancies','dashboard','users'];
-  allTabs.forEach(t => {
-    const el = document.getElementById('admin-' + t);
-    const tabEl = document.getElementById('atab-' + t);
-    if (el) el.classList.toggle('hidden', t !== tab);
-    if (tabEl) {
-      tabEl.style.color = t === tab ? 'var(--teal)' : 'var(--white60)';
-      tabEl.style.borderBottomColor = t === tab ? 'var(--teal)' : 'transparent';
-    }
-  });
-  if (tab === 'changelog') loadChangelog();
-  if (tab === 'config') { loadConfig(); renderConfigTab(); }
-  if (tab === 'backup') loadBackupList();
-  if (tab === 'vacancies') { renderAdminVacancies(); populateAllDropdowns(); }
-}
+// switchAdminTab defined below
 
 // ── INITIALISE ON APP LOAD ───────────────────────────────
 // Patch onAuthSuccess to populate dropdowns after data loads
@@ -4245,6 +4187,658 @@ function switchAdminTab(tab) {
 
 // Patch parseWorkbook to also populate dropdowns
 // parseWorkbook patched directly
+
+// ════════════════════════════════════════════════════════
+//  SESSION 5 — ROLES, FULL MASTERS, VACANCY ACTIVE FLAG
+// ════════════════════════════════════════════════════════
+
+// ── ROLE DEFINITIONS ─────────────────────────────────────
+const ROLES = {
+  'Super Admin': {
+    canAccessAdmin: true, canManageUsers: true, canManageMasters: true,
+    canManageVacancies: true, canBulkUpload: true, canViewChangelog: true,
+    canConfigDashboard: true, canExport: true, canViewAllRecords: true,
+    canManageBackups: true, label: 'Super Admin', color: 'var(--teal)'
+  },
+  'Admin': {
+    canAccessAdmin: true, canManageUsers: false, canManageMasters: true,
+    canManageVacancies: true, canBulkUpload: true, canViewChangelog: false,
+    canConfigDashboard: false, canExport: true, canViewAllRecords: true,
+    canManageBackups: true, label: 'Admin', color: 'var(--gold)'
+  },
+  'Recruiter': {
+    canAccessAdmin: false, canManageUsers: false, canManageMasters: false,
+    canManageVacancies: false, canBulkUpload: false, canViewChangelog: false,
+    canConfigDashboard: false, canExport: false, canViewAllRecords: true,
+    canManageBackups: false, label: 'Recruiter', color: '#9b72d4'
+  },
+  'Client Recruiter': {
+    isClient: true, canViewAllRecords: false, canExport: false,
+    label: 'Client Recruiter', color: 'var(--white60)'
+  },
+  'Client Manager': {
+    isClient: true, canViewAllRecords: true, canExport: false,
+    label: 'Client Manager', color: 'var(--white60)'
+  },
+  'Client Head': {
+    isClient: true, canViewAllRecords: true, canExport: true,
+    label: 'Client Head', color: 'var(--gold)'
+  }
+};
+
+// ── USER DATA (stored in Config sheet Users section) ──────
+let APP_USERS = [];
+let currentUserRole = 'Recruiter'; // default until loaded
+let currentUserData = null;
+
+// ── LOAD USERS FROM CONFIG SHEET ─────────────────────────
+function loadUsersFromConfig() {
+  if (!_workbook || !_workbook.Sheets['Config']) return;
+  try {
+    const ws = _workbook.Sheets['Config'];
+    const allData = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    // Find Users section - look for a row starting with 'Users'
+    let usersStart = -1;
+    for (let i = 0; i < allData.length; i++) {
+      if (String(allData[i][0]).trim().toLowerCase() === 'users') {
+        usersStart = i + 1; break;
+      }
+    }
+    if (usersStart === -1) {
+      // Try to find a Users column header row
+      for (let i = 0; i < allData.length; i++) {
+        if (allData[i].includes('Email') && allData[i].includes('Role')) {
+          usersStart = i + 1; break;
+        }
+      }
+    }
+    APP_USERS = [];
+    if (usersStart > 0) {
+      for (let i = usersStart; i < allData.length; i++) {
+        const row = allData[i];
+        if (!row[0] && !row[1]) break; // stop at empty row
+        if (row[1]) { // has email
+          APP_USERS.push({
+            name:   String(row[0]||'').trim(),
+            email:  String(row[1]||'').trim().toLowerCase(),
+            type:   String(row[2]||'internal').trim(),
+            role:   String(row[3]||'Recruiter').trim(),
+            client: String(row[4]||'').trim(),
+            active: String(row[5]||'Y').trim().toUpperCase() === 'Y'
+          });
+        }
+      }
+    }
+    console.log(`Loaded ${APP_USERS.length} users from Config`);
+  } catch(e) {
+    console.warn('Could not load users:', e);
+  }
+}
+
+// ── DETERMINE CURRENT USER ROLE ───────────────────────────
+function resolveCurrentUserRole() {
+  if (!currentAccount) return;
+  const email = (currentAccount.username || currentAccount.name || '').toLowerCase();
+  const user = APP_USERS.find(u => u.email === email || u.name.toLowerCase() === email.split('@')[0]);
+  if (user && user.active) {
+    currentUserRole = user.role;
+    currentUserData = user;
+  } else {
+    // Default: first sign-in gets Recruiter, Super Admin gets full access
+    // Anne Williams Dias is Super Admin
+    if (email.includes('annewilliamsdias') || email.includes('anne')) {
+      currentUserRole = 'Super Admin';
+    } else {
+      currentUserRole = 'Recruiter';
+    }
+    currentUserData = { name: currentAccount.name, email, role: currentUserRole, active: true };
+  }
+  console.log(`User role: ${currentUserRole}`);
+  applyRoleBasedUI();
+}
+
+// ── APPLY ROLE-BASED UI ───────────────────────────────────
+function applyRoleBasedUI() {
+  const role = ROLES[currentUserRole] || ROLES['Recruiter'];
+  // Update sidebar role display
+  const roleEl = document.getElementById('sidebarRole');
+  if (roleEl) {
+    roleEl.textContent = role.label;
+    roleEl.style.color = role.color;
+  }
+  // Hide/show nav items based on role
+  const bulkUploadNav = document.querySelector('[onclick*="bulkUpload"]');
+  const adminNav = document.querySelector('[onclick*="adminPanel"]');
+  if (bulkUploadNav) bulkUploadNav.style.display = role.canBulkUpload ? '' : 'none';
+  if (adminNav) adminNav.style.display = role.canAccessAdmin ? '' : 'none';
+  // Hide admin tabs based on role
+  if (role.canAccessAdmin && !role.canManageUsers) {
+    const usersTab = document.getElementById('atab-users');
+    if (usersTab) usersTab.style.display = 'none';
+  }
+  if (role.canAccessAdmin && !role.canViewChangelog) {
+    const logTab = document.getElementById('atab-changelog');
+    if (logTab) logTab.style.display = 'none';
+  }
+  if (role.canAccessAdmin && !role.canConfigDashboard) {
+    const dashTab = document.getElementById('atab-dashboard');
+    if (dashTab) dashTab.style.display = 'none';
+  }
+}
+
+// Patch parseWorkbook to load users and resolve role
+const _origParseWB2 = parseWorkbook;
+// Note: parseWorkbook already has populateAllDropdowns injected
+// We add user loading here by patching loadFromSharePoint completion
+// loadFromSharePoint patched directly above
+
+// ── FULL MASTERS CONFIG HTML ──────────────────────────────
+// This replaces the simple config tab with full master management
+function renderConfigTab() {
+  const container = document.getElementById('admin-config');
+  if (!container || container.dataset.rendered) return;
+  container.dataset.rendered = 'true';
+
+  const masterDefs = [
+    { key:'clients',     label:'Clients',          inputId:'cfg_add_client',     icon:'🏢' },
+    { key:'recruiters',  label:'Recruiters',        inputId:'cfg_add_recruiter',  icon:'👤' },
+    { key:'departments', label:'Departments',       inputId:'cfg_add_dept',       icon:'🏗' },
+    { key:'sources',     label:'Sources',           inputId:'cfg_add_source',     icon:'📡' },
+    { key:'cities',      label:'Cities',            inputId:'cfg_add_city',       icon:'📍' },
+    { key:'noticePeriod',label:'Notice Periods',    inputId:'cfg_add_notice',     icon:'📅' },
+    { key:'expBrackets', label:'Experience Levels', inputId:'cfg_add_exp',        icon:'⭐' },
+    { key:'statuses',    label:'Candidate Statuses',inputId:'cfg_add_status',     icon:'🔄' },
+    { key:'vacStatuses', label:'Vacancy Statuses',  inputId:'cfg_add_vacstatus',  icon:'📌' },
+    { key:'decisionMakers',label:'Decision Makers', inputId:'cfg_add_dm',         icon:'⚖' },
+  ];
+
+  const masterHTML = masterDefs.map(s => `
+    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius);padding:14px 16px">
+      <div class="section-label">${s.icon} ${s.label}</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="text" id="${s.inputId}" placeholder="Add ${s.label.toLowerCase().slice(0,-1)}..."
+          style="flex:1;font-size:12px;padding:7px 10px"
+          onkeydown="if(event.key==='Enter')addMasterItem('${s.key}','${s.inputId}','cfg_${s.key}Table')">
+        <button class="btn btn-teal btn-sm" style="padding:6px 12px;font-size:11px"
+          onclick="addMasterItem('${s.key}','${s.inputId}','cfg_${s.key}Table')">+ Add</button>
+      </div>
+      <div id="cfg_${s.key}Table" style="max-height:180px;overflow-y:auto"></div>
+    </div>`).join('');
+
+  const waHTML = `
+    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius);padding:14px 16px;grid-column:span 2">
+      <div class="section-label">💬 WhatsApp Templates</div>
+      <div id="waTemplateEditor"></div>
+      <div class="btn-row">
+        <button class="btn btn-teal btn-sm" onclick="saveConfig()">✓ Save Templates</button>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius);padding:14px 16px;grid-column:span 2">
+      <div class="section-label">💰 Salary Bracket Thresholds (Annual ₹)</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px">
+        ${['0-1.8 L|180000','1.8-3.6 L|360000','3.6-6 L|600000','6-10 L|1000000','10-15 L|1500000','15-20 L|2000000','20+ L|99999999'].map(b => {
+          const [label, val] = b.split('|');
+          return `<div class="field"><label style="font-size:10px">${label} (up to ₹)</label>
+            <input type="number" id="bracket_${label.replace(/[^a-z0-9]/gi,'_')}" value="${val}" style="font-size:12px;padding:6px 8px"></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px';
+  grid.innerHTML = masterHTML + waHTML;
+  // Clear existing content and replace
+  const card = container.querySelector('.card');
+  const cardHeader = card.querySelector('.card-header');
+  card.innerHTML = '';
+  card.appendChild(cardHeader);
+  card.appendChild(grid);
+  // Now populate all master tables
+  masterDefs.forEach(s => renderMasterTable(s.key, `cfg_${s.key}Table`));
+  // WA templates
+  const waTplEl = document.getElementById('waTemplateEditor');
+  if (waTplEl) {
+    waTplEl.innerHTML = Object.entries(WA_TEMPLATES).map(([key, val]) => `
+      <div style="margin-bottom:12px">
+        <label style="text-transform:capitalize;color:var(--teal);font-size:11px;letter-spacing:.5px">${key.replace(/_/g,' ')}</label>
+        <textarea id="watpl_${key}" style="min-height:60px;font-size:11px;font-family:'DM Mono',monospace;margin-top:4px">${val}</textarea>
+      </div>`).join('');
+  }
+}
+
+// ── EXTEND MASTERS WITH MISSING LISTS ────────────────────
+// Add missing master lists to MASTERS object
+if (!MASTERS.noticePeriod) {
+  MASTERS.noticePeriod = [
+    'Immediate','7 days','15 days','30 days','45 days','60 days','90 days','Serving Notice','Not disclosed'
+  ].map(n => ({name:n, active:true}));
+}
+if (!MASTERS.expBrackets) {
+  MASTERS.expBrackets = [
+    'Fresher','0-1 yrs','1-3 yrs','3-5 yrs','5-8 yrs','8-12 yrs','12+ yrs'
+  ].map(n => ({name:n, active:true}));
+}
+if (!MASTERS.vacStatuses) {
+  MASTERS.vacStatuses = [
+    'Open','On Hold','Shortlisted','Selected','Offered','Closed','Cancelled'
+  ].map(n => ({name:n, active:true}));
+}
+if (!MASTERS.decisionMakers) {
+  MASTERS.decisionMakers = ['Consultant','Client'].map(n => ({name:n, active:true}));
+}
+
+// Update populateAllDropdowns to include notice period and experience
+// populateAllDropdowns patched directly
+
+// ── RENDER MASTER TABLE (overrides existing with Inactive label fix) ──
+function renderMasterTable(masterKey, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const items = MASTERS[masterKey] || [];
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--white60);font-size:12px;padding:6px">No items yet.</div>';
+    return;
+  }
+  el.innerHTML = items.map((item, idx) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+      <span style="flex:1;font-size:12px;color:${item.active ? 'var(--off-white)' : 'var(--white60)'};
+        ${!item.active ? 'text-decoration:line-through' : ''}">${item.name}</span>
+      <span class="badge ${item.active ? 'badge-joined' : 'badge-dropped'}" style="font-size:10px;padding:2px 7px">
+        ${item.active ? 'Active' : 'Inactive'}
+      </span>
+      <button class="btn btn-ghost btn-sm" style="padding:3px 9px;font-size:11px"
+        onclick="toggleMaster('${masterKey}',${idx})">
+        ${item.active ? 'Inactive' : 'Activate'}
+      </button>
+    </div>`).join('');
+}
+
+// ── VACANCY ACTIVE FLAG — patch renderAdminVacancies ──────
+function renderAdminVacancies() {
+  const tbody = document.getElementById('adminVacanciesBody');
+  if (!tbody) return;
+  if (!vacanciesData.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--white60)">No vacancies yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = vacanciesData.map((v, idx) => {
+    const code = v['Vacancy code'] || v['Vacancy Code'] || '—';
+    const status = v['Current Status'] || 'Open';
+    const isActive = v['Active'] !== 'N';
+    return `<tr style="${!isActive ? 'opacity:0.5' : ''}">
+      <td class="mono" style="font-size:11px">${code}</td>
+      <td class="muted">${v['Company']||'—'}</td>
+      <td><strong style="${!isActive ? 'text-decoration:line-through' : ''}">${v['Designation']||'—'}</strong></td>
+      <td class="muted">${v['Department']||'—'}</td>
+      <td class="muted">${v['Location']||'—'}</td>
+      <td class="muted">₹${v['Monthly Budget']||'—'}</td>
+      <td class="muted">${v['Recruiter']||'—'}</td>
+      <td><span class="badge ${statusBadgeClass(status)}">${status}</span></td>
+      <td><span class="badge ${isActive ? 'badge-joined' : 'badge-dropped'}" style="font-size:10px">${isActive ? 'Active' : 'Inactive'}</span></td>
+      <td>
+        <div class="flex gap8">
+          <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px" onclick="editVacancy(${idx})">Edit</button>
+          <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px;color:${isActive ? '#ff6b6b' : 'var(--teal)'}"
+            onclick="toggleVacancyActive(${idx})">${isActive ? 'Inactive' : 'Activate'}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleVacancyActive(idx) {
+  const v = vacanciesData[idx];
+  if (!v) return;
+  v['Active'] = v['Active'] === 'N' ? 'Y' : 'N';
+  if (_workbook && _workbook.Sheets['Vacancies']) {
+    const ws = _workbook.Sheets['Vacancies'];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    const headers = rows[0];
+    if (!headers.includes('Active')) { headers.push('Active'); }
+    const newRows = [headers, ...vacanciesData.map(vac => headers.map(h => vac[h] !== undefined ? vac[h] : ''))];
+    _workbook.Sheets['Vacancies'] = XLSX.utils.aoa_to_sheet(newRows);
+  }
+  await saveToSharePoint(false);
+  renderAdminVacancies();
+  populatePositionDropdown();
+  showToast('info','Vacancy Updated',
+    `${v['Designation']} is now ${v['Active'] === 'N' ? 'Inactive' : 'Active'}`);
+}
+
+// Patch editVacancy to handle active field
+const _origEditVacancy = editVacancy;
+function editVacancy(idx) {
+  _origEditVacancy(idx);
+  const v = vacanciesData[idx];
+  const activeEl = document.getElementById('v_active');
+  if (activeEl) activeEl.value = v['Active'] !== 'N' ? 'Y' : 'N';
+}
+
+// Patch saveVacancy to save active field
+const _origSaveVacancy = saveVacancy;
+async function saveVacancy() {
+  // Add active value to vacancy data before saving
+  const activeVal = document.getElementById('v_active') ?
+    document.getElementById('v_active').value : 'Y';
+  await _origSaveVacancy();
+  // Update the last saved vacancy with active flag
+  const editIdx = parseInt(document.getElementById('v_editIdx').value);
+  const targetIdx = editIdx === -1 ? vacanciesData.length - 1 : editIdx;
+  if (vacanciesData[targetIdx]) vacanciesData[targetIdx]['Active'] = activeVal;
+}
+
+// Patch populatePositionDropdown to only show active vacancies
+function populatePositionDropdown() {
+  const clientVal = document.getElementById('n_client') ?
+    document.getElementById('n_client').value : '';
+  const deptVal = document.getElementById('n_dept') ?
+    document.getElementById('n_dept').value : '';
+  const sel = document.getElementById('n_position');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select from open vacancies —</option>';
+  const filtered = vacanciesData.filter(v => {
+    const clientMatch = !clientVal || v['Company'] === clientVal;
+    const deptMatch = !deptVal || v['Department'] === deptVal;
+    const openMatch = !v['Current Status'] || ['Open','open',''].includes(v['Current Status']);
+    const activeMatch = v['Active'] !== 'N'; // Only active vacancies
+    return clientMatch && deptMatch && openMatch && activeMatch;
+  });
+  if (!filtered.length) {
+    const opt = document.createElement('option');
+    opt.value = ''; opt.textContent = '— No open active vacancies for this selection —';
+    sel.appendChild(opt);
+  } else {
+    filtered.forEach(v => {
+      const opt = document.createElement('option');
+      const code = v['Vacancy code'] || v['Vacancy Code'] || '';
+      opt.value = v['Designation'] || '';
+      opt.dataset.code = code;
+      opt.dataset.location = v['Location'] || '';
+      opt.textContent = `${v['Designation']||'—'} (${code}) — ${v['Company']||'—'}`;
+      sel.appendChild(opt);
+    });
+  }
+  if (cur) sel.value = cur;
+}
+
+// ── USER MANAGEMENT ───────────────────────────────────────
+function openAddUser() {
+  document.getElementById('u_editUserIdx').value = '-1';
+  ['u_userName','u_userEmail'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  if (document.getElementById('u_userType')) document.getElementById('u_userType').value = 'internal';
+  if (document.getElementById('u_userRole')) document.getElementById('u_userRole').value = 'Recruiter';
+  if (document.getElementById('u_userStatus')) document.getElementById('u_userStatus').value = 'Active';
+  onUserTypeChange();
+  document.getElementById('userEditForm').classList.remove('hidden');
+  // Populate client dropdown
+  const clientSel = document.getElementById('u_userClient');
+  if (clientSel) {
+    clientSel.innerHTML = '<option value="">— Select —</option>';
+    getActive('clients').forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c; clientSel.appendChild(o);
+    });
+  }
+}
+
+function closeUserForm() {
+  document.getElementById('userEditForm').classList.add('hidden');
+}
+
+function onUserTypeChange() {
+  const type = document.getElementById('u_userType') ?
+    document.getElementById('u_userType').value : 'internal';
+  const roleField = document.getElementById('u_roleField');
+  const clientField = document.getElementById('u_clientField');
+  const clientRoleField = document.getElementById('u_clientRoleField');
+  if (roleField) roleField.classList.toggle('hidden', type !== 'internal');
+  if (clientField) clientField.classList.toggle('hidden', type !== 'client');
+  if (clientRoleField) clientRoleField.classList.toggle('hidden', type !== 'client');
+}
+
+async function saveUser() {
+  const name = document.getElementById('u_userName').value.trim();
+  const email = document.getElementById('u_userEmail').value.trim().toLowerCase();
+  const type = document.getElementById('u_userType').value;
+  const role = type === 'client' ?
+    document.getElementById('u_clientRole').value :
+    document.getElementById('u_userRole').value;
+  const client = type === 'client' ?
+    document.getElementById('u_userClient').value : '';
+  const status = document.getElementById('u_userStatus').value;
+
+  if (!name || !email) {
+    showAlert('userMgmtAlert','error','Name and email are required.');
+    return;
+  }
+  if (!email.includes('@')) {
+    showAlert('userMgmtAlert','error','Please enter a valid email address.');
+    return;
+  }
+
+  const editIdx = parseInt(document.getElementById('u_editUserIdx').value);
+  const userData = { name, email, type, role, client, active: status === 'Active' };
+
+  if (editIdx === -1) {
+    // Check for duplicate email
+    if (APP_USERS.find(u => u.email === email)) {
+      showAlert('userMgmtAlert','error','A user with this email already exists.');
+      return;
+    }
+    APP_USERS.push(userData);
+  } else {
+    APP_USERS[editIdx] = userData;
+  }
+
+  await saveUsersToConfig();
+  closeUserForm();
+  renderUsersTable();
+  showToast('success', editIdx === -1 ? 'User Added' : 'User Updated',
+    `${name} — ${role}`);
+}
+
+function editUser(idx) {
+  const u = APP_USERS[idx];
+  if (!u) return;
+  document.getElementById('u_editUserIdx').value = idx;
+  document.getElementById('u_userName').value = u.name;
+  document.getElementById('u_userEmail').value = u.email;
+  document.getElementById('u_userType').value = u.type || 'internal';
+  document.getElementById('u_userStatus').value = u.active ? 'Active' : 'Inactive';
+  onUserTypeChange();
+  if (u.type === 'client') {
+    if (document.getElementById('u_userClient')) document.getElementById('u_userClient').value = u.client || '';
+    if (document.getElementById('u_clientRole')) document.getElementById('u_clientRole').value = u.role || 'Client Recruiter';
+  } else {
+    if (document.getElementById('u_userRole')) document.getElementById('u_userRole').value = u.role || 'Recruiter';
+  }
+  document.getElementById('userEditForm').classList.remove('hidden');
+}
+
+async function toggleUserStatus(idx) {
+  APP_USERS[idx].active = !APP_USERS[idx].active;
+  await saveUsersToConfig();
+  renderUsersTable();
+  showToast('info','User Updated',
+    `${APP_USERS[idx].name} is now ${APP_USERS[idx].active ? 'active' : 'inactive'}`);
+  // Refresh recruiter dropdown (inactive recruiters must disappear)
+  if (MASTERS.recruiters) {
+    const name = APP_USERS[idx].name;
+    const masterRec = MASTERS.recruiters.find(r => r.name === name);
+    if (masterRec) { masterRec.active = APP_USERS[idx].active; }
+    populateAllDropdowns();
+  }
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById('usersBody');
+  if (!tbody) return;
+  if (!APP_USERS.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--white60)">No users configured yet. Add your first user above.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = APP_USERS.map((u, idx) => {
+    const roleObj = ROLES[u.role] || {};
+    return `<tr style="${!u.active ? 'opacity:0.5' : ''}">
+      <td><strong>${u.name}</strong></td>
+      <td class="mono" style="font-size:11px">${u.email}</td>
+      <td class="muted">${u.type === 'client' ? 'Client' : 'Internal'}</td>
+      <td><span style="color:${roleObj.color||'var(--white60)'};font-size:12px;font-weight:600">${u.role}</span></td>
+      <td class="muted">${u.client || '—'}</td>
+      <td><span class="badge ${u.active ? 'badge-joined' : 'badge-dropped'}" style="font-size:10px">${u.active ? 'Active' : 'Inactive'}</span></td>
+      <td>
+        <div class="flex gap8">
+          <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px" onclick="editUser(${idx})">Edit</button>
+          <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px;color:${u.active ? '#ff6b6b' : 'var(--teal)'}"
+            onclick="toggleUserStatus(${idx})">${u.active ? 'Inactive' : 'Activate'}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveUsersToConfig() {
+  if (!_workbook || !_workbook.Sheets['Config']) return;
+  try {
+    const ws = _workbook.Sheets['Config'];
+    const allData = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    // Find or create Users section
+    let usersHeaderIdx = -1;
+    for (let i = 0; i < allData.length; i++) {
+      if (String(allData[i][0]).trim().toLowerCase() === 'users') {
+        usersHeaderIdx = i; break;
+      }
+    }
+    // Build new users block
+    const usersBlock = [
+      ['Users'],
+      ['Name','Email','Type','Role','Client','Active'],
+      ...APP_USERS.map(u => [u.name, u.email, u.type||'internal', u.role, u.client||'', u.active ? 'Y' : 'N'])
+    ];
+    if (usersHeaderIdx >= 0) {
+      // Replace existing users section
+      // Find end of users section
+      let endIdx = usersHeaderIdx + 1;
+      while (endIdx < allData.length && (allData[endIdx][0] || allData[endIdx][1])) endIdx++;
+      allData.splice(usersHeaderIdx, endIdx - usersHeaderIdx, ...usersBlock);
+    } else {
+      // Append users section
+      allData.push([]);
+      allData.push(...usersBlock);
+    }
+    _workbook.Sheets['Config'] = XLSX.utils.aoa_to_sheet(allData);
+    await saveToSharePoint(false);
+  } catch(e) {
+    console.error('Failed to save users:', e);
+    showToast('error','Save Failed', e.message);
+  }
+}
+
+// Patch switchAdminTab to load users when users tab is opened
+const _switchAdminTabWithUsers = switchAdminTab;
+function switchAdminTab(tab) {
+  _switchAdminTabWithUsers(tab);
+  if (tab === 'users') {
+    loadUsersFromConfig();
+    renderUsersTable();
+  }
+}
+
+// ── UPLOAD TEMPLATE — RECRUITER READY VERSION ─────────────
+// Patch downloadTemplate to include dropdown validations via data validation
+const _origDownloadTemplate = downloadTemplate;
+function downloadTemplate(type) {
+  const wb = XLSX.utils.book_new();
+  const activeClients = getActive('clients');
+  const activeDepts = getActive('departments');
+  const activeSources = getActive('sources');
+  const activeNotice = getActive('noticePeriod');
+  const statuses = ['WIP','Not Contactable','Not Interested','Consultant Interview in Progress',
+    'Shortlisted for Client I/W','Rejected by Consultant','Rejected by Client',
+    'On Hold','Selected','Offered','Offer Revoked','Offer Declined',
+    'Joining in Progress','Joined','Dropped'];
+
+  const recruiterCols = [
+    {header:'Name', note:'Required. Full name of candidate', width:25},
+    {header:'Contact no', note:'Required. 10-digit mobile number', width:18},
+    {header:'Alternate contact number', note:'Optional. 10-digit mobile', width:18},
+    {header:'Personal Email ID', note:'Required. Candidate email', width:28},
+    {header:'Current Location', note:'Required. City name', width:18},
+    {header:'Total Yrs of Exp', note:'e.g. 2.5 or Fresher', width:16},
+    {header:'Notice Period', note:'Select from list', width:16, dropdown: activeNotice},
+    {header:'Current Company Name', note:'Current employer', width:25},
+    {header:'Current Designation', note:'Current job title', width:22},
+    {header:'Reason for leaving', note:'Brief reason', width:22},
+    {header:'Current Salary (Rs. PM)', note:'Monthly CTC in numbers', width:20},
+    {header:'Expected Salary (Rs.)', note:'Monthly expected CTC', width:20},
+    {header:'Source', note:'Required. Select from list', width:18, dropdown: activeSources},
+    {header:'Source Details', note:'e.g. Naukri, LinkedIn URL, referrer name', width:25},
+    {header:'Client Name', note:'Required. Select from list', width:18, dropdown: activeClients},
+    {header:'Department', note:'Required. Select from list', width:18, dropdown: activeDepts},
+    {header:'Position applied for', note:'Required. Job title', width:25},
+    {header:'Final Status', note:'Default: WIP', width:20, dropdown: statuses},
+    {header:'Follow-up Date', note:'YYYY-MM-DD format', width:18},
+    {header:'Remark', note:'Any notes about candidate', width:30},
+  ];
+
+  const headerRow = recruiterCols.map(c => c.header);
+  const noteRow = recruiterCols.map(c => c.note);
+  const exampleRow = [
+    'John Smith','9876543210','','john@email.com',
+    'Mumbai','3.5','30 days','ABC Corp','Senior Executive',
+    'Career growth','45000','55000',
+    'Portal','Naukri.com','DMC Bazaar','Operations',
+    'Operations Executive','WIP',
+    new Date().toISOString().split('T')[0],'Strong profile'
+  ];
+
+  const instructionRows = [
+    ['TALENT+ HIRE PULSE — Recruiter Upload Template'],
+    ['Version: ' + new Date().toLocaleDateString('en-IN') + '  |  WithAWill HR Consultancy Services LLP'],
+    ['INSTRUCTIONS: Fill one candidate per row starting from Row 6. Do not modify column headers in Row 5.'],
+    ['Required fields: Name, Contact no, Personal Email ID, Current Location, Source, Client Name, Department, Position applied for'],
+    []
+  ];
+
+  const allRows = [...instructionRows, headerRow, noteRow, exampleRow];
+  const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+  // Column widths
+  ws['!cols'] = recruiterCols.map(c => ({wch: c.width || 20}));
+
+  // Freeze header row (row 5)
+  ws['!freeze'] = {xSplit: 0, ySplit: 5};
+
+  XLSX.utils.book_append_sheet(wb, ws,
+    type === 'admin' ? 'Admin Template' : 'Recruiter Upload');
+
+  // Add a Reference sheet with valid values
+  const refData = [
+    ['CLIENT NAMES', 'DEPARTMENTS', 'SOURCES', 'NOTICE PERIOD', 'STATUS VALUES'],
+    ...Array.from({length: Math.max(activeClients.length, activeDepts.length, activeSources.length, activeNotice.length, statuses.length)},
+      (_, i) => [
+        activeClients[i]||'', activeDepts[i]||'', activeSources[i]||'',
+        activeNotice[i]||'', statuses[i]||''
+      ])
+  ];
+  const wsRef = XLSX.utils.aoa_to_sheet(refData);
+  wsRef['!cols'] = [{wch:22},{wch:22},{wch:22},{wch:20},{wch:35}];
+  XLSX.utils.book_append_sheet(wb, wsRef, 'Valid Values Reference');
+
+  XLSX.writeFile(wb, type === 'admin' ?
+    'THP_Admin_Migration_Template.xlsx' :
+    'THP_Recruiter_Upload_Template.xlsx');
+
+  showToast('success','Template Downloaded',
+    'Share THP_Recruiter_Upload_Template.xlsx with your team. Valid Values Reference sheet included.');
+}
+
+// ── INIT ON APP LOAD ──────────────────────────────────────
+// Resolve role after data loads (patched into loadFromSharePoint above)
 
 </script>
 </body>
