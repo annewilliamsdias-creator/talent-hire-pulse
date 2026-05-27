@@ -3504,47 +3504,7 @@ function cancelBulkUpload() {
 // ── PROFILE EDIT ──────────────────────────────────────────
 let _editIdx = -1;
 
-function lookupForEdit() {
-  const code = document.getElementById('editLookupCode').value.trim();
-  if (!code) { showAlert('editLookupAlert','error','Please enter a candidate code.'); return; }
-  const idx = masterData.findIndex(r =>
-    String(r[C.code]).trim().toLowerCase() === code.toLowerCase()
-  );
-  if (idx === -1) {
-    showAlert('editLookupAlert','error', `No record found for "${code}".`);
-    document.getElementById('profileEditForm').classList.add('hidden');
-    return;
-  }
-  _editIdx = idx;
-  const r = masterData[idx];
-  document.getElementById('editLookupAlert').innerHTML = '';
-  document.getElementById('profileEditForm').classList.remove('hidden');
-  document.getElementById('editCandName').textContent = r[C.name] || 'Edit Profile';
-  document.getElementById('editCandCode').textContent = r[C.code] || '';
-
-  // Populate all fields
-  document.getElementById('e_name').value = r[C.name] || '';
-  document.getElementById('e_contact').value = r[C.contact] || '';
-  document.getElementById('e_altContact').value = r[C.altContact] || '';
-  document.getElementById('e_email').value = r[C.email] || '';
-  document.getElementById('e_altEmail').value = r[C.altEmail] || '';
-  document.getElementById('e_location').value = r[C.location] || '';
-  document.getElementById('e_company').value = r[C.company] || '';
-  document.getElementById('e_designation').value = r[C.designation] || '';
-  document.getElementById('e_expYrs').value = r[C.expYrs] || '';
-  document.getElementById('e_notice').value = r[C.notice] || '';
-  document.getElementById('e_reason').value = r[C.reason] || '';
-  document.getElementById('e_salaryPM').value = r[C.salaryPM] || '';
-  document.getElementById('e_salaryPA').value = r[C.salaryPA] || '';
-  document.getElementById('e_expectedSalary').value = r[C.expectedSalary] || '';
-  document.getElementById('e_salaryBracket').value = r[C.salaryBracket] || '';
-  document.getElementById('e_client').value = r[C.client] || '';
-  document.getElementById('e_dept').value = r[C.dept] || '';
-  document.getElementById('e_position').value = r[C.position] || '';
-  document.getElementById('e_roleInterested').value = r[C.roleInterested] || '';
-  document.getElementById('e_vacancyCode').value = r[C.vacancyCode] || '';
-  document.getElementById('e_recruiter').value = r[C.recruiter] || '';
-}
+// lookupForEdit defined below
 
 // editCalcPA defined in session4.js
 
@@ -3945,26 +3905,72 @@ function getCombinedLocation() {
 function checkRecruiterActive(recruiterName, onAssignMe, onSelect) {
   const isActive = getActive('recruiters').includes(recruiterName);
   if (!isActive && recruiterName) {
-    document.querySelector('.dup-card h3').textContent = '👤 Recruiter Update Required';
+    document.querySelector('.dup-card h3').textContent = 'Recruiter Update Required';
     document.getElementById('dupMsg').innerHTML =
-      `<strong>${recruiterName}</strong> is no longer active at WithAWill.<br>
-       Please reassign this record before saving.`;
+      '<strong>' + recruiterName + '</strong> is no longer active. Please reassign this record before saving.';
     document.getElementById('dupRecord').innerHTML = '';
-    document.querySelector('.dup-card .flex.gap8').innerHTML = `
-      <button class="btn btn-teal" onclick="
-        // lookupForEdit patched directlyt() {
-  _origLookupForEdit();
+    document.querySelector('.dup-card .flex.gap8').innerHTML =
+      '<button class="btn btn-teal" onclick="' + onAssignMe + 'document.getElementById('dupModal').classList.remove('show')">Assign to Me</button>' +
+      '<button class="btn btn-ghost" onclick="' + onSelect + 'document.getElementById('dupModal').classList.remove('show')">Select Recruiter</button>';
+    document.getElementById('dupModal').classList.add('show');
+    return false;
+  }
+  return true;
+}
+
+function lookupForEdit() {
+  const code = document.getElementById('editLookupCode').value.trim();
+  if (!code) { showAlert('editLookupAlert','error','Please enter a candidate code.'); return; }
+  const idx = masterData.findIndex(r =>
+    String(r[C.code]).trim().toLowerCase() === code.toLowerCase()
+  );
+  if (idx === -1) {
+    showAlert('editLookupAlert','error', 'No record found for "' + code + '".');
+    document.getElementById('profileEditForm').classList.add('hidden');
+    return;
+  }
+  _editIdx = idx;
+  const r = masterData[idx];
+  document.getElementById('editLookupAlert').innerHTML = '';
+  document.getElementById('profileEditForm').classList.remove('hidden');
+  document.getElementById('editCandName').textContent = r[C.name] || 'Edit Profile';
+  document.getElementById('editCandCode').textContent = r[C.code] || '';
+  document.getElementById('e_name').value = r[C.name] || '';
+  document.getElementById('e_contact').value = r[C.contact] || '';
+  document.getElementById('e_altContact').value = r[C.altContact] || '';
+  document.getElementById('e_email').value = r[C.email] || '';
+  document.getElementById('e_altEmail').value = r[C.altEmail] || '';
+  document.getElementById('e_location').value = r[C.location] || '';
+  document.getElementById('e_company').value = r[C.company] || '';
+  document.getElementById('e_designation').value = r[C.designation] || '';
+  document.getElementById('e_expYrs').value = r[C.expYrs] || '';
+  document.getElementById('e_notice').value = r[C.notice] || '';
+  document.getElementById('e_reason').value = r[C.reason] || '';
+  document.getElementById('e_salaryPM').value = r[C.salaryPM] || '';
+  document.getElementById('e_salaryPA').value = r[C.salaryPA] || '';
+  document.getElementById('e_expectedSalary').value = r[C.expectedSalary] || '';
+  document.getElementById('e_salaryBracket').value = r[C.salaryBracket] || '';
+  document.getElementById('e_client').value = r[C.client] || '';
+  document.getElementById('e_dept').value = r[C.dept] || '';
+  document.getElementById('e_position').value = r[C.position] || '';
+  document.getElementById('e_roleInterested').value = r[C.roleInterested] || '';
+  document.getElementById('e_vacancyCode').value = r[C.vacancyCode] || '';
+  document.getElementById('e_recruiter').value = r[C.recruiter] || '';
+  // Check inactive recruiter
   setTimeout(function() {
-    const idx = _editIdx;
     if (idx === -1) return;
-    const r = masterData[idx];
     const recruiter = r[C.recruiter] || '';
+    const myName = currentAccount && currentAccount.name ? currentAccount.name.split(' ')[0] : '';
     checkRecruiterActive(
       recruiter,
-      `document.getElementById('e_recruiter').value='${(currentAccount&&currentAccount.name?currentAccount.name.split(' ')[0]:'')}';`,
-      `document.getElementById('e_recruiter').focus();`
+      "document.getElementById('e_recruiter').value='" + myName + "';",
+      "document.getElementById('e_recruiter').focus();"
     );
   }, 200);
+  // Enforce process flow on status dropdown
+  setTimeout(function() {
+    if (typeof updateStatusDropdown === 'function') updateStatusDropdown();
+  }, 50);
 }
 
 // ── JOINING IN PROGRESS — DOJ FOLLOW-UP ──────────────────
