@@ -754,13 +754,44 @@ return tpl.replace(/{N}/g,r[C.name]||'').replace(/{P}/g,r[C.position]||'').repla
 // PKCE AUTH
 // ══════════════════════════════════════════════════════
 const TS={save(t){sessionStorage.setItem('thp',JSON.stringify(t));},load(){try{return JSON.parse(sessionStorage.getItem('thp')||'null');}catch(e){return null;}},clear(){sessionStorage.removeItem('thp');sessionStorage.removeItem('thp_pk');}};
-function b64u(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
-async function sha256(s){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));}
-function rnd(n=64){const a=new Uint8Array(n);crypto.getRandomValues(a);return b64u(a);}
+function b64u(buf){
+  // Works with both ArrayBuffer and Uint8Array
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let str = '';
+  bytes.forEach(b => str += String.fromCharCode(b));
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function sha256(str){
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return hash; // returns ArrayBuffer
+}
+function rnd(n=96){
+  // 96 bytes -> 128 char base64url verifier (well within 43-128 char spec)
+  const a = new Uint8Array(n);
+  crypto.getRandomValues(a);
+  return b64u(a);
+}
 async function buildAuthUrl(){
-const v=rnd(64),c=b64u(await sha256(v)),st=rnd(16);
-sessionStorage.setItem('thp_pk',JSON.stringify({v,st}));
-return 'https://login.microsoftonline.com/'+CFG.tenantId+'/oauth2/v2.0/authorize?'+new URLSearchParams({client_id:CFG.clientId,response_type:'code',redirect_uri:CFG.redirect,response_mode:'fragment',scope:CFG.scopes.join(' '),state:st,code_challenge:c,code_challenge_method:'S256',prompt:'select_account'});}
+  const verifier = rnd(96);  // 128 char verifier
+  const hashBuf = await sha256(verifier);
+  const challenge = b64u(hashBuf);  // 43 char challenge
+  const state = rnd(16);
+  console.log('PKCE verifier length:', verifier.length, 'challenge length:', challenge.length);
+  sessionStorage.setItem('thp_pk', JSON.stringify({v:verifier, st:state}));
+  const params = new URLSearchParams({
+    client_id: CFG.clientId,
+    response_type: 'code',
+    redirect_uri: CFG.redirect,
+    response_mode: 'fragment',
+    scope: CFG.scopes.join(' '),
+    state: state,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    prompt: 'select_account'
+  });
+  return 'https://login.microsoftonline.com/'+CFG.tenantId+'/oauth2/v2.0/authorize?'+params.toString();
+}
 async function exchCode(code,v){
 const r=await fetch('https://login.microsoftonline.com/'+CFG.tenantId+'/oauth2/v2.0/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:CFG.clientId,grant_type:'authorization_code',code,redirect_uri:CFG.redirect,code_verifier:v,scope:CFG.scopes.join(' ')})});
 if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error_description||e.error||'Token exchange failed');}
