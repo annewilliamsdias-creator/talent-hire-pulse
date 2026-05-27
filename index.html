@@ -1196,7 +1196,7 @@ const CONFIG = {
   tenantId:    'a311c364-8607-4257-a3c5-6e46572030f1',
   siteHostname:'withawillhrconsultancyservi.sharepoint.com',
   sitePath:    '/sites/WithAWillHRConsultancyServices',
-  folderPath:  '/Shared Documents/Talent+ Hire-Pulse',
+  folderPath:  '/Shared Documents/Talent+%20Hire-Pulse',
   fileName:    'TalentHirePulse_Master.xlsx',
   scopes:      ['Files.ReadWrite','Sites.ReadWrite.All','Calendars.ReadWrite','User.Read',
                 'offline_access','openid','profile']
@@ -1506,23 +1506,77 @@ async function graphPatch(url, body) {
 //  SHAREPOINT FILE OPERATIONS
 // ════════════════════════════════════════════════════════
 async function getSiteId() {
-  const data = await graphGet(`/sites/${CONFIG.siteHostname}:${CONFIG.sitePath}`);
+  const url = `/sites/${CONFIG.siteHostname}:${CONFIG.sitePath}`;
+  console.log('Getting site ID from:', url);
+  const data = await graphGet(url);
+  console.log('Site ID:', data.id);
+  console.log('Site name:', data.displayName);
   return data.id;
 }
 
 async function getFileItemId(siteId) {
-  const encodedPath = CONFIG.folderPath + '/' + CONFIG.fileName;
-  const data = await graphGet(`/sites/${siteId}/drive/root:${encodedPath}`);
-  return data.id;
+  // Try multiple path formats — SharePoint folder names with special chars can vary
+  const pathsToTry = [
+    "/Shared Documents/Talent+ Hire-Pulse/" + CONFIG.fileName,
+    "/Shared Documents/Talent+%20Hire-Pulse/" + CONFIG.fileName,
+    "/Shared Documents/Talent%2B%20Hire-Pulse/" + CONFIG.fileName,
+    "/Shared Documents/Talent%2BHire-Pulse/" + CONFIG.fileName,
+    "/Shared Documents/Talent+ Hire-Pulse/" + CONFIG.fileName,
+  ];
+  
+  let lastError = null;
+  for (const path of pathsToTry) {
+    try {
+      console.log('Trying path:', path);
+      document.getElementById('spStatusText').textContent = 'Trying: ' + path.split('/').pop();
+      const data = await graphGet(`/sites/${siteId}/drive/root:${path}`);
+      if (data.id) {
+        console.log('SUCCESS with path:', path);
+        return data.id;
+      }
+    } catch(e) {
+      console.log('Failed:', path, e.message);
+      lastError = e;
+    }
+  }
+  
+  // If all paths failed, try listing the Documents folder to see what's there
+  console.log('All paths failed. Listing drive root...');
+  try {
+    const root = await graphGet(`/sites/${siteId}/drive/root/children`);
+    const names = root.value.map(i => i.name);
+    console.log('Root folders:', names);
+    // Try to find the Hire-Pulse folder
+    const hireFolder = root.value.find(i => i.name.includes('Hire') || i.name.includes('Pulse') || i.name.includes('Talent'));
+    if (hireFolder) {
+      console.log('Found folder:', hireFolder.name, hireFolder.id);
+      const children = await graphGet(`/sites/${siteId}/drive/items/${hireFolder.id}/children`);
+      const xlsxFile = children.value.find(i => i.name.endsWith('.xlsx'));
+      if (xlsxFile) {
+        console.log('Found file:', xlsxFile.name, xlsxFile.id);
+        return xlsxFile.id;
+      }
+    }
+    // List Shared Documents
+    const sharedDocs = root.value.find(i => i.name === 'Shared Documents' || i.name === 'Documents');
+    if (sharedDocs) {
+      const sdChildren = await graphGet(`/sites/${siteId}/drive/items/${sharedDocs.id}/children`);
+      console.log('Shared Documents contents:', sdChildren.value.map(i => i.name));
+      document.getElementById('spStatusText').textContent = 'Folders: ' + sdChildren.value.map(i=>i.name).join(', ');
+    }
+  } catch(listErr) {
+    console.log('List also failed:', listErr.message);
+  }
+  
+  throw lastError || new Error('File not found after trying all paths');
 }
 
 async function downloadFile(siteId, itemId) {
   await refreshToken();
-  const r = await fetch(
-    `${GRAPH}/sites/${siteId}/drive/items/${itemId}/content`,
-    { headers:{ Authorization:'Bearer ' + accessToken } }
-  );
-  if (!r.ok) throw new Error('Download failed: ' + r.status);
+  const url = `${GRAPH}/sites/${siteId}/drive/items/${itemId}/content`;
+  console.log('Downloading from:', url);
+  const r = await fetch(url, { headers:{ Authorization:'Bearer ' + accessToken } });
+  if (!r.ok) throw new Error('Download failed: ' + r.status + ' ' + await r.text());
   return r.arrayBuffer();
 }
 
