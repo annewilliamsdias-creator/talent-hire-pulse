@@ -971,8 +971,18 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
               <span class="field-error" id="n_email_err">Enter a valid email address</span>
             </div>
             <div class="field">
-              <label>Current Location <span class="req">*</span></label>
-              <input type="text" id="n_location" placeholder="City">
+              <label>Location of Posting</label>
+              <input type="text" id="n_postingLocation" placeholder="Auto from vacancy" readonly style="opacity:.6">
+            </div>
+            <div class="field">
+              <label>Candidate City <span class="req">*</span></label>
+              <select id="n_location">
+                <option value="">— Select City —</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Actual Location / Area</label>
+              <input type="text" id="n_locationDetail" placeholder="Area, suburb (e.g. Andheri West)">
             </div>
             <div class="field">
               <label>Total Experience (Years) <span class="req">*</span></label>
@@ -1025,17 +1035,20 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
               <input type="number" id="n_salaryPA" placeholder="Auto-calculated" readonly style="opacity:.6">
             </div>
             <div class="field">
-              <label>Expected Salary ₹</label>
-              <input type="number" id="n_expectedSalary" placeholder="Expected CTC">
+              <label>Current Salary Range <span class="field-hint">(auto)</span></label>
+              <input type="text" id="n_salaryBracket" readonly style="opacity:.6" placeholder="Auto from salary">
             </div>
             <div class="field">
-              <label>Salary Bracket</label>
-              <select id="n_salaryBracket">
-                <option value="">— Select —</option>
-                <option>0-1.8 L</option><option>1.8-3.6 L</option>
-                <option>3.6-6 L</option><option>6-10 L</option>
-                <option>10-15 L</option><option>15-20 L</option><option>20+ L</option>
-              </select>
+              <label>Expected Salary ₹</label>
+              <input type="number" id="n_expectedSalary" placeholder="Expected CTC" oninput="calcSalaryIncrease()">
+            </div>
+            <div class="field">
+              <label>Expected Salary Range <span class="field-hint">(auto)</span></label>
+              <input type="text" id="n_expectedBracket" readonly style="opacity:.6" placeholder="Auto from expected">
+            </div>
+            <div class="field">
+              <label>Salary Increase % <span class="field-hint">(auto)</span></label>
+              <input type="text" id="n_salaryIncrease" readonly style="opacity:.6" placeholder="Auto-calculated">
             </div>
           </div>
 
@@ -1195,8 +1208,8 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
                 <input type="date" id="u_interviewDate">
               </div>
               <div class="field">
-                <label>Client Selection Date</label>
-                <input type="date" id="u_selectionDate">
+                <label>Client Decision Date</label>
+                <input type="date" id="u_decisionDate">
               </div>
             </div>
             <div class="section-label">Offer & Joining</div>
@@ -1215,7 +1228,12 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
               </div>
               <div class="field">
                 <label>Role Interested In</label>
-                <input type="text" id="u_roleInterested" placeholder="If different from applied role">
+                <select id="u_roleInterested">
+                  <option value="">— Select Department/Role —</option>
+                  <option>Finance</option><option>HR</option><option>Legal</option>
+                  <option>Marketing</option><option>Operations</option><option>Product</option>
+                  <option>Sales</option><option>Technology</option><option>Talent Acquisition</option>
+                </select>
               </div>
               <div class="field span2">
                 <label>Remarks (appended to existing)</label>
@@ -1583,6 +1601,14 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
             style="padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--white60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s">
             ⚙ Config
           </div>
+          <div class="admin-tab" onclick="switchAdminTab('vacancies')" id="atab-vacancies"
+            style="padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--white60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s">
+            📌 Vacancies
+          </div>
+          <div class="admin-tab" onclick="switchAdminTab('dashboard')" id="atab-dashboard"
+            style="padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--white60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s">
+            📊 Dashboard Config
+          </div>
           <div class="admin-tab" onclick="switchAdminTab('users')" id="atab-users"
             style="padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--white60);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s">
             👥 Users
@@ -1688,6 +1714,115 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
             </div>
           </div>
         </div>
+
+        <!-- Vacancies Admin Tab -->
+        <div id="admin-vacancies" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="accent">📌</span> Manage Vacancies</div>
+              <button class="btn btn-teal btn-sm" onclick="openAddVacancy()">+ Add Vacancy</button>
+            </div>
+            <div id="adminVacancyAlert"></div>
+            <!-- Add/Edit Form -->
+            <div id="vacancyEditForm" class="hidden" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px">
+              <div class="section-label">📌 Vacancy Details</div>
+              <div class="form-grid three">
+                <div class="field">
+                  <label>Client <span class="req">*</span></label>
+                  <select id="v_client">
+                    <option value="">— Select —</option>
+                    <option>Atmann</option><option>DMC Bazaar</option>
+                    <option>GIFTS</option><option>One Above</option><option>VSAR Tech</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Role / Designation <span class="req">*</span></label>
+                  <input type="text" id="v_role" placeholder="e.g. Operations Executive">
+                </div>
+                <div class="field">
+                  <label>Department <span class="req">*</span></label>
+                  <select id="v_dept">
+                    <option value="">— Select —</option>
+                    <option>Finance</option><option>HR</option><option>Legal</option>
+                    <option>Marketing</option><option>Operations</option><option>Product</option>
+                    <option>Sales</option><option>Technology</option><option>Talent Acquisition</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Location</label>
+                  <select id="v_location">
+                    <option value="">— Select City —</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Monthly Budget ₹</label>
+                  <input type="number" id="v_budget" placeholder="e.g. 35000">
+                </div>
+                <div class="field">
+                  <label>Experience Required</label>
+                  <input type="text" id="v_exp" placeholder="e.g. 2-4 years">
+                </div>
+                <div class="field">
+                  <label>Recruiter Assigned</label>
+                  <select id="v_recruiter">
+                    <option value="">— Select —</option>
+                    <option>Ayesha</option><option>Nilam</option><option>Shilpa</option>
+                    <option>Siddhi</option><option>Sonali</option><option>Sujata</option>
+                    <option>Tia</option><option>Upasana</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Target Fill Date</label>
+                  <input type="date" id="v_targetDate">
+                </div>
+                <div class="field">
+                  <label>Status</label>
+                  <select id="v_status">
+                    <option value="Open">Open</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Closed">Closed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+              <input type="hidden" id="v_editIdx" value="-1">
+              <div class="btn-row">
+                <button class="btn btn-teal" onclick="saveVacancy()">✓ Save Vacancy</button>
+                <button class="btn btn-ghost btn-sm" onclick="closeVacancyForm()">Cancel</button>
+              </div>
+            </div>
+            <!-- Vacancies Table -->
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="adminVacanciesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Config Tab -->
+        <div id="admin-dashboard" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="accent">📊</span> Dashboard Configuration</div>
+            </div>
+            <div style="padding:32px;text-align:center">
+              <div style="font-size:48px;margin-bottom:16px">📊</div>
+              <div style="font-size:16px;font-weight:600;color:var(--off-white);margin-bottom:8px">Dashboard configuration will be available in Session 5</div>
+              <div style="font-size:13px;color:var(--white60);max-width:400px;margin:0 auto;line-height:1.7">
+                Once dashboards are built, this section will allow you to configure:<br><br>
+                • Which charts are visible to recruiters vs admin<br>
+                • Client-facing dashboard layout<br>
+                • Default date range (FY / Quarter / Month)<br>
+                • KPI thresholds and colour coding<br>
+                • Export templates and branding
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div><!-- /content -->
@@ -1742,7 +1877,7 @@ const C = {
   client:'Client Name', vacancyCode:'Vacancy Code',
   status:'Final Status', decisionMaker:'Final Decision Maker',
   interviewerName:'Client Interviewer Name', interviewDate:'Client Interview Date',
-  selectionDate:'Client Selection Date', doj:'Expected/DOJ',
+  selectionDate:'Client Decision Date', doj:'Expected/DOJ',
   followupDate:'Follow-up Date', followupNotes:'Follow-up Notes',
   followupCount:'Follow-up Attempt Count', remark:'Remark',
   otherComments:'Other comments', roleSummary:'Role summary',
@@ -2463,7 +2598,7 @@ async function submitUpdate() {
   if (interviewerName) r[C.interviewerName] = interviewerName;
   const interviewDate = document.getElementById('u_interviewDate').value;
   if (interviewDate) r[C.interviewDate] = interviewDate;
-  const selectionDate = document.getElementById('u_selectionDate').value;
+  const selectionDate = document.getElementById('u_decisionDate').value;
   if (selectionDate) r[C.selectionDate] = selectionDate;
   const doj = document.getElementById('u_doj').value;
   if (doj) r[C.doj] = doj;
@@ -2669,14 +2804,7 @@ function populatePositionDropdown() {
   }
 }
 
-function onPositionSelect(val) {
-  const sel = document.getElementById('n_position');
-  const chosen = sel.options[sel.selectedIndex];
-  if (chosen && chosen.dataset.code) {
-    document.getElementById('n_vacancyCode').value = chosen.dataset.code;
-    document.getElementById('n_positionCustom').value = '';
-  }
-}
+// onPositionSelect defined in session4.js
 
 function onPositionCustom(val) {
   // If typing custom role, clear vacancy code
@@ -2787,23 +2915,7 @@ function switchPanel(name) {
   }
 }
 
-function calcSalaryPA() {
-  const pm = parseFloat(document.getElementById('n_salaryPM').value)||0;
-  const pa = pm ? pm*12 : 0;
-  document.getElementById('n_salaryPA').value = pa || '';
-  // Auto-set salary bracket
-  if (pa > 0) {
-    let bracket = '';
-    if (pa <= 180000)      bracket = '0-1.8 L';
-    else if (pa <= 360000) bracket = '1.8-3.6 L';
-    else if (pa <= 600000) bracket = '3.6-6 L';
-    else if (pa <= 1000000) bracket = '6-10 L';
-    else if (pa <= 1500000) bracket = '10-15 L';
-    else if (pa <= 2000000) bracket = '15-20 L';
-    else                   bracket = '20+ L';
-    document.getElementById('n_salaryBracket').value = bracket;
-  }
-}
+// calcSalaryPA defined in session4.js
 
 function validateMobile(input) {
   const err = document.getElementById('n_contact_err');
@@ -3405,22 +3517,8 @@ function lookupForEdit() {
   document.getElementById('e_recruiter').value = r[C.recruiter] || '';
 }
 
-function editCalcPA() {
-  const pm = parseFloat(document.getElementById('e_salaryPM').value) || 0;
-  document.getElementById('e_salaryPA').value = pm ? pm * 12 : '';
-  if (pm * 12 > 0) {
-    const pa = pm * 12;
-    let bracket = '';
-    if (pa <= 180000) bracket = '0-1.8 L';
-    else if (pa <= 360000) bracket = '1.8-3.6 L';
-    else if (pa <= 600000) bracket = '3.6-6 L';
-    else if (pa <= 1000000) bracket = '6-10 L';
-    else if (pa <= 1500000) bracket = '10-15 L';
-    else if (pa <= 2000000) bracket = '15-20 L';
-    else bracket = '20+ L';
-    document.getElementById('e_salaryBracket').value = bracket;
-  }
-}
+// editCalcPA defined in session4.js
+
 
 async function saveProfileEdit() {
   if (_editIdx === -1) return;
@@ -3643,43 +3741,9 @@ function filterChangelog() {
 }
 
 // Config
-function loadConfig() {
-  if (!_workbook || !_workbook.Sheets['Config']) return;
-  const ws = _workbook.Sheets['Config'];
-  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+// loadConfig defined in session4.js
 
-  // Find columns by header
-  const headers = rows[0];
-  const getCol = (name) => {
-    const idx = headers.findIndex(h => String(h).includes(name));
-    if (idx === -1) return [];
-    return rows.slice(1).map(r => r[idx]).filter(v => v && String(v).trim());
-  };
-
-  document.getElementById('cfg_clients').value = getCol('Client').join('\n');
-  document.getElementById('cfg_recruiters').value = getCol('Recruiter').join('\n');
-  document.getElementById('cfg_depts').value = getCol('Department').join('\n');
-  document.getElementById('cfg_sources').value = getCol('Source').join('\n');
-
-  // WA template editor
-  const waTplEl = document.getElementById('waTemplateEditor');
-  waTplEl.innerHTML = Object.entries(WA_TEMPLATES).map(([key, val]) => `
-    <div style="margin-bottom:14px">
-      <label style="text-transform:capitalize;color:var(--teal);font-size:11px;letter-spacing:.5px">${key.replace(/_/g,' ')}</label>
-      <textarea id="watpl_${key}" style="min-height:70px;font-size:11px;font-family:'DM Mono',monospace;margin-top:4px">${val}</textarea>
-    </div>`).join('');
-}
-
-async function saveConfig() {
-  // Update WA templates in memory
-  Object.keys(WA_TEMPLATES).forEach(key => {
-    const el = document.getElementById('watpl_' + key);
-    if (el) WA_TEMPLATES[key] = el.value;
-  });
-
-  // TODO: Write back to Config sheet in next session
-  showToast('success','Config Saved', 'Templates updated for this session. Full SharePoint Config write coming in next update.');
-}
+// saveConfig defined in session4.js
 
 // Admin panel init handled inline in switchPanel below
 
@@ -3699,6 +3763,518 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
+
+// ════════════════════════════════════════════════════════
+//  SESSION 4 — ADMIN ENHANCEMENTS
+// ════════════════════════════════════════════════════════
+
+// ── MASTER DATA ──────────────────────────────────────────
+const INDIAN_CITIES = [
+  'Ahmedabad','Aurangabad','Bangalore','Bhopal','Chennai',
+  'Coimbatore','Delhi','Faridabad','Ghaziabad','Gurgaon',
+  'Hyderabad','Indore','Jaipur','Jodhpur','Kochi',
+  'Kolkata','Lucknow','Ludhiana','Mumbai','Mysore',
+  'Nagpur','Nashik','Navi Mumbai','Noida','Patna',
+  'Pune','Raipur','Rajkot','Surat','Thane',
+  'Thiruvananthapuram','Vadodara','Varanasi','Visakhapatnam'
+];
+
+// Active/Inactive masters — loaded from Config sheet
+// Default fallbacks if Config not yet updated
+let MASTERS = {
+  clients:    [{name:'Atmann',active:true},{name:'DMC Bazaar',active:true},{name:'GIFTS',active:true},{name:'One Above',active:true},{name:'VSAR Tech',active:true}],
+  recruiters: [{name:'Ayesha',active:true},{name:'Nilam',active:true},{name:'Shilpa',active:true},{name:'Siddhi',active:true},{name:'Sonali',active:true},{name:'Sujata',active:true},{name:'Tia',active:true},{name:'Upasana',active:true}],
+  departments:[{name:'Finance',active:true},{name:'HR',active:true},{name:'Legal',active:true},{name:'Marketing',active:true},{name:'Operations',active:true},{name:'Product',active:true},{name:'Sales',active:true},{name:'Technology',active:true},{name:'Talent Acquisition',active:true}],
+  sources:    [{name:'Portal',active:true},{name:'Internal Referral',active:true},{name:'Social Platform',active:true},{name:'Direct',active:true},{name:'Consultant',active:true},{name:'Campus',active:true},{name:'External Referral',active:true},{name:'Client Career Portal',active:true},{name:'Rehire',active:true}],
+  cities:     INDIAN_CITIES.map(c => ({name:c, active:true})),
+  statuses:   [{name:'WIP',active:true},{name:'Not Contactable',active:true},{name:'Not Interested',active:true},{name:'Dropped',active:true},{name:'Consultant Interview in Progress',active:true},{name:'Rejected by Consultant',active:true},{name:'Shortlisted for Client I/W',active:true},{name:'Client I/W in Progress',active:true},{name:'Rejected by Client',active:true},{name:'On Hold',active:true},{name:'Selected',active:true},{name:'Offered',active:true},{name:'Offer Revoked',active:true},{name:'Offer Declined',active:true},{name:'Joining in Progress',active:true},{name:'Joined',active:true}]
+};
+
+function getActive(masterKey) {
+  return (MASTERS[masterKey] || []).filter(m => m.active).map(m => m.name);
+}
+
+// ── POPULATE ALL DROPDOWNS FROM MASTERS ──────────────────
+function populateAllDropdowns() {
+  const selectors = {
+    clients:    ['n_client','e_client','v_client'],
+    recruiters: ['n_recruiter','e_recruiter','v_recruiter'],
+    departments:['n_dept','e_dept','v_dept','u_roleInterested'],
+    sources:    ['n_source'],
+    cities:     ['n_location','v_location']
+  };
+  Object.entries(selectors).forEach(([key, ids]) => {
+    const activeItems = getActive(key);
+    ids.forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const cur = sel.value;
+      const firstOpt = sel.options[0];
+      sel.innerHTML = '';
+      sel.appendChild(firstOpt || Object.assign(document.createElement('option'), {value:'',textContent:'— Select —'}));
+      activeItems.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if (cur) sel.value = cur;
+    });
+  });
+}
+
+// ── SALARY CALCULATIONS ───────────────────────────────────
+function getSalaryBracket(pa) {
+  if (!pa || pa <= 0) return '';
+  if (pa <= 180000)  return '0-1.8 L';
+  if (pa <= 360000)  return '1.8-3.6 L';
+  if (pa <= 600000)  return '3.6-6 L';
+  if (pa <= 1000000) return '6-10 L';
+  if (pa <= 1500000) return '10-15 L';
+  if (pa <= 2000000) return '15-20 L';
+  return '20+ L';
+}
+
+function calcSalaryPA() {
+  const pm = parseFloat(document.getElementById('n_salaryPM').value) || 0;
+  const pa = pm * 12;
+  document.getElementById('n_salaryPA').value = pa || '';
+  document.getElementById('n_salaryBracket').value = getSalaryBracket(pa);
+  calcSalaryIncrease();
+}
+
+function calcSalaryIncrease() {
+  const pa = parseFloat(document.getElementById('n_salaryPA').value) || 0;
+  const exp = parseFloat(document.getElementById('n_expectedSalary').value) || 0;
+  // Expected bracket
+  document.getElementById('n_expectedBracket').value = getSalaryBracket(exp);
+  // % increase
+  const el = document.getElementById('n_salaryIncrease');
+  if (pa > 0 && exp > 0) {
+    const pct = ((exp - pa) / pa * 100).toFixed(1);
+    el.value = (pct >= 0 ? '+' : '') + pct + '%';
+    el.style.color = pct >= 0 ? 'var(--teal)' : '#ff6b6b';
+  } else {
+    el.value = '';
+    el.style.color = '';
+  }
+}
+
+// Profile edit salary calc
+function editCalcPA() {
+  const pm = parseFloat(document.getElementById('e_salaryPM').value) || 0;
+  const pa = pm * 12;
+  document.getElementById('e_salaryPA').value = pa || '';
+  document.getElementById('e_salaryBracket').value = getSalaryBracket(pa);
+}
+
+// ── LOCATION FIELDS ───────────────────────────────────────
+// Auto-fill posting location from vacancy selection
+function onPositionSelect(val) {
+  const sel = document.getElementById('n_position');
+  const chosen = sel.options[sel.selectedIndex];
+  if (chosen && chosen.dataset.code) {
+    document.getElementById('n_vacancyCode').value = chosen.dataset.code;
+    document.getElementById('n_positionCustom').value = '';
+    // Auto-fill posting location from vacancy
+    const vac = vacanciesData.find(v =>
+      (v['Vacancy code'] || v['Vacancy Code']) === chosen.dataset.code
+    );
+    if (vac && vac['Location']) {
+      document.getElementById('n_postingLocation').value = vac['Location'];
+    }
+  }
+}
+
+// Combined location for saving
+function getCombinedLocation() {
+  const city = document.getElementById('n_location').value;
+  const detail = document.getElementById('n_locationDetail').value.trim();
+  return detail ? city + ', ' + detail : city;
+}
+
+// ── INACTIVE RECRUITER PROMPT ────────────────────────────
+function checkRecruiterActive(recruiterName, onAssignMe, onSelect) {
+  const isActive = getActive('recruiters').includes(recruiterName);
+  if (!isActive && recruiterName) {
+    document.querySelector('.dup-card h3').textContent = '👤 Recruiter Update Required';
+    document.getElementById('dupMsg').innerHTML =
+      `<strong>${recruiterName}</strong> is no longer active at WithAWill.<br>
+       Please reassign this record before saving.`;
+    document.getElementById('dupRecord').innerHTML = '';
+    document.querySelector('.dup-card .flex.gap8').innerHTML = `
+      <button class="btn btn-teal" onclick="
+        document.getElementById('dupModal').classList.remove('show');
+        ${onAssignMe}
+      ">Assign to Me</button>
+      <button class="btn btn-ghost" onclick="
+        document.getElementById('dupModal').classList.remove('show');
+        ${onSelect}
+      ">Select Recruiter</button>`;
+    document.getElementById('dupModal').classList.add('show');
+    return false;
+  }
+  return true;
+}
+
+// Patch lookupForEdit to check recruiter status
+const _origLookupForEdit = lookupForEdit;
+function lookupForEdit() {
+  _origLookupForEdit();
+  setTimeout(function() {
+    const idx = _editIdx;
+    if (idx === -1) return;
+    const r = masterData[idx];
+    const recruiter = r[C.recruiter] || '';
+    checkRecruiterActive(
+      recruiter,
+      `document.getElementById('e_recruiter').value='${(currentAccount&&currentAccount.name?currentAccount.name.split(' ')[0]:'')}';`,
+      `document.getElementById('e_recruiter').focus();`
+    );
+  }, 200);
+}
+
+// ── JOINING IN PROGRESS — DOJ FOLLOW-UP ──────────────────
+// Override onUpdateStatusChange to handle Joining in Progress + DOJ
+const _origStatusChange = onUpdateStatusChange;
+function onUpdateStatusChange() {
+  _origStatusChange();
+  const status = document.getElementById('u_status').value;
+  if (status === 'Joining in Progress') {
+    // Check if DOJ is set on current record
+    if (currentEditIdx !== -1) {
+      const r = masterData[currentEditIdx];
+      if (r[C.doj]) {
+        // Set follow-up to one day before DOJ
+        const doj = new Date(r[C.doj]);
+        doj.setDate(doj.getDate() - 1);
+        document.getElementById('u_followupDate').value = doj.toISOString().split('T')[0];
+        showToast('info','Follow-up Auto-set',
+          'Follow-up date set to 1 day before Expected DOJ: ' + formatDate(doj.toISOString().split('T')[0]));
+      }
+    }
+  }
+}
+
+// Also auto-set follow-up when DOJ is entered and status is Joining in Progress
+document.addEventListener('DOMContentLoaded', function() {
+  const dojEl = document.getElementById('u_doj');
+  if (dojEl) {
+    dojEl.addEventListener('change', function() {
+      const status = document.getElementById('u_status').value;
+      if (status === 'Joining in Progress' && this.value) {
+        const doj = new Date(this.value);
+        doj.setDate(doj.getDate() - 1);
+        document.getElementById('u_followupDate').value = doj.toISOString().split('T')[0];
+      }
+    });
+  }
+});
+
+// ── ADMIN CONFIG — FULL MASTERS MANAGEMENT ───────────────
+function loadConfig() {
+  if (!_workbook || !_workbook.Sheets['Config']) return;
+  const ws = _workbook.Sheets['Config'];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  const headers = rows[0].map(h => String(h).trim());
+
+  const getColItems = (name) => {
+    const idx = headers.findIndex(h => h.includes(name));
+    if (idx === -1) return [];
+    return rows.slice(1).map(r => String(r[idx]||'').trim()).filter(v => v);
+  };
+
+  // Populate textareas
+  const clientsEl = document.getElementById('cfg_clients');
+  const recruitersEl = document.getElementById('cfg_recruiters');
+  const deptsEl = document.getElementById('cfg_depts');
+  const sourcesEl = document.getElementById('cfg_sources');
+
+  if (clientsEl) clientsEl.value = getColItems('Client').join('\n');
+  if (recruitersEl) recruitersEl.value = getColItems('Recruiter').join('\n');
+  if (deptsEl) deptsEl.value = getColItems('Department').join('\n');
+  if (sourcesEl) sourcesEl.value = getColItems('Source').join('\n');
+
+  // Render master tables
+  renderMasterTable('clients', 'cfg_clientsTable');
+  renderMasterTable('recruiters', 'cfg_recruitersTable');
+  renderMasterTable('departments', 'cfg_deptsTable');
+  renderMasterTable('sources', 'cfg_sourcesTable');
+  renderMasterTable('cities', 'cfg_citiesTable');
+
+  // WA template editor
+  const waTplEl = document.getElementById('waTemplateEditor');
+  if (waTplEl) {
+    waTplEl.innerHTML = Object.entries(WA_TEMPLATES).map(([key, val]) => `
+      <div style="margin-bottom:14px">
+        <label style="text-transform:capitalize;color:var(--teal);font-size:11px;letter-spacing:.5px">${key.replace(/_/g,' ')}</label>
+        <textarea id="watpl_${key}" style="min-height:70px;font-size:11px;font-family:'DM Mono',monospace;margin-top:4px">${val}</textarea>
+      </div>`).join('');
+  }
+}
+
+function renderMasterTable(masterKey, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const items = MASTERS[masterKey] || [];
+  el.innerHTML = items.length === 0 ?
+    '<div style="color:var(--white60);font-size:12px;padding:8px">No items yet.</div>' :
+    items.map((item, idx) => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+        <span style="flex:1;font-size:13px;color:${item.active?'var(--off-white)':'var(--white60)'}">${item.name}</span>
+        <span class="badge ${item.active?'badge-joined':'badge-dropped'}" style="font-size:10px">${item.active?'Active':'Inactive'}</span>
+        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px"
+          onclick="toggleMaster('${masterKey}',${idx})">
+          ${item.active?'Deactivate':'Activate'}
+        </button>
+      </div>`).join('');
+}
+
+function toggleMaster(masterKey, idx) {
+  if (MASTERS[masterKey] && MASTERS[masterKey][idx]) {
+    MASTERS[masterKey][idx].active = !MASTERS[masterKey][idx].active;
+    renderMasterTable(masterKey, 'cfg_' + masterKey.slice(0,-1) + 'sTable');
+    // Refresh all dropdowns
+    populateAllDropdowns();
+    showToast('info','Master Updated',
+      MASTERS[masterKey][idx].name + ' is now ' + (MASTERS[masterKey][idx].active ? 'active' : 'inactive'));
+  }
+}
+
+function addMasterItem(masterKey, inputId, tableId) {
+  const el = document.getElementById(inputId);
+  if (!el || !el.value.trim()) return;
+  const name = el.value.trim();
+  if (MASTERS[masterKey].find(m => m.name.toLowerCase() === name.toLowerCase())) {
+    showToast('warn','Already exists', name + ' is already in the list.');
+    return;
+  }
+  MASTERS[masterKey].push({name, active:true});
+  el.value = '';
+  renderMasterTable(masterKey, tableId);
+  populateAllDropdowns();
+  showToast('success','Added', name + ' added to masters.');
+}
+
+async function saveConfig() {
+  Object.keys(WA_TEMPLATES).forEach(key => {
+    const el = document.getElementById('watpl_' + key);
+    if (el) WA_TEMPLATES[key] = el.value;
+  });
+  // TODO: persist MASTERS back to Config sheet — Phase 5
+  showToast('success','Config Saved',
+    'Templates and master changes saved for this session.');
+}
+
+// ── UPGRADE CONFIG HTML WITH MASTER TABLES ───────────────
+function renderConfigTab() {
+  const container = document.getElementById('admin-config');
+  if (!container || container.dataset.rendered) return;
+  container.dataset.rendered = 'true';
+
+  const masterSections = [
+    {key:'clients',    label:'Clients',     inputId:'cfg_add_client'},
+    {key:'recruiters', label:'Recruiters',  inputId:'cfg_add_recruiter'},
+    {key:'departments',label:'Departments', inputId:'cfg_add_dept'},
+    {key:'sources',    label:'Sources',     inputId:'cfg_add_source'},
+    {key:'cities',     label:'Cities',      inputId:'cfg_add_city'},
+  ];
+
+  const masterHTML = masterSections.map(s => `
+    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius);padding:16px 18px">
+      <div class="section-label">${s.label}</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input type="text" id="${s.inputId}" placeholder="Add new ${s.label.toLowerCase().slice(0,-1)}..."
+          style="flex:1" onkeydown="if(event.key==='Enter')addMasterItem('${s.key}','${s.inputId}','cfg_${s.key}Table')">
+        <button class="btn btn-teal btn-sm" onclick="addMasterItem('${s.key}','${s.inputId}','cfg_${s.key}Table')">+ Add</button>
+      </div>
+      <div id="cfg_${s.key}Table" style="max-height:200px;overflow-y:auto"></div>
+    </div>`).join('');
+
+  const waHTML = `
+    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius);padding:16px 18px;grid-column:span 2">
+      <div class="section-label">WhatsApp Templates</div>
+      <div id="waTemplateEditor"></div>
+      <button class="btn btn-teal btn-sm mt8" onclick="saveConfig()">✓ Save Templates</button>
+    </div>`;
+
+  container.querySelector('.card > div:last-child')?.remove();
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:16px';
+  grid.innerHTML = masterHTML + waHTML;
+  container.querySelector('.card').appendChild(grid);
+}
+
+// ── ADMIN VACANCIES CRUD ─────────────────────────────────
+function openAddVacancy() {
+  document.getElementById('v_editIdx').value = '-1';
+  ['v_client','v_role','v_dept','v_location','v_budget','v_exp','v_recruiter','v_targetDate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('v_status').value = 'Open';
+  document.getElementById('vacancyEditForm').classList.remove('hidden');
+  populateAllDropdowns();
+}
+
+function closeVacancyForm() {
+  document.getElementById('vacancyEditForm').classList.add('hidden');
+}
+
+function editVacancy(idx) {
+  const v = vacanciesData[idx];
+  if (!v) return;
+  document.getElementById('v_editIdx').value = idx;
+  document.getElementById('v_client').value = v['Company'] || '';
+  document.getElementById('v_role').value = v['Designation'] || '';
+  document.getElementById('v_dept').value = v['Department'] || '';
+  document.getElementById('v_location').value = v['Location'] || '';
+  document.getElementById('v_budget').value = v['Monthly Budget'] || '';
+  document.getElementById('v_exp').value = v['Experience'] || '';
+  document.getElementById('v_recruiter').value = v['Recruiter'] || '';
+  document.getElementById('v_targetDate').value = v['Target Fill Date'] || '';
+  document.getElementById('v_status').value = v['Current Status'] || 'Open';
+  document.getElementById('vacancyEditForm').classList.remove('hidden');
+  populateAllDropdowns();
+}
+
+async function saveVacancy() {
+  const client = document.getElementById('v_client').value;
+  const role = document.getElementById('v_role').value.trim();
+  const dept = document.getElementById('v_dept').value;
+  if (!client || !role || !dept) {
+    showAlert('adminVacancyAlert','error','Client, Role and Department are required.');
+    return;
+  }
+  const editIdx = parseInt(document.getElementById('v_editIdx').value);
+  const isNew = editIdx === -1;
+
+  const vacData = {
+    'Company': client,
+    'Designation': role,
+    'Department': dept,
+    'Location': document.getElementById('v_location').value,
+    'Monthly Budget': document.getElementById('v_budget').value,
+    'Experience': document.getElementById('v_exp').value,
+    'Recruiter': document.getElementById('v_recruiter').value,
+    'Target Fill Date': document.getElementById('v_targetDate').value,
+    'Current Status': document.getElementById('v_status').value,
+  };
+
+  if (isNew) {
+    // Generate new vacancy code
+    const year = new Date().getFullYear();
+    const maxNum = vacanciesData.reduce((max, v) => {
+      const m = String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);
+      return m ? Math.max(max, parseInt(m[1])) : max;
+    }, 0);
+    vacData['Vacancy code'] = `VC-${year}-${String(maxNum+1).padStart(4,'0')}`;
+    vacData['Sr. No.'] = vacanciesData.length + 1;
+    vacanciesData.push(vacData);
+  } else {
+    Object.assign(vacanciesData[editIdx], vacData);
+  }
+
+  // Rebuild vacancies sheet
+  if (_workbook && _workbook.Sheets['Vacancies']) {
+    const ws = _workbook.Sheets['Vacancies'];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    const headers = rows[0];
+    const newRows = [headers, ...vacanciesData.map(v => headers.map(h => v[h] || ''))];
+    _workbook.Sheets['Vacancies'] = XLSX.utils.aoa_to_sheet(newRows);
+  }
+
+  await saveToSharePoint(false);
+  closeVacancyForm();
+  renderAdminVacancies();
+  renderVacancies();
+  showToast('success', isNew ? 'Vacancy Added' : 'Vacancy Updated',
+    `${role} @ ${client} — ${vacData['Vacancy code']}`);
+  showAlert('adminVacancyAlert','success',
+    `✅ ${isNew ? 'New vacancy created' : 'Vacancy updated'}: ${vacData['Vacancy code']}`);
+}
+
+function renderAdminVacancies() {
+  const tbody = document.getElementById('adminVacanciesBody');
+  if (!tbody) return;
+  if (!vacanciesData.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--white60)">No vacancies yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = vacanciesData.map((v, idx) => {
+    const code = v['Vacancy code'] || v['Vacancy Code'] || '—';
+    const status = v['Current Status'] || '—';
+    return `<tr>
+      <td class="mono" style="font-size:11px">${code}</td>
+      <td class="muted">${v['Company']||'—'}</td>
+      <td><strong>${v['Designation']||'—'}</strong></td>
+      <td class="muted">${v['Department']||'—'}</td>
+      <td class="muted">${v['Location']||'—'}</td>
+      <td class="muted">₹${v['Monthly Budget']||'—'}</td>
+      <td class="muted">${v['Recruiter']||'—'}</td>
+      <td><span class="badge ${statusBadgeClass(status)}">${status}</span></td>
+      <td>
+        <div class="flex gap8">
+          <button class="btn btn-ghost btn-sm" onclick="editVacancy(${idx})">Edit</button>
+          <button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="toggleVacancyStatus(${idx})">
+            ${status==='Open'?'Close':'Reopen'}
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleVacancyStatus(idx) {
+  const v = vacanciesData[idx];
+  if (!v) return;
+  v['Current Status'] = v['Current Status'] === 'Open' ? 'Closed' : 'Open';
+  if (_workbook && _workbook.Sheets['Vacancies']) {
+    const ws = _workbook.Sheets['Vacancies'];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    const headers = rows[0];
+    const newRows = [headers, ...vacanciesData.map(vac => headers.map(h => vac[h] || ''))];
+    _workbook.Sheets['Vacancies'] = XLSX.utils.aoa_to_sheet(newRows);
+  }
+  await saveToSharePoint(false);
+  renderAdminVacancies();
+  renderVacancies();
+  showToast('info','Status Updated', `${v['Designation']} is now ${v['Current Status']}`);
+}
+
+// ── PATCH switchAdminTab to handle new tabs ───────────────
+const _origSwitchAdminTab = switchAdminTab;
+function switchAdminTab(tab) {
+  // Handle new tabs not in original function
+  const allTabs = ['backup','changelog','config','vacancies','dashboard','users'];
+  allTabs.forEach(t => {
+    const el = document.getElementById('admin-' + t);
+    const tabEl = document.getElementById('atab-' + t);
+    if (el) el.classList.toggle('hidden', t !== tab);
+    if (tabEl) {
+      tabEl.style.color = t === tab ? 'var(--teal)' : 'var(--white60)';
+      tabEl.style.borderBottomColor = t === tab ? 'var(--teal)' : 'transparent';
+    }
+  });
+  if (tab === 'changelog') loadChangelog();
+  if (tab === 'config') { loadConfig(); renderConfigTab(); }
+  if (tab === 'backup') loadBackupList();
+  if (tab === 'vacancies') { renderAdminVacancies(); populateAllDropdowns(); }
+}
+
+// ── INITIALISE ON APP LOAD ───────────────────────────────
+// Patch onAuthSuccess to populate dropdowns after data loads
+const _origOnAuthSuccess = onAuthSuccess;
+async function onAuthSuccess() {
+  await _origOnAuthSuccess();
+  // populateAllDropdowns is called after data loads in loadFromSharePoint
+}
+
+// Patch parseWorkbook to also populate dropdowns
+const _origParseWorkbook = parseWorkbook;
+function parseWorkbook() {
+  _origParseWorkbook();
+  populateAllDropdowns();
+}
 
 </script>
 </body>
