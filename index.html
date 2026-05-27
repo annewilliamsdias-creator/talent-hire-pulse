@@ -2309,6 +2309,8 @@ function parseWorkbook() {
       vacanciesData.push(obj);
     }
   }
+  // Populate all dropdowns after data loads
+  if (typeof populateAllDropdowns === 'function') populateAllDropdowns();
 }
 
 // ════════════════════════════════════════════════════════
@@ -2550,6 +2552,19 @@ function lookupCandidate() {
   setTimeout(function() {
     if (typeof updateStatusDropdown === 'function') updateStatusDropdown();
   }, 50);
+
+  // Check inactive recruiter
+  setTimeout(function() {
+    const idx = _editIdx;
+    if (idx === -1) return;
+    const r = masterData[idx];
+    const recruiter = r[C.recruiter] || '';
+    checkRecruiterActive(
+      recruiter,
+      `document.getElementById('e_recruiter').value='${(currentAccount&&currentAccount.name?currentAccount.name.split(' ')[0]:'')}';`,
+      `document.getElementById('e_recruiter').focus();`
+    );
+  }, 200);
 }
 
 function onUpdateStatusChange() {
@@ -2570,6 +2585,16 @@ function onUpdateStatusChange() {
   }
   const fuReq = document.getElementById('u_fuReq');
   fuReq.textContent = TERMINAL.has(status) ? '' : '*';
+  // Auto-set follow-up to day before DOJ for Joining in Progress
+  if (status === 'Joining in Progress' && currentEditIdx !== -1) {
+    const r = masterData[currentEditIdx];
+    if (r[C.doj]) {
+      const doj = new Date(r[C.doj]);
+      doj.setDate(doj.getDate() - 1);
+      const fuEl = document.getElementById('u_followupDate');
+      if (fuEl && !fuEl.value) fuEl.value = doj.toISOString().split('T')[0];
+    }
+  }
 }
 
 async function submitUpdate() {
@@ -3597,21 +3622,7 @@ function cancelProfileEdit() {
 let _changelogData = [];
 let _currentAdminTab = 'backup';
 
-function switchAdminTab(tab) {
-  _currentAdminTab = tab;
-  ['backup','changelog','config','users'].forEach(t => {
-    const el = document.getElementById('admin-' + t);
-    const tabEl = document.getElementById('atab-' + t);
-    if (el) el.classList.toggle('hidden', t !== tab);
-    if (tabEl) {
-      tabEl.style.color = t === tab ? 'var(--teal)' : 'var(--white60)';
-      tabEl.style.borderBottomColor = t === tab ? 'var(--teal)' : 'transparent';
-    }
-  });
-  if (tab === 'changelog') loadChangelog();
-  if (tab === 'config') loadConfig();
-  if (tab === 'backup') loadBackupList();
-}
+// switchAdminTab defined below in session4
 
 // Backup
 async function createBackup() {
@@ -3903,22 +3914,7 @@ function checkRecruiterActive(recruiterName, onAssignMe, onSelect) {
     document.getElementById('dupRecord').innerHTML = '';
     document.querySelector('.dup-card .flex.gap8').innerHTML = `
       <button class="btn btn-teal" onclick="
-        document.getElementById('dupModal').classList.remove('show');
-        ${onAssignMe}
-      ">Assign to Me</button>
-      <button class="btn btn-ghost" onclick="
-        document.getElementById('dupModal').classList.remove('show');
-        ${onSelect}
-      ">Select Recruiter</button>`;
-    document.getElementById('dupModal').classList.add('show');
-    return false;
-  }
-  return true;
-}
-
-// Patch lookupForEdit to check recruiter status
-const _origLookupForEdit = lookupForEdit;
-function lookupForEdit() {
+        // lookupForEdit patched directlyt() {
   _origLookupForEdit();
   setTimeout(function() {
     const idx = _editIdx;
@@ -3935,25 +3931,7 @@ function lookupForEdit() {
 
 // ── JOINING IN PROGRESS — DOJ FOLLOW-UP ──────────────────
 // Override onUpdateStatusChange to handle Joining in Progress + DOJ
-const _origStatusChange = onUpdateStatusChange;
-function onUpdateStatusChange() {
-  _origStatusChange();
-  const status = document.getElementById('u_status').value;
-  if (status === 'Joining in Progress') {
-    // Check if DOJ is set on current record
-    if (currentEditIdx !== -1) {
-      const r = masterData[currentEditIdx];
-      if (r[C.doj]) {
-        // Set follow-up to one day before DOJ
-        const doj = new Date(r[C.doj]);
-        doj.setDate(doj.getDate() - 1);
-        document.getElementById('u_followupDate').value = doj.toISOString().split('T')[0];
-        showToast('info','Follow-up Auto-set',
-          'Follow-up date set to 1 day before Expected DOJ: ' + formatDate(doj.toISOString().split('T')[0]));
-      }
-    }
-  }
-}
+// onUpdateStatusChange patched directly
 
 // Also auto-set follow-up when DOJ is entered and status is Joining in Progress
 document.addEventListener('DOMContentLoaded', function() {
@@ -4242,7 +4220,6 @@ async function toggleVacancyStatus(idx) {
 }
 
 // ── PATCH switchAdminTab to handle new tabs ───────────────
-const _origSwitchAdminTab = switchAdminTab;
 function switchAdminTab(tab) {
   // Handle new tabs not in original function
   const allTabs = ['backup','changelog','config','vacancies','dashboard','users'];
@@ -4267,11 +4244,7 @@ function switchAdminTab(tab) {
 // populateAllDropdowns called via parseWorkbook override
 
 // Patch parseWorkbook to also populate dropdowns
-const _origParseWorkbook = parseWorkbook;
-function parseWorkbook() {
-  _origParseWorkbook();
-  populateAllDropdowns();
-}
+// parseWorkbook patched directly
 
 </script>
 </body>
