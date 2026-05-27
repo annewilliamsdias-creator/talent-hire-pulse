@@ -4263,11 +4263,8 @@ function switchAdminTab(tab) {
 
 // ── INITIALISE ON APP LOAD ───────────────────────────────
 // Patch onAuthSuccess to populate dropdowns after data loads
-const _origOnAuthSuccess = onAuthSuccess;
-async function onAuthSuccess() {
-  await _origOnAuthSuccess();
-  // populateAllDropdowns is called after data loads in loadFromSharePoint
-}
+// onAuthSuccess used directly - no override needed
+// populateAllDropdowns called via parseWorkbook override
 
 // Patch parseWorkbook to also populate dropdowns
 const _origParseWorkbook = parseWorkbook;
