@@ -654,6 +654,12 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
   border-radius: 50%;
   object-fit: cover;
 }
+.logo-dynamic {
+  max-width: 80px;
+  max-height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+}
 .login-logo-wrap {
   display: flex; flex-direction: column;
   align-items: center; gap: 14px;
@@ -697,7 +703,7 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
 <div id="loginScreen">
   <div class="login-card">
     <div class="login-logo-wrap">
-      <img src="" class="logo-dynamic" class="logo-img" alt="WithAWill Logo" style="width:80px;height:80px">
+      <img src="" class="logo-dynamic logo-img" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;border:2px solid rgba(52,186,198,0.3)" alt="WithAWill Logo" style="width:80px;height:80px">
     </div>
     <div class="login-logo">Talent<span class="plus">+</span> <span class="hire">Hire</span> Pulse</div>
     <div class="login-sub">Built for Modern Workforce Visibility</div>
@@ -755,7 +761,7 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
   <!-- SIDEBAR -->
   <nav class="sidebar">
     <div class="sidebar-logo" style="display:flex;align-items:center;gap:10px;padding:0 16px;margin-bottom:8px">
-      <img src="" class="logo-dynamic" class="logo-img-sm" alt="WithAWill">
+      <img src="" class="logo-dynamic logo-img-sm" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;min-width:32px" alt="WithAWill">
       <span style="font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:700;white-space:nowrap">
         Talent<span style="color:var(--teal)">+</span> <span style="color:var(--gold)">Hire</span>
       </span>
@@ -807,7 +813,7 @@ tbody td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
   <div class="main">
     <div class="topbar">
       <div class="topbar-title">
-        <img src="" class="logo-dynamic" class="logo-img-topbar" alt="WithAWill">
+        <img src="" class="logo-dynamic logo-img-topbar" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="WithAWill">
         <span style="font-family:'Cormorant Garamond',serif;font-weight:700;letter-spacing:-0.5px">
           Talent<span style="color:var(--teal)">+</span> <span style="color:var(--gold)">Hire</span> Pulse
         </span>
@@ -3677,14 +3683,20 @@ async function saveConfig() {
 
 // Admin panel init handled inline in switchPanel below
 
-// Set logo images from single constant
+// Set logo images from single constant — apply correct size per context
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.logo-dynamic').forEach(function(img) {
     img.src = LOGO_URI;
-  });
-  // Also set topbar logo if it exists
-  document.querySelectorAll('.logo-img-topbar, .logo-img-sm, .logo-img').forEach(function(img) {
-    if (!img.src || img.src === window.location.href) img.src = LOGO_URI;
+    // Apply size based on which container it's in
+    if (img.classList.contains('logo-img-topbar')) {
+      img.style.cssText = 'width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0';
+    } else if (img.classList.contains('logo-img-sm')) {
+      img.style.cssText = 'width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0';
+    } else if (img.classList.contains('logo-img')) {
+      img.style.cssText = 'width:80px;height:80px;border-radius:50%;object-fit:cover;display:block';
+    } else {
+      img.style.cssText = 'width:28px;height:28px;border-radius:50%;object-fit:cover';
+    }
   });
 });
 
