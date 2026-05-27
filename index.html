@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Talent+ Hire Pulse — WithAWill HR</title>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -751,79 +752,129 @@ const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
 return tpl.replace(/{N}/g,r[C.name]||'').replace(/{P}/g,r[C.position]||'').replace(/{C}/g,r[C.client]||'').replace(/{R}/g,rn).replace(/{D}/g,r[C.interviewDate]?fmtD(r[C.interviewDate]):'[Date TBC]').replace(/{T}/g,r._iTime||'[Time TBC]').replace(/{L}/g,r[C.docLink]||'[Teams link to follow]');}
 
 // ══════════════════════════════════════════════════════
-// PKCE AUTH
+// MSAL AUTH (popup - proven to work)
 // ══════════════════════════════════════════════════════
-const TS={save(t){sessionStorage.setItem('thp',JSON.stringify(t));},load(){try{return JSON.parse(sessionStorage.getItem('thp')||'null');}catch(e){return null;}},clear(){sessionStorage.removeItem('thp');sessionStorage.removeItem('thp_pk');}};
-function b64u(buf){
-  // Works with both ArrayBuffer and Uint8Array
-  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
-  let str = '';
-  bytes.forEach(b => str += String.fromCharCode(b));
-  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-async function sha256(str){
-  const buf = new TextEncoder().encode(str);
-  const hash = await crypto.subtle.digest('SHA-256', buf);
-  return hash; // returns ArrayBuffer
-}
-function rnd(n=96){
-  // 96 bytes -> 128 char base64url verifier (well within 43-128 char spec)
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return b64u(a);
-}
-async function buildAuthUrl(){
-  const verifier = rnd(96);  // 128 char verifier
-  const hashBuf = await sha256(verifier);
-  const challenge = b64u(hashBuf);  // 43 char challenge
-  const state = rnd(16);
-  console.log('PKCE verifier length:', verifier.length, 'challenge length:', challenge.length);
-  sessionStorage.setItem('thp_pk', JSON.stringify({v:verifier, st:state}));
-  const params = new URLSearchParams({
-    client_id: CFG.clientId,
-    response_type: 'code',
-    redirect_uri: CFG.redirect,
-    response_mode: 'fragment',
-    scope: CFG.scopes.join(' '),
-    state: state,
-    code_challenge: challenge,
-    code_challenge_method: 'S256',
-    prompt: 'select_account'
-  });
-  return 'https://login.microsoftonline.com/'+CFG.tenantId+'/oauth2/v2.0/authorize?'+params.toString();
-}
-async function exchCode(code,v){
-const r=await fetch('https://login.microsoftonline.com/'+CFG.tenantId+'/oauth2/v2.0/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:CFG.clientId,grant_type:'authorization_code',code,redirect_uri:CFG.redirect,code_verifier:v,scope:CFG.scopes.join(' ')})});
-if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error_description||e.error||'Token exchange failed');}
-return r.json();}
-async function refreshTok(){
-const s=TS.load();if(!s||!s.rt)throw new Error('No session');
-const r=await fetch('https://login.microsoftonline.com/'+CFG.tenantId+'/oauth2/v2.0/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:CFG.clientId,grant_type:'refresh_token',refresh_token:s.rt,scope:CFG.scopes.join(' ')})});
-if(!r.ok){TS.clear();throw new Error('Session expired — please sign in again.');}
-const t=await r.json();TS.save({...s,at:t.access_token,rt:t.refresh_token||s.rt,idt:t.id_token||s.idt});tok=t.access_token;if(t.id_token)parseIdt(t.id_token);}
-function parseIdt(idt){try{const p=JSON.parse(atob(idt.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));acct={name:p.name||p.preferred_username||'',username:p.preferred_username||p.upn||''};}catch(e){console.warn('idt',e);}}
-async function signIn(){try{setStat('Redirecting to Microsoft login...');window.location.href=await buildAuthUrl();}catch(e){setStat('Error: '+e.message);}}
-function signOut(){TS.clear();tok=null;acct=null;window.location.href='https://login.microsoftonline.com/'+CFG.tenantId+'/oauth2/v2.0/logout?post_logout_redirect_uri='+encodeURIComponent(CFG.redirect);}
+let msalInstance = null;
 
-window.onload=async()=>{
-setStat('Ready — click to sign in');
-const hash=window.location.hash;
-if(hash.includes('code=')){
-setStat('Completing sign-in...');showLoad('Completing sign-in...');
-try{
-const params=new URLSearchParams(hash.slice(1));
-const code=params.get('code'),st=params.get('state');
-const pk=JSON.parse(sessionStorage.getItem('thp_pk')||'{}');
-if(st!==pk.st)throw new Error('State mismatch — please try signing in again.');
-const t=await exchCode(code,pk.v);
-TS.save({at:t.access_token,rt:t.refresh_token,idt:t.id_token});
-tok=t.access_token;if(t.id_token)parseIdt(t.id_token);
-history.replaceState(null,'',window.location.pathname);
-await onAuthOk();
-}catch(e){hideLoad();setStat('Sign-in error: '+e.message);console.error(e);}
-return;}
-const s=TS.load();
-if(s&&s.at){try{setStat('Restoring session...');showLoad('Restoring session...');tok=s.at;if(s.idt)parseIdt(s.idt);await refreshTok();await onAuthOk();}catch(e){TS.clear();hideLoad();setStat('Session expired — please sign in again.');}}
+const msalConfig = {
+  auth: {
+    clientId: CFG.clientId,
+    authority: 'https://login.microsoftonline.com/' + CFG.tenantId,
+    redirectUri: CFG.redirect
+  },
+  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: true }
+};
+
+const TS = {
+  save(t){ sessionStorage.setItem('thp', JSON.stringify(t)); },
+  load(){ try{ return JSON.parse(sessionStorage.getItem('thp')||'null'); }catch(e){ return null; } },
+  clear(){ sessionStorage.removeItem('thp'); }
+};
+
+async function initMsal() {
+  // Wait up to 15s for MSAL CDN script to load
+  let attempts = 0;
+  while (typeof msal === 'undefined' && attempts < 50) {
+    await new Promise(r => setTimeout(r, 300));
+    attempts++;
+    if (attempts % 5 === 0) setStat('Loading auth library... (' + Math.round(attempts*300/1000) + 's)');
+  }
+  if (typeof msal === 'undefined') {
+    // MSAL CDN blocked - fall back to alternative CDN
+    setStat('Trying alternate auth source...');
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library-for-js/2.38.3/msal-browser.min.js';
+      s.onload = resolve;
+      s.onerror = () => {
+        // Try unpkg
+        const s2 = document.createElement('script');
+        s2.src = 'https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js';
+        s2.onload = resolve;
+        s2.onerror = reject;
+        document.head.appendChild(s2);
+      };
+      document.head.appendChild(s);
+    });
+    // Wait a moment for script to execute
+    await new Promise(r => setTimeout(r, 500));
+  }
+  if (typeof msal === 'undefined') throw new Error('Auth library unavailable — check internet connection');
+  if (!msalInstance) {
+    msalInstance = new msal.PublicClientApplication(msalConfig);
+    await msalInstance.initialize();
+  }
+}
+
+async function signIn() {
+  try {
+    setStat('Connecting to Microsoft...');
+    if (!msalInstance) await initMsal();
+    const resp = await msalInstance.loginPopup({
+      scopes: CFG.scopes,
+      prompt: 'select_account'
+    });
+    tok = resp.accessToken;
+    acct = { name: resp.account.name, username: resp.account.username };
+    TS.save({ at: tok, acct: acct });
+    await onAuthOk();
+  } catch(e) {
+    if (e.errorCode === 'user_cancelled') { setStat('Sign-in cancelled — try again.'); return; }
+    setStat('Sign-in error: ' + (e.errorCode || e.message));
+    console.error('signIn error:', e);
+  }
+}
+
+async function refreshTok() {
+  if (!msalInstance) await initMsal();
+  const accounts = msalInstance.getAllAccounts();
+  if (!accounts.length) throw new Error('No session — please sign in again.');
+  try {
+    const resp = await msalInstance.acquireTokenSilent({
+      scopes: CFG.scopes,
+      account: accounts[0]
+    });
+    tok = resp.accessToken;
+    acct = { name: accounts[0].name, username: accounts[0].username };
+  } catch(e) {
+    const resp = await msalInstance.acquireTokenPopup({
+      scopes: CFG.scopes,
+      account: accounts[0]
+    });
+    tok = resp.accessToken;
+  }
+}
+
+function signOut() {
+  TS.clear();
+  if (msalInstance) {
+    msalInstance.logoutPopup().catch(() => {});
+  }
+  tok = null; acct = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appShell').style.display = 'none';
+  setStat('Ready — click to sign in');
+}
+
+window.onload = async () => {
+  setStat('Ready — click to sign in');
+  // Pre-load MSAL in background without blocking the UI
+  initMsal().then(() => {
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      setStat('Restoring session...');
+      showLoad('Restoring session...');
+      refreshTok().then(() => onAuthOk()).catch(e => {
+        hideLoad();
+        setStat('Session expired — please sign in again.');
+      });
+    } else {
+      setStat('Ready — click to sign in');
+    }
+  }).catch(e => {
+    setStat('Ready — click to sign in');
+    console.warn('MSAL preload:', e.message);
+  });
 };
 
 // ══════════════════════════════════════════════════════
@@ -861,7 +912,7 @@ for(const p of paths){
 if(!found){
   try{
     console.log('Trying drive search...');
-    const srch=await gGet('/sites/'+siteId+'/drive/root/search(q=''+fn+'')');
+    const srch=await gGet(`/sites/${siteId}/drive/root/search(q='${fn}')`);
     if(srch.value&&srch.value.length>0){found=srch.value[0];console.log('Found via search:',found.name);}
   }catch(e){console.log('Search failed:',e.message);}
 }
