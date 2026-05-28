@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Talent+ Hire Pulse — WithAWill HR</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 
@@ -252,6 +253,31 @@ cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02)}
 border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap}
 .atab.on{color:var(--teal);border-bottom-color:var(--teal)}
 /* MISC */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.dash-grid.full{grid-template-columns:1fr}
+.dash-grid.three{grid-template-columns:1fr 1fr 1fr}
+.chart-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--r);padding:20px 22px}
+.chart-title{font-family:"Cormorant Garamond",serif;font-size:16px;font-weight:600;
+  color:var(--ow);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.chart-title .ac{color:var(--teal)}
+.chart-sub{font-size:11px;color:var(--w60);margin-bottom:14px}
+.chart-wrap{position:relative;height:220px}
+.chart-wrap.tall{height:280px}
+.chart-wrap.sm{height:160px}
+.dash-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+  border-radius:var(--r);padding:12px 16px;margin-bottom:16px}
+.dash-filters select,.dash-filters input{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--rs);padding:6px 10px;font-size:12px;color:var(--ow);
+  font-family:"DM Sans",sans-serif}
+.filter-label{font-size:11px;color:var(--w60);font-weight:600;letter-spacing:.5px}
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--r);padding:14px 16px;text-align:center}
+.kpi-num{font-family:"Cormorant Garamond",serif;font-size:28px;font-weight:700;line-height:1}
+.kpi-lbl{font-size:10px;color:var(--w60);margin-top:3px;letter-spacing:.5px}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
 .hidden{display:none!important}
@@ -380,12 +406,115 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- DASHBOARD -->
 <div class="panel active" id="p-dashboard">
-<div class="sg">
-<div class="stat blue" style="cursor:pointer" onclick="showStatList('total')" title="View all candidates"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-tot">—</div><div class="sl">Total Candidates</div><div class="ss">All time — click to view</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(52,186,198,.2)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></div></div>
-<div class="stat teal" style="cursor:pointer" onclick="showStatList('active')" title="View active pipeline"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-act">—</div><div class="sl">Active Pipeline</div><div class="ss">In process — click to view</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(93,213,223,.2)" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
-<div class="stat gold" style="cursor:pointer" onclick="showStatList('joined')" title="View joined this month"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-joi">—</div><div class="sl">Joined This Month</div><div class="ss" id="ds-mon"></div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(233,152,43,.25)" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div></div>
-<div class="stat purple" style="cursor:pointer" onclick="showStatList('pending')" title="View pending follow-ups"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-pen">—</div><div class="sl">Follow-ups Pending</div><div class="ss">Overdue + today — click to view</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(155,114,212,.25)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
+
+<!-- FILTERS -->
+<div class="dash-filters">
+  <span class="filter-label">PERIOD</span>
+  <select id="df-period" onchange="renderDash()">
+    <option value="all">All Time</option>
+    <option value="fy" selected>This FY (Apr–Mar)</option>
+    <option value="q">This Quarter</option>
+    <option value="m">This Month</option>
+    <option value="w">This Week</option>
+    <option value="custom">Custom Range</option>
+  </select>
+  <input type="date" id="df-from" style="display:none" onchange="renderDash()">
+  <input type="date" id="df-to" style="display:none" onchange="renderDash()">
+  <select id="df-client" onchange="renderDash()">
+    <option value="">All Clients</option>
+  </select>
+  <select id="df-dept" onchange="renderDash()">
+    <option value="">All Departments</option>
+  </select>
+  <select id="df-recruiter" onchange="renderDash()">
+    <option value="">All Recruiters</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" onclick="renderDash()">↺ Refresh</button>
+  <button class="btn btn-t btn-sm" onclick="exportDashReport()">⬇ Download Report</button>
 </div>
+
+<!-- KPI ROW -->
+<div class="kpi-row">
+  <div class="kpi"><div class="kpi-num" id="kpi-total" style="color:var(--teal)">—</div><div class="kpi-lbl">TOTAL</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-active" style="color:#5dd5df">—</div><div class="kpi-lbl">ACTIVE PIPELINE</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-joined" style="color:var(--gold)">—</div><div class="kpi-lbl">JOINED</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-offered" style="color:#5b9fd4">—</div><div class="kpi-lbl">OFFERED</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-tat" style="color:#9b72d4">—</div><div class="kpi-lbl">AVG TAT (DAYS)</div></div>
+</div>
+
+<!-- ROW 1: Pipeline Funnel + Status Distribution -->
+<div class="dash-grid">
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">⬇</span> Pipeline Funnel</div>
+    <div class="chart-sub">Candidates by stage</div>
+    <div class="chart-wrap"><canvas id="ch-funnel"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">◉</span> Status Distribution</div>
+    <div class="chart-sub">Share of each status</div>
+    <div class="chart-wrap"><canvas id="ch-status"></canvas></div>
+  </div>
+</div>
+
+<!-- ROW 2: Client Pipeline + Source Effectiveness -->
+<div class="dash-grid">
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">🏢</span> Client-wise Active Pipeline</div>
+    <div class="chart-sub">Active candidates per client</div>
+    <div class="chart-wrap"><canvas id="ch-client"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">📡</span> Source Effectiveness</div>
+    <div class="chart-sub">Candidates sourced vs joined by source</div>
+    <div class="chart-wrap"><canvas id="ch-source"></canvas></div>
+  </div>
+</div>
+
+<!-- ROW 3: Recruiter Performance + Weekly Trend -->
+<div class="dash-grid">
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">👤</span> Recruiter Performance</div>
+    <div class="chart-sub">Sourced vs Active vs Joined</div>
+    <div class="chart-wrap tall"><canvas id="ch-recruiter"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">📈</span> Weekly Activity Trend</div>
+    <div class="chart-sub">Candidates added per week</div>
+    <div class="chart-wrap tall"><canvas id="ch-trend"></canvas></div>
+  </div>
+</div>
+
+<!-- ROW 4: Rejection Analysis + Department -->
+<div class="dash-grid">
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">✗</span> Rejection Analysis</div>
+    <div class="chart-sub">Consultant vs Client rejections</div>
+    <div class="chart-wrap"><canvas id="ch-reject"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">🏗</span> Department-wise Status</div>
+    <div class="chart-sub">Active pipeline by department</div>
+    <div class="chart-wrap"><canvas id="ch-dept"></canvas></div>
+  </div>
+</div>
+
+<!-- ACTION QUEUE (kept from before) -->
+<div class="card">
+  <div class="card-hdr">
+    <div class="card-title"><span class="ac">⚡</span> My Action Queue</div>
+    <button class="btn btn-ghost btn-sm" onclick="loadDash()">↺ Refresh</button>
+  </div>
+  <div id="aq-list"></div>
+</div>
+<div class="card">
+  <div class="card-hdr"><div class="card-title"><span class="ac">📅</span> Upcoming Interviews</div></div>
+  <div id="iv-list"></div>
+</div>
+<div class="card">
+  <div class="card-hdr"><div class="card-title"><span class="ac">🚪</span> Joining in Progress</div></div>
+  <div id="jp-list"></div>
+</div>
+
 <!-- Stat drill-down list -->
 <div class="card hidden" id="statListCard">
   <div class="card-hdr">
@@ -396,83 +525,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <tbody id="statListBody"></tbody></table></div>
   <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="statListCount"></div>
 </div>
-<div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">⚡</span> My Action Queue</div><button class="btn btn-ghost btn-sm" onclick="loadDash()">↺ Refresh</button></div><div id="aq-list"></div></div>
-<div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📅</span> Upcoming Interviews</div></div><div id="iv-list"></div></div>
-<div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">🚪</span> Joining in Progress</div></div><div id="jp-list"></div></div>
-</div>
 
-<!-- NEW CANDIDATE -->
-<div class="panel" id="p-new">
-<div id="na" class="mb0"></div>
-<div class="card">
-<div class="card-hdr"><div class="card-title"><span class="ac">✦</span> Add New Candidate</div><button class="btn btn-ghost btn-sm" onclick="clearNew()">Clear</button></div>
-<div class="sl2">📡 Sourcing</div>
-<div class="fg3">
-<div class="field"><label>Sourcing Date <span class="req">*</span></label><input type="date" id="nSD"></div>
-<div class="field"><label>Screening Date</label><input type="date" id="nScD"></div>
-<div class="field"><label>Recruiter <span class="req">*</span></label><select id="nRec"><option value="">— Select —</option></select></div>
-<div class="field"><label>Source <span class="req">*</span></label><select id="nSrc"><option value="">— Select —</option></select></div>
-<div class="field s2"><label>Source Details</label><input type="text" id="nSrcD" placeholder="e.g. Naukri, LinkedIn, referred by..."></div>
-</div>
-<div class="sl2">👤 Candidate Details</div>
-<div class="fg3">
-<div class="field s3"><label>Full Name <span class="req">*</span></label><input type="text" id="nNm" placeholder="Candidate full name"></div>
-<div class="field"><label>Primary Mobile <span class="req">*</span></label><input type="tel" id="nMob" placeholder="10 digits" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
-<div class="field"><label>Alternate Mobile</label><input type="tel" id="nAlt" placeholder="Optional" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
-<div class="field"><label>Email <span class="req">*</span></label><input type="email" id="nEm" placeholder="candidate@email.com"></div>
-<div class="field"><label>Location of Posting</label><input type="text" id="nPLoc" placeholder="Auto from vacancy" readonly></div>
-<div class="field"><label>Candidate City <span class="req">*</span></label><select id="nLoc"><option value="">— Select City —</option></select></div>
-<div class="field s2"><label>Actual Area / Suburb</label><input type="text" id="nLocD" placeholder="e.g. Andheri West, Koramangala"></div>
-<div class="field">
-<label>Experience (Years) <span class="req">*</span></label>
-<div class="flex gap8" style="align-items:center">
-<input type="number" id="nExp" min="0" max="50" step="0.5" style="flex:1" oninput="onExp(this.value)" placeholder="e.g. 3.5">
-<label style="text-transform:none;letter-spacing:0;color:var(--w60);font-size:12px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px"><input type="checkbox" id="nFr" onchange="onFr(this.checked)" style="width:auto;background:none;border:none;padding:0;flex-shrink:0"> Fresher</label>
-</div>
-</div>
-<div class="field"><label>Notice Period</label><select id="nNot"><option value="">— Select —</option></select></div>
-<div class="field"><label>Current Company <span class="req" id="nCoReq"></span></label><input type="text" id="nCo" placeholder="Employer"></div>
-<div class="field"><label>Current Designation <span class="req" id="nDeReq"></span></label><input type="text" id="nDe" placeholder="Job title"></div>
-<div class="field"><label>Reason for Leaving</label><input type="text" id="nReas" placeholder="Growth, salary..."></div>
-</div>
-<div class="sl2">💰 Salary</div>
-<div class="fg3">
-<div class="field"><label>Current Salary ₹ PM</label><input type="number" id="nSPM" placeholder="e.g. 35000" oninput="calcSal()"></div>
-<div class="field"><label>Current ₹ PA <span class="fhint">(auto)</span></label><input type="number" id="nSPA" readonly></div>
-<div class="field"><label>Current Range <span class="fhint">(auto)</span></label><input type="text" id="nSBr" readonly></div>
-<div class="field"><label>Expected Salary ₹ PM</label><input type="number" id="nESPM" placeholder="e.g. 45000" oninput="calcSal()"></div>
-<div class="field"><label>Expected Range <span class="fhint">(auto)</span></label><input type="text" id="nESBr" readonly></div>
-<div class="field"><label>Salary Increase % <span class="fhint">(auto)</span></label><input type="text" id="nSInc" readonly></div>
-</div>
-<div class="sl2">🎯 Role</div>
-<div class="fg3">
-<div class="field"><label>Client <span class="req">*</span></label><select id="nCli" onchange="fillPosDrop()"><option value="">— Select —</option></select></div>
-<div class="field"><label>Department <span class="req">*</span></label><select id="nDept" onchange="fillPosDrop()"><option value="">— Select —</option></select></div>
-<div class="field"><label>Vacancy Position</label><select id="nPos" onchange="onPosSel()"><option value="">— Select open vacancy —</option></select></div>
-<div class="field s2"><label>Custom Position <span class="req">*</span></label><input type="text" id="nPosC" placeholder="Type role if not in vacancy list"></div>
-<div class="field"><label>Vacancy Code <span class="fhint">(auto)</span></label><input type="text" id="nVacC" readonly></div>
-</div>
-<div class="sl2">📅 Status &amp; Follow-up</div>
-<div class="fg3">
-<div class="field"><label>Status</label><select id="nStat"><option value="Active">Active</option><option>Not Contactable</option><option>Not Interested</option></select></div>
-<div class="field"><label>Follow-up Date <span class="req">*</span></label><input type="date" id="nFU"></div>
-<div class="field"><label>Follow-up Notes</label><input type="text" id="nFUN" placeholder="What to follow up on"></div>
-<div class="field s3"><label>Remarks</label><input type="text" id="nRem" placeholder="Initial notes about candidate"></div>
-</div>
-<div class="btn-row">
-<button class="btn btn-t btn-lg" onclick="submitNew()">+ Add Candidate &amp; Generate Code</button>
-<button class="btn btn-ghost" onclick="clearNew()">Clear</button>
-</div>
-</div>
-<div class="cbox hidden" id="nCodeBox">
-<div class="clbl">✅ Candidate Added — Unique Code</div>
-<div class="cval" id="nCodeVal">—</div>
-<div style="font-size:11px;color:var(--w60);margin-top:5px">Share this code with the recruiter to look up and update this record</div>
-<div class="flex gap8 mt8" style="justify-content:center">
-<button class="btn btn-t btn-sm" onclick="copyCode()">⎘ Copy Code</button>
-<button class="btn btn-ghost btn-sm" onclick="document.getElementById('nCodeBox').classList.add('hidden')">✕ Close</button>
-</div>
-</div>
 </div>
 
 <!-- UPDATE RECORD -->
@@ -1012,13 +1065,8 @@ async function graphPatch(url, body) {
 // GRAPH + SHAREPOINT
 // ══════════════════════════════════════════════════════
 async function gGet(url){await refreshToken();const r=await fetch(GRAPH+url,{headers:{Authorization:'Bearer '+tok}});if(!r.ok)throw new Error('Graph '+url+' → '+r.status+': '+(await r.text()).slice(0,100));return r.json();}
-async function onAuthOk(){
-document.getElementById('loginScreen').style.display='none';
-document.getElementById('appShell').style.display='block';
-const nm=acct&&acct.name?acct.name:'User';
-document.getElementById('sbAv').textContent=nm.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-document.getElementById('sbNm').textContent=nm.split(' ')[0];
-await loadData();}
+// onAuthOk defined above
+
 async function loadData(){
 setSP('loading','Loading...');showLoad('Reading from SharePoint...');
 try{
@@ -1453,6 +1501,525 @@ function showStatList(type) {
   // Scroll to stat list
   document.getElementById('statListCard').scrollIntoView({behavior:'smooth',block:'start'});
 }
+
+// ════════════════════════════════════════════════════════
+//  DASHBOARD — ANALYTICS ENGINE
+// ════════════════════════════════════════════════════════
+
+// Chart instances - stored so we can destroy before re-render
+const CHARTS = {};
+const CHART_COLORS = {
+  teal:   '#34BAC6', gold:   '#E9982B', blue:   '#1F5C93',
+  purple: '#9B72D4', red:    '#E05252', green:  '#52C77A',
+  cyan:   '#5DD5DF', orange: '#F4914A', pink:   '#D472B4',
+  slate:  '#5B9FD4'
+};
+const PALETTE = Object.values(CHART_COLORS);
+
+// Chart.js global defaults
+function initChartDefaults() {
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.color = 'rgba(251,251,250,0.6)';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.plugins.legend.labels.boxWidth = 10;
+  Chart.defaults.plugins.legend.labels.padding = 12;
+  Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(0,0,0,0.9)';
+  Chart.defaults.plugins.tooltip.titleColor = '#FBFBFA';
+  Chart.defaults.plugins.tooltip.bodyColor = 'rgba(251,251,250,0.7)';
+  Chart.defaults.plugins.tooltip.borderColor = 'rgba(52,186,198,0.3)';
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.padding = 10;
+}
+
+// ── DATE FILTERING ────────────────────────────────────────
+function getDashDates() {
+  const period = document.getElementById('df-period') ?
+    document.getElementById('df-period').value : 'fy';
+  const now = new Date();
+  let from, to;
+
+  if (period === 'custom') {
+    from = document.getElementById('df-from').value;
+    to   = document.getElementById('df-to').value;
+    // Show custom inputs
+    ['df-from','df-to'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+  } else {
+    ['df-from','df-to'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  }
+
+  if (period === 'all') { return { from: null, to: null }; }
+  if (period === 'fy') {
+    const yr = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    return { from: yr+'-04-01', to: (yr+1)+'-03-31' };
+  }
+  if (period === 'q') {
+    const q = Math.floor((now.getMonth() - 3 + 12) % 12 / 3);
+    const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const qMonths = [[3,4,5],[6,7,8],[9,10,11],[0,1,2]];
+    const m = qMonths[q];
+    const yr = m[0] === 0 ? fyStart + 1 : fyStart;
+    from = yr+'-'+String(m[0]+1).padStart(2,'0')+'-01';
+    const lastDay = new Date(yr, m[2]+1, 0);
+    to = lastDay.toISOString().split('T')[0];
+    return { from, to };
+  }
+  if (period === 'm') {
+    const yr = now.getFullYear(), mo = now.getMonth();
+    from = yr+'-'+String(mo+1).padStart(2,'0')+'-01';
+    const lastDay = new Date(yr, mo+1, 0);
+    to = lastDay.toISOString().split('T')[0];
+    return { from, to };
+  }
+  if (period === 'w') {
+    const d = new Date(now);
+    d.setDate(d.getDate() - d.getDay() + 1); // Monday
+    from = d.toISOString().split('T')[0];
+    const d2 = new Date(d); d2.setDate(d2.getDate() + 6);
+    to = d2.toISOString().split('T')[0];
+    return { from, to };
+  }
+  return { from, to };
+}
+
+function filterData(dates) {
+  let data = MD.slice();
+  const client = document.getElementById('df-client') ?
+    document.getElementById('df-client').value : '';
+  const dept = document.getElementById('df-dept') ?
+    document.getElementById('df-dept').value : '';
+  const rec = document.getElementById('df-recruiter') ?
+    document.getElementById('df-recruiter').value : '';
+
+  if (client) data = data.filter(r => r[C.client] === client);
+  if (dept)   data = data.filter(r => r[C.dept] === dept);
+  if (rec)    data = data.filter(r => r[C.recruiter] === rec);
+  if (dates.from) data = data.filter(r => r[C.sourcingDate] >= dates.from);
+  if (dates.to)   data = data.filter(r => r[C.sourcingDate] <= dates.to);
+  return data;
+}
+
+// ── MAIN RENDER ───────────────────────────────────────────
+function renderDash() {
+  if (typeof Chart === 'undefined') {
+    setTimeout(renderDash, 500);
+    return;
+  }
+  initChartDefaults();
+  // Populate filter dropdowns from masters
+  fillDashFilters();
+
+  const dates = getDashDates();
+  const data  = filterData(dates);
+
+  renderKPIs(data);
+  renderFunnel(data);
+  renderStatusDist(data);
+  renderClientChart(data);
+  renderSourceChart(data);
+  renderRecruiterChart(data);
+  renderTrendChart(data, dates);
+  renderRejectionChart(data);
+  renderDeptChart(data);
+  // Also refresh action queue
+  loadDash();
+}
+
+function fillDashFilters() {
+  const filters = [
+    ['df-client',    'clients',    'All Clients'],
+    ['df-dept',      'departments','All Departments'],
+    ['df-recruiter', 'recruiters', 'All Recruiters'],
+  ];
+  filters.forEach(([id, key, placeholder]) => {
+    const el = document.getElementById(id);
+    if (!el || el.options.length > 1) return; // already populated
+    const cur = el.value;
+    el.innerHTML = '<option value="">'+placeholder+'</option>';
+    mA(key).forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      el.appendChild(o);
+    });
+    if (cur) el.value = cur;
+  });
+}
+
+function mkChart(id, config) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (CHARTS[id]) { CHARTS[id].destroy(); }
+  CHARTS[id] = new Chart(el.getContext('2d'), config);
+}
+
+// ── KPI ROW ───────────────────────────────────────────────
+function renderKPIs(data) {
+  const active  = data.filter(r => ACTIVE_STATUSES.has(r[C.status])).length;
+  const joined  = data.filter(r => r[C.status] === 'Joined').length;
+  const offered = data.filter(r => r[C.status] === 'Offered').length;
+
+  // Average TAT (sourcing date to joined date)
+  const tats = data
+    .filter(r => r[C.status] === 'Joined' && r[C.sourcingDate] && r[C.updatedOn])
+    .map(r => {
+      const d1 = new Date(r[C.sourcingDate]);
+      const d2 = new Date(r[C.updatedOn]);
+      return Math.round((d2 - d1) / 86400000);
+    })
+    .filter(n => n > 0 && n < 365);
+  const avgTAT = tats.length ? Math.round(tats.reduce((a,b)=>a+b,0)/tats.length) : '—';
+
+  const sv2 = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  sv2('kpi-total',   data.length);
+  sv2('kpi-active',  active);
+  sv2('kpi-joined',  joined);
+  sv2('kpi-offered', offered);
+  sv2('kpi-tat',     avgTAT);
+  // Also update top dashboard stats
+  sv2('ds-tot', MD.length);
+  sv2('ds-act', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+  sv2('ds-joi', MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(today().slice(0,7))).length);
+  sv2('ds-pen', MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=today()).length);
+}
+
+// ── FUNNEL CHART ──────────────────────────────────────────
+function renderFunnel(data) {
+  const stages = [
+    'Active', 'Not Contactable',
+    'Consultant Interview in Progress', 'Shortlisted for Client I/W',
+    'Client I/W in Progress', 'Selected', 'Offered',
+    'Joining in Progress', 'Joined'
+  ];
+  const labels = ['Active','Not Contactable','Cons. Interview','Shortlisted','Client Interview','Selected','Offered','Joining','Joined'];
+  const counts = stages.map(s => data.filter(r => r[C.status] === s).length);
+  mkChart('ch-funnel', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Candidates',
+        data: counts,
+        backgroundColor: [
+          CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
+          CHART_COLORS.cyan, CHART_COLORS.teal, CHART_COLORS.green,
+          CHART_COLORS.blue, CHART_COLORS.purple, CHART_COLORS.teal
+        ],
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { precision: 0 } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ── STATUS DISTRIBUTION (DONUT) ───────────────────────────
+function renderStatusDist(data) {
+  const statusGroups = {
+    'Active': data.filter(r=>r[C.status]==='Active').length,
+    'Not Contactable': data.filter(r=>r[C.status]==='Not Contactable').length,
+    'In Interview': data.filter(r=>['Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress'].includes(r[C.status])).length,
+    'Selected/Offered': data.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])).length,
+    'Joined': data.filter(r=>r[C.status]==='Joined').length,
+    'Rejected': data.filter(r=>['Rejected by Consultant','Rejected by Client'].includes(r[C.status])).length,
+    'Inactive': data.filter(r=>['Not Interested','Offer Declined','Offer Revoked','Dropped'].includes(r[C.status])).length,
+  };
+  const labels = Object.keys(statusGroups).filter(k => statusGroups[k] > 0);
+  const values = labels.map(k => statusGroups[k]);
+  const colors = [CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
+                  CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.purple];
+  mkChart('ch-status', {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#000' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ' '+ctx.label+': '+ctx.parsed+' ('+Math.round(ctx.parsed/values.reduce((a,b)=>a+b,0)*100)+'%)' } }
+      }
+    }
+  });
+}
+
+// ── CLIENT PIPELINE ───────────────────────────────────────
+function renderClientChart(data) {
+  const clients = [...new Set(data.map(r=>r[C.client]).filter(Boolean))].sort();
+  const activeByClient  = clients.map(cl => data.filter(r=>r[C.client]===cl&&ACTIVE_STATUSES.has(r[C.status])).length);
+  const joinedByClient  = clients.map(cl => data.filter(r=>r[C.client]===cl&&r[C.status]==='Joined').length);
+  const totalByClient   = clients.map(cl => data.filter(r=>r[C.client]===cl).length);
+  mkChart('ch-client', {
+    type: 'bar',
+    data: {
+      labels: clients,
+      datasets: [
+        { label: 'Total',  data: totalByClient,  backgroundColor: 'rgba(31,92,147,0.5)', borderColor: CHART_COLORS.blue, borderWidth: 1, borderRadius: 3 },
+        { label: 'Active', data: activeByClient, backgroundColor: 'rgba(52,186,198,0.7)', borderColor: CHART_COLORS.teal, borderWidth: 1, borderRadius: 3 },
+        { label: 'Joined', data: joinedByClient, backgroundColor: 'rgba(233,152,43,0.8)', borderColor: CHART_COLORS.gold, borderWidth: 1, borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { precision: 0 } }
+      }
+    }
+  });
+}
+
+// ── SOURCE EFFECTIVENESS ──────────────────────────────────
+function renderSourceChart(data) {
+  const sources = [...new Set(data.map(r=>r[C.source]).filter(Boolean))].sort();
+  const sourcedCount = sources.map(s => data.filter(r=>r[C.source]===s).length);
+  const joinedCount  = sources.map(s => data.filter(r=>r[C.source]===s&&r[C.status]==='Joined').length);
+  const convRate     = sources.map((s,i) => sourcedCount[i] > 0 ? Math.round(joinedCount[i]/sourcedCount[i]*100) : 0);
+
+  mkChart('ch-source', {
+    type: 'bar',
+    data: {
+      labels: sources,
+      datasets: [
+        { label: 'Sourced', data: sourcedCount, backgroundColor: 'rgba(31,92,147,0.6)', borderRadius: 3, yAxisID: 'y' },
+        { label: 'Joined',  data: joinedCount,  backgroundColor: 'rgba(233,152,43,0.8)', borderRadius: 3, yAxisID: 'y' },
+        { label: 'Conv %',  data: convRate, type: 'line', borderColor: CHART_COLORS.teal,
+          backgroundColor: 'rgba(52,186,198,0.1)', pointBackgroundColor: CHART_COLORS.teal,
+          tension: 0.3, yAxisID: 'y2' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y:  { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { precision: 0 }, position: 'left' },
+        y2: { position: 'right', grid: { display: false }, ticks: { callback: v => v+'%' }, min: 0, max: 100 }
+      }
+    }
+  });
+}
+
+// ── RECRUITER PERFORMANCE ─────────────────────────────────
+function renderRecruiterChart(data) {
+  const recs = [...new Set(data.map(r=>r[C.recruiter]).filter(Boolean))].sort();
+  const sourced = recs.map(r => data.filter(d=>d[C.recruiter]===r).length);
+  const active  = recs.map(r => data.filter(d=>d[C.recruiter]===r&&ACTIVE_STATUSES.has(d[C.status])).length);
+  const joined  = recs.map(r => data.filter(d=>d[C.recruiter]===r&&d[C.status]==='Joined').length);
+  mkChart('ch-recruiter', {
+    type: 'bar',
+    data: {
+      labels: recs,
+      datasets: [
+        { label: 'Sourced', data: sourced, backgroundColor: 'rgba(31,92,147,0.5)', borderRadius: 3 },
+        { label: 'Active',  data: active,  backgroundColor: 'rgba(52,186,198,0.7)', borderRadius: 3 },
+        { label: 'Joined',  data: joined,  backgroundColor: 'rgba(233,152,43,0.85)',borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, stacked: false, ticks: { precision: 0 } }
+      }
+    }
+  });
+}
+
+// ── WEEKLY TREND ──────────────────────────────────────────
+function renderTrendChart(data, dates) {
+  // Build weekly buckets for last 12 weeks
+  const weeks = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i * 7);
+    const weekStart = new Date(d);
+    weekStart.setDate(d.getDate() - d.getDay() + 1);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weeks.push({
+      label: weekStart.toLocaleDateString('en-IN', {day:'2-digit',month:'short'}),
+      from:  weekStart.toISOString().split('T')[0],
+      to:    weekEnd.toISOString().split('T')[0]
+    });
+  }
+  const added  = weeks.map(w => data.filter(r=>r[C.sourcingDate]>=w.from&&r[C.sourcingDate]<=w.to).length);
+  const joined = weeks.map(w => data.filter(r=>r[C.status]==='Joined'&&r[C.updatedOn]>=w.from&&r[C.updatedOn]<=w.to).length);
+  mkChart('ch-trend', {
+    type: 'line',
+    data: {
+      labels: weeks.map(w => w.label),
+      datasets: [
+        { label: 'Added',  data: added,  borderColor: CHART_COLORS.teal, backgroundColor: 'rgba(52,186,198,0.1)',
+          fill: true, tension: 0.3, pointBackgroundColor: CHART_COLORS.teal, pointRadius: 3 },
+        { label: 'Joined', data: joined, borderColor: CHART_COLORS.gold, backgroundColor: 'rgba(233,152,43,0.1)',
+          fill: true, tension: 0.3, pointBackgroundColor: CHART_COLORS.gold, pointRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { precision: 0 }, min: 0 }
+      }
+    }
+  });
+}
+
+// ── REJECTION ANALYSIS ────────────────────────────────────
+function renderRejectionChart(data) {
+  const clients = [...new Set(data.map(r=>r[C.client]).filter(Boolean))].sort();
+  const rejCons = clients.map(cl => data.filter(r=>r[C.client]===cl&&r[C.status]==='Rejected by Consultant').length);
+  const rejCli  = clients.map(cl => data.filter(r=>r[C.client]===cl&&r[C.status]==='Rejected by Client').length);
+  mkChart('ch-reject', {
+    type: 'bar',
+    data: {
+      labels: clients,
+      datasets: [
+        { label: 'Rejected by Consultant', data: rejCons, backgroundColor: 'rgba(155,114,212,0.7)', borderRadius: 3 },
+        { label: 'Rejected by Client',     data: rejCli,  backgroundColor: 'rgba(224,82,82,0.7)',   borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false }, stacked: true },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, stacked: true, ticks: { precision: 0 } }
+      }
+    }
+  });
+}
+
+// ── DEPARTMENT CHART ──────────────────────────────────────
+function renderDeptChart(data) {
+  const depts = [...new Set(data.map(r=>r[C.dept]).filter(Boolean))].sort();
+  const active  = depts.map(d => data.filter(r=>r[C.dept]===d&&ACTIVE_STATUSES.has(r[C.status])).length);
+  const joined  = depts.map(d => data.filter(r=>r[C.dept]===d&&r[C.status]==='Joined').length);
+  mkChart('ch-dept', {
+    type: 'bar',
+    data: {
+      labels: depts,
+      datasets: [
+        { label: 'Active', data: active, backgroundColor: 'rgba(52,186,198,0.7)', borderRadius: 3 },
+        { label: 'Joined', data: joined, backgroundColor: 'rgba(233,152,43,0.8)', borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { precision: 0 } }
+      }
+    }
+  });
+}
+
+// ── DASHBOARD REPORT DOWNLOAD ─────────────────────────────
+function exportDashReport() {
+  const dates = getDashDates();
+  const data  = filterData(dates);
+  const wb    = XLSX.utils.book_new();
+
+  // Sheet 1: Candidate List
+  const hdrs2 = [C.code, C.name, C.position, C.client, C.dept, C.recruiter, C.source,
+                 C.status, C.sourcingDate, C.updatedOn, C.updatedBy, C.followupDate, C.remark];
+  const candRows = [hdrs2.map(h => h), ...data.map(r => hdrs2.map(h => r[h]||''))];
+  const ws1 = XLSX.utils.aoa_to_sheet(candRows);
+
+  // Style header row
+  ws1['!cols'] = hdrs2.map(h => ({wch: Math.max(h.length, 14)}));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Candidate List');
+
+  // Sheet 2: Audit Log for these candidates
+  if (WB && WB.Sheets['Change Log']) {
+    const codes = new Set(data.map(r => r[C.code]));
+    const clWs  = WB.Sheets['Change Log'];
+    const clRows = XLSX.utils.sheet_to_json(clWs, {header:1, defval:''})
+      .filter((r,i) => i === 0 || codes.has(r[2]));
+    if (clRows.length > 1) {
+      const ws2 = XLSX.utils.aoa_to_sheet(clRows);
+      ws2['!cols'] = [{wch:22},{wch:18},{wch:28},{wch:16},{wch:20},{wch:25},{wch:25}];
+      XLSX.utils.book_append_sheet(wb, ws2, 'Audit Log');
+    }
+  }
+
+  // Sheet 3: Summary Stats
+  const summaryData = [
+    ['TALENT+ HIRE PULSE — Dashboard Report'],
+    ['Generated: '+new Date().toLocaleString('en-IN'), 'Period: '+(document.getElementById('df-period')?document.getElementById('df-period').options[document.getElementById('df-period').selectedIndex].text:'All Time')],
+    [],
+    ['SUMMARY'],
+    ['Total Candidates', data.length],
+    ['Active Pipeline', data.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length],
+    ['Joined', data.filter(r=>r[C.status]==='Joined').length],
+    ['Offered', data.filter(r=>r[C.status]==='Offered').length],
+    ['Rejected (Total)', data.filter(r=>r[C.status]==='Rejected by Consultant'||r[C.status]==='Rejected by Client').length],
+    [],
+    ['BY CLIENT'],
+    ['Client', 'Total', 'Active', 'Joined', 'Rejected'],
+    ...[...new Set(data.map(r=>r[C.client]).filter(Boolean))].sort().map(cl=>[
+      cl,
+      data.filter(r=>r[C.client]===cl).length,
+      data.filter(r=>r[C.client]===cl&&ACTIVE_STATUSES.has(r[C.status])).length,
+      data.filter(r=>r[C.client]===cl&&r[C.status]==='Joined').length,
+      data.filter(r=>r[C.client]===cl&&['Rejected by Consultant','Rejected by Client'].includes(r[C.status])).length,
+    ]),
+    [],
+    ['BY RECRUITER'],
+    ['Recruiter', 'Sourced', 'Active', 'Joined'],
+    ...[...new Set(data.map(r=>r[C.recruiter]).filter(Boolean))].sort().map(rec=>[
+      rec,
+      data.filter(r=>r[C.recruiter]===rec).length,
+      data.filter(r=>r[C.recruiter]===rec&&ACTIVE_STATUSES.has(r[C.status])).length,
+      data.filter(r=>r[C.recruiter]===rec&&r[C.status]==='Joined').length,
+    ]),
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet(summaryData);
+  ws3['!cols'] = [{wch:30},{wch:12},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Summary');
+
+  const period = document.getElementById('df-period') ?
+    document.getElementById('df-period').value : 'all';
+  XLSX.writeFile(wb, 'THP_Dashboard_Report_'+period+'_'+today()+'.xlsx');
+  toast('ok', 'Report Downloaded', 'Candidate list + audit log + summary — 3 sheets');
+}
+
+// Trigger dashboard render when data loads
+const _origInitUI = initUI;
+function initUI() {
+  _origInitUI();
+  // Render dashboard after short delay to ensure Chart.js has loaded
+  setTimeout(renderDash, 800);
+}
+
+// Re-render when switching to dashboard panel
+const _origGoPanel = goPanel;
+function goPanel(name) {
+  _origGoPanel(name);
+  if (name === 'dashboard') {
+    setTimeout(renderDash, 100);
+  }
+}
+
 </script>
 </body>
 </html>
