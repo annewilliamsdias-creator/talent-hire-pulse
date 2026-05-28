@@ -1112,9 +1112,14 @@ try{
   if(!found)throw new Error('File not found on SharePoint. Check: Shared Documents/Talent+ Hire-Pulse/'+fn);
   fileId=found.id;
   await refreshToken();
-  showLoad('Downloading data file... (this may take 20-30 seconds)');
-  const resp=await fetchTimeout(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-    {headers:{Authorization:'Bearer '+tok}}, 60000);
+  showLoad('Connecting to file...');
+  // Get pre-auth download URL to avoid token expiry during large downloads
+  const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?select=id,name,@microsoft.graph.downloadUrl,size');
+  const dlUrl=meta['@microsoft.graph.downloadUrl'];
+  if(!dlUrl) throw new Error('Could not get download URL from SharePoint');
+  showLoad('Downloading '+(meta.size?Math.round(meta.size/1024)+'KB':'file')+'...');
+  // Pre-auth URL needs no Bearer token and has its own 5-min expiry
+  const resp=await fetchTimeout(dlUrl,{},60000);
   if(!resp.ok)throw new Error('Download failed: '+resp.status);
   showLoad('Reading records...');
   const buf=await resp.arrayBuffer();
