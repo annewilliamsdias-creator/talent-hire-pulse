@@ -398,7 +398,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <div class="tb-right">
         <div class="tb-stat">Candidates <strong id="tbTot">—</strong></div>
         <div class="tb-stat">Active <strong id="tbAct">—</strong></div>
-        <div class="sp-pill loading" id="spPill"><div class="sp-dot"></div><span id="spTxt">Connecting...</span></div>
+        <div class="sp-pill loading" id="spPill" style="cursor:pointer" onclick="if(this.classList.contains('err')||this.classList.contains('loading'))loadData()" title="Click to retry"><div class="sp-dot"></div><span id="spTxt">Connecting...</span></div>
         <button class="btn btn-ghost btn-sm" onclick="signOut()">Sign Out</button>
       </div>
     </div>
@@ -1010,19 +1010,23 @@ function signOut() {
 async function onAuthOk() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appShell').style.display = 'block';
-  const name = acct.name || acct.username;
+  const name = (acct && (acct.name || acct.username)) || 'User';
   const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  document.getElementById('sidebarAvatar').textContent = initials;
-  document.getElementById('sidebarName').textContent = name.split(' ')[0];
+  const avEl = document.getElementById('sbAv');
+  if (avEl) avEl.textContent = initials;
+  const nmEl = document.getElementById('sbNm');
+  if (nmEl) nmEl.textContent = name.split(' ')[0];
   // Auto-fill recruiter based on login name
   const firstName = name.split(' ')[0];
-  const rSel = document.getElementById('n_recruiter');
-  for (let opt of rSel.options) {
-    if (opt.value.toLowerCase() === firstName.toLowerCase()) {
-      rSel.value = opt.value; break;
+  const rSel = document.getElementById('nRec');
+  if (rSel) {
+    for (let opt of rSel.options) {
+      if (opt.value.toLowerCase() === firstName.toLowerCase()) {
+        rSel.value = opt.value; break;
+      }
     }
   }
-  await loadFromSharePoint();
+  await loadData();
 }
 
 // ════════════════════════════════════════════════════════
