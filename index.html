@@ -1074,7 +1074,7 @@ async function graphPatch(url, body) {
 // ══════════════════════════════════════════════════════
 async function gGet(url){
   await refreshToken();
-  const r=await fetchTimeout(GRAPH+url,{headers:{Authorization:'Bearer '+tok}},30000);
+  const r=await fetch(GRAPH+url,{headers:{Authorization:'Bearer '+tok}});
   if(!r.ok)throw new Error('Graph '+url+' → '+r.status);
   return r.json();
 }
