@@ -1070,41 +1070,51 @@ async function gGet(url){await refreshToken();const r=await fetch(GRAPH+url,{hea
 async function loadData(){
 setSP('loading','Loading...');showLoad('Reading from SharePoint...');
 try{
-if(!siteId){const s=await gGet('/sites/'+CFG.siteHost+':'+CFG.sitePath);siteId=s.id;}
-// Try many path variations to handle SharePoint encoding differences
-const fn=CFG.file;
-const paths=[
-  '/Shared Documents/Talent+ Hire-Pulse/'+fn,
-  '/Shared Documents/Talent+%20Hire-Pulse/'+fn,
-  '/Shared%20Documents/Talent+%20Hire-Pulse/'+fn,
-  '/Shared%20Documents/Talent+%20Hire-Pulse/'+fn,
-  CFG.folder+'/'+fn,
-  CFG.folder.replace('Talent+ ','Talent+%20')+'/'+fn,
-  '/Shared Documents/Talent+ Hire-Pulse/'+encodeURIComponent(fn),
-];
-let found=null;
-for(const p of paths){
-  try{found=await gGet('/sites/'+siteId+'/drive/root:'+p);if(found&&found.id){console.log('Found via path:',p);break;}}
-  catch(e){console.log('Path failed:',p,e.message.slice(0,40));continue;}
-}
-// If direct paths failed, search by listing the drive
-if(!found){
-  try{
-    console.log('Trying drive search...');
-    const srch=await gGet(`/sites/${siteId}/drive/root/search(q='${fn}')`);
-    if(srch.value&&srch.value.length>0){found=srch.value[0];console.log('Found via search:',found.name);}
-  }catch(e){console.log('Search failed:',e.message);}
-}
-if(!found)throw new Error('File "'+fn+'" not found on SharePoint. Please check the file is in: Shared Documents/Talent+ Hire-Pulse/');
-fileId=found.id;
-await refreshToken();
-const resp=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{headers:{Authorization:'Bearer '+tok}});
-if(!resp.ok)throw new Error('Download failed: '+resp.status);
-const buf=await resp.arrayBuffer();
-WB=XLSX.read(buf,{type:'array',cellDates:true});
-parseWB();setSP('ok','SharePoint ✓');hideLoad();
-initUI();
-}catch(e){setSP('err','Error: '+e.message.slice(0,35));hideLoad();toast('err','SharePoint Error',e.message);console.error(e);}}
+  if(!siteId){const s=await gGet('/sites/'+CFG.siteHost+':'+CFG.sitePath);siteId=s.id;}
+  const fn=CFG.file;
+  // Try cached path first (fastest on repeat loads)
+  const cachedPath=sessionStorage.getItem('thp_sp_path');
+  const paths=cachedPath
+    ?[cachedPath,'/Shared Documents/Talent+ Hire-Pulse/'+fn,CFG.folder+'/'+fn]
+    :['/Shared Documents/Talent+ Hire-Pulse/'+fn,
+      '/Shared Documents/Talent+%20Hire-Pulse/'+fn,
+      CFG.folder+'/'+fn,
+      CFG.folder.replace('Talent+ ','Talent+%20')+'/'+fn];
+  let found=null;
+  for(const p of paths){
+    try{found=await gGet('/sites/'+siteId+'/drive/root:'+p);
+      if(found&&found.id){sessionStorage.setItem('thp_sp_path',p);break;}}
+    catch(e){continue;}
+  }
+  // Fallback: drive search
+  if(!found){
+    try{
+      const srch=await gGet(`/sites/${siteId}/drive/root/search(q='${fn}')`);
+      if(srch.value&&srch.value.length>0){
+        found=srch.value[0];
+        sessionStorage.setItem('thp_sp_path','/Shared Documents/Talent+ Hire-Pulse/'+fn);
+      }
+    }catch(e){console.log('Search failed:',e.message);}
+  }
+  if(!found)throw new Error('File not found on SharePoint. Check: Shared Documents/Talent+ Hire-Pulse/'+fn);
+  fileId=found.id;
+  await refreshToken();
+  const resp=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+    {headers:{Authorization:'Bearer '+tok}});
+  if(!resp.ok)throw new Error('Download failed: '+resp.status);
+  const buf=await resp.arrayBuffer();
+  WB=XLSX.read(buf,{type:'array',cellDates:true});
+  parseWB();setSP('ok','SharePoint ✓');hideLoad();
+  initUI();
+}catch(e){
+  setSP('err','Error — click to retry');
+  hideLoad();
+  toast('err','SharePoint Error',e.message);
+  console.error(e);
+  // Add retry button to SP pill
+  const spEl=document.getElementById('spPill');
+  if(spEl){spEl.style.cursor='pointer';spEl.onclick=()=>loadData();}
+}}
 function parseWB(){
 const ws=WB.Sheets['Data'];if(!ws)return;
 const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
