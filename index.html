@@ -437,7 +437,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="kpi-row">
   <div class="kpi"><div class="kpi-num" id="kpi-total" style="color:var(--teal)">—</div><div class="kpi-lbl">TOTAL</div></div>
   <div class="kpi"><div class="kpi-num" id="kpi-active" style="color:#5dd5df">—</div><div class="kpi-lbl">ACTIVE PIPELINE</div></div>
-  <div class="kpi"><div class="kpi-num" id="kpi-joined" style="color:var(--gold)">—</div><div class="kpi-lbl">JOINED</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-joined" style="color:var(--gold)">—</div><div class="kpi-lbl">JOINED</div><div style="font-size:9px;color:var(--w60);margin-top:2px" id="ds-mon"></div></div>
   <div class="kpi"><div class="kpi-num" id="kpi-offered" style="color:#5b9fd4">—</div><div class="kpi-lbl">OFFERED</div></div>
   <div class="kpi"><div class="kpi-num" id="kpi-tat" style="color:#9b72d4">—</div><div class="kpi-lbl">AVG TAT (DAYS)</div></div>
 </div>
@@ -526,6 +526,298 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="statListCount"></div>
 </div>
 
+</div>
+
+
+<!-- NEW CANDIDATE -->
+<div class="panel" id="p-new">
+<div id="na" class="mb0"></div>
+<div class="card">
+<div class="card-hdr"><div class="card-title"><span class="ac">✦</span> Add New Candidate</div><button class="btn btn-ghost btn-sm" onclick="clearNew()">Clear</button></div>
+<div class="sl2">📡 Sourcing</div>
+<div class="fg3">
+<div class="field"><label>Sourcing Date <span class="req">*</span></label><input type="date" id="nSD"></div>
+<div class="field"><label>Screening Date</label><input type="date" id="nScD"></div>
+<div class="field"><label>Recruiter <span class="req">*</span></label><select id="nRec"><option value="">— Select —</option></select></div>
+<div class="field"><label>Source <span class="req">*</span></label><select id="nSrc"><option value="">— Select —</option></select></div>
+<div class="field s2"><label>Source Details</label><input type="text" id="nSrcD" placeholder="e.g. Naukri, LinkedIn, referred by..."></div>
+</div>
+<div class="sl2">👤 Candidate Details</div>
+<div class="fg3">
+<div class="field s3"><label>Full Name <span class="req">*</span></label><input type="text" id="nNm" placeholder="Candidate full name"></div>
+<div class="field"><label>Primary Mobile <span class="req">*</span></label><input type="tel" id="nMob" placeholder="10 digits" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+<div class="field"><label>Alternate Mobile</label><input type="tel" id="nAlt" placeholder="Optional" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+<div class="field"><label>Email <span class="req">*</span></label><input type="email" id="nEm" placeholder="candidate@email.com"></div>
+<div class="field"><label>Location of Posting</label><input type="text" id="nPLoc" placeholder="Auto from vacancy" readonly></div>
+<div class="field"><label>Candidate City <span class="req">*</span></label><select id="nLoc"><option value="">— Select City —</option></select></div>
+<div class="field s2"><label>Actual Area / Suburb</label><input type="text" id="nLocD" placeholder="e.g. Andheri West, Koramangala"></div>
+<div class="field">
+<label>Experience (Years) <span class="req">*</span></label>
+<div class="flex gap8" style="align-items:center">
+<input type="number" id="nExp" min="0" max="50" step="0.5" style="flex:1" oninput="onExp(this.value)" placeholder="e.g. 3.5">
+<label style="text-transform:none;letter-spacing:0;color:var(--w60);font-size:12px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px"><input type="checkbox" id="nFr" onchange="onFr(this.checked)" style="width:auto;background:none;border:none;padding:0;flex-shrink:0"> Fresher</label>
+</div>
+</div>
+<div class="field"><label>Notice Period</label><select id="nNot"><option value="">— Select —</option></select></div>
+<div class="field"><label>Current Company <span class="req" id="nCoReq"></span></label><input type="text" id="nCo" placeholder="Employer"></div>
+<div class="field"><label>Current Designation <span class="req" id="nDeReq"></span></label><input type="text" id="nDe" placeholder="Job title"></div>
+<div class="field"><label>Reason for Leaving</label><input type="text" id="nReas" placeholder="Growth, salary..."></div>
+</div>
+<div class="sl2">💰 Salary</div>
+<div class="fg3">
+<div class="field"><label>Current Salary ₹ PM</label><input type="number" id="nSPM" placeholder="e.g. 35000" oninput="calcSal()"></div>
+<div class="field"><label>Current ₹ PA <span class="fhint">(auto)</span></label><input type="number" id="nSPA" readonly></div>
+<div class="field"><label>Current Range <span class="fhint">(auto)</span></label><input type="text" id="nSBr" readonly></div>
+<div class="field"><label>Expected Salary ₹ PM</label><input type="number" id="nESPM" placeholder="e.g. 45000" oninput="calcSal()"></div>
+<div class="field"><label>Expected Range <span class="fhint">(auto)</span></label><input type="text" id="nESBr" readonly></div>
+<div class="field"><label>Salary Increase % <span class="fhint">(auto)</span></label><input type="text" id="nSInc" readonly></div>
+</div>
+<div class="sl2">🎯 Role</div>
+<div class="fg3">
+<div class="field"><label>Client <span class="req">*</span></label><select id="nCli" onchange="fillPosDrop()"><option value="">— Select —</option></select></div>
+<div class="field"><label>Department <span class="req">*</span></label><select id="nDept" onchange="fillPosDrop()"><option value="">— Select —</option></select></div>
+<div class="field"><label>Vacancy Position</label><select id="nPos" onchange="onPosSel()"><option value="">— Select open vacancy —</option></select></div>
+<div class="field s2"><label>Custom Position <span class="req">*</span></label><input type="text" id="nPosC" placeholder="Type role if not in vacancy list"></div>
+<div class="field"><label>Vacancy Code <span class="fhint">(auto)</span></label><input type="text" id="nVacC" readonly></div>
+</div>
+<div class="sl2">📅 Status &amp; Follow-up</div>
+<div class="fg3">
+<div class="field"><label>Status</label><select id="nStat"><option value="WIP">WIP</option><option>Not Contactable</option><option>Not Interested</option></select></div>
+<div class="field"><label>Follow-up Date <span class="req">*</span></label><input type="date" id="nFU"></div>
+<div class="field"><label>Follow-up Notes</label><input type="text" id="nFUN" placeholder="What to follow up on"></div>
+<div class="field s3"><label>Remarks</label><input type="text" id="nRem" placeholder="Initial notes about candidate"></div>
+</div>
+<div class="btn-row">
+<button class="btn btn-t btn-lg" onclick="submitNew()">+ Add Candidate &amp; Generate Code</button>
+<button class="btn btn-ghost" onclick="clearNew()">Clear</button>
+</div>
+</div>
+<div class="cbox hidden" id="nCodeBox">
+<div class="clbl">✅ Candidate Added — Unique Code</div>
+<div class="cval" id="nCodeVal">—</div>
+<div style="font-size:11px;color:var(--w60);margin-top:5px">Share this code with the recruiter to look up and update this record</div>
+<div class="flex gap8 mt8" style="justify-content:center">
+<button class="btn btn-t btn-sm" onclick="copyCode()">⎘ Copy Code</button>
+<button class="btn btn-ghost btn-sm" onclick="document.getElementById('nCodeBox').classList.add('hidden')">✕ Close</button>
+</div>
+</div>
+</div>
+
+<!-- UPDATE RECORD -->
+<div class="panel" id="p-upd">
+<div class="lbar">
+<div class="field"><label>Candidate Code</label><input type="text" id="uCode" placeholder="e.g. Talent+Hire/2026/001001" style="font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')doLookup()"></div>
+<button class="btn btn-p" onclick="doLookup()">⌕ Look Up</button>
+</div>
+<div id="uAlert"></div>
+<div class="hidden" id="uForm">
+<div class="cc">
+<div class="cav" id="uAv">—</div>
+<div class="ci"><h3 id="uNm">—</h3><p id="uRol">—</p></div>
+<div class="cm">
+<span class="ccode" id="uCd">—</span>
+<span id="uStat">—</span>
+<div class="flex gap8 mt8">
+<button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showWAMenu()"><svg width="12" height="12" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> WA</button>
+<button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showSched()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
+</div>
+</div>
+</div>
+<div class="card">
+<div class="card-title mb0" style="margin-bottom:14px"><span class="ac">↺</span> Status Update</div>
+<div id="uUpdAlert"></div>
+<div class="sl2">🔄 Status</div>
+<div class="fg3">
+<div class="field"><label>New Status <span class="req">*</span></label><select id="uS" onchange="onStatCh()"><option>WIP</option><option>Not Contactable</option><option>Not Interested</option><option>Dropped</option><option>Consultant Interview in Progress</option><option>Rejected by Consultant</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Rejected by Client</option><option>On Hold</option><option>Selected</option><option>Offered</option><option>Offer Revoked</option><option>Offer Declined</option><option>Joining in Progress</option><option>Joined</option></select></div>
+<div class="field" id="uDMF"><label>Decision Maker</label><select id="uDM"><option value="">— Select —</option><option>Consultant</option><option>Client</option></select></div>
+<div class="field"><label>Follow-up Date <span class="req" id="uFUReq">*</span></label><input type="date" id="uFU"></div>
+</div>
+<div class="sl2">🤝 Interview</div>
+<div class="fg3">
+<div class="field"><label>Client Interviewer</label><input type="text" id="uIvr"></div>
+<div class="field"><label>Interview Date</label><input type="date" id="uIvD"></div>
+<div class="field"><label>Client Decision Date</label><input type="date" id="uDecD"></div>
+</div>
+<div class="sl2">📋 Offer &amp; Joining</div>
+<div class="fg3">
+<div class="field"><label>Expected DOJ</label><input type="date" id="uDOJ" onchange="if(document.getElementById('uS').value==='Joining in Progress'&&this.value)document.getElementById('uFU').value=addDays(this.value,-1)"></div>
+<div class="field"><label>Offered Salary ₹</label><input type="number" id="uOffS"></div>
+<div class="field"><label>Offer Date</label><input type="date" id="uOffD"></div>
+<div class="field"><label>Role Interested In</label><select id="uRI"><option value="">— Select —</option></select></div>
+<div class="field s2"><label>Remarks (appended)</label><input type="text" id="uRem" placeholder="Update notes"></div>
+<div class="field s3"><label>Other Comments</label><textarea id="uCmt" style="min-height:55px"></textarea></div>
+</div>
+<div class="btn-row">
+<button class="btn btn-t btn-lg" onclick="submitUpd()">✓ Save Update</button>
+<button class="btn btn-ghost" onclick="document.getElementById('uForm').classList.add('hidden')">Cancel</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- EDIT PROFILE -->
+<div class="panel" id="p-ep">
+<div class="lbar">
+<div class="field"><label>Candidate Code</label><input type="text" id="epCode" placeholder="Enter code to edit profile" style="font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')doEPLookup()"></div>
+<button class="btn btn-p" onclick="doEPLookup()">⌕ Find</button>
+</div>
+<div id="epAlert"></div>
+<div class="card hidden" id="epForm">
+<div class="card-hdr"><div class="card-title"><span class="ac">👤</span> <span id="epNm">Edit Profile</span></div><span class="ccode" id="epCd">—</span></div>
+<div id="epSaveAlert"></div>
+<div class="sl2">👤 Personal</div>
+<div class="fg3">
+<div class="field s3"><label>Full Name <span class="req">*</span></label><input type="text" id="epNm2"></div>
+<div class="field"><label>Primary Mobile <span class="req">*</span></label><input type="tel" id="epMob" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+<div class="field"><label>Alternate Mobile</label><input type="tel" id="epAlt" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+<div class="field"><label>Email <span class="req">*</span></label><input type="email" id="epEm"></div>
+<div class="field"><label>Alt Email</label><input type="email" id="epAEm"></div>
+<div class="field"><label>City</label><select id="epLoc"><option value="">— Select —</option></select></div>
+</div>
+<div class="sl2">💼 Employment</div>
+<div class="fg3">
+<div class="field"><label>Current Company</label><input type="text" id="epCo"></div>
+<div class="field"><label>Designation</label><input type="text" id="epDe"></div>
+<div class="field"><label>Experience</label><input type="text" id="epExp"></div>
+<div class="field"><label>Notice Period</label><select id="epNot"><option value="">— Select —</option></select></div>
+<div class="field s2"><label>Reason for Leaving</label><input type="text" id="epReas"></div>
+</div>
+<div class="sl2">💰 Salary</div>
+<div class="fg3">
+<div class="field"><label>Current ₹ PM</label><input type="number" id="epSPM" oninput="epCalcSal()"></div>
+<div class="field"><label>Current ₹ PA <span class="fhint">(auto)</span></label><input type="number" id="epSPA" readonly></div>
+<div class="field"><label>Range <span class="fhint">(auto)</span></label><input type="text" id="epSBr" readonly></div>
+<div class="field"><label>Expected ₹ PM</label><input type="number" id="epESPM"></div>
+</div>
+<div class="sl2">🎯 Role</div>
+<div class="fg3">
+<div class="field"><label>Client</label><select id="epCli"><option value="">— Select —</option></select></div>
+<div class="field"><label>Department</label><select id="epDept"><option value="">— Select —</option></select></div>
+<div class="field"><label>Position</label><input type="text" id="epPos"></div>
+<div class="field"><label>Role Interested In</label><input type="text" id="epRI"></div>
+<div class="field"><label>Vacancy Code</label><input type="text" id="epVC"></div>
+<div class="field"><label>Recruiter</label><select id="epRec"><option value="">— Select —</option></select></div>
+</div>
+<div class="btn-row">
+<button class="btn btn-t btn-lg" onclick="saveEP()">✓ Save Changes</button>
+<button class="btn btn-ghost" onclick="document.getElementById('epForm').classList.add('hidden')">Cancel</button>
+</div>
+<div style="margin-top:12px;padding:9px 13px;background:var(--gdim);border:1px solid rgba(233,152,43,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">⚠ All changes logged to Change Log with your name, timestamp, and old/new values.</div>
+</div>
+</div>
+
+<!-- ALL RECORDS -->
+<div class="panel" id="p-rec">
+<div class="card mb0">
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+<div class="card-title mb0"><span class="ac">◈</span> All Candidates</div>
+<div class="flex gap8" style="flex-wrap:wrap">
+<input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:200px" oninput="renderRec()">
+<select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
+<select id="rCli" onchange="renderRec()" style="width:120px"><option value="">All Clients</option></select>
+</div>
+</div>
+<div class="tw"><table><thead><tr><th>Code</th><th>Name</th><th>Position</th><th>Client</th><th>Status</th><th>Follow-up</th><th>Recruiter</th><th>Sourced</th><th></th></tr></thead><tbody id="rBody"></tbody></table></div>
+<div style="margin-top:8px;font-size:11px;color:var(--w60)" id="rCount"></div>
+</div>
+</div>
+
+<!-- VACANCIES -->
+<div class="panel" id="p-vac">
+<div class="card">
+<div class="card-hdr"><div class="card-title"><span class="ac">◆</span> Vacancies</div></div>
+<div class="tw"><table><thead><tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Status</th><th>Active</th></tr></thead><tbody id="vBody"></tbody></table></div>
+</div>
+</div>
+
+<!-- BULK UPLOAD -->
+<div class="panel" id="p-bulk">
+<div class="card">
+<div class="card-hdr"><div class="card-title"><span class="ac">⬆</span> Bulk Upload</div></div>
+<div id="bulkAlert"></div>
+<div class="sl2">📥 Step 1 — Download Template</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Recruiter Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">20 columns. Daily sourcing uploads. Includes Valid Values Reference.</div><button class="btn btn-t btn-sm" onclick="dlTemplate('recruiter')">⬇ Recruiter Template</button></div>
+<div style="background:var(--gdim);border:1px solid rgba(233,152,43,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Admin Migration Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">Full schema. Historical data import and migration.</div><button class="btn btn-g btn-sm" onclick="dlTemplate('admin')">⬇ Admin Template</button></div>
+</div>
+<div class="sl2">📤 Step 2 — Upload Filled File</div>
+<div class="uz" id="bulkDrop" onclick="document.getElementById('bulkFI').click()" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor=''" ondrop="onBulkDrop(event)">
+<div style="font-size:30px;margin-bottom:7px">📂</div>
+<div style="font-size:13px;font-weight:500;margin-bottom:3px">Click or drag filled template here</div>
+<div style="font-size:11px;color:var(--w60)">.xlsx files only</div>
+</div>
+<input type="file" id="bulkFI" accept=".xlsx,.xls" style="display:none" onchange="onBulkFile(event)">
+</div>
+<div class="card hidden" id="bulkPrev">
+<div class="card-hdr"><div class="card-title"><span class="ac">👁</span> Preview</div><div class="flex gap8"><span id="bulkSum" style="font-size:12px;color:var(--w60)"></span><button class="btn btn-t btn-sm" id="bulkCmt" onclick="commitBulk()">✓ Commit</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('bulkPrev').classList.add('hidden')">Cancel</button></div></div>
+<div class="tw"><table><thead><tr><th>Row</th><th>✓</th><th>Name</th><th>Mobile</th><th>Email</th><th>Position</th><th>Client</th><th>Issues</th></tr></thead><tbody id="bulkBody"></tbody></table></div>
+</div>
+</div>
+
+<!-- ADMIN -->
+<div class="panel" id="p-adm">
+<div class="sg3">
+<div class="stat blue" style="cursor:pointer" onclick="switchATab('backup')"><div class="sn" style="font-size:24px" id="adm-bk-cnt">—</div><div class="sl">Backups</div></div>
+<div class="stat gold" style="cursor:pointer" onclick="switchATab('changelog')"><div class="sn" style="font-size:24px" id="adm-cl-cnt">—</div><div class="sl">Change Log Entries</div></div>
+<div class="stat teal" style="cursor:pointer" onclick="switchATab('config')"><div class="sn" style="font-size:22px">⚙</div><div class="sl">Config &amp; Masters</div></div>
+</div>
+<div class="atabs">
+<div class="atab on" id="at-backup" onclick="switchATab('backup')">💾 Backup</div>
+<div class="atab" id="at-changelog" onclick="switchATab('changelog')">📋 Change Log</div>
+<div class="atab" id="at-config" onclick="switchATab('config')">⚙ Config</div>
+<div class="atab" id="at-vacancies" onclick="switchATab('vacancies')">📌 Vacancies</div>
+<div class="atab" id="at-dashconfig" onclick="switchATab('dashconfig')">📊 Dashboard</div>
+<div class="atab" id="at-users" onclick="switchATab('users')">👥 Users</div>
+</div>
+<!-- BACKUP -->
+<div id="ap-backup"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">💾</span> Backup Manager</div><button class="btn btn-t btn-sm" onclick="doBackup()">Create Backup Now</button></div><div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">Backups saved to <span style="color:var(--teal);font-family:monospace">/Talent+ Hire-Pulse/Backups/</span> on SharePoint</div><div id="bkList"></div></div></div>
+<!-- CHANGELOG -->
+<div id="ap-changelog" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Change Log</div></div><div class="tw"><table><thead><tr><th>Timestamp</th><th>User</th><th>Code</th><th>Action</th><th>Field</th><th>Old</th><th>New</th></tr></thead><tbody id="clBody"></tbody></table></div></div></div>
+<!-- CONFIG -->
+<div id="ap-config" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">⚙</span> Config &amp; Masters</div><button class="btn btn-t btn-sm" onclick="saveCfg()">✓ Save Templates</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="mgrid"></div></div></div>
+<!-- VACANCIES ADMIN -->
+<div id="ap-vacancies" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📌</span> Manage Vacancies</div><button class="btn btn-t btn-sm" onclick="openAddVac()">+ Add Vacancy</button></div><div id="avAlert"></div>
+<div id="avForm" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
+<div class="sl2">📌 Vacancy Details</div>
+<div class="fg3">
+<div class="field"><label>Client <span class="req">*</span></label><select id="avCli"><option value="">— Select —</option></select></div>
+<div class="field"><label>Role / Designation <span class="req">*</span></label><input type="text" id="avRole" placeholder="e.g. Operations Executive"></div>
+<div class="field"><label>Department <span class="req">*</span></label><select id="avDept"><option value="">— Select —</option></select></div>
+<div class="field"><label>Location</label><select id="avLoc"><option value="">— Select —</option></select></div>
+<div class="field"><label>Monthly Budget ₹</label><input type="number" id="avBudget"></div>
+<div class="field"><label>Experience Required</label><input type="text" id="avExp" placeholder="e.g. 2-4 years"></div>
+<div class="field"><label>Recruiter Assigned</label><select id="avRec"><option value="">— Select —</option></select></div>
+<div class="field"><label>Target Fill Date</label><input type="date" id="avTgt"></div>
+<div class="field"><label>Status</label><select id="avStat"><option value="Open">Open</option><option>On Hold</option><option>Closed</option><option>Cancelled</option></select></div>
+<div class="field"><label>Active</label><select id="avAct"><option value="Y">Active — visible in dropdowns</option><option value="N">Inactive — hidden</option></select></div>
+</div>
+<div class="btn-row"><button class="btn btn-t" onclick="saveVac()">✓ Save</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('avForm').classList.add('hidden')">Cancel</button></div>
+</div>
+<div class="tw"><table><thead><tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Status</th><th>Active</th><th>Actions</th></tr></thead><tbody id="avBody"></tbody></table></div>
+</div></div>
+<!-- DASHBOARD CONFIG -->
+<div id="ap-dashconfig" class="hidden"><div class="card" style="text-align:center;padding:36px"><div style="font-size:44px;margin-bottom:12px">📊</div><div style="font-size:15px;font-weight:600;margin-bottom:7px">Dashboard Configuration — Coming in Session 5</div><div style="font-size:12px;color:var(--w60);max-width:380px;margin:0 auto;line-height:1.7">Chart visibility, default date ranges, client-facing layout, KPI thresholds and export branding will be configured here once dashboards are built.</div></div></div>
+<!-- USERS -->
+<div id="ap-users" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">👥</span> User Management</div><button class="btn btn-t btn-sm" onclick="openAddUser()">+ Add User</button></div><div id="uAlert2"></div>
+<div id="uForm2" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
+<div class="fg3">
+<div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="uUN"></div>
+<div class="field"><label>Email (O-365) <span class="req">*</span></label><input type="email" id="uUE" placeholder="name@withawill.in"></div>
+<div class="field"><label>User Type</label><select id="uUT" onchange="onUType()"><option value="internal">WithAWill Internal</option><option value="client">Client</option></select></div>
+<div class="field" id="uRF"><label>Role</label><select id="uUR"><option value="Recruiter">Recruiter</option><option value="Admin">Admin</option><option value="Super Admin">Super Admin</option></select></div>
+<div class="field hidden" id="uCF"><label>Client Company</label><select id="uUC"><option value="">— Select —</option></select></div>
+<div class="field hidden" id="uCRF"><label>Client Role</label><select id="uCR"><option value="Client Recruiter">Recruiter (own records)</option><option value="Client Manager">Manager (all records)</option><option value="Client Head">Functional Head</option></select></div>
+<div class="field"><label>Status</label><select id="uUS"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
+</div>
+<input type="hidden" id="uEI" value="-1">
+<div class="btn-row"><button class="btn btn-t" onclick="saveUser()">✓ Save User</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('uForm2').classList.add('hidden')">Cancel</button></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:11px 13px;font-size:11px;color:var(--w60)"><div style="font-size:9px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:5px">WITHAWILL ROLES</div><strong style="color:var(--ow)">Super Admin</strong> — Full access + user management<br><strong style="color:var(--ow)">Admin</strong> — Uploads, masters, vacancies, all records<br><strong style="color:var(--ow)">Recruiter</strong> — Candidate entry, updates, WhatsApp, Teams</div>
+<div style="background:var(--gdim);border:1px solid rgba(233,152,43,.15);border-radius:var(--rs);padding:11px 13px;font-size:11px;color:var(--w60)"><div style="font-size:9px;font-weight:700;color:var(--gold);letter-spacing:1px;margin-bottom:5px">CLIENT ROLES (PHASE 2)</div><strong style="color:var(--ow)">Functional Head</strong> — All records, dashboards, downloads<br><strong style="color:var(--ow)">Manager</strong> — All records<br><strong style="color:var(--ow)">Recruiter</strong> — Own records only</div>
+</div>
+<div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Type</th><th>Role</th><th>Client</th><th>Status</th><th>Actions</th></tr></thead><tbody id="uBody"></tbody></table></div>
+</div></div>
 </div>
 
 <!-- UPDATE RECORD -->
@@ -1218,11 +1510,15 @@ function goPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classLis
 function loadDash(){
 const td=today(),tm=td.slice(0,7),in3=addDays(td,3);
 const pend=MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
-document.getElementById('ds-tot').textContent=MD.length;
-document.getElementById('ds-act').textContent=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;
-document.getElementById('ds-joi').textContent=MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length;
-document.getElementById('ds-pen').textContent=pend.length;
-document.getElementById('pendBadge').textContent=pend.length;
+// Update both KPI row and topbar
+const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+sv2('kpi-total', MD.length);
+sv2('kpi-active', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+sv2('kpi-joined', MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length);
+sv2('ds-pen', pend.length);
+sv2('pendBadge', pend.length);
+sv2('tbTot', MD.length);
+sv2('tbAct', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
 const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
 // Action queue
 const items=MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])).map(r=>{const fd=r[C.followupDate];const u=fd<td?'ov':fd===td?'td':fd<=in3?'up':null;return u?{r,fd,u}:null;}).filter(Boolean).sort((a,b)=>{const o={ov:0,td:1,up:2};return o[a.u]-o[b.u]||a.fd.localeCompare(b.fd);}).slice(0,25);
@@ -1737,11 +2033,6 @@ function renderKPIs(data) {
   sv2('kpi-joined',  joined);
   sv2('kpi-offered', offered);
   sv2('kpi-tat',     avgTAT);
-  // Also update top dashboard stats
-  sv2('ds-tot', MD.length);
-  sv2('ds-act', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
-  sv2('ds-joi', MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(today().slice(0,7))).length);
-  sv2('ds-pen', MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=today()).length);
 }
 
 // ── FUNNEL CHART ──────────────────────────────────────────
