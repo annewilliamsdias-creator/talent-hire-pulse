@@ -381,10 +381,20 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- DASHBOARD -->
 <div class="panel active" id="p-dashboard">
 <div class="sg">
-<div class="stat blue"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-tot">—</div><div class="sl">Total Candidates</div><div class="ss">All time</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(52,186,198,.2)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></div></div>
-<div class="stat teal"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-act">—</div><div class="sl">Active Pipeline</div><div class="ss">In process</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(93,213,223,.2)" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
-<div class="stat gold"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-joi">—</div><div class="sl">Joined This Month</div><div class="ss" id="ds-mon"></div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(233,152,43,.25)" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div></div>
-<div class="stat purple"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-pen">—</div><div class="sl">Follow-ups Pending</div><div class="ss">Overdue + today</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(155,114,212,.25)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
+<div class="stat blue" style="cursor:pointer" onclick="showStatList('total')" title="View all candidates"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-tot">—</div><div class="sl">Total Candidates</div><div class="ss">All time — click to view</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(52,186,198,.2)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></div></div>
+<div class="stat teal" style="cursor:pointer" onclick="showStatList('active')" title="View active pipeline"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-act">—</div><div class="sl">Active Pipeline</div><div class="ss">In process — click to view</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(93,213,223,.2)" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
+<div class="stat gold" style="cursor:pointer" onclick="showStatList('joined')" title="View joined this month"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-joi">—</div><div class="sl">Joined This Month</div><div class="ss" id="ds-mon"></div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(233,152,43,.25)" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div></div>
+<div class="stat purple" style="cursor:pointer" onclick="showStatList('pending')" title="View pending follow-ups"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-pen">—</div><div class="sl">Follow-ups Pending</div><div class="ss">Overdue + today — click to view</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(155,114,212,.25)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
+</div>
+<!-- Stat drill-down list -->
+<div class="card hidden" id="statListCard">
+  <div class="card-hdr">
+    <div class="card-title"><span class="ac" id="statListTitle">Candidates</span></div>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('statListCard').classList.add('hidden')">✕ Close</button>
+  </div>
+  <div class="tw"><table><thead><tr><th>Code</th><th>Name</th><th>Position</th><th>Client</th><th>Status</th><th>Recruiter</th><th>Follow-up</th><th></th></tr></thead>
+  <tbody id="statListBody"></tbody></table></div>
+  <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="statListCount"></div>
 </div>
 <div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">⚡</span> My Action Queue</div><button class="btn btn-ghost btn-sm" onclick="loadDash()">↺ Refresh</button></div><div id="aq-list"></div></div>
 <div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📅</span> Upcoming Interviews</div></div><div id="iv-list"></div></div>
@@ -444,7 +454,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div class="sl2">📅 Status &amp; Follow-up</div>
 <div class="fg3">
-<div class="field"><label>Status</label><select id="nStat"><option value="WIP">WIP</option><option>Not Contactable</option><option>Not Interested</option></select></div>
+<div class="field"><label>Status</label><select id="nStat"><option value="Active">Active</option><option>Not Contactable</option><option>Not Interested</option></select></div>
 <div class="field"><label>Follow-up Date <span class="req">*</span></label><input type="date" id="nFU"></div>
 <div class="field"><label>Follow-up Notes</label><input type="text" id="nFUN" placeholder="What to follow up on"></div>
 <div class="field s3"><label>Remarks</label><input type="text" id="nRem" placeholder="Initial notes about candidate"></div>
@@ -490,7 +500,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div id="uUpdAlert"></div>
 <div class="sl2">🔄 Status</div>
 <div class="fg3">
-<div class="field"><label>New Status <span class="req">*</span></label><select id="uS" onchange="onStatCh()"><option>WIP</option><option>Not Contactable</option><option>Not Interested</option><option>Dropped</option><option>Consultant Interview in Progress</option><option>Rejected by Consultant</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Rejected by Client</option><option>On Hold</option><option>Selected</option><option>Offered</option><option>Offer Revoked</option><option>Offer Declined</option><option>Joining in Progress</option><option>Joined</option></select></div>
+<div class="field"><label>New Status <span class="req">*</span></label><select id="uS" onchange="onStatCh()"><option>Active</option><option>Not Contactable</option><option>Not Interested</option><option>Dropped</option><option>Consultant Interview in Progress</option><option>Rejected by Consultant</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Rejected by Client</option><option>On Hold</option><option>Selected</option><option>Offered</option><option>Offer Revoked</option><option>Offer Declined</option><option>Joining in Progress</option><option>Joined</option></select></div>
 <div class="field" id="uDMF"><label>Decision Maker</label><select id="uDM"><option value="">— Select —</option><option>Consultant</option><option>Client</option></select></div>
 <div class="field"><label>Follow-up Date <span class="req" id="uFUReq">*</span></label><input type="date" id="uFU"></div>
 </div>
@@ -505,6 +515,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Expected DOJ</label><input type="date" id="uDOJ" onchange="if(document.getElementById('uS').value==='Joining in Progress'&&this.value)document.getElementById('uFU').value=addDays(this.value,-1)"></div>
 <div class="field"><label>Offered Salary ₹</label><input type="number" id="uOffS"></div>
 <div class="field"><label>Offer Date</label><input type="date" id="uOffD"></div>
+<div class="field"><label>Final Designation Offered</label><input type="text" id="uFinalDesig" placeholder="Title in offer letter"></div>
 <div class="field"><label>Role Interested In</label><select id="uRI"><option value="">— Select —</option></select></div>
 <div class="field s2"><label>Remarks (appended)</label><input type="text" id="uRem" placeholder="Update notes"></div>
 <div class="field s3"><label>Other Comments</label><textarea id="uCmt" style="min-height:55px"></textarea></div>
@@ -575,7 +586,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="card-title mb0"><span class="ac">◈</span> All Candidates</div>
 <div class="flex gap8" style="flex-wrap:wrap">
 <input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:200px" oninput="renderRec()">
-<select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
+<select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>Active</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
 <select id="rCli" onchange="renderRec()" style="width:120px"><option value="">All Clients</option></select>
 </div>
 </div>
@@ -725,8 +736,12 @@ updatedBy:'Last Updated By',updatedOn:'Last Updated On',archive:'Archive Flag',
 tat:'TAT',sNo:'S. No',recruiter:'Recruiter',reportingDate:'Data base reporting date'};
 
 const TERMINAL=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
+// Active pipeline statuses (for dashboard Active count)
+const ACTIVE_STATUSES=new Set(['Active','Not Contactable','Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress','On Hold','Selected','Offered','Joining in Progress']);
+// Inactive statuses (can be re-approached)
+const INACTIVE_STATUSES=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
 const STATUS_DM={'Consultant Interview in Progress':'Consultant','Rejected by Consultant':'Consultant','Shortlisted for Client I/W':'Consultant','Client I/W in Progress':'Client','Rejected by Client':'Client','Selected':'Client','Offered':'Client','Offer Revoked':'Client','Offer Declined':'Client','Joining in Progress':'Client','Joined':'Client'};
-const FLOW={'WIP':['WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress'],'Not Contactable':['Not Contactable','Not Interested','Dropped','WIP','Consultant Interview in Progress'],'Not Interested':['Not Interested','WIP'],'Dropped':['Dropped','WIP'],'Consultant Interview in Progress':['Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','On Hold','Dropped'],'Rejected by Consultant':['Rejected by Consultant','WIP'],'Shortlisted for Client I/W':['Shortlisted for Client I/W','Client I/W in Progress','On Hold','Rejected by Consultant'],'Client I/W in Progress':['Client I/W in Progress','Rejected by Client','Selected','On Hold'],'Rejected by Client':['Rejected by Client','WIP','Shortlisted for Client I/W'],'On Hold':['On Hold','WIP','Consultant Interview in Progress','Client I/W in Progress'],'Selected':['Selected','Offered','On Hold'],'Offered':['Offered','Offer Revoked','Offer Declined','Joining in Progress'],'Offer Revoked':['Offer Revoked','WIP'],'Offer Declined':['Offer Declined','WIP'],'Joining in Progress':['Joining in Progress','Joined','Offer Revoked'],'Joined':['Joined']};
+const FLOW={'Active':['Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress'],'Not Contactable':['Not Contactable','Not Interested','Dropped','Active','Consultant Interview in Progress'],'Not Interested':['Not Interested','Active'],'Dropped':['Dropped','Active'],'Consultant Interview in Progress':['Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','On Hold','Dropped'],'Rejected by Consultant':['Rejected by Consultant','Active'],'Shortlisted for Client I/W':['Shortlisted for Client I/W','Client I/W in Progress','On Hold','Rejected by Consultant'],'Client I/W in Progress':['Client I/W in Progress','Rejected by Client','Selected','On Hold'],'Rejected by Client':['Rejected by Client','Active','Shortlisted for Client I/W'],'On Hold':['On Hold','Active','Consultant Interview in Progress','Client I/W in Progress'],'Selected':['Selected','Offered','On Hold'],'Offered':['Offered','Offer Revoked','Offer Declined','Joining in Progress'],'Offer Revoked':['Offer Revoked','Active'],'Offer Declined':['Offer Declined','Active'],'Joining in Progress':['Joining in Progress','Joined','Offer Revoked'],'Joined':['Joined']};
 
 let M={
 clients:['Atmann','DMC Bazaar','GIFTS','One Above','VSAR Tech'].map(n=>({name:n,active:true})),
@@ -736,7 +751,7 @@ sources:['Portal','Internal Referral','Social Platform','Direct','Consultant','C
 cities:['Ahmedabad','Aurangabad','Bangalore','Bhopal','Chennai','Coimbatore','Delhi','Faridabad','Ghaziabad','Gurgaon','Hyderabad','Indore','Jaipur','Jodhpur','Kochi','Kolkata','Lucknow','Ludhiana','Mumbai','Mysore','Nagpur','Nashik','Navi Mumbai','Noida','Patna','Pune','Raipur','Rajkot','Surat','Thane','Thiruvananthapuram','Vadodara','Varanasi','Visakhapatnam'].map(n=>({name:n,active:true})),
 noticePeriods:['Immediate','7 days','15 days','30 days','45 days','60 days','90 days','Serving Notice','Not disclosed'].map(n=>({name:n,active:true})),
 expLevels:['Fresher','0-1 yrs','1-3 yrs','3-5 yrs','5-8 yrs','8-12 yrs','12+ yrs'].map(n=>({name:n,active:true})),
-statuses:['WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'].map(n=>({name:n,active:true})),
+statuses:['Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'].map(n=>({name:n,active:true})),
 vacStatuses:['Open','On Hold','Shortlisted','Selected','Offered','Closed','Cancelled'].map(n=>({name:n,active:true})),
 decisionMakers:['Consultant','Client'].map(n=>({name:n,active:true}))};
 function mA(k){return(M[k]||[]).filter(x=>x.active).map(x=>x.name);}
@@ -850,7 +865,7 @@ async function refreshToken() {
   if (tokens.id_token) parseIdt(tokens.id_token);
 }
 // Alias so both PKCE auth and app code work
-const refreshTok = refreshToken;
+
 
 // ── Parse id_token for user info ─────────────────────────
 function parseIdt(idToken) {
@@ -903,7 +918,7 @@ window.onload = async () => {
       tok = stored.access_token;
       if (stored.id_token) parseIdt(stored.id_token);
       // Validate by trying a refresh — catches expired tokens
-      await refreshTok();
+      await refreshToken();
       await onAuthOk();
       return;
     } catch(e) {
@@ -957,7 +972,7 @@ async function onAuthOk() {
 //  GRAPH API HELPERS
 // ════════════════════════════════════════════════════════
 async function graphGet(url) {
-  await refreshTok();
+  await refreshToken();
   const r = await fetch(GRAPH + url, {
     headers:{ Authorization:'Bearer ' + tok }
   });
@@ -966,7 +981,7 @@ async function graphGet(url) {
 }
 
 async function graphPut(url, body, contentType='application/json') {
-  await refreshTok();
+  await refreshToken();
   const r = await fetch(GRAPH + url, {
     method:'PUT',
     headers:{
@@ -980,7 +995,7 @@ async function graphPut(url, body, contentType='application/json') {
 }
 
 async function graphPatch(url, body) {
-  await refreshTok();
+  await refreshToken();
   const r = await fetch(GRAPH + url, {
     method:'PATCH',
     headers:{
@@ -996,7 +1011,7 @@ async function graphPatch(url, body) {
 // ══════════════════════════════════════════════════════
 // GRAPH + SHAREPOINT
 // ══════════════════════════════════════════════════════
-async function gGet(url){await refreshTok();const r=await fetch(GRAPH+url,{headers:{Authorization:'Bearer '+tok}});if(!r.ok)throw new Error('Graph '+url+' → '+r.status+': '+(await r.text()).slice(0,100));return r.json();}
+async function gGet(url){await refreshToken();const r=await fetch(GRAPH+url,{headers:{Authorization:'Bearer '+tok}});if(!r.ok)throw new Error('Graph '+url+' → '+r.status+': '+(await r.text()).slice(0,100));return r.json();}
 async function onAuthOk(){
 document.getElementById('loginScreen').style.display='none';
 document.getElementById('appShell').style.display='block';
@@ -1034,7 +1049,7 @@ if(!found){
 }
 if(!found)throw new Error('File "'+fn+'" not found on SharePoint. Please check the file is in: Shared Documents/Talent+ Hire-Pulse/');
 fileId=found.id;
-await refreshTok();
+await refreshToken();
 const resp=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{headers:{Authorization:'Bearer '+tok}});
 if(!resp.ok)throw new Error('Download failed: '+resp.status);
 const buf=await resp.arrayBuffer();
@@ -1055,7 +1070,7 @@ loadUsersCfg();resolveRole();fillDrops();}
 async function saveWB(msg){
 if(!WB)return;showLoad(msg||'Saving...');
 try{rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});
-await refreshTok();
+await refreshToken();
 const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
 if(!r.ok)throw new Error('Upload failed: '+r.status);
 hideLoad();toast('ok','Saved','Changes written to SharePoint');
@@ -1091,7 +1106,7 @@ VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv
 // UI INIT
 // ══════════════════════════════════════════════════════
 function initUI(){updateTopbar();loadDash();renderRec();renderVac();initMastersGrid();}
-function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>!TERMINAL.has(r[C.status])&&r[C.status]!=='').length;document.getElementById('tbAct').textContent=act;}
+function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
 function goPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const p=document.getElementById('p-'+name);if(p)p.classList.add('active');const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));if(nav)nav.classList.add('active');if(name==='adm')initAdmin();if(name==='dashboard')loadDash();}
 
 // ══════════════════════════════════════════════════════
@@ -1101,7 +1116,7 @@ function loadDash(){
 const td=today(),tm=td.slice(0,7),in3=addDays(td,3);
 const pend=MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
 document.getElementById('ds-tot').textContent=MD.length;
-document.getElementById('ds-act').textContent=MD.filter(r=>!TERMINAL.has(r[C.status])&&r[C.status]!=='').length;
+document.getElementById('ds-act').textContent=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;
 document.getElementById('ds-joi').textContent=MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length;
 document.getElementById('ds-pen').textContent=pend.length;
 document.getElementById('pendBadge').textContent=pend.length;
@@ -1140,11 +1155,33 @@ function epCalcSal(){const pm=parseFloat(gv('epSPM'))||0,pa=pm*12;sv('epSPA',pa|
 // ══════════════════════════════════════════════════════
 function onFr(checked){const ei=document.getElementById('nExp');if(ei){ei.disabled=checked;ei.style.opacity=checked?'.4':'1';if(checked)ei.value='0';}['nCo','nDe'].forEach(id=>{const el=document.getElementById(id);if(el)el.closest('.field').style.opacity=checked?'.5':'1';});}
 function onExp(val){const n=parseFloat(val)||0;const fr=document.getElementById('nFr')&&document.getElementById('nFr').checked;['nCoReq','nDeReq'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=(n>0&&!fr)?'*':'';});['nCo','nDe'].forEach(id=>{const el=document.getElementById(id);if(el)el.closest('.field').style.opacity=(n===0||fr)?'.5':'1';});}
-function onPosSel(){const sel=document.getElementById('nPos');const ch=sel&&sel.options[sel.selectedIndex];if(ch&&ch.dataset.code){sv('nVacC',ch.dataset.code);sv('nPLoc',ch.dataset.loc||'');sv('nPosC','');}}
+function onPosSel(){
+  const sel=document.getElementById('nPos');
+  const ch=sel&&sel.options[sel.selectedIndex];
+  if(ch&&ch.dataset.code){
+    sv('nVacC',ch.dataset.code);
+    sv('nPLoc',ch.dataset.loc||'');
+    sv('nPosC','');
+    // Auto-populate Client and Department from vacancy
+    const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===ch.dataset.code);
+    if(vac){
+      const cli=document.getElementById('nCli');
+      const dept=document.getElementById('nDept');
+      if(cli&&vac['Company'])cli.value=vac['Company'];
+      if(dept&&vac['Department'])dept.value=vac['Department'];
+      // Refresh position dropdown to match
+      fillPosDrop();
+      // Re-select the position
+      const sel2=document.getElementById('nPos');
+      if(sel2)sel2.value=ch.value;
+      sv('nVacC',ch.dataset.code);
+    }
+  }
+}
 function clearNew(){['nSD','nScD','nSrcD','nMob','nAlt','nEm','nLocD','nPLoc','nExp','nReas','nCo','nDe','nSPM','nSPA','nSBr','nESPM','nESBr','nSInc','nPosC','nVacC','nRem','nFU','nFUN','nNm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['nRec','nSrc','nLoc','nNot','nCli','nDept','nPos','nStat'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const fr=document.getElementById('nFr');if(fr){fr.checked=false;onFr(false);}document.getElementById('nSD').value=today();document.getElementById('nCodeBox').classList.add('hidden');showAlert('na','','');const rn=acct&&acct.name?acct.name.split(' ')[0]:'';const rs=document.getElementById('nRec');if(rs)for(const o of rs.options){if(o.value.toLowerCase()===rn.toLowerCase()){rs.value=o.value;break;}}}
 async function submitNew(){
 const nm=gv('nNm'),mob=gv('nMob'),em=gv('nEm'),sd=gv('nSD'),rec=gv('nRec'),cli=gv('nCli'),dept=gv('nDept'),src=gv('nSrc'),loc=gv('nLoc');
-const pos=gv('nPos')||gv('nPosC'),fu=gv('nFU'),stat=gv('nStat')||'WIP';
+const pos=gv('nPos')||gv('nPosC'),fu=gv('nFU'),stat=gv('nStat')||'Active';
 if(!nm||!mob||!em||!sd||!rec||!cli||!dept||!src||!loc||!pos){showAlert('na','err','Please fill all required fields (marked *).');return;}
 if(!/^\d{10}$/.test(mob)){showAlert('na','err','Primary mobile must be exactly 10 digits.');return;}
 if(!em.includes('@')){showAlert('na','err','Please enter a valid email address.');return;}
@@ -1175,9 +1212,15 @@ MD.push(nr);writeCL('New Entry',code,'All','','',nm);
 await saveWB('Adding candidate...');
 sv('nCodeVal',code);document.getElementById('nCodeBox').classList.remove('hidden');
 showAlert('na','ok','✅ '+nm+' added. Code: '+code);
-updateTopbar();loadDash();renderRec();clearNew(true);};
+updateTopbar();loadDash();renderRec();setTimeout(()=>clearNew(true),100);};
 const dups=dupChk(mob,em);
-if(dups.length){const d=dups[0];const r=d.r;showModal('⚠ Duplicate Found','A candidate with the same '+d.type+' already exists.','<strong>'+r[C.name]+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br><span style="font-size:12px;color:var(--w60)">'+r[C.position]+' @ '+r[C.client]+' · '+r[C.status]+'</span>','<button class="btn btn-g" onclick="closeModal();window._doAdd()">Proceed Anyway</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');window._doAdd=doAdd;}
+if(dups.length){const d=dups[0];const r=d.r;const isInactive=INACTIVE_STATUSES.has(r[C.status]);
+  const title=isInactive?'♻ Re-engage Candidate?':'⚠ Duplicate Found';
+  const msg=isInactive?'This candidate was previously marked <strong>'+r[C.status]+'</strong> but can be re-approached for a new opportunity.':'A candidate with the same '+d.type+' already exists.';
+  showModal(title,msg,'<strong>'+r[C.name]+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br><span style="font-size:12px;color:var(--w60)">'+r[C.position]+' @ '+r[C.client]+' · '+r[C.status]+'</span>',
+  (isInactive?'<button class="btn btn-t" onclick="closeModal();qUpd(\'' + r[C.code] + '\')">Update Existing Record</button>':'')+
+  '<button class="btn btn-g" onclick="closeModal();window._doAdd()">Add as New Record</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
+  window._doAdd=doAdd;}
 else await doAdd();}
 
 // ══════════════════════════════════════════════════════
@@ -1195,7 +1238,7 @@ document.getElementById('uNm').textContent=r[C.name]||'—';
 document.getElementById('uRol').textContent=(r[C.position]||'—')+' · '+(r[C.client]||'—')+' · '+(r[C.recruiter]||'—');
 document.getElementById('uCd').textContent=r[C.code];
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
-sv('uS',r[C.status]||'WIP');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
+sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 ['uFU','uRem','uCmt','uIvD','uDecD','uDOJ','uOffS','uOffD'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 onStatCh();updStatDrop();}
 function onStatCh(){
@@ -1206,7 +1249,7 @@ else if(['On Hold','Offer Revoked'].includes(stat)){if(dmEl)dmEl.value='';if(dmF
 else{if(dmEl)dmEl.value='';if(dmF)dmF.style.opacity='.5';}
 const fuR=document.getElementById('uFUReq');if(fuR)fuR.textContent=TERMINAL.has(stat)?'':'*';
 if(stat==='Joining in Progress'&&eIdx!==-1){const r=MD[eIdx];if(r[C.doj]){const fuEl=document.getElementById('uFU');if(fuEl&&!fuEl.value)fuEl.value=addDays(r[C.doj],-1);}}}
-function updStatDrop(){if(eIdx===-1)return;const r=MD[eIdx];const cur=r[C.status]||'WIP';const valid=FLOW[cur]||Object.keys(FLOW);const sel=document.getElementById('uS');if(!sel)return;Array.from(sel.options).forEach(o=>{if(!o.value)return;o.disabled=!valid.includes(o.value);o.style.color=valid.includes(o.value)?'':'rgba(255,255,255,.2)';});}
+function updStatDrop(){if(eIdx===-1)return;const r=MD[eIdx];const cur=r[C.status]||'Active';const valid=FLOW[cur]||Object.keys(FLOW);const sel=document.getElementById('uS');if(!sel)return;Array.from(sel.options).forEach(o=>{if(!o.value)return;o.disabled=!valid.includes(o.value);o.style.color=valid.includes(o.value)?'':'rgba(255,255,255,.2)';});}
 async function submitUpd(){
 if(eIdx===-1)return;
 const stat=gv('uS'),dm=gv('uDM'),fu=gv('uFU');
@@ -1222,13 +1265,18 @@ const dd=gv('uDecD');if(dd)r[C.decisionDate]=dd;
 const doj=gv('uDOJ');if(doj)r[C.doj]=doj;
 const os=gv('uOffS');if(os)r[C.offeredSalary]=os;
 const od=gv('uOffD');if(od)r[C.offerDate]=od;
+const fd=gv('uFinalDesig');if(fd)r['Final Designation Offered']=fd;
 const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 writeCL('Status Update',r[C.code],C.status,oldStat,stat,r[C.name]);
 await saveWB('Updating record...');
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(stat)+'">'+stat+'</span>';
-toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();}
+toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();
+  // Clear update form
+  document.getElementById('uForm').classList.add('hidden');
+  document.getElementById('uCode').value='';
+  eIdx=-1;}
 
 // ══════════════════════════════════════════════════════
 // EDIT PROFILE
@@ -1253,7 +1301,11 @@ if(!r[C.name]){showAlert('epSaveAlert','err','Name cannot be empty.');return;}
 if(r[C.contact]&&!/^\d{10}$/.test(r[C.contact])){showAlert('epSaveAlert','err','Primary mobile must be 10 digits.');return;}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 changes.forEach(ch=>writeCL('Profile Edit',r[C.code],ch.lbl,ch.old,ch.new,r[C.name]));
-await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.length+' field(s) updated for '+r[C.name]);renderRec();toast('ok','Profile Updated',changes.length+' changes saved');}
+await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.length+' field(s) updated for '+r[C.name]);renderRec();toast('ok','Profile Updated',changes.length+' changes saved');
+  // Clear form
+  document.getElementById('epForm').classList.add('hidden');
+  document.getElementById('epCode').value='';
+  epIdx=-1;}
 
 // ══════════════════════════════════════════════════════
 // ALL RECORDS
@@ -1277,9 +1329,9 @@ tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'�
 // WHATSAPP + TEAMS
 // ══════════════════════════════════════════════════════
 function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')','',tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+'<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
-function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='wip')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}saveWB(false);}
+function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}saveWB(false);}
 function showSched(){if(eIdx===-1)return;const r=MD[eIdx];showModal('📅 Schedule Teams Interview','<strong>'+r[C.name]+'</strong> — '+(r[C.position]||'—')+' @ '+(r[C.client]||'—'),'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px"><div class="field"><label>Date</label><input type="date" id="si_d" value="'+(r[C.interviewDate]||'')+'" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Time</label><input type="time" id="si_t" value="10:00" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Duration</label><select id="si_dur" style="background:#000000;border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"><option value="30">30 mins</option><option value="45">45 mins</option><option value="60" selected>60 mins</option><option value="90">90 mins</option></select></div><div class="field"><label>Interviewer Email</label><input type="email" id="si_em" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)" placeholder="client@company.com"></div></div><div style="font-size:11px;color:var(--w60);margin-top:8px">Outlook calendar invites sent to all participants. WhatsApp option after creation.</div>','<button class="btn btn-t" onclick="createMeeting()">Create Teams Meeting</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');}
-async function createMeeting(){const r=MD[eIdx];const d=document.getElementById('si_d')&&document.getElementById('si_d').value;const t=document.getElementById('si_t')&&document.getElementById('si_t').value;const dur=parseInt(document.getElementById('si_dur')&&document.getElementById('si_dur').value)||60;const ie=document.getElementById('si_em')&&document.getElementById('si_em').value;if(!d||!t){toast('err','Missing details','Date and time required.');return;}closeModal();showLoad('Creating Teams meeting...');try{await refreshTok();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});if(ie&&ie.includes('@'))att.push({emailAddress:{address:ie,name:r[C.interviewerName]||'Interviewer'},type:'required'});const body={subject:'Interview — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,isOnlineMeeting:true,onlineMeetingProvider:'teamsForBusiness',body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your interview for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create meeting');}const ev=await resp.json();const link=ev.onlineMeeting&&ev.onlineMeeting.joinUrl?ev.onlineMeeting.joinUrl:'';r[C.interviewDate]=d;r._iTime=t;if(link)r[C.docLink]=link;r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();writeCL('Interview Scheduled',r[C.code],'Interview','',d+' '+t,r[C.name]);await saveWB(false);hideLoad();showModal('✅ Meeting Created','Teams meeting for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">Outlook invites sent to all participants.</span>',link?'<div style="font-size:10px;color:var(--w60);word-break:break-all;margin-top:4px">'+link.substring(0,80)+'...</div>':'','<button class="btn btn-t" onclick="closeModal();sendWA(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="closeModal()">Done</button>');}catch(e){hideLoad();toast('err','Meeting failed',e.message);}}
+async function createMeeting(){const r=MD[eIdx];const d=document.getElementById('si_d')&&document.getElementById('si_d').value;const t=document.getElementById('si_t')&&document.getElementById('si_t').value;const dur=parseInt(document.getElementById('si_dur')&&document.getElementById('si_dur').value)||60;const ie=document.getElementById('si_em')&&document.getElementById('si_em').value;if(!d||!t){toast('err','Missing details','Date and time required.');return;}closeModal();showLoad('Creating Teams meeting...');try{await refreshToken();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});if(ie&&ie.includes('@'))att.push({emailAddress:{address:ie,name:r[C.interviewerName]||'Interviewer'},type:'required'});const body={subject:'Interview — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,isOnlineMeeting:true,onlineMeetingProvider:'teamsForBusiness',body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your interview for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create meeting');}const ev=await resp.json();const link=ev.onlineMeeting&&ev.onlineMeeting.joinUrl?ev.onlineMeeting.joinUrl:'';r[C.interviewDate]=d;r._iTime=t;if(link)r[C.docLink]=link;r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();writeCL('Interview Scheduled',r[C.code],'Interview','',d+' '+t,r[C.name]);await saveWB(false);hideLoad();showModal('✅ Meeting Created','Teams meeting for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">Outlook invites sent to all participants.</span>',link?'<div style="font-size:10px;color:var(--w60);word-break:break-all;margin-top:4px">'+link.substring(0,80)+'...</div>':'','<button class="btn btn-t" onclick="closeModal();sendWA(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="closeModal()">Done</button>');}catch(e){hideLoad();toast('err','Meeting failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // BULK UPLOAD
@@ -1291,7 +1343,7 @@ const instr=[['TALENT+ HIRE PULSE — '+(type==='recruiter'?'Recruiter':'Admin M
 const ws=XLSX.utils.aoa_to_sheet([...instr,cols]);ws['!cols']=cols.map(()=>({wch:22}));
 XLSX.utils.book_append_sheet(wb2,ws,type==='recruiter'?'Upload':'Migration');
 const aC=mA('clients'),aD=mA('departments'),aS=mA('sources'),aN=mA('noticePeriods');
-const statuses=['WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Shortlisted for Client I/W','Rejected by Consultant','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'];
+const statuses=['Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Shortlisted for Client I/W','Rejected by Consultant','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'];
 const mx=Math.max(aC.length,aD.length,aS.length,aN.length,statuses.length);
 const ref=[['CLIENTS','DEPARTMENTS','SOURCES','NOTICE PERIOD','STATUS VALUES'],...Array.from({length:mx},(_,i)=>[aC[i]||'',aD[i]||'',aS[i]||'',aN[i]||'',statuses[i]||''])];
 const wsR=XLSX.utils.aoa_to_sheet(ref);wsR['!cols']=Array(5).fill({wch:25});
@@ -1302,7 +1354,7 @@ function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)p
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
 function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
 function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
-async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.status]=obj['Final Status']||'WIP';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
+async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // ADMIN PANEL
@@ -1311,7 +1363,7 @@ let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
 function switchATab(tab){['backup','changelog','config','vacancies','dashconfig','users'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='users'){loadUsersCfg();renderUsers();}}
 // BACKUP
-async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshTok();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
+async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
 function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:10px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:#ff6b6b;padding:12px">Error: '+e.message+'</div>';}}
 // CHANGELOG
 function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
@@ -1350,7 +1402,7 @@ function renderUsers(){const tb=document.getElementById('uBody');if(!tb)return;i
 function today(){return new Date().toISOString().split('T')[0];}
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
 function fmtD(s){if(!s||s==='nan'||!String(s).trim())return'';const d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
-function bdg(s){s=(s||'').toLowerCase();if(s==='wip')return'b-wip';if(s==='joined')return'b-joined';if(s.includes('reject'))return'b-rejected';if(s==='selected')return'b-selected';if(s.includes('offer'))return'b-offered';if(s==='on hold')return'b-hold';if(s==='dropped'||s==='not contactable'||s==='not interested')return'b-grey';if(s.includes('progress')||s.includes('shortlisted'))return'b-progress';return'b-wip';}
+function bdg(s){s=(s||'').toLowerCase();if(s==='Active')return'b-wip';if(s==='joined')return'b-joined';if(s.includes('reject'))return'b-rejected';if(s==='selected')return'b-selected';if(s.includes('offer'))return'b-offered';if(s==='on hold')return'b-hold';if(s==='dropped'||s==='not contactable'||s==='not interested')return'b-grey';if(s.includes('progress')||s.includes('shortlisted'))return'b-progress';return'b-wip';}
 function genCode(){const yr=new Date().getFullYear();const nums=MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}).filter(n=>n>0);const next=nums.length>0?Math.max(...nums)+1:1269;return'Talent+Hire/'+yr+'/'+String(next).padStart(6,'0');}
 function dupChk(mob,em,excl){const res=[];if(mob&&/^\d{10}$/.test(mob)){const f=MD.find(r=>String(r[C.contact]).trim()===mob&&r[C.code]!==excl);if(f)res.push({type:'Mobile',r:f});}if(em&&em.includes('@')){const f=MD.find(r=>String(r[C.email]).trim().toLowerCase()===em.toLowerCase()&&r[C.code]!==excl);if(f&&!res.find(x=>x.r[C.code]===f[C.code]))res.push({type:'Email',r:f});}return res;}
 function gv(id){const el=document.getElementById(id);return el?el.value.trim():'';}
@@ -1365,6 +1417,42 @@ function showModal(title,msg,rec,btns){document.getElementById('modal-title').te
 function closeModal(){document.getElementById('modal').classList.remove('show');}
 function copyCode(){const code=document.getElementById('nCodeVal').textContent;navigator.clipboard.writeText(code).then(()=>toast('ok','Copied!',code));}
 
+
+// ── DASHBOARD STAT DRILL-DOWN ──────────────────────────
+function showStatList(type) {
+  const td=today(), tm=td.slice(0,7);
+  let rows=[], title='';
+  if(type==='total'){
+    rows=MD; title='All Candidates ('+MD.length+')';
+  } else if(type==='active'){
+    rows=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status]));
+    title='Active Pipeline ('+rows.length+')';
+  } else if(type==='joined'){
+    rows=MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm));
+    title='Joined This Month ('+rows.length+')';
+  } else if(type==='pending'){
+    rows=MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
+    title='Follow-ups Pending ('+rows.length+')';
+  }
+  document.getElementById('statListTitle').textContent=title;
+  const tb=document.getElementById('statListBody');
+  tb.innerHTML=rows.slice(0,200).map(r=>{
+    const fu=r[C.followupDate]&&r[C.followupDate]<td;
+    return '<tr><td class="mono" style="font-size:10px">'+r[C.code]+'</td>'+
+    '<td><strong>'+r[C.name]+'</strong></td>'+
+    '<td class="m">'+r[C.position]+'</td>'+
+    '<td class="m">'+r[C.client]+'</td>'+
+    '<td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td>'+
+    '<td class="m">'+r[C.recruiter]+'</td>'+
+    '<td class="m '+(fu?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td>'+
+    '<td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')">Update</button></td></tr>';
+  }).join('');
+  const cnt=document.getElementById('statListCount');
+  if(cnt)cnt.textContent='Showing '+Math.min(rows.length,200)+' of '+rows.length+' records';
+  document.getElementById('statListCard').classList.remove('hidden');
+  // Scroll to stat list
+  document.getElementById('statListCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
 </script>
 </body>
 </html>
