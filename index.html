@@ -1082,76 +1082,72 @@ async function gGet(url){
 
 async function loadData(){
   setSP('loading','Loading...');showLoad('Connecting to SharePoint...');
-  console.log('loadData: start, tok=', tok ? tok.slice(0,20)+'...' : 'MISSING');
+  console.log('loadData: start');
   try{
     // Step 1: Get site ID
     if(!siteId){
       showLoad('Getting site...');
-      console.log('loadData: getSite');
-      const s = await gGet('/sites/'+CFG.siteHost+':'+CFG.sitePath);
-      siteId = s.id;
-      console.log('loadData: siteId='+siteId);
+      const s=await gGet('/sites/'+CFG.siteHost+':'+CFG.sitePath);
+      siteId=s.id;
+      console.log('loadData: siteId ok');
     }
-    // Step 2: Find file ID
+    // Step 2: Find file by browsing drive (most reliable)
     if(!fileId){
       showLoad('Finding file...');
-      console.log('loadData: finding file');
-      const paths=[
-        '/Shared Documents/Talent+ Hire-Pulse/'+CFG.file,
-        '/Shared Documents/Talent+%20Hire-Pulse/'+CFG.file,
-        CFG.folder+'/'+CFG.file,
-      ];
-      const cached=sessionStorage.getItem('thp_sp_path');
-      if(cached) paths.unshift(cached);
-      for(const p of paths){
-        try{
-          console.log('trying path:',p);
-          const d=await gGet('/sites/'+siteId+'/drive/root:'+p);
-          if(d&&d.id){fileId=d.id;sessionStorage.setItem('thp_sp_path',p);console.log('found:',p);break;}
-        }catch(e){console.log('failed:',p);}
-      }
-      // Fallback: browse folders
-      if(!fileId){
-        console.log('path search failed, browsing...');
-        try{
-          const root=await gGet('/sites/'+siteId+'/drive/root/children');
-          for(const item of root.value){
-            if(item.name.includes('Hire')||item.name.includes('Pulse')||item.name.includes('Talent')){
-              const kids=await gGet('/sites/'+siteId+'/drive/items/'+item.id+'/children');
-              const f=kids.value.find(i=>i.name.endsWith('.xlsx'));
-              if(f){fileId=f.id;console.log('found via browse:',f.name);break;}
-            }
+      // Try cached fileId first
+      const cachedId=sessionStorage.getItem('thp_file_id');
+      if(cachedId){fileId=cachedId;console.log('loadData: using cached fileId');}
+      else{
+        // Browse drive root to find Shared Documents, then our folder
+        console.log('loadData: browsing drive');
+        const driveRoot=await gGet('/sites/'+siteId+'/drive/root/children');
+        // Find Shared Documents folder
+        const sharedDocs=driveRoot.value.find(i=>i.name==='Shared Documents'||i.name==='Documents');
+        if(sharedDocs){
+          console.log('loadData: found',sharedDocs.name);
+          const sdKids=await gGet('/sites/'+siteId+'/drive/items/'+sharedDocs.id+'/children');
+          // Find our folder (contains Hire, Pulse or Talent)
+          const ourFolder=sdKids.value.find(i=>i.name.includes('Hire')||i.name.includes('Pulse')||i.name.includes('Talent'));
+          if(ourFolder){
+            console.log('loadData: found folder',ourFolder.name);
+            const folderKids=await gGet('/sites/'+siteId+'/drive/items/'+ourFolder.id+'/children');
+            const xlFile=folderKids.value.find(i=>i.name===CFG.file||i.name.endsWith('.xlsx'));
+            if(xlFile){fileId=xlFile.id;sessionStorage.setItem('thp_file_id',xlFile.id);console.log('loadData: found file',xlFile.name);}
           }
-        }catch(e){console.log('browse failed:',e.message);}
+        }
+        // Fallback: search by name
+        if(!fileId){
+          console.log('loadData: trying search');
+          try{
+            const srch=await gGet('/sites/'+siteId+"/drive/root/search(q='TalentHirePulse')");
+            const f=srch.value&&srch.value.find(i=>i.name.endsWith('.xlsx'));
+            if(f){fileId=f.id;sessionStorage.setItem('thp_file_id',f.id);console.log('loadData: found via search',f.name);}
+          }catch(e){console.log('search failed',e.message);}
+        }
       }
     }
-    if(!fileId) throw new Error('File not found on SharePoint');
-    // Step 3: Download file directly (no timeout wrapper - let browser handle it)
+    if(!fileId) throw new Error('Could not find TalentHirePulse_Master.xlsx on SharePoint');
+    // Step 3: Download
     showLoad('Downloading file...');
-    console.log('loadData: downloading fileId='+fileId);
-    const r = await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+    console.log('loadData: downloading');
+    const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
       {headers:{Authorization:'Bearer '+tok}});
-    console.log('loadData: download response status='+r.status);
-    if(!r.ok){
-      if(r.status===401){
-        // Token expired - refresh and retry once
-        console.log('loadData: 401, refreshing token and retrying');
-        await refreshToken();
-        const r2=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-          {headers:{Authorization:'Bearer '+tok}});
-        if(!r2.ok) throw new Error('Download failed after token refresh: '+r2.status);
-        const buf2=await r2.arrayBuffer();
-        showLoad('Reading records...');
-        WB=XLSX.read(buf2,{type:'array',cellDates:true});
-      } else {
-        throw new Error('Download failed: '+r.status);
-      }
+    if(r.status===401){
+      console.log('loadData: 401 - refreshing token');
+      await refreshToken();
+      const r2=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+        {headers:{Authorization:'Bearer '+tok}});
+      if(!r2.ok) throw new Error('Download failed after retry: '+r2.status);
+      const buf2=await r2.arrayBuffer();
+      showLoad('Reading records...');
+      WB=XLSX.read(buf2,{type:'array',cellDates:true});
+    } else if(!r.ok){
+      throw new Error('Download failed: '+r.status);
     } else {
       const buf=await r.arrayBuffer();
       showLoad('Reading records...');
       WB=XLSX.read(buf,{type:'array',cellDates:true});
     }
-    console.log('loadData: parseWB');
     parseWB();
     setSP('ok','SharePoint ✓');
     hideLoad();
@@ -1161,7 +1157,7 @@ async function loadData(){
     setSP('err','↺ Click to retry');
     hideLoad();
     toast('err','Connection failed',e.message.slice(0,80));
-    console.error('loadData error:',e.message,e);
+    console.error('loadData error:',e.message);
   }
 }
 function parseWB(){
