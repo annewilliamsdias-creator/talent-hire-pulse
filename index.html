@@ -1081,9 +1081,16 @@ async function gGet(url){
 // onAuthOk defined above
 
 async function loadData(){
-setSP('loading','Loading...');showLoad('Reading from SharePoint...');
+setSP('loading','Loading...');showLoad('Step 1: Connecting to SharePoint...');
+console.log('loadData: start');
 try{
-  if(!siteId){const s=await gGet('/sites/'+CFG.siteHost+':'+CFG.sitePath);siteId=s.id;}
+  if(!siteId){
+    showLoad('Step 1: Getting site ID...');
+    console.log('loadData: getting siteId');
+    const s=await gGet('/sites/'+CFG.siteHost+':'+CFG.sitePath);
+    siteId=s.id;
+    console.log('loadData: siteId=',siteId);
+  }
   const fn=CFG.file;
   // Try cached path first (fastest on repeat loads)
   const cachedPath=sessionStorage.getItem('thp_sp_path');
@@ -1111,10 +1118,16 @@ try{
   }
   if(!found)throw new Error('File not found on SharePoint. Check: Shared Documents/Talent+ Hire-Pulse/'+fn);
   fileId=found.id;
+  console.log('loadData: fileId=',fileId);
+  showLoad('Step 2: Refreshing token...');
+  console.log('loadData: refreshing token');
   await refreshToken();
-  showLoad('Connecting to file...');
+  console.log('loadData: token refreshed, tok length=',tok?tok.length:0);
+  showLoad('Step 3: Getting download URL...');
   // Get pre-auth download URL to avoid token expiry during large downloads
+  console.log('loadData: getting meta/downloadUrl');
   const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?select=id,name,@microsoft.graph.downloadUrl,size');
+  console.log('loadData: meta=',JSON.stringify({name:meta.name,size:meta.size,hasUrl:!!meta['@microsoft.graph.downloadUrl']}));
   const dlUrl=meta['@microsoft.graph.downloadUrl'];
   if(!dlUrl) throw new Error('Could not get download URL from SharePoint');
   showLoad('Downloading '+(meta.size?Math.round(meta.size/1024)+'KB':'file')+'...');
@@ -1129,8 +1142,10 @@ try{
 }catch(e){
   setSP('err','↺ Click to retry');
   hideLoad();
-  toast('err','SharePoint Error — click orange pill to retry',e.message.slice(0,80));
-  console.error('SP Error:',e);
+  // Show full error in toast
+  const errMsg = e.message || String(e);
+  toast('err','SP Error: '+errMsg.slice(0,60),'Check browser console for details');
+  console.error('loadData FAILED at step:',errMsg,e);
 }}
 function parseWB(){
 const ws=WB.Sheets['Data'];if(!ws)return;
