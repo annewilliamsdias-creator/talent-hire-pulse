@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Talent+ Hire Pulse — WithAWill HR</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 
@@ -252,6 +253,31 @@ cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02)}
 border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap}
 .atab.on{color:var(--teal);border-bottom-color:var(--teal)}
 /* MISC */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.dash-grid.full{grid-template-columns:1fr}
+.dash-grid.three{grid-template-columns:1fr 1fr 1fr}
+.chart-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--r);padding:20px 22px}
+.chart-title{font-family:"Cormorant Garamond",serif;font-size:16px;font-weight:600;
+  color:var(--ow);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.chart-title .ac{color:var(--teal)}
+.chart-sub{font-size:11px;color:var(--w60);margin-bottom:14px}
+.chart-wrap{position:relative;height:220px}
+.chart-wrap.tall{height:280px}
+.chart-wrap.sm{height:160px}
+.dash-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+  border-radius:var(--r);padding:12px 16px;margin-bottom:16px}
+.dash-filters select,.dash-filters input{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--rs);padding:6px 10px;font-size:12px;color:var(--ow);
+  font-family:"DM Sans",sans-serif}
+.filter-label{font-size:11px;color:var(--w60);font-weight:600;letter-spacing:.5px}
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--r);padding:14px 16px;text-align:center}
+.kpi-num{font-family:"Cormorant Garamond",serif;font-size:28px;font-weight:700;line-height:1}
+.kpi-lbl{font-size:10px;color:var(--w60);margin-top:3px;letter-spacing:.5px}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
 .hidden{display:none!important}
@@ -372,7 +398,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <div class="tb-right">
         <div class="tb-stat">Candidates <strong id="tbTot">—</strong></div>
         <div class="tb-stat">Active <strong id="tbAct">—</strong></div>
-        <div class="sp-pill loading" id="spPill"><div class="sp-dot"></div><span id="spTxt">Connecting...</span></div>
+        <div class="sp-pill loading" id="spPill" style="cursor:pointer" onclick="if(this.classList.contains('err')||this.classList.contains('loading'))loadData()" title="Click to retry"><div class="sp-dot"></div><span id="spTxt">Connecting...</span></div>
         <button class="btn btn-ghost btn-sm" onclick="signOut()">Sign Out</button>
       </div>
     </div>
@@ -380,89 +406,126 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- DASHBOARD -->
 <div class="panel active" id="p-dashboard">
-<div class="sg">
-<div class="stat blue"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-tot">—</div><div class="sl">Total Candidates</div><div class="ss">All time</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(52,186,198,.2)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></div></div>
-<div class="stat teal"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-act">—</div><div class="sl">Active Pipeline</div><div class="ss">In process</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(93,213,223,.2)" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
-<div class="stat gold"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-joi">—</div><div class="sl">Joined This Month</div><div class="ss" id="ds-mon"></div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(233,152,43,.25)" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div></div>
-<div class="stat purple"><div style="display:flex;justify-content:space-between"><div><div class="sn" id="ds-pen">—</div><div class="sl">Follow-ups Pending</div><div class="ss">Overdue + today</div></div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(155,114,212,.25)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
-</div>
-<div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">⚡</span> My Action Queue</div><button class="btn btn-ghost btn-sm" onclick="loadDash()">↺ Refresh</button></div><div id="aq-list"></div></div>
-<div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📅</span> Upcoming Interviews</div></div><div id="iv-list"></div></div>
-<div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">🚪</span> Joining in Progress</div></div><div id="jp-list"></div></div>
+
+<!-- FILTERS -->
+<div class="dash-filters">
+  <span class="filter-label">PERIOD</span>
+  <select id="df-period" onchange="renderDash()">
+    <option value="all">All Time</option>
+    <option value="fy" selected>This FY (Apr–Mar)</option>
+    <option value="q">This Quarter</option>
+    <option value="m">This Month</option>
+    <option value="w">This Week</option>
+    <option value="custom">Custom Range</option>
+  </select>
+  <input type="date" id="df-from" style="display:none" onchange="renderDash()">
+  <input type="date" id="df-to" style="display:none" onchange="renderDash()">
+  <select id="df-client" onchange="renderDash()">
+    <option value="">All Clients</option>
+  </select>
+  <select id="df-dept" onchange="renderDash()">
+    <option value="">All Departments</option>
+  </select>
+  <select id="df-recruiter" onchange="renderDash()">
+    <option value="">All Recruiters</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" onclick="renderDash()">↺ Refresh</button>
+  <button class="btn btn-t btn-sm" onclick="exportDashReport()">⬇ Download Report</button>
 </div>
 
-<!-- NEW CANDIDATE -->
-<div class="panel" id="p-new">
-<div id="na" class="mb0"></div>
+<!-- KPI ROW -->
+<div class="kpi-row">
+  <div class="kpi"><div class="kpi-num" id="kpi-total" style="color:var(--teal)">—</div><div class="kpi-lbl">TOTAL</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-active" style="color:#5dd5df">—</div><div class="kpi-lbl">ACTIVE PIPELINE</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-joined" style="color:var(--gold)">—</div><div class="kpi-lbl">JOINED</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-offered" style="color:#5b9fd4">—</div><div class="kpi-lbl">OFFERED</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-tat" style="color:#9b72d4">—</div><div class="kpi-lbl">AVG TAT (DAYS)</div></div>
+</div>
+
+<!-- ROW 1: Pipeline Funnel + Status Distribution -->
+<div class="dash-grid">
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">⬇</span> Pipeline Funnel</div>
+    <div class="chart-sub">Candidates by stage</div>
+    <div class="chart-wrap"><canvas id="ch-funnel"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">◉</span> Status Distribution</div>
+    <div class="chart-sub">Share of each status</div>
+    <div class="chart-wrap"><canvas id="ch-status"></canvas></div>
+  </div>
+</div>
+
+<!-- ROW 2: Client Pipeline + Source Effectiveness -->
+<div class="dash-grid">
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">🏢</span> Client-wise Active Pipeline</div>
+    <div class="chart-sub">Active candidates per client</div>
+    <div class="chart-wrap"><canvas id="ch-client"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">📡</span> Source Effectiveness</div>
+    <div class="chart-sub">Candidates sourced vs joined by source</div>
+    <div class="chart-wrap"><canvas id="ch-source"></canvas></div>
+  </div>
+</div>
+
+<!-- ROW 3: Recruiter Performance + Weekly Trend -->
+<div class="dash-grid">
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">👤</span> Recruiter Performance</div>
+    <div class="chart-sub">Sourced vs Active vs Joined</div>
+    <div class="chart-wrap tall"><canvas id="ch-recruiter"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">📈</span> Weekly Activity Trend</div>
+    <div class="chart-sub">Candidates added per week</div>
+    <div class="chart-wrap tall"><canvas id="ch-trend"></canvas></div>
+  </div>
+</div>
+
+<!-- ROW 4: Rejection Analysis + Department -->
+<div class="dash-grid">
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">✗</span> Rejection Analysis</div>
+    <div class="chart-sub">Consultant vs Client rejections</div>
+    <div class="chart-wrap"><canvas id="ch-reject"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span class="ac">🏗</span> Department-wise Status</div>
+    <div class="chart-sub">Active pipeline by department</div>
+    <div class="chart-wrap"><canvas id="ch-dept"></canvas></div>
+  </div>
+</div>
+
+<!-- ACTION QUEUE (kept from before) -->
 <div class="card">
-<div class="card-hdr"><div class="card-title"><span class="ac">✦</span> Add New Candidate</div><button class="btn btn-ghost btn-sm" onclick="clearNew()">Clear</button></div>
-<div class="sl2">📡 Sourcing</div>
-<div class="fg3">
-<div class="field"><label>Sourcing Date <span class="req">*</span></label><input type="date" id="nSD"></div>
-<div class="field"><label>Screening Date</label><input type="date" id="nScD"></div>
-<div class="field"><label>Recruiter <span class="req">*</span></label><select id="nRec"><option value="">— Select —</option></select></div>
-<div class="field"><label>Source <span class="req">*</span></label><select id="nSrc"><option value="">— Select —</option></select></div>
-<div class="field s2"><label>Source Details</label><input type="text" id="nSrcD" placeholder="e.g. Naukri, LinkedIn, referred by..."></div>
+  <div class="card-hdr">
+    <div class="card-title"><span class="ac">⚡</span> My Action Queue</div>
+    <button class="btn btn-ghost btn-sm" onclick="loadDash()">↺ Refresh</button>
+  </div>
+  <div id="aq-list"></div>
 </div>
-<div class="sl2">👤 Candidate Details</div>
-<div class="fg3">
-<div class="field s3"><label>Full Name <span class="req">*</span></label><input type="text" id="nNm" placeholder="Candidate full name"></div>
-<div class="field"><label>Primary Mobile <span class="req">*</span></label><input type="tel" id="nMob" placeholder="10 digits" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
-<div class="field"><label>Alternate Mobile</label><input type="tel" id="nAlt" placeholder="Optional" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
-<div class="field"><label>Email <span class="req">*</span></label><input type="email" id="nEm" placeholder="candidate@email.com"></div>
-<div class="field"><label>Location of Posting</label><input type="text" id="nPLoc" placeholder="Auto from vacancy" readonly></div>
-<div class="field"><label>Candidate City <span class="req">*</span></label><select id="nLoc"><option value="">— Select City —</option></select></div>
-<div class="field s2"><label>Actual Area / Suburb</label><input type="text" id="nLocD" placeholder="e.g. Andheri West, Koramangala"></div>
-<div class="field">
-<label>Experience (Years) <span class="req">*</span></label>
-<div class="flex gap8" style="align-items:center">
-<input type="number" id="nExp" min="0" max="50" step="0.5" style="flex:1" oninput="onExp(this.value)" placeholder="e.g. 3.5">
-<label style="text-transform:none;letter-spacing:0;color:var(--w60);font-size:12px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px"><input type="checkbox" id="nFr" onchange="onFr(this.checked)" style="width:auto;background:none;border:none;padding:0;flex-shrink:0"> Fresher</label>
+<div class="card">
+  <div class="card-hdr"><div class="card-title"><span class="ac">📅</span> Upcoming Interviews</div></div>
+  <div id="iv-list"></div>
 </div>
+<div class="card">
+  <div class="card-hdr"><div class="card-title"><span class="ac">🚪</span> Joining in Progress</div></div>
+  <div id="jp-list"></div>
 </div>
-<div class="field"><label>Notice Period</label><select id="nNot"><option value="">— Select —</option></select></div>
-<div class="field"><label>Current Company <span class="req" id="nCoReq"></span></label><input type="text" id="nCo" placeholder="Employer"></div>
-<div class="field"><label>Current Designation <span class="req" id="nDeReq"></span></label><input type="text" id="nDe" placeholder="Job title"></div>
-<div class="field"><label>Reason for Leaving</label><input type="text" id="nReas" placeholder="Growth, salary..."></div>
+
+<!-- Stat drill-down list -->
+<div class="card hidden" id="statListCard">
+  <div class="card-hdr">
+    <div class="card-title"><span class="ac" id="statListTitle">Candidates</span></div>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('statListCard').classList.add('hidden')">✕ Close</button>
+  </div>
+  <div class="tw"><table><thead><tr><th>Code</th><th>Name</th><th>Position</th><th>Client</th><th>Status</th><th>Recruiter</th><th>Follow-up</th><th></th></tr></thead>
+  <tbody id="statListBody"></tbody></table></div>
+  <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="statListCount"></div>
 </div>
-<div class="sl2">💰 Salary</div>
-<div class="fg3">
-<div class="field"><label>Current Salary ₹ PM</label><input type="number" id="nSPM" placeholder="e.g. 35000" oninput="calcSal()"></div>
-<div class="field"><label>Current ₹ PA <span class="fhint">(auto)</span></label><input type="number" id="nSPA" readonly></div>
-<div class="field"><label>Current Range <span class="fhint">(auto)</span></label><input type="text" id="nSBr" readonly></div>
-<div class="field"><label>Expected Salary ₹ PM</label><input type="number" id="nESPM" placeholder="e.g. 45000" oninput="calcSal()"></div>
-<div class="field"><label>Expected Range <span class="fhint">(auto)</span></label><input type="text" id="nESBr" readonly></div>
-<div class="field"><label>Salary Increase % <span class="fhint">(auto)</span></label><input type="text" id="nSInc" readonly></div>
-</div>
-<div class="sl2">🎯 Role</div>
-<div class="fg3">
-<div class="field"><label>Client <span class="req">*</span></label><select id="nCli" onchange="fillPosDrop()"><option value="">— Select —</option></select></div>
-<div class="field"><label>Department <span class="req">*</span></label><select id="nDept" onchange="fillPosDrop()"><option value="">— Select —</option></select></div>
-<div class="field"><label>Vacancy Position</label><select id="nPos" onchange="onPosSel()"><option value="">— Select open vacancy —</option></select></div>
-<div class="field s2"><label>Custom Position <span class="req">*</span></label><input type="text" id="nPosC" placeholder="Type role if not in vacancy list"></div>
-<div class="field"><label>Vacancy Code <span class="fhint">(auto)</span></label><input type="text" id="nVacC" readonly></div>
-</div>
-<div class="sl2">📅 Status &amp; Follow-up</div>
-<div class="fg3">
-<div class="field"><label>Status</label><select id="nStat"><option value="WIP">WIP</option><option>Not Contactable</option><option>Not Interested</option></select></div>
-<div class="field"><label>Follow-up Date <span class="req">*</span></label><input type="date" id="nFU"></div>
-<div class="field"><label>Follow-up Notes</label><input type="text" id="nFUN" placeholder="What to follow up on"></div>
-<div class="field s3"><label>Remarks</label><input type="text" id="nRem" placeholder="Initial notes about candidate"></div>
-</div>
-<div class="btn-row">
-<button class="btn btn-t btn-lg" onclick="submitNew()">+ Add Candidate &amp; Generate Code</button>
-<button class="btn btn-ghost" onclick="clearNew()">Clear</button>
-</div>
-</div>
-<div class="cbox hidden" id="nCodeBox">
-<div class="clbl">✅ Candidate Added — Unique Code</div>
-<div class="cval" id="nCodeVal">—</div>
-<div style="font-size:11px;color:var(--w60);margin-top:5px">Share this code with the recruiter to look up and update this record</div>
-<div class="flex gap8 mt8" style="justify-content:center">
-<button class="btn btn-t btn-sm" onclick="copyCode()">⎘ Copy Code</button>
-<button class="btn btn-ghost btn-sm" onclick="document.getElementById('nCodeBox').classList.add('hidden')">✕ Close</button>
-</div>
-</div>
+
 </div>
 
 <!-- UPDATE RECORD -->
@@ -490,7 +553,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div id="uUpdAlert"></div>
 <div class="sl2">🔄 Status</div>
 <div class="fg3">
-<div class="field"><label>New Status <span class="req">*</span></label><select id="uS" onchange="onStatCh()"><option>WIP</option><option>Not Contactable</option><option>Not Interested</option><option>Dropped</option><option>Consultant Interview in Progress</option><option>Rejected by Consultant</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Rejected by Client</option><option>On Hold</option><option>Selected</option><option>Offered</option><option>Offer Revoked</option><option>Offer Declined</option><option>Joining in Progress</option><option>Joined</option></select></div>
+<div class="field"><label>New Status <span class="req">*</span></label><select id="uS" onchange="onStatCh()"><option>Active</option><option>Not Contactable</option><option>Not Interested</option><option>Dropped</option><option>Consultant Interview in Progress</option><option>Rejected by Consultant</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Rejected by Client</option><option>On Hold</option><option>Selected</option><option>Offered</option><option>Offer Revoked</option><option>Offer Declined</option><option>Joining in Progress</option><option>Joined</option></select></div>
 <div class="field" id="uDMF"><label>Decision Maker</label><select id="uDM"><option value="">— Select —</option><option>Consultant</option><option>Client</option></select></div>
 <div class="field"><label>Follow-up Date <span class="req" id="uFUReq">*</span></label><input type="date" id="uFU"></div>
 </div>
@@ -505,6 +568,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Expected DOJ</label><input type="date" id="uDOJ" onchange="if(document.getElementById('uS').value==='Joining in Progress'&&this.value)document.getElementById('uFU').value=addDays(this.value,-1)"></div>
 <div class="field"><label>Offered Salary ₹</label><input type="number" id="uOffS"></div>
 <div class="field"><label>Offer Date</label><input type="date" id="uOffD"></div>
+<div class="field"><label>Final Designation Offered</label><input type="text" id="uFinalDesig" placeholder="Title in offer letter"></div>
 <div class="field"><label>Role Interested In</label><select id="uRI"><option value="">— Select —</option></select></div>
 <div class="field s2"><label>Remarks (appended)</label><input type="text" id="uRem" placeholder="Update notes"></div>
 <div class="field s3"><label>Other Comments</label><textarea id="uCmt" style="min-height:55px"></textarea></div>
@@ -575,7 +639,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="card-title mb0"><span class="ac">◈</span> All Candidates</div>
 <div class="flex gap8" style="flex-wrap:wrap">
 <input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:200px" oninput="renderRec()">
-<select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
+<select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>Active</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
 <select id="rCli" onchange="renderRec()" style="width:120px"><option value="">All Clients</option></select>
 </div>
 </div>
@@ -725,8 +789,12 @@ updatedBy:'Last Updated By',updatedOn:'Last Updated On',archive:'Archive Flag',
 tat:'TAT',sNo:'S. No',recruiter:'Recruiter',reportingDate:'Data base reporting date'};
 
 const TERMINAL=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
+// Active pipeline statuses (for dashboard Active count)
+const ACTIVE_STATUSES=new Set(['Active','Not Contactable','Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress','On Hold','Selected','Offered','Joining in Progress']);
+// Inactive statuses (can be re-approached)
+const INACTIVE_STATUSES=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
 const STATUS_DM={'Consultant Interview in Progress':'Consultant','Rejected by Consultant':'Consultant','Shortlisted for Client I/W':'Consultant','Client I/W in Progress':'Client','Rejected by Client':'Client','Selected':'Client','Offered':'Client','Offer Revoked':'Client','Offer Declined':'Client','Joining in Progress':'Client','Joined':'Client'};
-const FLOW={'WIP':['WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress'],'Not Contactable':['Not Contactable','Not Interested','Dropped','WIP','Consultant Interview in Progress'],'Not Interested':['Not Interested','WIP'],'Dropped':['Dropped','WIP'],'Consultant Interview in Progress':['Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','On Hold','Dropped'],'Rejected by Consultant':['Rejected by Consultant','WIP'],'Shortlisted for Client I/W':['Shortlisted for Client I/W','Client I/W in Progress','On Hold','Rejected by Consultant'],'Client I/W in Progress':['Client I/W in Progress','Rejected by Client','Selected','On Hold'],'Rejected by Client':['Rejected by Client','WIP','Shortlisted for Client I/W'],'On Hold':['On Hold','WIP','Consultant Interview in Progress','Client I/W in Progress'],'Selected':['Selected','Offered','On Hold'],'Offered':['Offered','Offer Revoked','Offer Declined','Joining in Progress'],'Offer Revoked':['Offer Revoked','WIP'],'Offer Declined':['Offer Declined','WIP'],'Joining in Progress':['Joining in Progress','Joined','Offer Revoked'],'Joined':['Joined']};
+const FLOW={'Active':['Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress'],'Not Contactable':['Not Contactable','Not Interested','Dropped','Active','Consultant Interview in Progress'],'Not Interested':['Not Interested','Active'],'Dropped':['Dropped','Active'],'Consultant Interview in Progress':['Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','On Hold','Dropped'],'Rejected by Consultant':['Rejected by Consultant','Active'],'Shortlisted for Client I/W':['Shortlisted for Client I/W','Client I/W in Progress','On Hold','Rejected by Consultant'],'Client I/W in Progress':['Client I/W in Progress','Rejected by Client','Selected','On Hold'],'Rejected by Client':['Rejected by Client','Active','Shortlisted for Client I/W'],'On Hold':['On Hold','Active','Consultant Interview in Progress','Client I/W in Progress'],'Selected':['Selected','Offered','On Hold'],'Offered':['Offered','Offer Revoked','Offer Declined','Joining in Progress'],'Offer Revoked':['Offer Revoked','Active'],'Offer Declined':['Offer Declined','Active'],'Joining in Progress':['Joining in Progress','Joined','Offer Revoked'],'Joined':['Joined']};
 
 let M={
 clients:['Atmann','DMC Bazaar','GIFTS','One Above','VSAR Tech'].map(n=>({name:n,active:true})),
@@ -736,7 +804,7 @@ sources:['Portal','Internal Referral','Social Platform','Direct','Consultant','C
 cities:['Ahmedabad','Aurangabad','Bangalore','Bhopal','Chennai','Coimbatore','Delhi','Faridabad','Ghaziabad','Gurgaon','Hyderabad','Indore','Jaipur','Jodhpur','Kochi','Kolkata','Lucknow','Ludhiana','Mumbai','Mysore','Nagpur','Nashik','Navi Mumbai','Noida','Patna','Pune','Raipur','Rajkot','Surat','Thane','Thiruvananthapuram','Vadodara','Varanasi','Visakhapatnam'].map(n=>({name:n,active:true})),
 noticePeriods:['Immediate','7 days','15 days','30 days','45 days','60 days','90 days','Serving Notice','Not disclosed'].map(n=>({name:n,active:true})),
 expLevels:['Fresher','0-1 yrs','1-3 yrs','3-5 yrs','5-8 yrs','8-12 yrs','12+ yrs'].map(n=>({name:n,active:true})),
-statuses:['WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'].map(n=>({name:n,active:true})),
+statuses:['Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'].map(n=>({name:n,active:true})),
 vacStatuses:['Open','On Hold','Shortlisted','Selected','Offered','Closed','Cancelled'].map(n=>({name:n,active:true})),
 decisionMakers:['Consultant','Client'].map(n=>({name:n,active:true}))};
 function mA(k){return(M[k]||[]).filter(x=>x.active).map(x=>x.name);}
@@ -828,25 +896,28 @@ async function exchangeCode(code, verifier, redirectUri) {
 // ── Refresh access token ──────────────────────────────────
 async function refreshToken() {
   const stored = TS.load();
-  if (!stored?.refresh_token) throw new Error('No refresh token — please sign in again.');
-  const resp = await fetch(
-    `https://login.microsoftonline.com/${CFG.tenantId}/oauth2/v2.0/token`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id:     CFG.clientId,
-        grant_type:    'refresh_token',
-        refresh_token: stored.refresh_token,
-        scope:         CFG.scopes.join(' ')
-      })
-    }
-  );
-  if (!resp.ok) { TS.clear(); throw new Error('Session expired — please sign in again.'); }
+  if (!stored || !stored.refresh_token) throw new Error('No session — please sign in again.');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  let resp;
+  try {
+    resp = await fetch(
+      'https://login.microsoftonline.com/'+CFG.tenantId+'/oauth2/v2.0/token',
+      { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({client_id:CFG.clientId,grant_type:'refresh_token',
+          refresh_token:stored.refresh_token,scope:CFG.scopes.join(' ')}),
+        signal: ctrl.signal }
+    );
+    clearTimeout(timer);
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('Connection timed out — check your internet');
+    throw e;
+  }
+  if (!resp.ok) { TS.clear(); sessionStorage.removeItem('thp_sp_path'); throw new Error('Session expired — please sign in again.'); }
   const tokens = await resp.json();
-  TS.save({ ...stored, ...tokens });
+  TS.save({...stored, ...tokens});
   tok = tokens.access_token;
-  // Parse user from id_token
   if (tokens.id_token) parseIdt(tokens.id_token);
 }
 // Alias so both PKCE auth and app code work
@@ -896,20 +967,21 @@ window.onload = async () => {
 
   // Check for existing valid session
   const stored = TS.load();
-  if (stored?.access_token) {
+  if (stored && stored.access_token) {
     try {
       document.getElementById('loginStatus').textContent = 'Restoring session...';
       showLoad('Restoring session...');
       tok = stored.access_token;
       if (stored.id_token) parseIdt(stored.id_token);
-      // Validate by trying a refresh — catches expired tokens
       await refreshToken();
       await onAuthOk();
       return;
     } catch(e) {
       TS.clear();
+      sessionStorage.removeItem('thp_sp_path');
       hideLoad();
-      document.getElementById('loginStatus').textContent = 'Session expired — please sign in again.';
+      document.getElementById('loginStatus').textContent = 'Ready — click to sign in';
+      console.log('Session restore failed:', e.message);
     }
   }
 };
@@ -938,19 +1010,23 @@ function signOut() {
 async function onAuthOk() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appShell').style.display = 'block';
-  const name = acct.name || acct.username;
+  const name = (acct && (acct.name || acct.username)) || 'User';
   const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  document.getElementById('sidebarAvatar').textContent = initials;
-  document.getElementById('sidebarName').textContent = name.split(' ')[0];
+  const avEl = document.getElementById('sbAv');
+  if (avEl) avEl.textContent = initials;
+  const nmEl = document.getElementById('sbNm');
+  if (nmEl) nmEl.textContent = name.split(' ')[0];
   // Auto-fill recruiter based on login name
   const firstName = name.split(' ')[0];
-  const rSel = document.getElementById('n_recruiter');
-  for (let opt of rSel.options) {
-    if (opt.value.toLowerCase() === firstName.toLowerCase()) {
-      rSel.value = opt.value; break;
+  const rSel = document.getElementById('nRec');
+  if (rSel) {
+    for (let opt of rSel.options) {
+      if (opt.value.toLowerCase() === firstName.toLowerCase()) {
+        rSel.value = opt.value; break;
+      }
     }
   }
-  await loadFromSharePoint();
+  await loadData();
 }
 
 // ════════════════════════════════════════════════════════
@@ -996,52 +1072,98 @@ async function graphPatch(url, body) {
 // ══════════════════════════════════════════════════════
 // GRAPH + SHAREPOINT
 // ══════════════════════════════════════════════════════
-async function gGet(url){await refreshToken();const r=await fetch(GRAPH+url,{headers:{Authorization:'Bearer '+tok}});if(!r.ok)throw new Error('Graph '+url+' → '+r.status+': '+(await r.text()).slice(0,100));return r.json();}
-async function onAuthOk(){
-document.getElementById('loginScreen').style.display='none';
-document.getElementById('appShell').style.display='block';
-const nm=acct&&acct.name?acct.name:'User';
-document.getElementById('sbAv').textContent=nm.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-document.getElementById('sbNm').textContent=nm.split(' ')[0];
-await loadData();}
+async function gGet(url){
+  await refreshToken();
+  const r=await fetchTimeout(GRAPH+url,{headers:{Authorization:'Bearer '+tok}},30000);
+  if(!r.ok)throw new Error('Graph '+url+' → '+r.status);
+  return r.json();
+}
+// onAuthOk defined above
+
 async function loadData(){
-setSP('loading','Loading...');showLoad('Reading from SharePoint...');
-try{
-if(!siteId){const s=await gGet('/sites/'+CFG.siteHost+':'+CFG.sitePath);siteId=s.id;}
-// Try many path variations to handle SharePoint encoding differences
-const fn=CFG.file;
-const paths=[
-  '/Shared Documents/Talent+ Hire-Pulse/'+fn,
-  '/Shared Documents/Talent+%20Hire-Pulse/'+fn,
-  '/Shared%20Documents/Talent+%20Hire-Pulse/'+fn,
-  '/Shared%20Documents/Talent+%20Hire-Pulse/'+fn,
-  CFG.folder+'/'+fn,
-  CFG.folder.replace('Talent+ ','Talent+%20')+'/'+fn,
-  '/Shared Documents/Talent+ Hire-Pulse/'+encodeURIComponent(fn),
-];
-let found=null;
-for(const p of paths){
-  try{found=await gGet('/sites/'+siteId+'/drive/root:'+p);if(found&&found.id){console.log('Found via path:',p);break;}}
-  catch(e){console.log('Path failed:',p,e.message.slice(0,40));continue;}
-}
-// If direct paths failed, search by listing the drive
-if(!found){
+  setSP('loading','Loading...');showLoad('Connecting to SharePoint...');
+  console.log('loadData: start, tok=', tok ? tok.slice(0,20)+'...' : 'MISSING');
   try{
-    console.log('Trying drive search...');
-    const srch=await gGet(`/sites/${siteId}/drive/root/search(q='${fn}')`);
-    if(srch.value&&srch.value.length>0){found=srch.value[0];console.log('Found via search:',found.name);}
-  }catch(e){console.log('Search failed:',e.message);}
+    // Step 1: Get site ID
+    if(!siteId){
+      showLoad('Getting site...');
+      console.log('loadData: getSite');
+      const s = await gGet('/sites/'+CFG.siteHost+':'+CFG.sitePath);
+      siteId = s.id;
+      console.log('loadData: siteId='+siteId);
+    }
+    // Step 2: Find file ID
+    if(!fileId){
+      showLoad('Finding file...');
+      console.log('loadData: finding file');
+      const paths=[
+        '/Shared Documents/Talent+ Hire-Pulse/'+CFG.file,
+        '/Shared Documents/Talent+%20Hire-Pulse/'+CFG.file,
+        CFG.folder+'/'+CFG.file,
+      ];
+      const cached=sessionStorage.getItem('thp_sp_path');
+      if(cached) paths.unshift(cached);
+      for(const p of paths){
+        try{
+          console.log('trying path:',p);
+          const d=await gGet('/sites/'+siteId+'/drive/root:'+p);
+          if(d&&d.id){fileId=d.id;sessionStorage.setItem('thp_sp_path',p);console.log('found:',p);break;}
+        }catch(e){console.log('failed:',p);}
+      }
+      // Fallback: browse folders
+      if(!fileId){
+        console.log('path search failed, browsing...');
+        try{
+          const root=await gGet('/sites/'+siteId+'/drive/root/children');
+          for(const item of root.value){
+            if(item.name.includes('Hire')||item.name.includes('Pulse')||item.name.includes('Talent')){
+              const kids=await gGet('/sites/'+siteId+'/drive/items/'+item.id+'/children');
+              const f=kids.value.find(i=>i.name.endsWith('.xlsx'));
+              if(f){fileId=f.id;console.log('found via browse:',f.name);break;}
+            }
+          }
+        }catch(e){console.log('browse failed:',e.message);}
+      }
+    }
+    if(!fileId) throw new Error('File not found on SharePoint');
+    // Step 3: Download file directly (no timeout wrapper - let browser handle it)
+    showLoad('Downloading file...');
+    console.log('loadData: downloading fileId='+fileId);
+    const r = await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+      {headers:{Authorization:'Bearer '+tok}});
+    console.log('loadData: download response status='+r.status);
+    if(!r.ok){
+      if(r.status===401){
+        // Token expired - refresh and retry once
+        console.log('loadData: 401, refreshing token and retrying');
+        await refreshToken();
+        const r2=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+          {headers:{Authorization:'Bearer '+tok}});
+        if(!r2.ok) throw new Error('Download failed after token refresh: '+r2.status);
+        const buf2=await r2.arrayBuffer();
+        showLoad('Reading records...');
+        WB=XLSX.read(buf2,{type:'array',cellDates:true});
+      } else {
+        throw new Error('Download failed: '+r.status);
+      }
+    } else {
+      const buf=await r.arrayBuffer();
+      showLoad('Reading records...');
+      WB=XLSX.read(buf,{type:'array',cellDates:true});
+    }
+    console.log('loadData: parseWB');
+    parseWB();
+    setSP('ok','SharePoint ✓');
+    hideLoad();
+    initUI();
+    console.log('loadData: done, '+MD.length+' records');
+  }catch(e){
+    setSP('err','↺ Click to retry');
+    hideLoad();
+    toast('err','Connection failed',e.message.slice(0,80));
+    console.error('loadData error:',e.message,e);
+  }
 }
-if(!found)throw new Error('File "'+fn+'" not found on SharePoint. Please check the file is in: Shared Documents/Talent+ Hire-Pulse/');
-fileId=found.id;
-await refreshToken();
-const resp=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{headers:{Authorization:'Bearer '+tok}});
-if(!resp.ok)throw new Error('Download failed: '+resp.status);
-const buf=await resp.arrayBuffer();
-WB=XLSX.read(buf,{type:'array',cellDates:true});
-parseWB();setSP('ok','SharePoint ✓');hideLoad();
-initUI();
-}catch(e){setSP('err','Error: '+e.message.slice(0,35));hideLoad();toast('err','SharePoint Error',e.message);console.error(e);}}
 function parseWB(){
 const ws=WB.Sheets['Data'];if(!ws)return;
 const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
@@ -1091,7 +1213,7 @@ VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv
 // UI INIT
 // ══════════════════════════════════════════════════════
 function initUI(){updateTopbar();loadDash();renderRec();renderVac();initMastersGrid();}
-function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>!TERMINAL.has(r[C.status])&&r[C.status]!=='').length;document.getElementById('tbAct').textContent=act;}
+function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
 function goPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const p=document.getElementById('p-'+name);if(p)p.classList.add('active');const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));if(nav)nav.classList.add('active');if(name==='adm')initAdmin();if(name==='dashboard')loadDash();}
 
 // ══════════════════════════════════════════════════════
@@ -1101,7 +1223,7 @@ function loadDash(){
 const td=today(),tm=td.slice(0,7),in3=addDays(td,3);
 const pend=MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
 document.getElementById('ds-tot').textContent=MD.length;
-document.getElementById('ds-act').textContent=MD.filter(r=>!TERMINAL.has(r[C.status])&&r[C.status]!=='').length;
+document.getElementById('ds-act').textContent=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;
 document.getElementById('ds-joi').textContent=MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length;
 document.getElementById('ds-pen').textContent=pend.length;
 document.getElementById('pendBadge').textContent=pend.length;
@@ -1140,11 +1262,33 @@ function epCalcSal(){const pm=parseFloat(gv('epSPM'))||0,pa=pm*12;sv('epSPA',pa|
 // ══════════════════════════════════════════════════════
 function onFr(checked){const ei=document.getElementById('nExp');if(ei){ei.disabled=checked;ei.style.opacity=checked?'.4':'1';if(checked)ei.value='0';}['nCo','nDe'].forEach(id=>{const el=document.getElementById(id);if(el)el.closest('.field').style.opacity=checked?'.5':'1';});}
 function onExp(val){const n=parseFloat(val)||0;const fr=document.getElementById('nFr')&&document.getElementById('nFr').checked;['nCoReq','nDeReq'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=(n>0&&!fr)?'*':'';});['nCo','nDe'].forEach(id=>{const el=document.getElementById(id);if(el)el.closest('.field').style.opacity=(n===0||fr)?'.5':'1';});}
-function onPosSel(){const sel=document.getElementById('nPos');const ch=sel&&sel.options[sel.selectedIndex];if(ch&&ch.dataset.code){sv('nVacC',ch.dataset.code);sv('nPLoc',ch.dataset.loc||'');sv('nPosC','');}}
+function onPosSel(){
+  const sel=document.getElementById('nPos');
+  const ch=sel&&sel.options[sel.selectedIndex];
+  if(ch&&ch.dataset.code){
+    sv('nVacC',ch.dataset.code);
+    sv('nPLoc',ch.dataset.loc||'');
+    sv('nPosC','');
+    // Auto-populate Client and Department from vacancy
+    const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===ch.dataset.code);
+    if(vac){
+      const cli=document.getElementById('nCli');
+      const dept=document.getElementById('nDept');
+      if(cli&&vac['Company'])cli.value=vac['Company'];
+      if(dept&&vac['Department'])dept.value=vac['Department'];
+      // Refresh position dropdown to match
+      fillPosDrop();
+      // Re-select the position
+      const sel2=document.getElementById('nPos');
+      if(sel2)sel2.value=ch.value;
+      sv('nVacC',ch.dataset.code);
+    }
+  }
+}
 function clearNew(){['nSD','nScD','nSrcD','nMob','nAlt','nEm','nLocD','nPLoc','nExp','nReas','nCo','nDe','nSPM','nSPA','nSBr','nESPM','nESBr','nSInc','nPosC','nVacC','nRem','nFU','nFUN','nNm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['nRec','nSrc','nLoc','nNot','nCli','nDept','nPos','nStat'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const fr=document.getElementById('nFr');if(fr){fr.checked=false;onFr(false);}document.getElementById('nSD').value=today();document.getElementById('nCodeBox').classList.add('hidden');showAlert('na','','');const rn=acct&&acct.name?acct.name.split(' ')[0]:'';const rs=document.getElementById('nRec');if(rs)for(const o of rs.options){if(o.value.toLowerCase()===rn.toLowerCase()){rs.value=o.value;break;}}}
 async function submitNew(){
 const nm=gv('nNm'),mob=gv('nMob'),em=gv('nEm'),sd=gv('nSD'),rec=gv('nRec'),cli=gv('nCli'),dept=gv('nDept'),src=gv('nSrc'),loc=gv('nLoc');
-const pos=gv('nPos')||gv('nPosC'),fu=gv('nFU'),stat=gv('nStat')||'WIP';
+const pos=gv('nPos')||gv('nPosC'),fu=gv('nFU'),stat=gv('nStat')||'Active';
 if(!nm||!mob||!em||!sd||!rec||!cli||!dept||!src||!loc||!pos){showAlert('na','err','Please fill all required fields (marked *).');return;}
 if(!/^\d{10}$/.test(mob)){showAlert('na','err','Primary mobile must be exactly 10 digits.');return;}
 if(!em.includes('@')){showAlert('na','err','Please enter a valid email address.');return;}
@@ -1175,9 +1319,15 @@ MD.push(nr);writeCL('New Entry',code,'All','','',nm);
 await saveWB('Adding candidate...');
 sv('nCodeVal',code);document.getElementById('nCodeBox').classList.remove('hidden');
 showAlert('na','ok','✅ '+nm+' added. Code: '+code);
-updateTopbar();loadDash();renderRec();clearNew(true);};
+updateTopbar();loadDash();renderRec();setTimeout(()=>clearNew(true),100);};
 const dups=dupChk(mob,em);
-if(dups.length){const d=dups[0];const r=d.r;showModal('⚠ Duplicate Found','A candidate with the same '+d.type+' already exists.','<strong>'+r[C.name]+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br><span style="font-size:12px;color:var(--w60)">'+r[C.position]+' @ '+r[C.client]+' · '+r[C.status]+'</span>','<button class="btn btn-g" onclick="closeModal();window._doAdd()">Proceed Anyway</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');window._doAdd=doAdd;}
+if(dups.length){const d=dups[0];const r=d.r;const isInactive=INACTIVE_STATUSES.has(r[C.status]);
+  const title=isInactive?'♻ Re-engage Candidate?':'⚠ Duplicate Found';
+  const msg=isInactive?'This candidate was previously marked <strong>'+r[C.status]+'</strong> but can be re-approached for a new opportunity.':'A candidate with the same '+d.type+' already exists.';
+  showModal(title,msg,'<strong>'+r[C.name]+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br><span style="font-size:12px;color:var(--w60)">'+r[C.position]+' @ '+r[C.client]+' · '+r[C.status]+'</span>',
+  (isInactive?'<button class="btn btn-t" onclick="closeModal();qUpd(\'' + r[C.code] + '\')">Update Existing Record</button>':'')+
+  '<button class="btn btn-g" onclick="closeModal();window._doAdd()">Add as New Record</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
+  window._doAdd=doAdd;}
 else await doAdd();}
 
 // ══════════════════════════════════════════════════════
@@ -1195,7 +1345,7 @@ document.getElementById('uNm').textContent=r[C.name]||'—';
 document.getElementById('uRol').textContent=(r[C.position]||'—')+' · '+(r[C.client]||'—')+' · '+(r[C.recruiter]||'—');
 document.getElementById('uCd').textContent=r[C.code];
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
-sv('uS',r[C.status]||'WIP');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
+sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 ['uFU','uRem','uCmt','uIvD','uDecD','uDOJ','uOffS','uOffD'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 onStatCh();updStatDrop();}
 function onStatCh(){
@@ -1206,7 +1356,7 @@ else if(['On Hold','Offer Revoked'].includes(stat)){if(dmEl)dmEl.value='';if(dmF
 else{if(dmEl)dmEl.value='';if(dmF)dmF.style.opacity='.5';}
 const fuR=document.getElementById('uFUReq');if(fuR)fuR.textContent=TERMINAL.has(stat)?'':'*';
 if(stat==='Joining in Progress'&&eIdx!==-1){const r=MD[eIdx];if(r[C.doj]){const fuEl=document.getElementById('uFU');if(fuEl&&!fuEl.value)fuEl.value=addDays(r[C.doj],-1);}}}
-function updStatDrop(){if(eIdx===-1)return;const r=MD[eIdx];const cur=r[C.status]||'WIP';const valid=FLOW[cur]||Object.keys(FLOW);const sel=document.getElementById('uS');if(!sel)return;Array.from(sel.options).forEach(o=>{if(!o.value)return;o.disabled=!valid.includes(o.value);o.style.color=valid.includes(o.value)?'':'rgba(255,255,255,.2)';});}
+function updStatDrop(){if(eIdx===-1)return;const r=MD[eIdx];const cur=r[C.status]||'Active';const valid=FLOW[cur]||Object.keys(FLOW);const sel=document.getElementById('uS');if(!sel)return;Array.from(sel.options).forEach(o=>{if(!o.value)return;o.disabled=!valid.includes(o.value);o.style.color=valid.includes(o.value)?'':'rgba(255,255,255,.2)';});}
 async function submitUpd(){
 if(eIdx===-1)return;
 const stat=gv('uS'),dm=gv('uDM'),fu=gv('uFU');
@@ -1222,13 +1372,18 @@ const dd=gv('uDecD');if(dd)r[C.decisionDate]=dd;
 const doj=gv('uDOJ');if(doj)r[C.doj]=doj;
 const os=gv('uOffS');if(os)r[C.offeredSalary]=os;
 const od=gv('uOffD');if(od)r[C.offerDate]=od;
+const fd=gv('uFinalDesig');if(fd)r['Final Designation Offered']=fd;
 const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 writeCL('Status Update',r[C.code],C.status,oldStat,stat,r[C.name]);
 await saveWB('Updating record...');
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(stat)+'">'+stat+'</span>';
-toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();}
+toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();
+  // Clear update form
+  document.getElementById('uForm').classList.add('hidden');
+  document.getElementById('uCode').value='';
+  eIdx=-1;}
 
 // ══════════════════════════════════════════════════════
 // EDIT PROFILE
@@ -1253,7 +1408,11 @@ if(!r[C.name]){showAlert('epSaveAlert','err','Name cannot be empty.');return;}
 if(r[C.contact]&&!/^\d{10}$/.test(r[C.contact])){showAlert('epSaveAlert','err','Primary mobile must be 10 digits.');return;}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 changes.forEach(ch=>writeCL('Profile Edit',r[C.code],ch.lbl,ch.old,ch.new,r[C.name]));
-await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.length+' field(s) updated for '+r[C.name]);renderRec();toast('ok','Profile Updated',changes.length+' changes saved');}
+await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.length+' field(s) updated for '+r[C.name]);renderRec();toast('ok','Profile Updated',changes.length+' changes saved');
+  // Clear form
+  document.getElementById('epForm').classList.add('hidden');
+  document.getElementById('epCode').value='';
+  epIdx=-1;}
 
 // ══════════════════════════════════════════════════════
 // ALL RECORDS
@@ -1277,7 +1436,7 @@ tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'�
 // WHATSAPP + TEAMS
 // ══════════════════════════════════════════════════════
 function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')','',tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+'<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
-function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='wip')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}saveWB(false);}
+function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}saveWB(false);}
 function showSched(){if(eIdx===-1)return;const r=MD[eIdx];showModal('📅 Schedule Teams Interview','<strong>'+r[C.name]+'</strong> — '+(r[C.position]||'—')+' @ '+(r[C.client]||'—'),'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px"><div class="field"><label>Date</label><input type="date" id="si_d" value="'+(r[C.interviewDate]||'')+'" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Time</label><input type="time" id="si_t" value="10:00" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Duration</label><select id="si_dur" style="background:#000000;border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"><option value="30">30 mins</option><option value="45">45 mins</option><option value="60" selected>60 mins</option><option value="90">90 mins</option></select></div><div class="field"><label>Interviewer Email</label><input type="email" id="si_em" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)" placeholder="client@company.com"></div></div><div style="font-size:11px;color:var(--w60);margin-top:8px">Outlook calendar invites sent to all participants. WhatsApp option after creation.</div>','<button class="btn btn-t" onclick="createMeeting()">Create Teams Meeting</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');}
 async function createMeeting(){const r=MD[eIdx];const d=document.getElementById('si_d')&&document.getElementById('si_d').value;const t=document.getElementById('si_t')&&document.getElementById('si_t').value;const dur=parseInt(document.getElementById('si_dur')&&document.getElementById('si_dur').value)||60;const ie=document.getElementById('si_em')&&document.getElementById('si_em').value;if(!d||!t){toast('err','Missing details','Date and time required.');return;}closeModal();showLoad('Creating Teams meeting...');try{await refreshToken();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});if(ie&&ie.includes('@'))att.push({emailAddress:{address:ie,name:r[C.interviewerName]||'Interviewer'},type:'required'});const body={subject:'Interview — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,isOnlineMeeting:true,onlineMeetingProvider:'teamsForBusiness',body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your interview for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create meeting');}const ev=await resp.json();const link=ev.onlineMeeting&&ev.onlineMeeting.joinUrl?ev.onlineMeeting.joinUrl:'';r[C.interviewDate]=d;r._iTime=t;if(link)r[C.docLink]=link;r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();writeCL('Interview Scheduled',r[C.code],'Interview','',d+' '+t,r[C.name]);await saveWB(false);hideLoad();showModal('✅ Meeting Created','Teams meeting for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">Outlook invites sent to all participants.</span>',link?'<div style="font-size:10px;color:var(--w60);word-break:break-all;margin-top:4px">'+link.substring(0,80)+'...</div>':'','<button class="btn btn-t" onclick="closeModal();sendWA(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="closeModal()">Done</button>');}catch(e){hideLoad();toast('err','Meeting failed',e.message);}}
 
@@ -1291,7 +1450,7 @@ const instr=[['TALENT+ HIRE PULSE — '+(type==='recruiter'?'Recruiter':'Admin M
 const ws=XLSX.utils.aoa_to_sheet([...instr,cols]);ws['!cols']=cols.map(()=>({wch:22}));
 XLSX.utils.book_append_sheet(wb2,ws,type==='recruiter'?'Upload':'Migration');
 const aC=mA('clients'),aD=mA('departments'),aS=mA('sources'),aN=mA('noticePeriods');
-const statuses=['WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Shortlisted for Client I/W','Rejected by Consultant','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'];
+const statuses=['Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Shortlisted for Client I/W','Rejected by Consultant','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'];
 const mx=Math.max(aC.length,aD.length,aS.length,aN.length,statuses.length);
 const ref=[['CLIENTS','DEPARTMENTS','SOURCES','NOTICE PERIOD','STATUS VALUES'],...Array.from({length:mx},(_,i)=>[aC[i]||'',aD[i]||'',aS[i]||'',aN[i]||'',statuses[i]||''])];
 const wsR=XLSX.utils.aoa_to_sheet(ref);wsR['!cols']=Array(5).fill({wch:25});
@@ -1302,7 +1461,7 @@ function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)p
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
 function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
 function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
-async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.status]=obj['Final Status']||'WIP';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
+async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // ADMIN PANEL
@@ -1350,7 +1509,7 @@ function renderUsers(){const tb=document.getElementById('uBody');if(!tb)return;i
 function today(){return new Date().toISOString().split('T')[0];}
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
 function fmtD(s){if(!s||s==='nan'||!String(s).trim())return'';const d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
-function bdg(s){s=(s||'').toLowerCase();if(s==='wip')return'b-wip';if(s==='joined')return'b-joined';if(s.includes('reject'))return'b-rejected';if(s==='selected')return'b-selected';if(s.includes('offer'))return'b-offered';if(s==='on hold')return'b-hold';if(s==='dropped'||s==='not contactable'||s==='not interested')return'b-grey';if(s.includes('progress')||s.includes('shortlisted'))return'b-progress';return'b-wip';}
+function bdg(s){s=(s||'').toLowerCase();if(s==='Active')return'b-wip';if(s==='joined')return'b-joined';if(s.includes('reject'))return'b-rejected';if(s==='selected')return'b-selected';if(s.includes('offer'))return'b-offered';if(s==='on hold')return'b-hold';if(s==='dropped'||s==='not contactable'||s==='not interested')return'b-grey';if(s.includes('progress')||s.includes('shortlisted'))return'b-progress';return'b-wip';}
 function genCode(){const yr=new Date().getFullYear();const nums=MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}).filter(n=>n>0);const next=nums.length>0?Math.max(...nums)+1:1269;return'Talent+Hire/'+yr+'/'+String(next).padStart(6,'0');}
 function dupChk(mob,em,excl){const res=[];if(mob&&/^\d{10}$/.test(mob)){const f=MD.find(r=>String(r[C.contact]).trim()===mob&&r[C.code]!==excl);if(f)res.push({type:'Mobile',r:f});}if(em&&em.includes('@')){const f=MD.find(r=>String(r[C.email]).trim().toLowerCase()===em.toLowerCase()&&r[C.code]!==excl);if(f&&!res.find(x=>x.r[C.code]===f[C.code]))res.push({type:'Email',r:f});}return res;}
 function gv(id){const el=document.getElementById(id);return el?el.value.trim():'';}
@@ -1364,6 +1523,561 @@ function showAlert(id,type,msg){const el=document.getElementById(id);if(!el)retu
 function showModal(title,msg,rec,btns){document.getElementById('modal-title').textContent=title;const mp=document.getElementById('modal-msg');if(mp)mp.innerHTML=msg;const mr=document.getElementById('modal-rec');if(mr)mr.innerHTML=rec||'';const mb=document.getElementById('modal-btns');if(mb)mb.innerHTML=btns||'';document.getElementById('modal').classList.add('show');}
 function closeModal(){document.getElementById('modal').classList.remove('show');}
 function copyCode(){const code=document.getElementById('nCodeVal').textContent;navigator.clipboard.writeText(code).then(()=>toast('ok','Copied!',code));}
+
+
+// ── DASHBOARD STAT DRILL-DOWN ──────────────────────────
+function showStatList(type) {
+  const td=today(), tm=td.slice(0,7);
+  let rows=[], title='';
+  if(type==='total'){
+    rows=MD; title='All Candidates ('+MD.length+')';
+  } else if(type==='active'){
+    rows=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status]));
+    title='Active Pipeline ('+rows.length+')';
+  } else if(type==='joined'){
+    rows=MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm));
+    title='Joined This Month ('+rows.length+')';
+  } else if(type==='pending'){
+    rows=MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
+    title='Follow-ups Pending ('+rows.length+')';
+  }
+  document.getElementById('statListTitle').textContent=title;
+  const tb=document.getElementById('statListBody');
+  tb.innerHTML=rows.slice(0,200).map(r=>{
+    const fu=r[C.followupDate]&&r[C.followupDate]<td;
+    return '<tr><td class="mono" style="font-size:10px">'+r[C.code]+'</td>'+
+    '<td><strong>'+r[C.name]+'</strong></td>'+
+    '<td class="m">'+r[C.position]+'</td>'+
+    '<td class="m">'+r[C.client]+'</td>'+
+    '<td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td>'+
+    '<td class="m">'+r[C.recruiter]+'</td>'+
+    '<td class="m '+(fu?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td>'+
+    '<td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')">Update</button></td></tr>';
+  }).join('');
+  const cnt=document.getElementById('statListCount');
+  if(cnt)cnt.textContent='Showing '+Math.min(rows.length,200)+' of '+rows.length+' records';
+  document.getElementById('statListCard').classList.remove('hidden');
+  // Scroll to stat list
+  document.getElementById('statListCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ════════════════════════════════════════════════════════
+//  DASHBOARD — ANALYTICS ENGINE
+// ════════════════════════════════════════════════════════
+
+// Chart instances - stored so we can destroy before re-render
+const CHARTS = {};
+const CHART_COLORS = {
+  teal:   '#34BAC6', gold:   '#E9982B', blue:   '#1F5C93',
+  purple: '#9B72D4', red:    '#E05252', green:  '#52C77A',
+  cyan:   '#5DD5DF', orange: '#F4914A', pink:   '#D472B4',
+  slate:  '#5B9FD4'
+};
+const PALETTE = Object.values(CHART_COLORS);
+
+// Chart.js global defaults
+function initChartDefaults() {
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.color = 'rgba(251,251,250,0.6)';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.plugins.legend.labels.boxWidth = 10;
+  Chart.defaults.plugins.legend.labels.padding = 12;
+  Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(0,0,0,0.9)';
+  Chart.defaults.plugins.tooltip.titleColor = '#FBFBFA';
+  Chart.defaults.plugins.tooltip.bodyColor = 'rgba(251,251,250,0.7)';
+  Chart.defaults.plugins.tooltip.borderColor = 'rgba(52,186,198,0.3)';
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.padding = 10;
+}
+
+// ── DATE FILTERING ────────────────────────────────────────
+function getDashDates() {
+  const period = document.getElementById('df-period') ?
+    document.getElementById('df-period').value : 'fy';
+  const now = new Date();
+  let from, to;
+
+  if (period === 'custom') {
+    from = document.getElementById('df-from').value;
+    to   = document.getElementById('df-to').value;
+    // Show custom inputs
+    ['df-from','df-to'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+  } else {
+    ['df-from','df-to'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  }
+
+  if (period === 'all') { return { from: null, to: null }; }
+  if (period === 'fy') {
+    const yr = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    return { from: yr+'-04-01', to: (yr+1)+'-03-31' };
+  }
+  if (period === 'q') {
+    const q = Math.floor((now.getMonth() - 3 + 12) % 12 / 3);
+    const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const qMonths = [[3,4,5],[6,7,8],[9,10,11],[0,1,2]];
+    const m = qMonths[q];
+    const yr = m[0] === 0 ? fyStart + 1 : fyStart;
+    from = yr+'-'+String(m[0]+1).padStart(2,'0')+'-01';
+    const lastDay = new Date(yr, m[2]+1, 0);
+    to = lastDay.toISOString().split('T')[0];
+    return { from, to };
+  }
+  if (period === 'm') {
+    const yr = now.getFullYear(), mo = now.getMonth();
+    from = yr+'-'+String(mo+1).padStart(2,'0')+'-01';
+    const lastDay = new Date(yr, mo+1, 0);
+    to = lastDay.toISOString().split('T')[0];
+    return { from, to };
+  }
+  if (period === 'w') {
+    const d = new Date(now);
+    d.setDate(d.getDate() - d.getDay() + 1); // Monday
+    from = d.toISOString().split('T')[0];
+    const d2 = new Date(d); d2.setDate(d2.getDate() + 6);
+    to = d2.toISOString().split('T')[0];
+    return { from, to };
+  }
+  return { from, to };
+}
+
+function filterData(dates) {
+  let data = MD.slice();
+  const client = document.getElementById('df-client') ?
+    document.getElementById('df-client').value : '';
+  const dept = document.getElementById('df-dept') ?
+    document.getElementById('df-dept').value : '';
+  const rec = document.getElementById('df-recruiter') ?
+    document.getElementById('df-recruiter').value : '';
+
+  if (client) data = data.filter(r => r[C.client] === client);
+  if (dept)   data = data.filter(r => r[C.dept] === dept);
+  if (rec)    data = data.filter(r => r[C.recruiter] === rec);
+  if (dates.from) data = data.filter(r => r[C.sourcingDate] >= dates.from);
+  if (dates.to)   data = data.filter(r => r[C.sourcingDate] <= dates.to);
+  return data;
+}
+
+// ── MAIN RENDER ───────────────────────────────────────────
+function renderDash() {
+  if (typeof Chart === 'undefined') {
+    setTimeout(renderDash, 500);
+    return;
+  }
+  initChartDefaults();
+  // Populate filter dropdowns from masters
+  fillDashFilters();
+
+  const dates = getDashDates();
+  const data  = filterData(dates);
+
+  renderKPIs(data);
+  renderFunnel(data);
+  renderStatusDist(data);
+  renderClientChart(data);
+  renderSourceChart(data);
+  renderRecruiterChart(data);
+  renderTrendChart(data, dates);
+  renderRejectionChart(data);
+  renderDeptChart(data);
+  // Also refresh action queue
+  loadDash();
+}
+
+function fillDashFilters() {
+  const filters = [
+    ['df-client',    'clients',    'All Clients'],
+    ['df-dept',      'departments','All Departments'],
+    ['df-recruiter', 'recruiters', 'All Recruiters'],
+  ];
+  filters.forEach(([id, key, placeholder]) => {
+    const el = document.getElementById(id);
+    if (!el || el.options.length > 1) return; // already populated
+    const cur = el.value;
+    el.innerHTML = '<option value="">'+placeholder+'</option>';
+    mA(key).forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      el.appendChild(o);
+    });
+    if (cur) el.value = cur;
+  });
+}
+
+function mkChart(id, config) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (CHARTS[id]) { CHARTS[id].destroy(); }
+  CHARTS[id] = new Chart(el.getContext('2d'), config);
+}
+
+// ── KPI ROW ───────────────────────────────────────────────
+function renderKPIs(data) {
+  const active  = data.filter(r => ACTIVE_STATUSES.has(r[C.status])).length;
+  const joined  = data.filter(r => r[C.status] === 'Joined').length;
+  const offered = data.filter(r => r[C.status] === 'Offered').length;
+
+  // Average TAT (sourcing date to joined date)
+  const tats = data
+    .filter(r => r[C.status] === 'Joined' && r[C.sourcingDate] && r[C.updatedOn])
+    .map(r => {
+      const d1 = new Date(r[C.sourcingDate]);
+      const d2 = new Date(r[C.updatedOn]);
+      return Math.round((d2 - d1) / 86400000);
+    })
+    .filter(n => n > 0 && n < 365);
+  const avgTAT = tats.length ? Math.round(tats.reduce((a,b)=>a+b,0)/tats.length) : '—';
+
+  const sv2 = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  sv2('kpi-total',   data.length);
+  sv2('kpi-active',  active);
+  sv2('kpi-joined',  joined);
+  sv2('kpi-offered', offered);
+  sv2('kpi-tat',     avgTAT);
+  // Also update top dashboard stats
+  sv2('ds-tot', MD.length);
+  sv2('ds-act', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+  sv2('ds-joi', MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(today().slice(0,7))).length);
+  sv2('ds-pen', MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=today()).length);
+}
+
+// ── FUNNEL CHART ──────────────────────────────────────────
+function renderFunnel(data) {
+  const stages = [
+    'Active', 'Not Contactable',
+    'Consultant Interview in Progress', 'Shortlisted for Client I/W',
+    'Client I/W in Progress', 'Selected', 'Offered',
+    'Joining in Progress', 'Joined'
+  ];
+  const labels = ['Active','Not Contactable','Cons. Interview','Shortlisted','Client Interview','Selected','Offered','Joining','Joined'];
+  const counts = stages.map(s => data.filter(r => r[C.status] === s).length);
+  mkChart('ch-funnel', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Candidates',
+        data: counts,
+        backgroundColor: [
+          CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
+          CHART_COLORS.cyan, CHART_COLORS.teal, CHART_COLORS.green,
+          CHART_COLORS.blue, CHART_COLORS.purple, CHART_COLORS.teal
+        ],
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { precision: 0 } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ── STATUS DISTRIBUTION (DONUT) ───────────────────────────
+function renderStatusDist(data) {
+  const statusGroups = {
+    'Active': data.filter(r=>r[C.status]==='Active').length,
+    'Not Contactable': data.filter(r=>r[C.status]==='Not Contactable').length,
+    'In Interview': data.filter(r=>['Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress'].includes(r[C.status])).length,
+    'Selected/Offered': data.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])).length,
+    'Joined': data.filter(r=>r[C.status]==='Joined').length,
+    'Rejected': data.filter(r=>['Rejected by Consultant','Rejected by Client'].includes(r[C.status])).length,
+    'Inactive': data.filter(r=>['Not Interested','Offer Declined','Offer Revoked','Dropped'].includes(r[C.status])).length,
+  };
+  const labels = Object.keys(statusGroups).filter(k => statusGroups[k] > 0);
+  const values = labels.map(k => statusGroups[k]);
+  const colors = [CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
+                  CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.purple];
+  mkChart('ch-status', {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#000' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 10 } } },
+        tooltip: { callbacks: { label: ctx => ' '+ctx.label+': '+ctx.parsed+' ('+Math.round(ctx.parsed/values.reduce((a,b)=>a+b,0)*100)+'%)' } }
+      }
+    }
+  });
+}
+
+// ── CLIENT PIPELINE ───────────────────────────────────────
+function renderClientChart(data) {
+  const clients = [...new Set(data.map(r=>r[C.client]).filter(Boolean))].sort();
+  const activeByClient  = clients.map(cl => data.filter(r=>r[C.client]===cl&&ACTIVE_STATUSES.has(r[C.status])).length);
+  const joinedByClient  = clients.map(cl => data.filter(r=>r[C.client]===cl&&r[C.status]==='Joined').length);
+  const totalByClient   = clients.map(cl => data.filter(r=>r[C.client]===cl).length);
+  mkChart('ch-client', {
+    type: 'bar',
+    data: {
+      labels: clients,
+      datasets: [
+        { label: 'Total',  data: totalByClient,  backgroundColor: 'rgba(31,92,147,0.5)', borderColor: CHART_COLORS.blue, borderWidth: 1, borderRadius: 3 },
+        { label: 'Active', data: activeByClient, backgroundColor: 'rgba(52,186,198,0.7)', borderColor: CHART_COLORS.teal, borderWidth: 1, borderRadius: 3 },
+        { label: 'Joined', data: joinedByClient, backgroundColor: 'rgba(233,152,43,0.8)', borderColor: CHART_COLORS.gold, borderWidth: 1, borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { precision: 0 } }
+      }
+    }
+  });
+}
+
+// ── SOURCE EFFECTIVENESS ──────────────────────────────────
+function renderSourceChart(data) {
+  const sources = [...new Set(data.map(r=>r[C.source]).filter(Boolean))].sort();
+  const sourcedCount = sources.map(s => data.filter(r=>r[C.source]===s).length);
+  const joinedCount  = sources.map(s => data.filter(r=>r[C.source]===s&&r[C.status]==='Joined').length);
+  const convRate     = sources.map((s,i) => sourcedCount[i] > 0 ? Math.round(joinedCount[i]/sourcedCount[i]*100) : 0);
+
+  mkChart('ch-source', {
+    type: 'bar',
+    data: {
+      labels: sources,
+      datasets: [
+        { label: 'Sourced', data: sourcedCount, backgroundColor: 'rgba(31,92,147,0.6)', borderRadius: 3, yAxisID: 'y' },
+        { label: 'Joined',  data: joinedCount,  backgroundColor: 'rgba(233,152,43,0.8)', borderRadius: 3, yAxisID: 'y' },
+        { label: 'Conv %',  data: convRate, type: 'line', borderColor: CHART_COLORS.teal,
+          backgroundColor: 'rgba(52,186,198,0.1)', pointBackgroundColor: CHART_COLORS.teal,
+          tension: 0.3, yAxisID: 'y2' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y:  { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { precision: 0 }, position: 'left' },
+        y2: { position: 'right', grid: { display: false }, ticks: { callback: v => v+'%' }, min: 0, max: 100 }
+      }
+    }
+  });
+}
+
+// ── RECRUITER PERFORMANCE ─────────────────────────────────
+function renderRecruiterChart(data) {
+  const recs = [...new Set(data.map(r=>r[C.recruiter]).filter(Boolean))].sort();
+  const sourced = recs.map(r => data.filter(d=>d[C.recruiter]===r).length);
+  const active  = recs.map(r => data.filter(d=>d[C.recruiter]===r&&ACTIVE_STATUSES.has(d[C.status])).length);
+  const joined  = recs.map(r => data.filter(d=>d[C.recruiter]===r&&d[C.status]==='Joined').length);
+  mkChart('ch-recruiter', {
+    type: 'bar',
+    data: {
+      labels: recs,
+      datasets: [
+        { label: 'Sourced', data: sourced, backgroundColor: 'rgba(31,92,147,0.5)', borderRadius: 3 },
+        { label: 'Active',  data: active,  backgroundColor: 'rgba(52,186,198,0.7)', borderRadius: 3 },
+        { label: 'Joined',  data: joined,  backgroundColor: 'rgba(233,152,43,0.85)',borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, stacked: false, ticks: { precision: 0 } }
+      }
+    }
+  });
+}
+
+// ── WEEKLY TREND ──────────────────────────────────────────
+function renderTrendChart(data, dates) {
+  // Build weekly buckets for last 12 weeks
+  const weeks = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i * 7);
+    const weekStart = new Date(d);
+    weekStart.setDate(d.getDate() - d.getDay() + 1);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weeks.push({
+      label: weekStart.toLocaleDateString('en-IN', {day:'2-digit',month:'short'}),
+      from:  weekStart.toISOString().split('T')[0],
+      to:    weekEnd.toISOString().split('T')[0]
+    });
+  }
+  const added  = weeks.map(w => data.filter(r=>r[C.sourcingDate]>=w.from&&r[C.sourcingDate]<=w.to).length);
+  const joined = weeks.map(w => data.filter(r=>r[C.status]==='Joined'&&r[C.updatedOn]>=w.from&&r[C.updatedOn]<=w.to).length);
+  mkChart('ch-trend', {
+    type: 'line',
+    data: {
+      labels: weeks.map(w => w.label),
+      datasets: [
+        { label: 'Added',  data: added,  borderColor: CHART_COLORS.teal, backgroundColor: 'rgba(52,186,198,0.1)',
+          fill: true, tension: 0.3, pointBackgroundColor: CHART_COLORS.teal, pointRadius: 3 },
+        { label: 'Joined', data: joined, borderColor: CHART_COLORS.gold, backgroundColor: 'rgba(233,152,43,0.1)',
+          fill: true, tension: 0.3, pointBackgroundColor: CHART_COLORS.gold, pointRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { precision: 0 }, min: 0 }
+      }
+    }
+  });
+}
+
+// ── REJECTION ANALYSIS ────────────────────────────────────
+function renderRejectionChart(data) {
+  const clients = [...new Set(data.map(r=>r[C.client]).filter(Boolean))].sort();
+  const rejCons = clients.map(cl => data.filter(r=>r[C.client]===cl&&r[C.status]==='Rejected by Consultant').length);
+  const rejCli  = clients.map(cl => data.filter(r=>r[C.client]===cl&&r[C.status]==='Rejected by Client').length);
+  mkChart('ch-reject', {
+    type: 'bar',
+    data: {
+      labels: clients,
+      datasets: [
+        { label: 'Rejected by Consultant', data: rejCons, backgroundColor: 'rgba(155,114,212,0.7)', borderRadius: 3 },
+        { label: 'Rejected by Client',     data: rejCli,  backgroundColor: 'rgba(224,82,82,0.7)',   borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false }, stacked: true },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, stacked: true, ticks: { precision: 0 } }
+      }
+    }
+  });
+}
+
+// ── DEPARTMENT CHART ──────────────────────────────────────
+function renderDeptChart(data) {
+  const depts = [...new Set(data.map(r=>r[C.dept]).filter(Boolean))].sort();
+  const active  = depts.map(d => data.filter(r=>r[C.dept]===d&&ACTIVE_STATUSES.has(r[C.status])).length);
+  const joined  = depts.map(d => data.filter(r=>r[C.dept]===d&&r[C.status]==='Joined').length);
+  mkChart('ch-dept', {
+    type: 'bar',
+    data: {
+      labels: depts,
+      datasets: [
+        { label: 'Active', data: active, backgroundColor: 'rgba(52,186,198,0.7)', borderRadius: 3 },
+        { label: 'Joined', data: joined, backgroundColor: 'rgba(233,152,43,0.8)', borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { precision: 0 } }
+      }
+    }
+  });
+}
+
+// ── DASHBOARD REPORT DOWNLOAD ─────────────────────────────
+function exportDashReport() {
+  const dates = getDashDates();
+  const data  = filterData(dates);
+  const wb    = XLSX.utils.book_new();
+
+  // Sheet 1: Candidate List
+  const hdrs2 = [C.code, C.name, C.position, C.client, C.dept, C.recruiter, C.source,
+                 C.status, C.sourcingDate, C.updatedOn, C.updatedBy, C.followupDate, C.remark];
+  const candRows = [hdrs2.map(h => h), ...data.map(r => hdrs2.map(h => r[h]||''))];
+  const ws1 = XLSX.utils.aoa_to_sheet(candRows);
+
+  // Style header row
+  ws1['!cols'] = hdrs2.map(h => ({wch: Math.max(h.length, 14)}));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Candidate List');
+
+  // Sheet 2: Audit Log for these candidates
+  if (WB && WB.Sheets['Change Log']) {
+    const codes = new Set(data.map(r => r[C.code]));
+    const clWs  = WB.Sheets['Change Log'];
+    const clRows = XLSX.utils.sheet_to_json(clWs, {header:1, defval:''})
+      .filter((r,i) => i === 0 || codes.has(r[2]));
+    if (clRows.length > 1) {
+      const ws2 = XLSX.utils.aoa_to_sheet(clRows);
+      ws2['!cols'] = [{wch:22},{wch:18},{wch:28},{wch:16},{wch:20},{wch:25},{wch:25}];
+      XLSX.utils.book_append_sheet(wb, ws2, 'Audit Log');
+    }
+  }
+
+  // Sheet 3: Summary Stats
+  const summaryData = [
+    ['TALENT+ HIRE PULSE — Dashboard Report'],
+    ['Generated: '+new Date().toLocaleString('en-IN'), 'Period: '+(document.getElementById('df-period')?document.getElementById('df-period').options[document.getElementById('df-period').selectedIndex].text:'All Time')],
+    [],
+    ['SUMMARY'],
+    ['Total Candidates', data.length],
+    ['Active Pipeline', data.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length],
+    ['Joined', data.filter(r=>r[C.status]==='Joined').length],
+    ['Offered', data.filter(r=>r[C.status]==='Offered').length],
+    ['Rejected (Total)', data.filter(r=>r[C.status]==='Rejected by Consultant'||r[C.status]==='Rejected by Client').length],
+    [],
+    ['BY CLIENT'],
+    ['Client', 'Total', 'Active', 'Joined', 'Rejected'],
+    ...[...new Set(data.map(r=>r[C.client]).filter(Boolean))].sort().map(cl=>[
+      cl,
+      data.filter(r=>r[C.client]===cl).length,
+      data.filter(r=>r[C.client]===cl&&ACTIVE_STATUSES.has(r[C.status])).length,
+      data.filter(r=>r[C.client]===cl&&r[C.status]==='Joined').length,
+      data.filter(r=>r[C.client]===cl&&['Rejected by Consultant','Rejected by Client'].includes(r[C.status])).length,
+    ]),
+    [],
+    ['BY RECRUITER'],
+    ['Recruiter', 'Sourced', 'Active', 'Joined'],
+    ...[...new Set(data.map(r=>r[C.recruiter]).filter(Boolean))].sort().map(rec=>[
+      rec,
+      data.filter(r=>r[C.recruiter]===rec).length,
+      data.filter(r=>r[C.recruiter]===rec&&ACTIVE_STATUSES.has(r[C.status])).length,
+      data.filter(r=>r[C.recruiter]===rec&&r[C.status]==='Joined').length,
+    ]),
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet(summaryData);
+  ws3['!cols'] = [{wch:30},{wch:12},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Summary');
+
+  const period = document.getElementById('df-period') ?
+    document.getElementById('df-period').value : 'all';
+  XLSX.writeFile(wb, 'THP_Dashboard_Report_'+period+'_'+today()+'.xlsx');
+  toast('ok', 'Report Downloaded', 'Candidate list + audit log + summary — 3 sheets');
+}
+
+// Trigger dashboard render when data loads
+const _origInitUI = initUI;
+function initUI() {
+  _origInitUI();
+  // Render dashboard after short delay to ensure Chart.js has loaded
+  setTimeout(renderDash, 800);
+}
+
+// Re-render when switching to dashboard panel
+const _origGoPanel = goPanel;
+function goPanel(name) {
+  _origGoPanel(name);
+  if (name === 'dashboard') {
+    setTimeout(renderDash, 100);
+  }
+}
 
 </script>
 </body>
