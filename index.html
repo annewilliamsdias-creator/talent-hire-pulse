@@ -849,6 +849,8 @@ async function refreshToken() {
   // Parse user from id_token
   if (tokens.id_token) parseIdt(tokens.id_token);
 }
+// Alias so both PKCE auth and app code work
+const refreshTok = refreshToken;
 
 // ── Parse id_token for user info ─────────────────────────
 function parseIdt(idToken) {
