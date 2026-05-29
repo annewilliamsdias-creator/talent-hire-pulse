@@ -1595,6 +1595,13 @@ function goRecFiltered(scope, status){
   const cli=document.getElementById('rCli');if(cli)cli.value='';
   renderRec();
 }
+// Handler for data-code buttons in All Records table
+function openBtn(el, type){
+  const code=el.dataset.code;
+  if(!code)return;
+  if(type==='upd')qUpd(code);
+  else if(type==='view'){window._mc=code;viewCandModal(code);}
+}
 function qUpd(code){document.getElementById('uCode').value=code;goPanel('upd');doLookup();}
 
 // ══════════════════════════════════════════════════════
@@ -1780,14 +1787,15 @@ const filtered=MD.filter(r=>{
   return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf);
 });
 const tb=document.getElementById('rBody');if(!tb)return;
-tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="qUpd(''+r[C.code]+'')">Update</button><button class="btn btn-ghost btn-sm" onclick="viewCandModal(''+r[C.code]+'')">View</button></div></td></tr>').join('');
+tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,'upd')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,'view')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
 const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.min(filtered.length,500)+' of '+filtered.length+' records ('+MD.length+' total in database)';}
 
 function viewCandModal(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
   const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status',r[C.status]],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up Date',fmtD(r[C.followupDate])],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM','\u20b9'+(r[C.salaryPM]||'—')],['Expected Salary PM','\u20b9'+(r[C.expectedSalary]||'—')],['Offered Salary','\u20b9'+(r[C.offeredSalary]||'—')],['Expected DOJ',fmtD(r[C.doj])],['Remarks',r[C.remark]||'—'],['Last Updated By',r[C.updatedBy]||'—'],['Last Updated On',fmtD(r[C.updatedOn])]];
   const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]).map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:40%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
-  showModal('\u{1F464} '+r[C.name],r[C.position]+' &middot; '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();qUpd(''+code+'')">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  window._mc=code;
+  showModal('\u{1F464} '+r[C.name],r[C.position]+' &middot; '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
 
 function dlAllRecords(){
