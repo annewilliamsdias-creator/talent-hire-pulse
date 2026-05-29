@@ -1787,7 +1787,7 @@ const filtered=MD.filter(r=>{
   return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf);
 });
 const tb=document.getElementById('rBody');if(!tb)return;
-tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,'upd')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,'view')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
+tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
 const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.min(filtered.length,500)+' of '+filtered.length+' records ('+MD.length+' total in database)';}
 
 function viewCandModal(code){
@@ -3191,7 +3191,7 @@ function renderJDList(){
       '<div style="font-size:11px;color:var(--w60);margin-top:2px">'+(j.client?j.client+' · ':'')+  (j.dept?j.dept+' · ':'')+(j.tags?'Tags: '+j.tags:'')+'</div></div>'+
       '<a href="'+j.link+'" target="_blank" class="btn btn-t btn-sm" style="text-decoration:none">Open JD ↗</a>'+
       '<button class="btn btn-ghost btn-sm" onclick="sendJDToWA(repoData.jds['+i+'].link)" title="Send via WhatsApp">📱 WA</button>'+
-      '<button class="btn btn-ghost btn-sm" onclick="delRepo('jds','+i+')" style="color:#ff6b6b">✕</button></div>';
+      '<button class="btn btn-ghost btn-sm" onclick="delRepo(\'jds\','+i+')" style="color:#ff6b6b">✕</button></div>';
   }).join('');
 }
 function sendJDToWA(link){
