@@ -359,7 +359,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
       <span class="nav-label">New Candidate</span>
     </div>
-    <div class="nav-item" onclick="goPanel('upd')" title="Update Record">
+    <div class="nav-item" onclick="goPanel(\'upd\')" title="Update Record">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
       <span class="nav-label">Update Record</span>
     </div>
@@ -803,9 +803,9 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div class="card-title"><span class="ac">📁</span> Repositories</div>
 </div>
 <div class="atabs" id="repo-tabs">
-  <div class="atab on" id="rt-jd" onclick="switchRepoTab('jd')">📄 JD Library</div>
-  <div class="atab" id="rt-scripts" onclick="switchRepoTab('scripts')">🎙 Recruiter Scripts</div>
-  <div class="atab" id="rt-help" onclick="switchRepoTab('help')">❓ Help Menu</div>
+  <div class="atab on" id="rt-jd" onclick="switchRepoTab(\'jd\')">📄 JD Library</div>
+  <div class="atab" id="rt-scripts" onclick="switchRepoTab(\'scripts\')">🎙 Recruiter Scripts</div>
+  <div class="atab" id="rt-help" onclick="switchRepoTab(\'help\')">❓ Help Menu</div>
 </div>
 
 <!-- JD LIBRARY -->
@@ -1551,7 +1551,7 @@ VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv
 // ══════════════════════════════════════════════════════
 function initUI(){updateTopbar();loadDash();renderRec();renderVac();initMastersGrid();}
 function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
-function goPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const p=document.getElementById('p-'+name);if(p)p.classList.add('active');const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));if(nav)nav.classList.add('active');if(name==='adm')initAdmin();if(name==='home'){loadDash();}if(name==='analytics'){setTimeout(renderDash,200);}if(name==='repos'){switchRepoTab('jd');}if(name==='incentive'){
+function goPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const p=document.getElementById('p-'+name);if(p)p.classList.add('active');const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));if(nav)nav.classList.add('active');if(name==='adm')initAdmin();if(name==='home'){loadDash();}if(name==='analytics'){setTimeout(renderDash,200);}if(name==='repos'){switchRepoTab(\'jd\');}if(name==='incentive'){
     // Populate recruiter dropdown
     const incRec=document.getElementById('inc-rec');
     if(incRec){incRec.innerHTML='<option value="">Me (Logged In)</option>';mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;incRec.appendChild(o);});}
@@ -1602,7 +1602,7 @@ function openBtn(el, type){
   if(type==='upd')qUpd(code);
   else if(type==='view'){window._mc=code;viewCandModal(code);}
 }
-function qUpd(code){document.getElementById('uCode').value=code;goPanel('upd');doLookup();}
+function qUpd(code){document.getElementById('uCode').value=code;goPanel(\'upd\');doLookup();}
 
 // ══════════════════════════════════════════════════════
 // SALARY CALC
@@ -3214,12 +3214,12 @@ function renderScripts(){
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px;color:var(--w60)">No scripts yet. Add your first recruiter script above.</div>';return;}
   el.innerHTML=list.map(function(s,i){
     return '<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:8px;overflow:hidden">'+
-      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.classList.toggle(\'hidden\')">'+
       '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+s.title+'</div>'+
       '<div style="font-size:11px;color:var(--w60)">'+(s.category||'')+(s.tags?' · '+s.tags:'')+'</div></div>'+
       '<span style="font-size:11px;color:var(--teal)">▼ expand</span>'+
       '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();copyScriptContent('+i+')" style="padding:3px 8px;font-size:10px">Copy</button>'+
-      '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();delRepo('scripts','+i+')" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div>'+
+      '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();delRepo(\'scripts\','+i+')" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div>'+
       '<div class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.6">'+escHtml(s.content)+'</div></div>';
   }).join('');
 }
