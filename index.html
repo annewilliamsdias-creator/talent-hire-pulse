@@ -190,7 +190,7 @@ padding:11px 13px;margin-bottom:14px;font-size:13px}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
 .b-wip{background:var(--gdim);color:var(--gold);border:1px solid rgba(233,152,43,.25)}
 .b-joined{background:var(--tdim);color:var(--teal);border:1px solid rgba(52,186,198,.25)}
-.b-rejected{background:rgba(155,114,212,.12);color:#c4a8e8;border:1px solid rgba(155,114,212,.25)}
+.b-rejected{background:rgba(220,50,50,.12);color:#ff6b6b;border:1px solid rgba(220,50,50,.2)}
 .b-selected{background:rgba(52,186,198,.15);color:#5dd5df;border:1px solid rgba(93,213,223,.25)}
 .b-offered{background:var(--bdim);color:#5b9fd4;border:1px solid rgba(91,159,212,.25)}
 .b-hold{background:rgba(155,114,212,.12);color:#9b72d4;border:1px solid rgba(155,114,212,.25)}
@@ -351,15 +351,15 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <span class="nav-label">Home</span>
       <span class="nav-badge" id="pendBadge">0</span>
     </div>
-    <div class="nav-item" onclick="goPanel('analytics')" title="Talent Insights">
+    <div class="nav-item" onclick="goPanel('analytics')" title="Analytics Dashboard">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
-      <span class="nav-label">Talent Insights</span>
+      <span class="nav-label">Analytics</span>
     </div>
     <div class="nav-item" onclick="goPanel('new')" title="New Candidate">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
       <span class="nav-label">New Candidate</span>
     </div>
-    <div class="nav-item" onclick="goPanel(\'upd\')" title="Update Record">
+    <div class="nav-item" onclick="goPanel('upd')" title="Update Record">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
       <span class="nav-label">Update Record</span>
     </div>
@@ -375,21 +375,9 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
       <span class="nav-label">Vacancies</span>
     </div>
-    <div class="nav-item" onclick="goPanel('repos')" title="Repositories">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
-      <span class="nav-label">Repositories</span>
-    </div>
     <div class="nav-item" id="navBulk" onclick="goPanel('bulk')" title="Bulk Upload">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
       <span class="nav-label">Bulk Upload</span>
-    </div>
-    <div class="nav-item" id="navIncentive" onclick="goPanel('incentive')" title="Incentives">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></span>
-      <span class="nav-label">Incentives</span>
-    </div>
-    <div class="nav-item" id="navInvoice" onclick="goPanel('invoice')" title="Invoicing">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></span>
-      <span class="nav-label">Invoicing</span>
     </div>
     <div class="sb-spacer"></div>
     <div class="nav-item" id="navAdm" onclick="goPanel('adm')" title="Admin">
@@ -505,7 +493,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Client <span class="req">*</span></label><select id="nCli" onchange="fillPosDrop()"><option value="">— Select —</option></select></div>
 <div class="field"><label>Department <span class="req">*</span></label><select id="nDept" onchange="fillPosDrop()"><option value="">— Select —</option></select></div>
 <div class="field"><label>Vacancy Position</label><select id="nPos" onchange="onPosSel()"><option value="">— Select open vacancy —</option></select></div>
-<div class="field s2"><label>Custom Position</label><input type="text" id="nPosC" placeholder="Type role if not in vacancy list"></div>
+<div class="field s2"><label>Custom Position <span class="req">*</span></label><input type="text" id="nPosC" placeholder="Type role if not in vacancy list"></div>
 <div class="field"><label>Vacancy Code <span class="fhint">(auto)</span></label><input type="text" id="nVacC" readonly></div>
 </div>
 <div class="sl2">📅 Status &amp; Follow-up</div>
@@ -534,76 +522,49 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- ANALYTICS DASHBOARD -->
 <div class="panel" id="p-analytics">
 <!-- FILTERS -->
-<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:14px 16px;margin-bottom:16px">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--teal);display:flex;align-items:center;gap:6px">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-      REFINE INSIGHTS
-    </div>
-    <div class="flex gap8">
-      <button class="btn btn-ghost btn-sm" onclick="renderDash()">↺ Refresh</button>
-      <button class="btn btn-t btn-sm" onclick="exportDashReport()">⬇ Download Report</button>
-    </div>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-    <div class="field" style="margin:0">
-      <label style="color:var(--w60)">Period</label>
-      <select id="df-period" onchange="renderDash()">
-        <option value="all">All Time</option>
-        <option value="fy" selected>This FY (Apr–Mar)</option>
-        <option value="q">This Quarter</option>
-        <option value="m">This Month</option>
-        <option value="w">This Week</option>
-        <option value="custom">Custom Range</option>
-      </select>
-    </div>
-    <div class="field" style="margin:0">
-      <label style="color:var(--w60)">Client</label>
-      <select id="df-client" onchange="renderDash()">
-        <option value="">All Clients</option>
-      </select>
-    </div>
-    <div class="field" style="margin:0">
-      <label style="color:var(--w60)">Department</label>
-      <select id="df-dept" onchange="renderDash()">
-        <option value="">All Departments</option>
-      </select>
-    </div>
-    <div class="field" style="margin:0">
-      <label style="color:var(--w60)">Recruiter</label>
-      <select id="df-recruiter" onchange="renderDash()">
-        <option value="">All Recruiters</option>
-      </select>
-    </div>
-    <div class="field" style="margin:0;display:none" id="df-from-wrap">
-      <label style="color:var(--w60)">From</label>
-      <input type="date" id="df-from" onchange="renderDash()">
-    </div>
-    <div class="field" style="margin:0;display:none" id="df-to-wrap">
-      <label style="color:var(--w60)">To</label>
-      <input type="date" id="df-to" onchange="renderDash()">
-    </div>
-  </div>
+<div class="dash-filters">
+  <span class="filter-label">PERIOD</span>
+  <select id="df-period" onchange="renderDash()">
+    <option value="all">All Time</option>
+    <option value="fy" selected>This FY (Apr–Mar)</option>
+    <option value="q">This Quarter</option>
+    <option value="m">This Month</option>
+    <option value="w">This Week</option>
+    <option value="custom">Custom Range</option>
+  </select>
+  <input type="date" id="df-from" style="display:none" onchange="renderDash()">
+  <input type="date" id="df-to" style="display:none" onchange="renderDash()">
+  <select id="df-client" onchange="renderDash()">
+    <option value="">All Clients</option>
+  </select>
+  <select id="df-dept" onchange="renderDash()">
+    <option value="">All Departments</option>
+  </select>
+  <select id="df-recruiter" onchange="renderDash()">
+    <option value="">All Recruiters</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" onclick="renderDash()">↺ Refresh</button>
+  <button class="btn btn-t btn-sm" onclick="exportDashReport()">⬇ Download Report</button>
 </div>
 
 <!-- KPI ROW -->
 <div class="kpi-row">
-  <div class="kpi" style="cursor:pointer" onclick="goRecFiltered('all','')" title="View all records"><div class="kpi-num" id="kpi-total" style="color:var(--teal)">—</div><div class="kpi-lbl">TOTAL</div></div>
-  <div class="kpi" style="cursor:pointer" onclick="goRecFiltered('active','')" title="View active pipeline"><div class="kpi-num" id="kpi-active" style="color:#5dd5df">—</div><div class="kpi-lbl">ACTIVE PIPELINE</div></div>
-  <div class="kpi" style="cursor:pointer" onclick="goRecFiltered('all','Joined')" title="View joined this month"><div class="kpi-num" id="kpi-joined" style="color:var(--gold)">—</div><div class="kpi-lbl">JOINED</div><div style="font-size:9px;color:var(--w60);margin-top:2px" id="ds-mon"></div></div>
-  <div class="kpi" style="cursor:pointer" onclick="goRecFiltered('all','Offered')" title="View offered candidates"><div class="kpi-num" id="kpi-offered" style="color:#5b9fd4">—</div><div class="kpi-lbl">OFFERED</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-total" style="color:var(--teal)">—</div><div class="kpi-lbl">TOTAL</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-active" style="color:#5dd5df">—</div><div class="kpi-lbl">ACTIVE PIPELINE</div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-joined" style="color:var(--gold)">—</div><div class="kpi-lbl">JOINED</div><div style="font-size:9px;color:var(--w60);margin-top:2px" id="ds-mon"></div></div>
+  <div class="kpi"><div class="kpi-num" id="kpi-offered" style="color:#5b9fd4">—</div><div class="kpi-lbl">OFFERED</div></div>
   <div class="kpi"><div class="kpi-num" id="kpi-tat" style="color:#9b72d4">—</div><div class="kpi-lbl">AVG TAT (DAYS)</div></div>
 </div>
 
 <!-- ROW 1: Pipeline Funnel + Status Distribution -->
 <div class="dash-grid">
   <div class="chart-card">
-    <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">⬇</span> Pipeline Funnel</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-funnel','Pipeline_Funnel')">⬇</button></div>
+    <div class="chart-title"><span class="ac">⬇</span> Pipeline Funnel</div>
     <div class="chart-sub">Candidates by stage</div>
     <div class="chart-wrap"><canvas id="ch-funnel"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">◉</span> Status Distribution</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-status','Status_Distribution')">⬇</button></div>
+    <div class="chart-title"><span class="ac">◉</span> Status Distribution</div>
     <div class="chart-sub">Share of each status</div>
     <div class="chart-wrap"><canvas id="ch-status"></canvas></div>
   </div>
@@ -612,12 +573,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- ROW 2: Client Pipeline + Source Effectiveness -->
 <div class="dash-grid">
   <div class="chart-card">
-    <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">🏢</span> Client-wise Active Pipeline</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-client','Client_Pipeline')">⬇</button></div>
+    <div class="chart-title"><span class="ac">🏢</span> Client-wise Active Pipeline</div>
     <div class="chart-sub">Active candidates per client</div>
     <div class="chart-wrap"><canvas id="ch-client"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">📡</span> Source Effectiveness</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-source','Source_Effectiveness')">⬇</button></div>
+    <div class="chart-title"><span class="ac">📡</span> Source Effectiveness</div>
     <div class="chart-sub">Candidates sourced vs joined by source</div>
     <div class="chart-wrap"><canvas id="ch-source"></canvas></div>
   </div>
@@ -626,12 +587,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- ROW 3: Recruiter Performance + Weekly Trend -->
 <div class="dash-grid">
   <div class="chart-card">
-    <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">👤</span> Recruiter Performance</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-recruiter','Recruiter_Performance')">⬇</button></div>
+    <div class="chart-title"><span class="ac">👤</span> Recruiter Performance</div>
     <div class="chart-sub">Sourced vs Active vs Joined</div>
     <div class="chart-wrap tall"><canvas id="ch-recruiter"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">📈</span> Weekly Activity Trend</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-trend','Weekly_Trend')">⬇</button></div>
+    <div class="chart-title"><span class="ac">📈</span> Weekly Activity Trend</div>
     <div class="chart-sub">Candidates added per week</div>
     <div class="chart-wrap tall"><canvas id="ch-trend"></canvas></div>
   </div>
@@ -640,12 +601,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- ROW 4: Rejection Analysis + Department -->
 <div class="dash-grid">
   <div class="chart-card">
-    <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">✗</span> Rejection Analysis</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-reject','Rejection_Analysis')">⬇</button></div>
+    <div class="chart-title"><span class="ac">✗</span> Rejection Analysis</div>
     <div class="chart-sub">Consultant vs Client rejections</div>
     <div class="chart-wrap"><canvas id="ch-reject"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">🏗</span> Department-wise Status</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-dept','Department_Status')">⬇</button></div>
+    <div class="chart-title"><span class="ac">🏗</span> Department-wise Status</div>
     <div class="chart-sub">Active pipeline by department</div>
     <div class="chart-wrap"><canvas id="ch-dept"></canvas></div>
   </div>
@@ -773,17 +734,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
 <div class="card-title mb0"><span class="ac">◈</span> All Candidates</div>
 <div class="flex gap8" style="flex-wrap:wrap">
-<select id="rScope" onchange="renderRec()" style="width:110px;background:var(--bdim);border-color:rgba(31,92,147,.3)">
-  <option value="all">All Records</option>
-  <option value="active">Active Only</option>
-</select>
 <input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:200px" oninput="renderRec()">
 <select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
 <select id="rCli" onchange="renderRec()" style="width:120px"><option value="">All Clients</option></select>
-<button class="btn btn-ghost btn-sm" onclick="dlAllRecords()">⬇ Download</button>
 </div>
 </div>
-<div class="tw"><table><thead><tr><th>Code</th><th>Name</th><th>Position</th><th>Client</th><th>Status</th><th>Follow-up</th><th>Recruiter</th><th>Sourced</th><th>Actions</th></tr></thead><tbody id="rBody"></tbody></table></div>
+<div class="tw"><table><thead><tr><th>Code</th><th>Name</th><th>Position</th><th>Client</th><th>Status</th><th>Follow-up</th><th>Recruiter</th><th>Sourced</th><th></th></tr></thead><tbody id="rBody"></tbody></table></div>
 <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="rCount"></div>
 </div>
 </div>
@@ -792,77 +748,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="panel" id="p-vac">
 <div class="card">
 <div class="card-hdr"><div class="card-title"><span class="ac">◆</span> Vacancies</div></div>
-<div class="tw"><table><thead><tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Priority</th><th>Status</th><th>View</th></tr></thead><tbody id="vBody"></tbody></table></div>
-</div>
-</div>
-
-<!-- REPOSITORIES -->
-<div class="panel" id="p-repos">
-<div class="card">
-<div class="card-hdr">
-  <div class="card-title"><span class="ac">📁</span> Repositories</div>
-</div>
-<div class="atabs" id="repo-tabs">
-  <div class="atab on" id="rt-jd" onclick="switchRepoTab(\'jd\')">📄 JD Library</div>
-  <div class="atab" id="rt-scripts" onclick="switchRepoTab(\'scripts\')">🎙 Recruiter Scripts</div>
-  <div class="atab" id="rt-help" onclick="switchRepoTab(\'help\')">❓ Help Menu</div>
-</div>
-
-<!-- JD LIBRARY -->
-<div id="rp-jd">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-    <input type="text" id="jd-search" placeholder="Search JDs by role, client, keyword..." style="flex:1" oninput="renderJDList()">
-    <button class="btn btn-t btn-sm" onclick="openAddJD()">+ Add JD</button>
-  </div>
-  <div id="jd-add-form" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
-    <div class="fg3">
-      <div class="field"><label>JD Title <span class="req">*</span></label><input type="text" id="jd-title" placeholder="e.g. Operations Executive JD"></div>
-      <div class="field"><label>Client</label><select id="jd-client"><option value="">All / Generic</option></select></div>
-      <div class="field"><label>Department</label><select id="jd-dept"><option value="">— Select —</option></select></div>
-      <div class="field s2"><label>SharePoint / Drive Link <span class="req">*</span></label><input type="text" id="jd-link" placeholder="Paste SharePoint or Drive link here"></div>
-      <div class="field"><label>Tags</label><input type="text" id="jd-tags" placeholder="e.g. operations, mid-level, pune"></div>
-    </div>
-    <div class="btn-row"><button class="btn btn-t" onclick="saveJD()">✓ Save JD</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('jd-add-form').classList.add('hidden')">Cancel</button></div>
-  </div>
-  <div id="jd-list"></div>
-</div>
-
-<!-- RECRUITER SCRIPTS -->
-<div id="rp-scripts" class="hidden">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-    <input type="text" id="sc-search" placeholder="Search scripts..." style="flex:1" oninput="renderScripts()">
-    <button class="btn btn-t btn-sm" onclick="openAddScript()">+ Add Script</button>
-  </div>
-  <div id="sc-add-form" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
-    <div class="fg3">
-      <div class="field"><label>Script Title <span class="req">*</span></label><input type="text" id="sc-title" placeholder="e.g. First Call Script — Tech Candidates"></div>
-      <div class="field"><label>Category</label><select id="sc-category"><option value="First Contact">First Contact</option><option value="Follow-up">Follow-up</option><option value="Negotiation">Negotiation</option><option value="Offer Acceptance">Offer Acceptance</option><option value="Rejection Handling">Rejection Handling</option><option value="Other">Other</option></select></div>
-      <div class="field"><label>Tags</label><input type="text" id="sc-tags" placeholder="e.g. tech, freshers"></div>
-      <div class="field s3"><label>Script Content</label><textarea id="sc-content" style="min-height:100px" placeholder="Paste the recruiter script here..."></textarea></div>
-    </div>
-    <div class="btn-row"><button class="btn btn-t" onclick="saveScript()">✓ Save Script</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('sc-add-form').classList.add('hidden')">Cancel</button></div>
-  </div>
-  <div id="sc-list"></div>
-</div>
-
-<!-- HELP MENU -->
-<div id="rp-help" class="hidden">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-    <input type="text" id="hp-search" placeholder="Search help topics..." style="flex:1" oninput="renderHelp()">
-    <button class="btn btn-t btn-sm" onclick="openAddHelp()">+ Add Help Article</button>
-  </div>
-  <div id="hp-add-form" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
-    <div class="fg3">
-      <div class="field"><label>Title <span class="req">*</span></label><input type="text" id="hp-title" placeholder="e.g. How to add a new candidate"></div>
-      <div class="field"><label>Category</label><select id="hp-category"><option value="Getting Started">Getting Started</option><option value="Candidates">Candidates</option><option value="Vacancies">Vacancies</option><option value="Updates & Status">Updates & Status</option><option value="WhatsApp">WhatsApp</option><option value="Reports">Reports</option><option value="Admin">Admin</option><option value="Other">Other</option></select></div>
-      <div class="field"><label>Tags</label><input type="text" id="hp-tags" placeholder="e.g. bulk upload, how-to"></div>
-      <div class="field s3"><label>Content</label><textarea id="hp-content" style="min-height:100px" placeholder="Write the help article here..."></textarea></div>
-    </div>
-    <div class="btn-row"><button class="btn btn-t" onclick="saveHelp()">✓ Save Article</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('hp-add-form').classList.add('hidden')">Cancel</button></div>
-  </div>
-  <div id="hp-list"></div>
-</div>
-
+<div class="tw"><table><thead><tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Status</th><th>Active</th></tr></thead><tbody id="vBody"></tbody></table></div>
 </div>
 </div>
 
@@ -880,10 +766,9 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div id="bulkAlert"></div>
 <div class="sl2">📥 Step 1 — Download Template</div>
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
-<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Recruiter Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">20 columns. Daily sourcing uploads. Includes Valid Values Reference.</div><button class="btn btn-t btn-sm" onclick="dlTemplate('recruiter')">⬇ Recruiter Template</button></div>
-<div style="background:var(--gdim);border:1px solid rgba(233,152,43,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Admin Migration Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">Full schema. Historical data import and migration.</div><button class="btn btn-g btn-sm" onclick="dlTemplate('admin')">⬇ Admin Template</button></div>
-<div style="background:var(--bdim);border:1px solid rgba(31,92,147,.3);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Candidate Status Update</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">Update status, follow-up date & remarks for existing candidates in bulk.</div><button class="btn btn-p btn-sm" onclick="dlTemplate('status')">⬇ Status Update Template</button></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Recruiter Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">26 columns. Daily sourcing uploads. Includes Recruiter, Vacancy Code, Sourcing Date fields.</div><button class="btn btn-t btn-sm" onclick="dlTemplate('recruiter')">⬇ Recruiter Template</button></div>
+<div style="background:var(--gdim);border:1px solid rgba(233,152,43,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Admin Migration Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">52 columns. Full schema. Historical data import — matches Data sheet exactly.</div><button class="btn btn-g btn-sm" onclick="dlTemplate('admin')">⬇ Admin Template</button></div>
 </div>
 <div class="sl2">📤 Step 2 — Upload Filled File</div>
 <div class="uz" id="bulkDrop" onclick="document.getElementById('bulkFI').click()" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor=''" ondrop="onBulkDrop(event)">
@@ -896,100 +781,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="card hidden" id="bulkPrev">
 <div class="card-hdr"><div class="card-title"><span class="ac">👁</span> Preview</div><div class="flex gap8"><span id="bulkSum" style="font-size:12px;color:var(--w60)"></span><button class="btn btn-t btn-sm" id="bulkCmt" onclick="commitBulk()">✓ Commit</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('bulkPrev').classList.add('hidden')">Cancel</button></div></div>
 <div class="tw"><table><thead><tr><th>Row</th><th>✓</th><th>Name</th><th>Mobile</th><th>Email</th><th>Position</th><th>Client</th><th>Issues</th></tr></thead><tbody id="bulkBody"></tbody></table></div>
-</div>
-</div>
-
-<!-- INCENTIVES -->
-<div class="panel" id="p-incentive">
-<div class="sg3" style="margin-bottom:16px">
-  <div class="stat blue"><div class="sn" id="inc-earned">₹0</div><div class="sl">Earned This Month</div></div>
-  <div class="stat gold"><div class="sn" id="inc-potential">₹0</div><div class="sl">Potential Pipeline</div></div>
-  <div class="stat teal"><div class="sn" id="inc-closed">0</div><div class="sl">Vacancies Closed</div></div>
-</div>
-<div class="card">
-<div class="card-hdr">
-  <div class="card-title"><span class="ac">🏆</span> Incentive Calculator</div>
-  <button class="btn btn-ghost btn-sm" onclick="switchIncTab('matrix')">Configure Matrix</button>
-</div>
-<div class="atabs">
-  <div class="atab on" id="it-calc" onclick="switchIncTab('calc')">🧮 My Earnings</div>
-  <div class="atab" id="it-matrix" onclick="switchIncTab('matrix')">⚙ Billing Matrix</div>
-  <div class="atab" id="it-scenarios" onclick="switchIncTab('scenarios')">💡 Scenarios</div>
-</div>
-
-<!-- MY EARNINGS -->
-<div id="ip-calc">
-  <div class="sl2" style="margin-top:12px">Filter by Recruiter & Period</div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-    <div class="field" style="margin:0"><label>Recruiter</label><select id="inc-rec"><option value="">Me (Logged In)</option></select></div>
-    <div class="field" style="margin:0"><label>Period</label><select id="inc-period" onchange="calcIncentives()"><option value="month">This Month</option><option value="q">This Quarter</option><option value="fy">This FY</option></select></div>
-    <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="calcIncentives()">Calculate</button></div>
-  </div>
-  <div id="inc-results"></div>
-</div>
-
-<!-- BILLING MATRIX -->
-<div id="ip-matrix" class="hidden">
-  <div style="padding:10px 0;color:var(--w60);font-size:12px;margin-bottom:12px">Define the billing/incentive structure for each client. Different clients can have different fee models.</div>
-  <div id="inc-matrix-list"></div>
-  <div style="margin-top:14px">
-    <div class="sl2">Add / Edit Rate Card</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
-      <div class="field" style="margin:0"><label>Client</label><select id="im-client"><option value="">All Clients</option></select></div>
-      <div class="field" style="margin:0"><label>Fee Model</label><select id="im-model"><option value="pct">% of CTC</option><option value="fixed">Fixed per Hire</option><option value="slab">Salary Slab</option></select></div>
-      <div class="field" style="margin:0"><label>Rate / %</label><input type="number" id="im-rate" placeholder="e.g. 8.33 or 50000" step="0.01"></div>
-      <div class="field" style="margin:0"><label>Recruiter Share %</label><input type="number" id="im-share" placeholder="e.g. 20" min="0" max="100" step="1"></div>
-      <div class="field" style="margin:0"><label>Applicable From</label><input type="date" id="im-from"></div>
-      <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="saveMatrix()">Save Rate Card</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- SCENARIOS -->
-<div id="ip-scenarios" class="hidden">
-  <div style="padding:10px 0;color:var(--w60);font-size:12px;margin-bottom:12px">See what you could earn by closing different combinations of open vacancies.</div>
-  <div id="inc-scenarios-list"></div>
-  <button class="btn btn-t btn-sm" onclick="genScenarios()" style="margin-top:12px">🔄 Generate Scenarios</button>
-</div>
-
-</div>
-</div>
-
-<!-- INVOICING -->
-<div class="panel" id="p-invoice">
-<div class="sg" style="margin-bottom:16px">
-  <div class="stat blue"><div class="sn" id="inv-total">₹0</div><div class="sl">Total Invoiced</div></div>
-  <div class="stat gold"><div class="sn" id="inv-pending">₹0</div><div class="sl">Pending Payment</div></div>
-  <div class="stat teal"><div class="sn" id="inv-paid">0</div><div class="sl">Invoices Paid</div></div>
-  <div class="stat purple"><div class="sn" id="inv-overdue">0</div><div class="sl">Overdue</div></div>
-</div>
-<div class="card">
-<div class="card-hdr">
-  <div class="card-title"><span class="ac">🧾</span> Invoices</div>
-  <button class="btn btn-t btn-sm" onclick="openCreateInvoice()">+ Create Invoice</button>
-</div>
-
-<div id="inv-create-form" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
-  <div class="sl2">New Invoice</div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
-    <div class="field" style="margin:0"><label>Candidate <span class="req">*</span></label><input type="text" id="inv-cand-code" placeholder="Candidate code" oninput="lookupInvCand()"></div>
-    <div class="field" style="margin:0"><label>Candidate Name</label><input type="text" id="inv-cand-name" readonly></div>
-    <div class="field" style="margin:0"><label>Client</label><input type="text" id="inv-client" readonly></div>
-    <div class="field" style="margin:0"><label>Position</label><input type="text" id="inv-position" readonly></div>
-    <div class="field" style="margin:0"><label>Offered Salary ₹ PA</label><input type="number" id="inv-ctc" placeholder="Annual CTC" oninput="calcInvAmount()"></div>
-    <div class="field" style="margin:0"><label>Fee % / Amount</label><input type="number" id="inv-fee-rate" placeholder="e.g. 8.33" step="0.01" oninput="calcInvAmount()"></div>
-    <div class="field" style="margin:0"><label>Invoice Amount ₹</label><input type="number" id="inv-amount" placeholder="Auto-calculated"></div>
-    <div class="field" style="margin:0"><label>Invoice Date</label><input type="date" id="inv-date"></div>
-    <div class="field" style="margin:0"><label>Due Date</label><input type="date" id="inv-due"></div>
-    <div class="field" style="margin:0"><label>GST %</label><input type="number" id="inv-gst" placeholder="18" value="18" step="0.1" oninput="calcInvAmount()"></div>
-    <div class="field" style="margin:0"><label>Total with GST ₹</label><input type="number" id="inv-total" readonly></div>
-    <div class="field" style="margin:0"><label>Payment Terms</label><input type="text" id="inv-terms" placeholder="e.g. 30 days net"></div>
-  </div>
-  <div class="btn-row"><button class="btn btn-t" onclick="createInvoice()">✓ Generate Invoice</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-create-form').classList.add('hidden')">Cancel</button></div>
-</div>
-
-<div class="tw"><table><thead><tr><th>Invoice #</th><th>Candidate</th><th>Client</th><th>Position</th><th>Amount</th><th>GST</th><th>Total</th><th>Date</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inv-body"></tbody></table></div>
-<div style="margin-top:8px;font-size:11px;color:var(--w60)" id="inv-count"></div>
 </div>
 </div>
 
@@ -1026,17 +817,9 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Monthly Budget ₹</label><input type="number" id="avBudget"></div>
 <div class="field"><label>Experience Required</label><input type="text" id="avExp" placeholder="e.g. 2-4 years"></div>
 <div class="field"><label>Recruiter Assigned</label><select id="avRec"><option value="">— Select —</option></select></div>
-<div class="field"><label>Hiring Manager</label><input type="text" id="avHiringMgr" placeholder="Name of hiring manager"></div>
-<div class="field"><label>Manager Name</label><input type="text" id="avMgrName" placeholder="Reporting manager"></div>
-<div class="field"><label>Date of Vacancy</label><input type="date" id="avDateVac"></div>
 <div class="field"><label>Target Fill Date</label><input type="date" id="avTgt"></div>
-<div class="field"><label>Priority</label><select id="avPriority"><option value="">— Select —</option><option value="High">🔴 High</option><option value="Medium">🟡 Medium</option><option value="Low">🟢 Low</option></select></div>
-<div class="field"><label># of Positions</label><input type="number" id="avPositions" min="1" value="1" placeholder="e.g. 3"></div>
 <div class="field"><label>Status</label><select id="avStat"><option value="Open">Open</option><option>On Hold</option><option>Closed</option><option>Cancelled</option></select></div>
 <div class="field"><label>Active</label><select id="avAct"><option value="Y">Active — visible in dropdowns</option><option value="N">Inactive — hidden</option></select></div>
-<div class="field s3"><label>Remarks</label><input type="text" id="avRemarks" placeholder="Any notes about this vacancy"></div>
-<div class="field s2"><label>JD Upload <span class="fhint">(link or filename)</span></label><input type="text" id="avJDLink" placeholder="SharePoint link or filename"></div>
-<div class="field" style="align-self:flex-end"><button class="btn btn-ghost btn-sm" onclick="document.getElementById('avJDFile').click()">📎 Browse JD</button><input type="file" id="avJDFile" accept=".pdf,.doc,.docx" style="display:none" onchange="handleJDUpload(event)"></div>
 </div>
 <div class="btn-row"><button class="btn btn-t" onclick="saveVac()">✓ Save</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('avForm').classList.add('hidden')">Cancel</button></div>
 </div>
@@ -1365,9 +1148,6 @@ async function onAuthOk() {
     }
   }
   await loadData();
-  loadRepoData();
-  loadIncentiveData();
-  loadInvoiceData();
 }
 
 // ════════════════════════════════════════════════════════
@@ -1527,7 +1307,7 @@ function writeCL(action,code,field,oldV,newV,nm){try{if(!WB||!WB.Sheets['Change 
 // ══════════════════════════════════════════════════════
 const ROLES={'Super Admin':{admin:true,users:true,masters:true,bulk:true,changelog:true,dashConfig:true,export:true,color:'var(--teal)'},'Admin':{admin:true,users:false,masters:true,bulk:true,changelog:false,dashConfig:false,export:true,color:'var(--gold)'},'Recruiter':{admin:false,users:false,masters:false,bulk:false,changelog:false,dashConfig:false,export:false,color:'#9b72d4'},'Client Recruiter':{isClient:true,all:false,export:false,color:'var(--w60)'},'Client Manager':{isClient:true,all:true,export:false,color:'var(--w60)'},'Client Head':{isClient:true,all:true,export:true,color:'var(--gold)'}};
 function loadUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i+1;break;}}appUsers=[];if(ui>0){for(let i=ui;i<all.length;i++){const r=all[i];if(!r[0]&&!r[1])break;if(r[1])appUsers.push({name:String(r[0]||'').trim(),email:String(r[1]||'').trim().toLowerCase(),type:String(r[2]||'internal').trim(),role:String(r[3]||'Recruiter').trim(),client:String(r[4]||'').trim(),active:String(r[5]||'Y').trim().toUpperCase()==='Y'});}}}catch(e){console.warn('users',e);}}
-function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}const nb=document.getElementById('navBulk');const na=document.getElementById('navAdm');const ni=document.getElementById('navIncentive');const niv=document.getElementById('navInvoice');if(nb)nb.style.display=rd.bulk?'':'none';if(na)na.style.display=rd.admin?'':'none';if(ni)ni.style.display='';if(niv)niv.style.display=rd.admin?'':'none';}
+function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}document.getElementById('navBulk').style.display=rd.bulk?'':'none';document.getElementById('navAdm').style.display=rd.admin?'':'none';}
 async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i;break;}}const block=[['Users'],['Name','Email','Type','Role','Client','Active'],...appUsers.map(u=>[u.name,u.email,u.type||'internal',u.role,u.client||'',u.active?'Y':'N'])];if(ui>=0){let ei=ui+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(ui,ei-ui,...block);}else{all.push([],...block);}WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);await saveWB('Saving users...');}catch(e){toast('err','Save Failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
@@ -1551,24 +1331,7 @@ VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv
 // ══════════════════════════════════════════════════════
 function initUI(){updateTopbar();loadDash();renderRec();renderVac();initMastersGrid();}
 function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
-function goPanel(name){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const p=document.getElementById('p-'+name);
-  if(p)p.classList.add('active');
-  const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));
-  if(nav)nav.classList.add('active');
-  if(name==='adm')initAdmin();
-  if(name==='home'){loadDash();}
-  if(name==='analytics'){setTimeout(renderDash,200);}
-  if(name==='repos'){switchRepoTab('jd');}
-  if(name==='incentive'){
-    const incRec=document.getElementById('inc-rec');
-    if(incRec){incRec.innerHTML='<option value="">Me (Logged In)</option>';mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;incRec.appendChild(o);});}
-    calcIncentives();
-  }
-  if(name==='invoice'){renderInvoices();updateInvStats();}
-}
+function goPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const p=document.getElementById('p-'+name);if(p)p.classList.add('active');const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));if(nav)nav.classList.add('active');if(name==='adm')initAdmin();if(name==='home'){loadDash();}if(name==='analytics'){setTimeout(renderDash,200);}}
 
 // ══════════════════════════════════════════════════════
 // DASHBOARD
@@ -1594,26 +1357,11 @@ if(aq)aq.innerHTML=items.length?items.map(({r,fd,u})=>'<div class="pi '+u+'" onc
 const in7=addDays(td,7);
 const ivs=MD.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=td&&r[C.interviewDate]<=in7).sort((a,b)=>a[C.interviewDate].localeCompare(b[C.interviewDate])).slice(0,10);
 const iv=document.getElementById('iv-list');
-if(iv)iv.innerHTML=ivs.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Interviewer</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>'+ivs.map(r=>'<tr><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="m">'+(r[C.interviewerName]||'—')+'</td><td class="mono">'+fmtD(r[C.interviewDate])+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No interviews in next 7 days</div>';
+if(iv)iv.innerHTML=ivs.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Interviewer</th><th>Date</th><th>Status</th></tr></thead><tbody>'+ivs.map(r=>'<tr><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="m">'+(r[C.interviewerName]||'—')+'</td><td class="mono">'+fmtD(r[C.interviewDate])+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No interviews in next 7 days</div>';
 // Joining in progress
 const jp=MD.filter(r=>r[C.status]==='Joining in Progress'&&r[C.doj]);
 const jpe=document.getElementById('jp-list');
-if(jpe)jpe.innerHTML=jp.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Expected DOJ</th><th>Follow-up (Day Before)</th><th></th></tr></thead><tbody>'+jp.map(r=>{const db=addDays(r[C.doj],-1);const urg=db<=td;return'<tr style="'+(urg?'background:rgba(233,152,43,.06)':'')+'"><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="mono">'+fmtD(r[C.doj])+'</td><td><span class="badge '+(urg?'b-wip':'b-progress')+'">'+fmtD(db)+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>';}).join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No active joinings tracked</div>';}
-function goRecFiltered(scope, status){
-  goPanel('rec');
-  const sc=document.getElementById('rScope');if(sc)sc.value=scope;
-  const st=document.getElementById('rStat');if(st)st.value=status;
-  const srch=document.getElementById('rSrch');if(srch)srch.value='';
-  const cli=document.getElementById('rCli');if(cli)cli.value='';
-  renderRec();
-}
-// Handler for data-code buttons in All Records table
-function openBtn(el, type){
-  const code=el.dataset.code;
-  if(!code)return;
-  if(type==='upd')qUpd(code);
-  else if(type==='view'){window._mc=code;viewCandModal(code);}
-}
+if(jpe)jpe.innerHTML=jp.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Expected DOJ</th><th>Follow-up (Day Before)</th></tr></thead><tbody>'+jp.map(r=>{const db=addDays(r[C.doj],-1);const urg=db<=td;return'<tr style="'+(urg?'background:rgba(233,152,43,.06)':'')+'"><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="mono">'+fmtD(r[C.doj])+'</td><td><span class="badge '+(urg?'b-wip':'b-progress')+'">'+fmtD(db)+'</span></td></tr>';}).join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No active joinings tracked</div>';}
 function qUpd(code){document.getElementById('uCode').value=code;goPanel('upd');doLookup();}
 
 // ══════════════════════════════════════════════════════
@@ -1792,86 +1540,23 @@ await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.le
 // ══════════════════════════════════════════════════════
 function renderRec(){
 const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli');
-const scope=gv('rScope')||'all';
-const filtered=MD.filter(r=>{
-  const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch);
-  const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
-  return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf);
-});
+const filtered=MD.filter(r=>{const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch);return ms&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf);});
 const tb=document.getElementById('rBody');if(!tb)return;
-tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
-const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.min(filtered.length,500)+' of '+filtered.length+' records ('+MD.length+' total in database)';}
+tb.innerHTML=filtered.slice(0,300).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+fmtD(r[C.followupDate])+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')">Update</button></td></tr>').join('');
+const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.min(filtered.length,300)+' of '+filtered.length+' records';}
 
-function viewCandModal(code){
-  const r=MD.find(x=>x[C.code]===code);if(!r)return;
-  const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status',r[C.status]],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up Date',fmtD(r[C.followupDate])],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM','\u20b9'+(r[C.salaryPM]||'—')],['Expected Salary PM','\u20b9'+(r[C.expectedSalary]||'—')],['Offered Salary','\u20b9'+(r[C.offeredSalary]||'—')],['Expected DOJ',fmtD(r[C.doj])],['Remarks',r[C.remark]||'—'],['Last Updated By',r[C.updatedBy]||'—'],['Last Updated On',fmtD(r[C.updatedOn])]];
-  const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]).map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:40%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
-  window._mc=code;
-  showModal('👤 '+r[C.name],r[C.position]+' \u00b7 '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
-}
-
-function dlAllRecords(){
-  const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),scope=gv('rScope')||'all';
-  const data=MD.filter(r=>{
-    const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch);
-    const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
-    return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf);
-  });
-  const cols=[C.code,C.name,C.contact,C.email,C.client,C.position,C.dept,C.status,C.recruiter,C.sourcingDate,C.followupDate,C.company,C.salaryPM,C.expectedSalary,C.offeredSalary,C.doj,C.remark];
-  const labels=['Code','Name','Contact','Email','Client','Position','Department','Status','Recruiter','Sourced','Follow-up','Company','Cur Sal PM','Exp Sal PM','Offered Sal','DOJ','Remarks'];
-  const ws2=XLSX.utils.aoa_to_sheet([labels,...data.map(r=>cols.map(k=>r[k]||''))]);
-  const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws2,'Candidates');
-  XLSX.writeFile(wb2,'THP_Records_'+today()+'.xlsx');
-  toast('ok','Downloaded',data.length+' records exported');
-}
 // ══════════════════════════════════════════════════════
 // VACANCIES
 // ══════════════════════════════════════════════════════
 function renderVac(){
 const tb=document.getElementById('vBody');if(!tb)return;
-if(!VD.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--w60)">No vacancies — add from Admin → Vacancies</td></tr>';return;}
-tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';const pri=v['Priority']||'';const priCol=pri==='High'?'#ff6b6b':pri==='Medium'?'var(--gold)':'var(--teal)';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong>'+(v['Positions Count']&&v['Positions Count']!=='1'?'<span style="font-size:10px;color:var(--teal);margin-left:5px">(×'+v['Positions Count']+')</span>':'')+'</td><td class="m">'+v['Department']+'</td><td class="m">'+(v['Location']||'—')+'</td><td class="m">'+(v['Monthly Budget']?'₹'+v['Monthly Budget']:'—')+'</td><td class="m">'+(v['Recruiter']||'—')+'</td>'+(pri?'<td><span style="font-size:10px;font-weight:700;color:'+priCol+'">'+pri+'</span></td>':'<td class="m">—</td>')+'<td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="viewVacModal('+i+')" style="padding:3px 8px;font-size:10px">View</button></div></td></tr>';}).join('');}
-
-function viewVacModal(idx){
-  const v=VD[idx];if(!v)return;
-  const rows=[
-    ['Vacancy Code',v['Vacancy code']||v['Vacancy Code']||'—'],
-    ['Client',v['Company']||'—'],['Role',v['Designation']||'—'],
-    ['Department',v['Department']||'—'],['Location',v['Location']||'—'],
-    ['Priority',v['Priority']||'—'],['# Positions',v['Positions Count']||'1'],
-    ['Status',v['Current Status']||'—'],['Active',v['Active']==='N'?'No':'Yes'],
-    ['Monthly Budget','₹'+(v['Monthly Budget']||'—')],['Experience Required',v['Experience']||'—'],
-    ['Recruiter Assigned',v['Recruiter']||'—'],['Hiring Manager',v['Hiring Manager']||'—'],
-    ['Manager Name',v['Manager Name']||'—'],['Date of Vacancy',fmtD(v['Date of Vacancy'])],
-    ['Target Fill Date',fmtD(v['Target Fill Date'])],['Remarks',v['Remarks']||'—'],
-    ['JD Link',v['JD Link']||'—'],
-  ];
-  const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—'&&x[1]!=='₹—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:42%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
-  const pri=v['Priority']||'';const priIcon=pri==='High'?'🔴 ':pri==='Medium'?'🟡 ':'🟢 ';
-  showModal('📌 '+(v['Designation']||'Vacancy'),priIcon+pri+' Priority &middot; '+(v['Company']||'')+' &middot; '+(v['Current Status']||''),tableHtml,'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
-}
-
-function handleJDUpload(event){
-  const f=event.target.files[0];if(!f)return;
-  const el=document.getElementById('avJDLink');
-  if(el)el.value=f.name;
-  toast('info','JD File Noted',f.name+' — upload to SharePoint JD folder and paste the link above.');
-}
+if(!VD.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--w60)">No vacancies</td></tr>';return;}
+tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td></tr>';}).join('');}
 
 // ══════════════════════════════════════════════════════
 // WHATSAPP + TEAMS
 // ══════════════════════════════════════════════════════
-function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];
-// Get JD link from mapped vacancy
-const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===r[C.vacCode]);
-const jdLink=vac&&vac['JD Link']?vac['JD Link']:'';
-const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
-const jdBtn=jdLink?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="closeModal();sendJDWA(\''+jdLink+'\')">📄 Send JD (from Vacancy)</button>':'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;opacity:.5" onclick="showCustomJD()">📄 Send JD (enter link)</button>';
-showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',jdBtn+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+'<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
-
-function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find the Job Description for the '+r[C.position]+' role with '+r[C.client]+' below:\n\n'+jdLink+'\n\nPlease review and let us know your interest. - '+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Sent','JD link shared with '+r[C.name]);}
-
-function showCustomJD(){if(eIdx===-1)return;const r=MD[eIdx];const lnk=prompt('Enter JD link or SharePoint URL to share:');if(lnk&&lnk.trim())sendJDWA(lnk.trim());}
+function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')','',tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+'<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
 function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}saveWB(false);}
 function showSched(){if(eIdx===-1)return;const r=MD[eIdx];showModal('📅 Schedule Teams Interview','<strong>'+r[C.name]+'</strong> — '+(r[C.position]||'—')+' @ '+(r[C.client]||'—'),'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px"><div class="field"><label>Date</label><input type="date" id="si_d" value="'+(r[C.interviewDate]||'')+'" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Time</label><input type="time" id="si_t" value="10:00" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Duration</label><select id="si_dur" style="background:#000000;border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"><option value="30">30 mins</option><option value="45">45 mins</option><option value="60" selected>60 mins</option><option value="90">90 mins</option></select></div><div class="field"><label>Interviewer Email</label><input type="email" id="si_em" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)" placeholder="client@company.com"></div></div><div style="font-size:11px;color:var(--w60);margin-top:8px">Outlook calendar invites sent to all participants. WhatsApp option after creation.</div>','<button class="btn btn-t" onclick="createMeeting()">Create Teams Meeting</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');}
 async function createMeeting(){const r=MD[eIdx];const d=document.getElementById('si_d')&&document.getElementById('si_d').value;const t=document.getElementById('si_t')&&document.getElementById('si_t').value;const dur=parseInt(document.getElementById('si_dur')&&document.getElementById('si_dur').value)||60;const ie=document.getElementById('si_em')&&document.getElementById('si_em').value;if(!d||!t){toast('err','Missing details','Date and time required.');return;}closeModal();showLoad('Creating Teams meeting...');try{await refreshToken();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});if(ie&&ie.includes('@'))att.push({emailAddress:{address:ie,name:r[C.interviewerName]||'Interviewer'},type:'required'});const body={subject:'Interview — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,isOnlineMeeting:true,onlineMeetingProvider:'teamsForBusiness',body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your interview for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create meeting');}const ev=await resp.json();const link=ev.onlineMeeting&&ev.onlineMeeting.joinUrl?ev.onlineMeeting.joinUrl:'';r[C.interviewDate]=d;r._iTime=t;if(link)r[C.docLink]=link;r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();writeCL('Interview Scheduled',r[C.code],'Interview','',d+' '+t,r[C.name]);await saveWB(false);hideLoad();showModal('✅ Meeting Created','Teams meeting for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">Outlook invites sent to all participants.</span>',link?'<div style="font-size:10px;color:var(--w60);word-break:break-all;margin-top:4px">'+link.substring(0,80)+'...</div>':'','<button class="btn btn-t" onclick="closeModal();sendWA(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="closeModal()">Done</button>');}catch(e){hideLoad();toast('err','Meeting failed',e.message);}}
@@ -1882,9 +1567,9 @@ async function createMeeting(){const r=MD[eIdx];const d=document.getElementById(
 // dlTemplate replaced by ExcelJS version below
 function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)procBulk(f);}
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
-function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
+function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){const rn=rows[i].map(c=>String(c).replace(/\s*[★\*]+\s*/g,'').trim());if((rn.includes('Name')||rn.some(c=>c==='Name'))&&(rn.includes('Contact no')||rn.includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).replace(/\s*[★\*]+\s*/g,'').trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
 function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
-async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
+async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||obj['Profile Sourcing Date']||today();nr[C.screeningDate]=obj['Profile Screening date']||obj['Profile Screening Date']||'';nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.altContact]=(obj['Alternate contact number']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.altEmail]=obj['Alternate Email']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.vacCode]=obj['Vacancy Code']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=obj['Recruiter']||(acct&&acct.name?acct.name.split(' ')[0]:'');nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // ADMIN PANEL
@@ -1906,14 +1591,14 @@ function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx
 function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});el.value='';renderMT(key);fillDrops();toast('ok','Added',nm+' added.');}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
 // VACANCIES ADMIN
-function openAddVac(){vacEIdx=-1;['avRole','avBudget','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
+function openAddVac(){vacEIdx=-1;['avRole','avBudget','avExp','avTgt'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
 function renderAVacs(){const tb=document.getElementById('avBody');if(!tb)return;if(!VD.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--w60)">No vacancies yet.</td></tr>';return;}tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
-function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudget','Monthly Budget'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
+function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudget','Monthly Budget'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
 async function saveVac(){
 const cli=gv('avCli'),role=gv('avRole'),dept=gv('avDept');
 if(!cli||!role||!dept){showAlert('avAlert','err','Client, Role and Department required.');return;}
 const isNew=vacEIdx===-1;
-const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudget'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y'};
+const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudget'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Target Fill Date':gv('avTgt'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y'};
 if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{const m=String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);return m?parseInt(m[1]):0;}));vd['Vacancy code']='VC-'+yr+'-'+String(mx+1).padStart(4,'0');vd['Sr. No.']=VD.length+1;VD.push(vd);}else{Object.assign(VD[vacEIdx],vd);}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];if(!vh.includes('Active'))vh.push('Active');WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
 await saveWB('Saving vacancy...');document.getElementById('avForm').classList.add('hidden');renderAVacs();renderVac();fillPosDrop();toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
@@ -2032,12 +1717,12 @@ function getDashDates() {
     from = document.getElementById('df-from').value;
     to   = document.getElementById('df-to').value;
     // Show custom inputs
-    ['df-from-wrap','df-to-wrap'].forEach(id => {
+    ['df-from','df-to'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = '';
     });
   } else {
-    ['df-from-wrap','df-to-wrap'].forEach(id => {
+    ['df-from','df-to'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
@@ -2493,20 +2178,18 @@ function exportDashReport() {
 //  BULK UPLOAD TEMPLATE & VALIDATION (ExcelJS)
 // ════════════════════════════════════════════════════════
 
-// Colours — light background palette for legibility (black text on white/grey fills)
+// Colours
 const XL = {
-  headerFill:  { type:'pattern', pattern:'solid', fgColor:{argb:'FF1F5C93'} },  // deep blue header — white text
-  reqFill:     { type:'pattern', pattern:'solid', fgColor:{argb:'FFD0D8E8'} },  // light blue-grey — req fields, black text
-  sampleFill:  { type:'pattern', pattern:'solid', fgColor:{argb:'FFF0F0F0'} },  // light grey — sample row, dark text
-  altFill:     { type:'pattern', pattern:'solid', fgColor:{argb:'FFF7F7F7'} },  // near-white alternate rows
-  errorFill:   { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFD0D0'} },  // light red for errors
-  warnFill:    { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFF0D0'} },  // light gold
-  okFill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FFD0F0E0'} },  // light green
-  white:       { color:{argb:'FFFBFBFA'} },  // for dark backgrounds
-  black:       { color:{argb:'FF111111'} },  // for light backgrounds
+  headerFill:  { type:'pattern', pattern:'solid', fgColor:{argb:'FF1F5C93'} },
+  reqFill:     { type:'pattern', pattern:'solid', fgColor:{argb:'FF291B39'} },
+  sampleFill:  { type:'pattern', pattern:'solid', fgColor:{argb:'FF0D2137'} },
+  errorFill:   { type:'pattern', pattern:'solid', fgColor:{argb:'FFFF4444'} },
+  warnFill:    { type:'pattern', pattern:'solid', fgColor:{argb:'FFE9982B'} },
+  okFill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FF1A3A2A'} },
+  white:       { color:{argb:'FFFBFBFA'} },
   gold:        { color:{argb:'FFE9982B'} },
-  red:         { color:{argb:'FFCC0000'} },
-  teal:        { color:{argb:'FF1F5C93'} },  // use dark blue (legible on light)
+  red:         { color:{argb:'FFFF4444'} },
+  teal:        { color:{argb:'FF34BAC6'} },
 };
 
 async function dlTemplate(type) {
@@ -2574,97 +2257,99 @@ async function dlTemplate(type) {
   const t4 = ws.getRow(4); t4.getCell(1).value = '⚠ DATA ENTRY RULES: Mobile = 10 digits only (no +91). Salary = numbers only (no ₹ or commas). Date = YYYY-MM-DD. Dropdowns = select from list only.';
   t4.getCell(1).font = { color:XL.red, size:10 };
 
-  // Merge title cells
-  ws.mergeCells('A1:T1'); ws.mergeCells('A2:T2');
-  ws.mergeCells('A3:T3'); ws.mergeCells('A4:T4');
+  // Merge title cells — dynamic based on col count
+  const cols = type === 'recruiter' ? recruiterCols : adminCols;
+  const lastCol = String.fromCharCode(64 + Math.min(cols.length, 26)) + (cols.length > 26 ? String.fromCharCode(64 + (cols.length - 26)) : '');
+  const mergeEnd = cols.length <= 26 ? String.fromCharCode(64 + cols.length) : 'A' + String.fromCharCode(64 + cols.length - 26);
+  ws.mergeCells('A1:' + mergeEnd + '1'); ws.mergeCells('A2:' + mergeEnd + '2');
+  ws.mergeCells('A3:' + mergeEnd + '3'); ws.mergeCells('A4:' + mergeEnd + '4');
   ws.getRow(1).height = 22; ws.getRow(3).height = 18;
 
   // ── COLUMN DEFINITIONS ──
+  // _Masters sheet column indices: 1=Clients, 2=Departments, 3=Sources, 4=NoticePeriods, 5=Statuses, 6=Cities, 7=Recruiters
   const recruiterCols = [
-    { key:'name',     label:'Name',                    req:true,  width:22, type:'text' },
-    { key:'mobile',   label:'Contact no',              req:true,  width:14, type:'number', note:'10 digits only, no spaces' },
-    { key:'altMob',   label:'Alternate contact number',req:false, width:14, type:'number' },
-    { key:'email',    label:'Personal Email ID',       req:true,  width:26, type:'text' },
-    { key:'city',     label:'Current Location',        req:true,  width:18, type:'list', master:'cities', col:6 },
-    { key:'exp',      label:'Total Yrs of Exp',        req:false, width:12, type:'text', note:'Number or Fresher' },
-    { key:'notice',   label:'Notice Period',           req:false, width:14, type:'list', master:'noticePeriods', col:4 },
-    { key:'company',  label:'Current Company Name',    req:false, width:22, type:'text' },
-    { key:'desig',    label:'Current Designation',     req:false, width:22, type:'text' },
-    { key:'reason',   label:'Reason for leaving',      req:false, width:22, type:'text' },
-    { key:'salPM',    label:'Current Salary (Rs. PM)', req:false, width:16, type:'number', note:'Numbers only' },
-    { key:'expSal',   label:'Expected Salary (Rs.)',   req:false, width:16, type:'number', note:'Numbers only' },
-    { key:'source',   label:'Source',                  req:true,  width:16, type:'list', master:'sources', col:3 },
-    { key:'srcDet',   label:'Source Details',          req:false, width:20, type:'text' },
-    { key:'client',   label:'Client Name',             req:true,  width:16, type:'list', master:'clients', col:1 },
-    { key:'dept',     label:'Department',              req:true,  width:18, type:'list', master:'departments', col:2 },
-    { key:'position', label:'Position applied for',   req:true,  width:24, type:'text' },
-    { key:'status',   label:'Final Status',            req:false, width:22, type:'list', master:'statuses', col:5 },
-    { key:'fuDate',   label:'Follow-up Date',          req:false, width:14, type:'text', note:'YYYY-MM-DD' },
-    { key:'remark',   label:'Remark',                  req:false, width:24, type:'text' },
+    { key:'sourDate',  label:'Profile Sourcing Date',   req:false, width:18, type:'text',   note:'YYYY-MM-DD. Defaults to today if blank' },
+    { key:'screenDate',label:'Profile Screening Date',  req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
+    { key:'recruiter', label:'Recruiter',               req:true,  width:16, type:'list',   master:'recruiters', col:7 },
+    { key:'name',      label:'Name',                    req:true,  width:22, type:'text' },
+    { key:'mobile',    label:'Contact no',              req:true,  width:14, type:'number', note:'10 digits only, no spaces' },
+    { key:'altMob',    label:'Alternate contact number',req:false, width:14, type:'number' },
+    { key:'email',     label:'Personal Email ID',       req:true,  width:26, type:'text' },
+    { key:'altEmail',  label:'Alternate Email',         req:false, width:26, type:'text' },
+    { key:'city',      label:'Current Location',        req:true,  width:18, type:'list',   master:'cities', col:6 },
+    { key:'exp',       label:'Total Yrs of Exp',        req:false, width:12, type:'text',   note:'Number or Fresher' },
+    { key:'notice',    label:'Notice Period',           req:false, width:14, type:'list',   master:'noticePeriods', col:4 },
+    { key:'company',   label:'Current Company Name',    req:false, width:22, type:'text' },
+    { key:'desig',     label:'Current Designation',     req:false, width:22, type:'text' },
+    { key:'reason',    label:'Reason for leaving',      req:false, width:22, type:'text' },
+    { key:'salPM',     label:'Current Salary (Rs. PM)', req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'expSal',    label:'Expected Salary (Rs.)',   req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'source',    label:'Source',                  req:true,  width:16, type:'list',   master:'sources', col:3 },
+    { key:'srcDet',    label:'Source Details',          req:false, width:20, type:'text' },
+    { key:'client',    label:'Client Name',             req:true,  width:16, type:'list',   master:'clients', col:1 },
+    { key:'dept',      label:'Department',              req:true,  width:18, type:'list',   master:'departments', col:2 },
+    { key:'position',  label:'Position applied for',    req:true,  width:24, type:'text' },
+    { key:'vacCode',   label:'Vacancy Code',            req:false, width:16, type:'text',   note:'e.g. VC-2026-0001. Leave blank if unknown' },
+    { key:'status',    label:'Final Status',            req:false, width:22, type:'list',   master:'statuses', col:5 },
+    { key:'fuDate',    label:'Follow-up Date',          req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
+    { key:'remark',    label:'Remark',                  req:false, width:24, type:'text' },
   ];
 
-  // Status update template — separate early return
-  if (type === 'status') {
-    const wb2 = new ExcelJS.Workbook();
-    const ws2 = wb2.addWorksheet('Status Update', { views:[{state:'frozen',ySplit:3}] });
-    const t1r = ws2.getRow(1); t1r.getCell(1).value = 'TALENT+ HIRE PULSE — Candidate Status Update Template';
-    t1r.getCell(1).font = { bold:true, size:13, color:{ argb:'FF1F5C93' } };
-    ws2.mergeCells('A1:G1'); ws2.getRow(1).height = 22;
-    const t2r = ws2.getRow(2); t2r.getCell(1).value = '★ Required: Candidate Code + at least one update field. Date format: YYYY-MM-DD. Delete sample row before uploading.';
-    t2r.getCell(1).font = { bold:true, color:{ argb:'FFE9982B' }, size:10 };
-    ws2.mergeCells('A2:G2');
-    const statusCols = [
-      { label:'Candidate Code ★', key:'code', width:26, req:true },
-      { label:'New Status', key:'status', width:28, type:'list' },
-      { label:'Follow-up Date', key:'fuDate', width:14 },
-      { label:'Remark / Update Note', key:'remark', width:32 },
-      { label:'Expected DOJ', key:'doj', width:14 },
-      { label:'Offered Salary ₹', key:'offSal', width:14 },
-      { label:'Other Comments', key:'comments', width:28 },
-    ];
-    const hr = ws2.getRow(3); hr.height = 18;
-    statusCols.forEach((col,i) => {
-      const cell = hr.getCell(i+1);
-      cell.value = col.label;
-      cell.fill = col.req ? XL.reqFill : XL.headerFill;
-      cell.font = { bold:true, color: col.req ? XL.black : XL.white, size:10 };
-      cell.alignment = { vertical:'middle' };
-      cell.border = { bottom:{ style:'medium', color:{ argb:'FF1F5C93' } } };
-      ws2.getColumn(i+1).width = col.width;
-    });
-    // Sample row
-    const sr2 = ws2.getRow(4);
-    const sampleCodes = MD.slice(0,3).map(r=>r[C.code]);
-    sr2.getCell(1).value = sampleCodes[0] || 'Talent+Hire/2026/001001';
-    sr2.getCell(2).value = 'WIP';
-    sr2.getCell(3).value = today();
-    sr2.getCell(4).value = 'Sample update note';
-    sr2.eachCell(c => { c.fill = XL.sampleFill; c.font = { italic:true, color:{ argb:'FF555555' }, size:9 }; });
-    const statuses2 = ['WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Consultant','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'];
-    // Add validation for status col
-    for (let r2 = 5; r2 <= 205; r2++) {
-      const row2 = ws2.getRow(r2); row2.height = 15;
-      statusCols.forEach((col,i) => {
-        const cell2 = row2.getCell(i+1);
-        cell2.fill = (r2%2===0) ? XL.altFill : { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFFFFF'} };
-        cell2.font = { color:XL.black, size:10 };
-        if(i===1) { // Status column
-          cell2.dataValidation = { type:'list', allowBlank:true,
-            formulae:['"'+statuses2.join(',')+'"'],
-            showErrorMessage:true, errorStyle:'stop', errorTitle:'Invalid Status', error:'Select from the list' };
-        }
-      });
-    }
-    const buf2 = await wb2.xlsx.writeBuffer();
-    const blob2 = new Blob([buf2], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url2 = URL.createObjectURL(blob2);
-    const a2 = document.createElement('a'); a2.href=url2;
-    a2.download = 'THP_Status_Update_Template.xlsx'; a2.click(); URL.revokeObjectURL(url2);
-    toast('ok','Template Downloaded','Status update template ready — fill in codes and new statuses');
-    return;
-  }
-
-  const cols = type === 'recruiter' ? recruiterCols : recruiterCols; // extend for admin later
+  // Admin migration template — all 52 master columns, matches Data sheet exactly
+  const adminCols = [
+    { key:'candCode',    label:'Candidate code',            req:false, width:22, type:'text',   note:'Leave blank — app generates. Fill only when migrating existing records.' },
+    { key:'sourDate',    label:'Profile Sourcing date',     req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
+    { key:'screenDate',  label:'Profile Screening date',    req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
+    { key:'source',      label:'Source',                    req:true,  width:16, type:'list',   master:'sources', col:3 },
+    { key:'srcDet',      label:'Source Details',            req:false, width:20, type:'text' },
+    { key:'name',        label:'Name',                      req:true,  width:22, type:'text' },
+    { key:'combLoc',     label:'Combined Location',         req:false, width:18, type:'text',   note:'Auto-derived. Leave blank.' },
+    { key:'city',        label:'Current Location',          req:true,  width:18, type:'list',   master:'cities', col:6 },
+    { key:'dept',        label:'Department',                req:true,  width:18, type:'list',   master:'departments', col:2 },
+    { key:'position',    label:'Position applied for',      req:true,  width:24, type:'text' },
+    { key:'roleInt',     label:'Role Interested in',        req:false, width:22, type:'text' },
+    { key:'mobile',      label:'Contact no',                req:true,  width:14, type:'number', note:'10 digits only' },
+    { key:'altMob',      label:'Alternate contact number',  req:false, width:14, type:'number' },
+    { key:'email',       label:'Personal Email ID',         req:false, width:26, type:'text' },
+    { key:'altEmail',    label:'Alternate Email',           req:false, width:26, type:'text' },
+    { key:'exp',         label:'Total Yrs of Exp',          req:false, width:12, type:'text' },
+    { key:'expTenure',   label:'Exp. Tenure',               req:false, width:14, type:'text' },
+    { key:'company',     label:'Current Company Name',      req:false, width:22, type:'text' },
+    { key:'desig',       label:'Current Designation',       req:false, width:22, type:'text' },
+    { key:'notice',      label:'Notice Period',             req:false, width:14, type:'list',   master:'noticePeriods', col:4 },
+    { key:'reason',      label:'Reason for leaving',        req:false, width:22, type:'text' },
+    { key:'salPM',       label:'Current Salary (Rs. PM)',   req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'salPA',       label:'Current Salary (Rs. PA)',   req:false, width:16, type:'number', note:'Auto-calc. Leave blank.' },
+    { key:'salFinal',    label:'Final Current Annual Salary',req:false, width:18, type:'number' },
+    { key:'salBkt',      label:'Current Salary Bracket',    req:false, width:18, type:'text',   note:'Auto-assigned by app.' },
+    { key:'expSal',      label:'Expected Salary (Rs.)',     req:false, width:16, type:'number', note:'Monthly amount' },
+    { key:'offSal',      label:'Offered Salary',            req:false, width:14, type:'number' },
+    { key:'offDate',     label:'Offer Date',                req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
+    { key:'client',      label:'Client Name',               req:true,  width:16, type:'list',   master:'clients', col:1 },
+    { key:'vacCode',     label:'Vacancy Code',              req:false, width:16, type:'text',   note:'e.g. VC-2026-0001' },
+    { key:'status',      label:'Final Status',              req:false, width:22, type:'list',   master:'statuses', col:5 },
+    { key:'dm',          label:'Final Decision Maker',      req:false, width:20, type:'text' },
+    { key:'ivName',      label:'Client Interviewer Name',   req:false, width:22, type:'text' },
+    { key:'ivDate',      label:'Client Interview Date',     req:false, width:16, type:'text',   note:'YYYY-MM-DD' },
+    { key:'selDate',     label:'Client Selection Date',     req:false, width:16, type:'text',   note:'YYYY-MM-DD' },
+    { key:'doj',         label:'Expected/DOJ',              req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
+    { key:'fuDate',      label:'Follow-up Date',            req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
+    { key:'fuNotes',     label:'Follow-up Notes',           req:false, width:24, type:'text' },
+    { key:'fuCount',     label:'Follow-up Attempt Count',   req:false, width:14, type:'number' },
+    { key:'remark',      label:'Remark',                    req:false, width:24, type:'text' },
+    { key:'otherComm',   label:'Other comments',            req:false, width:24, type:'text' },
+    { key:'roleSumm',    label:'Role summary',              req:false, width:24, type:'text' },
+    { key:'consent',     label:'Consent Obtained',          req:false, width:12, type:'text',   note:'Y or N' },
+    { key:'docLink',     label:'Document Link',             req:false, width:28, type:'text' },
+    { key:'prevCode',    label:'Previous Candidate code',   req:false, width:22, type:'text' },
+    { key:'updBy',       label:'Last Updated By',           req:false, width:18, type:'text',   note:'Auto-filled by app.' },
+    { key:'updOn',       label:'Last Updated On',           req:false, width:16, type:'text',   note:'Auto-filled by app.' },
+    { key:'archFlag',    label:'Archive Flag',              req:false, width:12, type:'text',   note:'Y or N' },
+    { key:'tat',         label:'TAT',                       req:false, width:10, type:'number', note:'Auto-calculated.' },
+    { key:'sNo',         label:'S. No',                     req:false, width:8,  type:'number', note:'Auto-assigned.' },
+    { key:'recruiter',   label:'Recruiter',                 req:true,  width:16, type:'list',   master:'recruiters', col:7 },
+    { key:'repDate',     label:'Data base reporting date',  req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
+  ];
 
   // ── HEADER ROW (row 5) ──
   const headerRow = ws.getRow(5);
@@ -2673,19 +2358,28 @@ async function dlTemplate(type) {
     const cell = headerRow.getCell(i+1);
     cell.value = col.req ? col.label + ' ★' : col.label;
     cell.fill = col.req ? XL.reqFill : XL.headerFill;
-    cell.font = { bold:true, color: col.req ? XL.black : XL.white, size:10 };
+    cell.font = { bold:true, color:XL.white, size:10 };
     cell.alignment = { vertical:'middle', wrapText:true };
-    cell.border = { bottom:{ style:'medium', color:{ argb:'FF1F5C93'} } };
+    cell.border = { bottom:{ style:'medium', color:{ argb:'FF34BAC6'} } };
     ws.getColumn(i+1).width = col.width;
   });
 
   // ── SAMPLE ROW (row 6) ──
-  const sampleValues = [
-    'Sample: Priya Sharma', '9876543210', '', 'priya@gmail.com',
+  const sampleValues = type === 'recruiter' ? [
+    new Date().toISOString().split('T')[0], '', aR[0]||'',
+    'Sample: Priya Sharma', '9876543210', '', 'priya@gmail.com', '',
     aL[0]||'Mumbai', '3', aN[0]||'30 days', 'ABC Pvt Ltd', 'Senior Executive',
     'Better growth', '45000', '55000', aS[0]||'Portal', 'Naukri',
-    aC[0]||'', aD[0]||'', 'Operations Manager', 'Active',
-    new Date().toISOString().split('T')[0], 'Initial contact made'
+    aC[0]||'', aD[0]||'', 'Operations Manager', '',
+    'Active', new Date().toISOString().split('T')[0], 'Initial contact made'
+  ] : [
+    '', new Date().toISOString().split('T')[0], '', aS[0]||'Portal', 'Naukri',
+    'Sample: Rahul Mehta', '', aL[0]||'Mumbai', aD[0]||'Operations', 'Operations Manager', '',
+    '9876543210', '', 'rahul@gmail.com', '', '5', '3-5 yrs',
+    'XYZ Corp', 'Manager', aN[0]||'30 days', 'Growth', '60000', '', '720000', '',
+    '70000', '', '', aC[0]||'', '', 'Active', 'Consultant', '', '', '', '',
+    new Date().toISOString().split('T')[0], '', '0', 'Strong candidate', '', '', 'Y', '', '',
+    '', '', '', '', 1, aR[0]||'', new Date().toISOString().split('T')[0]
   ];
   const sampleRow = ws.getRow(6);
   sampleRow.height = 16;
@@ -2693,7 +2387,7 @@ async function dlTemplate(type) {
     const cell = sampleRow.getCell(i+1);
     cell.value = val;
     cell.fill = XL.sampleFill;
-    cell.font = { italic:true, color:{ argb:'FF555555' }, size:9 };
+    cell.font = { italic:true, color:{ argb:'FF888888' }, size:9 };
   });
   const sampleLbl = ws.getRow(6).getCell(1);
   sampleLbl.note = { texts:[{text:'DELETE THIS ROW BEFORE UPLOADING'}] };
@@ -2705,9 +2399,9 @@ async function dlTemplate(type) {
     row.height = 15;
     cols.forEach((col, i) => {
       const cell = row.getCell(i+1);
-      // Alternate row shading — white and light grey, black text for legibility
-      cell.fill = (r % 2 === 0) ? XL.altFill : { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFFFFF'} };
-      cell.font = { color:XL.black, size:10 };
+      // Alternate row shading
+      if (r % 2 === 0) cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF0D0D1A'} };
+      cell.font = { color:XL.white, size:10 };
       cell.alignment = { vertical:'middle' };
 
       // Data validation for list columns
@@ -2747,22 +2441,33 @@ async function dlTemplate(type) {
 
   // ── VALIDATION RULES SHEET ──
   const wsR = wb.addWorksheet('Validation Rules');
-  const ruleData = [
+  const recruiterRules = [
     ['FIELD','REQUIRED?','RULE','EXAMPLE','COMMON MISTAKES'],
+    ['Profile Sourcing Date','NO','YYYY-MM-DD format. Defaults to today if blank','2026-05-30','30/05/2026 or 30-May-2026'],
+    ['Profile Screening Date','NO','YYYY-MM-DD format','2026-05-30','30/05/2026'],
+    ['Recruiter','YES','Select from dropdown — must match an active recruiter','Siddhi','Leaving blank or free-typing'],
     ['Name','YES','Full name, no special characters','Priya Sharma','Using initials only'],
-    ['Contact no','YES','Exactly 10 digits, no spaces or +91','9876543210','9876543210 not +919876543210'],
+    ['Contact no','YES','Exactly 10 digits, no spaces or +91','9876543210','+919876543210 or 98765 43210'],
+    ['Alternate contact number','NO','Exactly 10 digits, must differ from primary','9123456789','Same as primary mobile'],
     ['Personal Email ID','YES','Valid email with @ symbol','priya@gmail.com','Spaces in email'],
-    ['Current Location','YES','Select from dropdown only','Mumbai','Typing Mumbai instead of selecting'],
-    ['Source','YES','Select from dropdown only','Portal','Mis-spelling source name'],
-    ['Client Name','YES','Select from dropdown only - case sensitive','Atmann','ATMANN vs Atmann'],
-    ['Department','YES','Select from dropdown only','Operations','Operations vs Ops'],
-    ['Position applied for','YES','Free text - job title only','Operations Manager','Leaving blank'],
-    ['Current Salary (Rs. PM)','NO','Numbers only - monthly amount','45000','45,000 or Rs.45000 or 45k'],
-    ['Expected Salary (Rs.)','NO','Numbers only - monthly amount','55000','55,000 or 55K'],
+    ['Alternate Email','NO','Valid email format','priya.work@company.com','Missing @'],
+    ['Current Location','YES','Select from dropdown only','Mumbai','Typing instead of selecting'],
     ['Total Yrs of Exp','NO','Number (decimals ok) or word Fresher','3.5 or Fresher','3 years or Three'],
     ['Notice Period','NO','Select from dropdown only','30 days','30days or One month'],
-    ['Final Status','NO','Select from dropdown - default is Active','Active','Leaving blank = Active'],
+    ['Current Company Name','NO','Full company name','ABC Pvt Ltd','Abbreviations'],
+    ['Current Designation','NO','Job title','Senior Executive','Leaving as NA'],
+    ['Reason for leaving','NO','Free text','Better growth',''],
+    ['Current Salary (Rs. PM)','NO','Numbers only — monthly amount','45000','45,000 or Rs.45000 or 45k'],
+    ['Expected Salary (Rs.)','NO','Numbers only — monthly amount','55000','55,000 or 55K'],
+    ['Source','YES','Select from dropdown only','Portal','Mis-spelling source name'],
+    ['Source Details','NO','Platform or referrer name','Naukri',''],
+    ['Client Name','YES','Select from dropdown — case sensitive','VSAR Tech','VSAR TECH vs VSAR Tech'],
+    ['Department','YES','Select from dropdown only','Operations','Operations vs Ops'],
+    ['Position applied for','YES','Job title — free text','Operations Manager','Leaving blank'],
+    ['Vacancy Code','NO','From Vacancies list in app. Leave blank if unknown','VC-2026-0001','Making up a code'],
+    ['Final Status','NO','Select from dropdown — defaults to Active if blank','Active','Leaving blank is fine'],
     ['Follow-up Date','NO','YYYY-MM-DD format only','2026-06-15','15/06/2026 or 15-Jun-2026'],
+    ['Remark','NO','Free text notes','Initial contact made',''],
     [],
     ['PRE-UPLOAD CHECKLIST','','','',''],
     ['STEP 1','Delete the sample row (row 6) before uploading','','',''],
@@ -2771,6 +2476,47 @@ async function dlTemplate(type) {
     ['STEP 4','Fix any red-highlighted errors shown in the validation report','','',''],
     ['STEP 5','Re-upload the corrected file and click Commit','','',''],
   ];
+  const adminRules = [
+    ['FIELD','REQUIRED?','RULE / NOTE','EXAMPLE',''],
+    ['Candidate code','NO','Leave blank for new records. Fill only when migrating existing codes.','Talent+Hire/2025/000001',''],
+    ['Profile Sourcing date','NO','YYYY-MM-DD','2026-05-30',''],
+    ['Profile Screening date','NO','YYYY-MM-DD','2026-05-30',''],
+    ['Source','YES','Select from dropdown','Portal',''],
+    ['Name','YES','Full candidate name','Priya Sharma',''],
+    ['Current Location','YES','Select from dropdown','Mumbai',''],
+    ['Department','YES','Select from dropdown','Operations',''],
+    ['Position applied for','YES','Job title free text','Operations Manager',''],
+    ['Contact no','YES','10 digits, no spaces or +91','9876543210',''],
+    ['Personal Email ID','NO','Valid email with @','priya@gmail.com',''],
+    ['Current Salary (Rs. PM)','NO','Numbers only — monthly','45000',''],
+    ['Current Salary (Rs. PA)','NO','Auto-calculated — leave blank','',''],
+    ['Current Salary Bracket','NO','Auto-assigned by app — leave blank','',''],
+    ['Expected Salary (Rs.)','NO','Numbers only — monthly','55000',''],
+    ['Offered Salary','NO','Numbers only','60000',''],
+    ['Offer Date','NO','YYYY-MM-DD','2026-06-01',''],
+    ['Client Name','YES','Select from dropdown','VSAR Tech',''],
+    ['Vacancy Code','NO','e.g. VC-2026-0001','VC-2026-0001',''],
+    ['Final Status','NO','Select from dropdown. Defaults to Active.','Active',''],
+    ['Final Decision Maker','NO','Consultant or Client','Consultant',''],
+    ['Client Interview Date','NO','YYYY-MM-DD','2026-06-10',''],
+    ['Client Selection Date','NO','YYYY-MM-DD','2026-06-12',''],
+    ['Expected/DOJ','NO','YYYY-MM-DD','2026-07-01',''],
+    ['Follow-up Date','NO','YYYY-MM-DD','2026-06-15',''],
+    ['Consent Obtained','NO','Y or N','Y',''],
+    ['Archive Flag','NO','Y or N — leave blank for active records','',''],
+    ['TAT','NO','Auto-calculated — leave blank','',''],
+    ['S. No','NO','Auto-assigned — leave blank','',''],
+    ['Recruiter','YES','Select from dropdown','Siddhi',''],
+    ['Last Updated By / On','NO','Auto-filled by app — leave blank','',''],
+    [],
+    ['PRE-UPLOAD CHECKLIST FOR ADMIN MIGRATION','','','',''],
+    ['STEP 1','Delete the sample row (row 6) before uploading','','',''],
+    ['STEP 2','Candidate code — leave blank for new records, fill for existing migrations','','',''],
+    ['STEP 3','Auto-calculated columns (PA Salary, Bracket, TAT, S.No) — leave blank','','',''],
+    ['STEP 4','Use Validate File in app before committing','','',''],
+    ['STEP 5','After commit verify totals in All Records match expected count','','',''],
+  ];
+  const ruleData = type === 'recruiter' ? recruiterRules : adminRules;
   ruleData.forEach((row,i) => {
     const wsRow = wsR.addRow(row);
     if(i===0){wsRow.eachCell(cell=>{cell.fill=XL.headerFill;cell.font={bold:true,color:XL.white};});}
@@ -2813,7 +2559,7 @@ async function validateBulkFile(event) {
       if (rows[i].some(c => String(c).includes('Name')) &&
           rows[i].some(c => String(c).includes('Contact'))) { hi = i; break; }
     }
-    const hdrs2 = rows[hi].map(h => String(h).replace(' ★','').replace(' *','').trim());
+    const hdrs2 = rows[hi].map(h => String(h).replace(/\s*[★\*]+\s*/g,'').trim());
     const dataRows2 = rows.slice(hi+1).filter(r => r.some(c => c !== '' && c !== null));
 
     // Master sets for validation
@@ -2823,13 +2569,14 @@ async function validateBulkFile(event) {
       'Client Name':       new Set(mA('clients').map(s=>s.toLowerCase())),
       'Department':        new Set(mA('departments').map(s=>s.toLowerCase())),
       'Notice Period':     new Set(mA('noticePeriods').map(s=>s.toLowerCase())),
+      'Recruiter':         new Set(mA('recruiters').map(s=>s.toLowerCase())),
       'Final Status':      new Set(['active','not contactable','not interested','dropped',
         'consultant interview in progress','shortlisted for client i/w','rejected by consultant',
         'client i/w in progress','rejected by client','on hold','selected','offered',
         'offer revoked','offer declined','joining in progress','joined']),
     };
     const required = new Set(['Name','Contact no','Personal Email ID','Current Location',
-      'Source','Client Name','Department','Position applied for']);
+      'Source','Client Name','Department','Position applied for','Recruiter']);
 
     valErrors = [];
     valRowData = dataRows2.map((row, ri) => {
@@ -2858,7 +2605,8 @@ async function validateBulkFile(event) {
         if (val && masters[hdr] && !masters[hdr].has(val.toLowerCase())) {
           const validList = mA({
             'Current Location':'cities','Source':'sources','Client Name':'clients',
-            'Department':'departments','Notice Period':'noticePeriods','Final Status':'statuses'
+            'Department':'departments','Notice Period':'noticePeriods','Final Status':'statuses',
+            'Recruiter':'recruiters'
           }[hdr]||'').join(', ');
           errors.push({ row:rowNum, name:nameVal, field:hdr,
             value:val, issue:'Not in approved master list (check capitalisation)',
@@ -2885,8 +2633,8 @@ async function validateBulkFile(event) {
             valid:'e.g. 45000' });
         }
 
-        // Date format
-        if (hdr==='Follow-up Date' && val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        // Date format — all date fields
+        if (['Follow-up Date','Profile Sourcing Date','Profile Sourcing date','Profile Screening Date','Profile Screening date'].includes(hdr) && val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
           errors.push({ row:rowNum, name:nameVal, field:'Follow-up Date',
             value:val, issue:'Date must be in YYYY-MM-DD format',
             valid:'e.g. 2026-06-15' });
@@ -2997,313 +2745,6 @@ async function downloadValidationReport() {
   a.download='THP_Validation_Report_'+today()+'.xlsx';
   a.click(); URL.revokeObjectURL(url);
   toast('ok','Report Downloaded','Fix red-highlighted rows then re-upload');
-}
-
-// ══════════════════════════════════════════════════════
-// INCENTIVES (Item 19)
-// ══════════════════════════════════════════════════════
-let billingMatrix = [];
-let invoices = [];
-
-function switchIncTab(tab){
-  ['calc','matrix','scenarios'].forEach(t=>{
-    const el=document.getElementById('ip-'+t);const at=document.getElementById('it-'+t);
-    if(el)el.classList.toggle('hidden',t!==tab);
-    if(at)at.classList.toggle('on',t===tab);
-  });
-  if(tab==='calc')calcIncentives();
-  if(tab==='matrix')renderMatrixList();
-  if(tab==='scenarios')genScenarios();
-}
-
-function calcIncentives(){
-  const period=gv('inc-period');
-  const recSel=gv('inc-rec')||((acct&&acct.name)?acct.name.split(' ')[0]:'');
-  const now=new Date(); const td=today(); const tm=td.slice(0,7);
-  let fromDate='', toDate=td;
-  if(period==='month'){fromDate=td.slice(0,8)+'01';}
-  else if(period==='q'){const m=now.getMonth();const qStart=m>=9?9:m>=6?6:m>=3?3:0;fromDate=now.getFullYear()+'-'+String(qStart+1).padStart(2,'0')+'-01';}
-  else if(period==='fy'){const yr=now.getMonth()>=3?now.getFullYear():now.getFullYear()-1;fromDate=yr+'-04-01';}
-  // Joined candidates in period
-  const joined=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=fromDate&&r[C.doj]<=toDate&&(recSel?r[C.recruiter]===recSel:true));
-  let earned=0;
-  const rows=joined.map(r=>{
-    const mat=billingMatrix.find(m=>m.client===r[C.client])||billingMatrix.find(m=>!m.client)||{model:'pct',rate:8.33,share:20};
-    const ctc=(parseFloat(r[C.offeredSalary])||0)*12;
-    let fee=0;
-    if(mat.model==='pct')fee=ctc*(parseFloat(mat.rate)||8.33)/100;
-    else if(mat.model==='fixed')fee=parseFloat(mat.rate)||50000;
-    const recShare=fee*(parseFloat(mat.share)||20)/100;
-    earned+=recShare;
-    return{name:r[C.name],client:r[C.client],pos:r[C.position],doj:r[C.doj],ctc,fee,recShare};
-  });
-  const el=document.getElementById('inc-results');
-  if(!el)return;
-  document.getElementById('inc-earned').textContent='₹'+Math.round(earned).toLocaleString('en-IN');
-  // Potential from pipeline
-  const pipe=MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&(recSel?r[C.recruiter]===recSel:true));
-  let pot=0;pipe.forEach(r=>{const mat=billingMatrix.find(m=>m.client===r[C.client])||{model:'pct',rate:8.33,share:20};const ctc=(parseFloat(r[C.expectedSalary])||0)*12;const fee=ctc*(parseFloat(mat.rate)||8.33)/100;pot+=fee*(parseFloat(mat.share)||20)/100;});
-  document.getElementById('inc-potential').textContent='₹'+Math.round(pot).toLocaleString('en-IN');
-  document.getElementById('inc-closed').textContent=joined.length;
-  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">No joined candidates for this period. Configure the Billing Matrix for accurate calculations.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Position</th><th>DOJ</th><th>CTC ₹ PA</th><th>Firm Fee</th><th>Your Share</th></tr></thead><tbody>'+rows.map(r=>'<tr><td><strong>'+r.name+'</strong></td><td class="m">'+r.client+'</td><td class="m">'+r.pos+'</td><td class="mono">'+fmtD(r.doj)+'</td><td class="m">₹'+r.ctc.toLocaleString('en-IN')+'</td><td class="m">₹'+Math.round(r.fee).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:600">₹'+Math.round(r.recShare).toLocaleString('en-IN')+'</td></tr>').join('')+'</tbody><tfoot><tr style="background:rgba(52,186,198,.08)"><td colspan="6" style="padding:8px 11px;font-weight:700">Total Earned</td><td style="padding:8px 11px;color:var(--teal);font-weight:700">₹'+Math.round(earned).toLocaleString('en-IN')+'</td></tr></tfoot></table></div>';
-}
-
-function saveMatrix(){
-  const cli=gv('im-client'),model=gv('im-model'),rate=gv('im-rate'),share=gv('im-share');
-  if(!rate){toast('warn','Required','Rate is required.');return;}
-  const existing=billingMatrix.findIndex(m=>m.client===cli);
-  const entry={client:cli,model,rate:parseFloat(rate),share:parseFloat(share)||20,from:gv('im-from')};
-  if(existing>=0)billingMatrix[existing]=entry;else billingMatrix.push(entry);
-  saveIncentiveData();renderMatrixList();toast('ok','Matrix Saved','Rate card updated for '+(cli||'All Clients'));
-}
-function renderMatrixList(){
-  const cl=document.getElementById('im-client');
-  if(cl){cl.innerHTML='<option value="">All Clients</option>';mA('clients').forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;cl.appendChild(o);});}
-  const el=document.getElementById('inc-matrix-list');if(!el)return;
-  if(!billingMatrix.length){el.innerHTML='<div style="padding:12px;background:var(--gdim);border:1px solid rgba(233,152,43,.15);border-radius:var(--rs);font-size:12px;color:var(--gold);margin-bottom:10px">⚠ No billing matrix configured. Default: 8.33% of CTC, 20% recruiter share. Add rate cards below.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Model</th><th>Rate</th><th>Rec Share %</th><th>From</th><th></th></tr></thead><tbody>'+billingMatrix.map((m,i)=>'<tr><td>'+(m.client||'All Clients')+'</td><td class="m">'+m.model+'</td><td class="m">'+(m.model==='pct'?m.rate+'%':'₹'+m.rate.toLocaleString('en-IN'))+'</td><td class="m">'+m.share+'%</td><td class="mono">'+fmtD(m.from)+'</td><td><button class="btn btn-ghost btn-sm" onclick="delMatrix('+i+')" style="color:#ff6b6b">✕</button></td></tr>').join('')+'</tbody></table></div>';
-}
-function delMatrix(i){billingMatrix.splice(i,1);saveIncentiveData();renderMatrixList();}
-
-function genScenarios(){
-  const el=document.getElementById('inc-scenarios-list');if(!el)return;
-  const open=VD.filter(v=>v['Current Status']==='Open'&&v['Active']!=='N');
-  if(!open.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No open vacancies to model scenarios for.</div>';return;}
-  const scenes=[];
-  // Single close
-  open.slice(0,8).forEach(v=>{
-    const mat=billingMatrix.find(m=>m.client===v['Company'])||{model:'pct',rate:8.33,share:20};
-    const ctc=parseFloat(v['Monthly Budget']||0)*12;
-    const fee=mat.model==='pct'?ctc*(mat.rate/100):mat.rate;
-    const rec=fee*(mat.share/100);
-    scenes.push({label:'Close: '+v['Designation']+' @ '+v['Company'],cnt:1,fee,rec});
-  });
-  // Close all
-  let totFee=0,totRec=0;
-  open.forEach(v=>{const mat=billingMatrix.find(m=>m.client===v['Company'])||{model:'pct',rate:8.33,share:20};const ctc=parseFloat(v['Monthly Budget']||0)*12;const f=mat.model==='pct'?ctc*(mat.rate/100):mat.rate;totFee+=f;totRec+=f*(mat.share/100);});
-  scenes.push({label:'Close ALL '+open.length+' open vacancies',cnt:open.length,fee:totFee,rec:totRec,bold:true});
-  el.innerHTML='<div style="font-size:11px;color:var(--w60);margin-bottom:10px">Estimates based on monthly budget × 12. Actual CTC may differ.</div>'+'<div class="tw"><table><thead><tr><th>Scenario</th><th>Firm Revenue</th><th>Your Incentive</th></tr></thead><tbody>'+scenes.map(s=>'<tr style="'+(s.bold?'background:rgba(52,186,198,.08)':'')+'"><td style="'+(s.bold?'font-weight:700':'')+'">'+s.label+'</td><td class="m">₹'+Math.round(s.fee).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:'+(s.bold?'700':'500')+'">₹'+Math.round(s.rec).toLocaleString('en-IN')+'</td></tr>').join('')+'</tbody></table></div>';
-}
-function saveIncentiveData(){try{localStorage.setItem('thp_inc',JSON.stringify({matrix:billingMatrix}));}catch(e){}}
-function loadIncentiveData(){try{const d=localStorage.getItem('thp_inc');if(d){const p=JSON.parse(d);if(p.matrix)billingMatrix=p.matrix;}}catch(e){}}
-
-// ══════════════════════════════════════════════════════
-// INVOICING (Item 20)
-// ══════════════════════════════════════════════════════
-let invCounter = 1;
-
-function openCreateInvoice(){
-  ['inv-cand-code','inv-cand-name','inv-client','inv-position','inv-ctc','inv-fee-rate','inv-amount','inv-total','inv-terms'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const gst=document.getElementById('inv-gst');if(gst)gst.value='18';
-  const d=document.getElementById('inv-date');if(d)d.value=today();
-  const due=document.getElementById('inv-due');if(due){const dt=new Date();dt.setDate(dt.getDate()+30);due.value=dt.toISOString().split('T')[0];}
-  document.getElementById('inv-create-form').classList.remove('hidden');
-}
-function lookupInvCand(){
-  const code=gv('inv-cand-code');
-  const r=MD.find(x=>x[C.code]===code);
-  if(r){
-    sv('inv-cand-name',r[C.name]);
-    sv('inv-client',r[C.client]);
-    sv('inv-position',r[C.position]);
-    const offSal=parseFloat(r[C.offeredSalary])||0;
-    if(offSal){sv('inv-ctc',offSal*12);}
-    // Auto-fill fee rate from matrix
-    const mat=billingMatrix.find(m=>m.client===r[C.client])||{rate:8.33};
-    sv('inv-fee-rate',mat.rate);
-    calcInvAmount();
-  }
-}
-function calcInvAmount(){
-  const ctc=parseFloat(gv('inv-ctc'))||0;
-  const rate=parseFloat(gv('inv-fee-rate'))||0;
-  const gst=parseFloat(gv('inv-gst'))||18;
-  const amt=ctc*rate/100;
-  sv('inv-amount',Math.round(amt));
-  sv('inv-total',Math.round(amt*(1+gst/100)));
-}
-function createInvoice(){
-  const candCode=gv('inv-cand-code'),candName=gv('inv-cand-name'),client=gv('inv-client');
-  const amount=parseFloat(gv('inv-amount'))||0;
-  if(!candCode||!amount){toast('warn','Required','Candidate code and amount required.');return;}
-  const inv={
-    id:'INV-'+today().replace(/-/g,'').slice(2)+'-'+String(invCounter++).padStart(3,'0'),
-    candCode,candName,client,position:gv('inv-position'),
-    ctc:parseFloat(gv('inv-ctc'))||0,feeRate:parseFloat(gv('inv-fee-rate'))||0,
-    amount,gst:parseFloat(gv('inv-gst'))||18,
-    total:parseFloat(gv('inv-total'))||0,
-    date:gv('inv-date'),due:gv('inv-due'),terms:gv('inv-terms'),
-    status:'Draft',created:today()
-  };
-  invoices.unshift(inv);
-  saveInvoiceData();
-  document.getElementById('inv-create-form').classList.add('hidden');
-  renderInvoices();
-  updateInvStats();
-  toast('ok','Invoice Created',inv.id+' — ₹'+inv.total.toLocaleString('en-IN'));
-}
-function renderInvoices(){
-  const tb=document.getElementById('inv-body');if(!tb)return;
-  if(!invoices.length){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--w60)">No invoices yet. Create your first invoice above after a candidate joins.</td></tr>';document.getElementById('inv-count').textContent='';return;}
-  const statusCol={'Draft':'var(--w60)','Sent':'var(--gold)','Paid':'var(--teal)','Overdue':'#ff6b6b','Cancelled':'var(--w60)'};
-  tb.innerHTML=invoices.map((inv,i)=>'<tr><td class="mono" style="font-size:10px">'+inv.id+'</td><td><strong>'+inv.candName+'</strong></td><td class="m">'+inv.client+'</td><td class="m">'+inv.position+'</td><td class="m">₹'+Math.round(inv.amount).toLocaleString('en-IN')+'</td><td class="m">'+inv.gst+'%</td><td style="font-weight:600">₹'+Math.round(inv.total).toLocaleString('en-IN')+'</td><td class="mono">'+fmtD(inv.date)+'</td><td class="mono '+(inv.due<today()&&inv.status!=='Paid'?'text-gold':'')+'">'+(inv.due?fmtD(inv.due):'—')+'</td><td><span style="font-size:11px;font-weight:700;color:'+(statusCol[inv.status]||'var(--w60)')+'">'+inv.status+'</span></td><td><div class="flex gap8"><select style="font-size:10px;padding:3px 6px;background:var(--w06);border:1px solid var(--w08);color:var(--ow);border-radius:4px" onchange="setInvStatus('+i+',this.value)"><option>Draft</option><option>Sent</option><option>Paid</option><option>Overdue</option><option>Cancelled</option></select></div></td></tr>').join('');
-  document.getElementById('inv-count').textContent=invoices.length+' invoice(s)';
-}
-function setInvStatus(idx,status){invoices[idx].status=status;saveInvoiceData();renderInvoices();updateInvStats();}
-function updateInvStats(){
-  const tot=invoices.filter(i=>i.status!=='Cancelled').reduce((s,i)=>s+i.total,0);
-  const pend=invoices.filter(i=>['Draft','Sent'].includes(i.status)).reduce((s,i)=>s+i.total,0);
-  const paid=invoices.filter(i=>i.status==='Paid').length;
-  const ov=invoices.filter(i=>i.status==='Overdue'||(i.due<today()&&i.status==='Sent')).length;
-  document.getElementById('inv-total').textContent='₹'+Math.round(tot).toLocaleString('en-IN');
-  document.getElementById('inv-pending').textContent='₹'+Math.round(pend).toLocaleString('en-IN');
-  document.getElementById('inv-paid').textContent=paid;
-  document.getElementById('inv-overdue').textContent=ov;
-}
-function saveInvoiceData(){try{localStorage.setItem('thp_inv',JSON.stringify({invoices,invCounter}));}catch(e){}}
-function loadInvoiceData(){try{const d=localStorage.getItem('thp_inv');if(d){const p=JSON.parse(d);if(p.invoices)invoices=p.invoices;if(p.invCounter)invCounter=p.invCounter;}}catch(e){}}
-
-
-let repoData = { jds:[], scripts:[], help:[] };
-
-function switchRepoTab(tab){
-  ['jd','scripts','help'].forEach(t=>{
-    const el=document.getElementById('rp-'+t);const at=document.getElementById('rt-'+t);
-    if(el)el.classList.toggle('hidden',t!==tab);
-    if(at)at.classList.toggle('on',t===tab);
-  });
-  if(tab==='jd')renderJDList();
-  if(tab==='scripts')renderScripts();
-  if(tab==='help')renderHelp();
-}
-
-// JD Library
-function openAddJD(){
-  ['jd-title','jd-link','jd-tags'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const c=document.getElementById('jd-client');if(c){c.innerHTML='<option value="">All / Generic</option>';mA('clients').forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;c.appendChild(o);});}
-  const d=document.getElementById('jd-dept');if(d){d.innerHTML='<option value="">— Select —</option>';mA('departments').forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;d.appendChild(o);});}
-  document.getElementById('jd-add-form').classList.remove('hidden');
-}
-function saveJD(){
-  const title=gv('jd-title'),link=gv('jd-link');
-  if(!title||!link){toast('warn','Required','Title and link are required.');return;}
-  repoData.jds.push({id:Date.now(),title,client:gv('jd-client'),dept:gv('jd-dept'),link,tags:gv('jd-tags'),added:today()});
-  document.getElementById('jd-add-form').classList.add('hidden');
-  saveRepoData();renderJDList();toast('ok','JD Added',title);
-}
-function renderJDList(){
-  const q=(gv('jd-search')||'').toLowerCase();
-  const el=document.getElementById('jd-list');if(!el)return;
-  const list=repoData.jds.filter(j=>!q||j.title.toLowerCase().includes(q)||(j.tags||'').toLowerCase().includes(q)||(j.client||'').toLowerCase().includes(q));
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px;color:var(--w60)">No JDs yet. Add your first JD above.</div>';return;}
-  el.innerHTML=list.map(function(j,i){
-    return '<div style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:6px">'+
-      '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+j.title+'</div>'+
-      '<div style="font-size:11px;color:var(--w60);margin-top:2px">'+(j.client?j.client+' · ':'')+  (j.dept?j.dept+' · ':'')+(j.tags?'Tags: '+j.tags:'')+'</div></div>'+
-      '<a href="'+j.link+'" target="_blank" class="btn btn-t btn-sm" style="text-decoration:none">Open JD ↗</a>'+
-      '<button class="btn btn-ghost btn-sm jd-wa" data-idx="'+i+'" title="Send via WhatsApp">📱 WA</button>'+
-      '<button class="btn btn-ghost btn-sm jd-del" data-idx="'+i+'" style="color:#ff6b6b">✕</button></div>';
-  }).join('');
-  setTimeout(function(){
-    document.querySelectorAll('.jd-wa').forEach(el => {el.addEventListener('click', function(){ const i=parseInt(this.getAttribute('data-idx')); if(repoData.jds[i])sendJDToWA(repoData.jds[i].link); });});
-    document.querySelectorAll('.jd-del').forEach(el => {el.addEventListener('click', function(){ const i=parseInt(this.getAttribute('data-idx')); delRepo('jds',i); });});
-  }, 0);
-}
-function sendJDToWA(link){
-  if(eIdx!==-1){sendJDWA(link);}else{toast('info','Select Candidate','Look up a candidate first in Update Record, then use WA from there.');}
-}
-
-// Scripts
-function openAddScript(){['sc-title','sc-tags','sc-content'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('sc-add-form').classList.remove('hidden');}
-function saveScript(){
-  const title=gv('sc-title'),content=gv('sc-content');
-  if(!title||!content){toast('warn','Required','Title and content are required.');return;}
-  repoData.scripts.push({id:Date.now(),title,category:gv('sc-category'),tags:gv('sc-tags'),content,added:today()});
-  document.getElementById('sc-add-form').classList.add('hidden');
-  saveRepoData();renderScripts();toast('ok','Script Added',title);
-}
-function renderScripts(){
-  const q=(gv('sc-search')||'').toLowerCase();
-  const el=document.getElementById('sc-list');if(!el)return;
-  const list=repoData.scripts.filter(s=>!q||s.title.toLowerCase().includes(s)||(s.tags||'').toLowerCase().includes(q)||(s.content||'').toLowerCase().includes(q));
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px;color:var(--w60)">No scripts yet. Add your first recruiter script above.</div>';return;}
-  el.innerHTML=list.map(function(s,i){
-    const divId = 'sc-content-'+i;
-    return '<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:8px;overflow:hidden">'+
-      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" class="sc-toggle" data-target="'+divId+'">'+
-      '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+s.title+'</div>'+
-      '<div style="font-size:11px;color:var(--w60)">'+(s.category||'')+(s.tags?' · '+s.tags:'')+'</div></div>'+
-      '<span style="font-size:11px;color:var(--teal)">▼ expand</span>'+
-      '<button class="btn btn-ghost btn-sm sc-copy" data-idx="'+i+'" style="padding:3px 8px;font-size:10px">Copy</button>'+
-      '<button class="btn btn-ghost btn-sm sc-del" data-idx="'+i+'" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div>'+
-      '<div id="'+divId+'" class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.6">'+escHtml(s.content)+'</div></div>';
-  }).join('');
-  setTimeout(function(){
-    document.querySelectorAll('.sc-toggle').forEach(el => {el.addEventListener('click', function(){ document.getElementById(this.getAttribute('data-target')).classList.toggle('hidden'); });});
-    document.querySelectorAll('.sc-copy').forEach(el => {el.addEventListener('click', function(e){ e.stopPropagation(); const i=parseInt(this.getAttribute('data-idx')); if(repoData.scripts[i])copyText(repoData.scripts[i].content); });});
-    document.querySelectorAll('.sc-del').forEach(el => {el.addEventListener('click', function(e){ e.stopPropagation(); const i=parseInt(this.getAttribute('data-idx')); delRepo('scripts',i); });});
-  }, 0);
-}
-// Help
-function openAddHelp(){['hp-title','hp-tags','hp-content'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('hp-add-form').classList.remove('hidden');}
-function saveHelp(){
-  const title=gv('hp-title'),content=gv('hp-content');
-  if(!title||!content){toast('warn','Required','Title and content are required.');return;}
-  repoData.help.push({id:Date.now(),title,category:gv('hp-category'),tags:gv('hp-tags'),content,added:today()});
-  document.getElementById('hp-add-form').classList.add('hidden');
-  saveRepoData();renderHelp();toast('ok','Help Article Added',title);
-}
-function renderHelp(){
-  const q=(gv('hp-search')||'').toLowerCase();
-  const el=document.getElementById('hp-list');if(!el)return;
-  const list=repoData.help.filter(h=>!q||h.title.toLowerCase().includes(q)||(h.tags||'').toLowerCase().includes(q)||(h.content||'').toLowerCase().includes(q));
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px;color:var(--w60)">No help articles yet. Add your first help topic above.</div>';return;}
-  // Group by category
-  const cats={};list.forEach(h=>{const c=h.category||'Other';if(!cats[c])cats[c]=[];cats[c].push(h);});
-  let html='';
-  Object.entries(cats).forEach(function([cat,items]){
-    html+='<div style="margin-bottom:16px"><div class="sl2">'+cat+'</div>';
-    items.forEach(function(h,idx){
-      const helpId='hp-content-'+repoData.help.indexOf(h);
-      html+='<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:6px;overflow:hidden"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" class="hp-toggle" data-target="'+helpId+'"><div style="flex:1"><div style="font-size:13px;font-weight:600">'+h.title+'</div>'+(h.tags?'<div style="font-size:11px;color:var(--w60)">'+h.tags+'</div>':'')+'</div><span style="font-size:11px;color:var(--teal)">▼ expand</span><button class="btn btn-ghost btn-sm hp-del" data-idx="'+repoData.help.indexOf(h)+'" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div><div id="'+helpId+'" class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.7">'+h.content+'</div></div>';
-    });
-    html+='</div>';
-  });
-  el.innerHTML=html;
-  setTimeout(function(){
-    document.querySelectorAll('.hp-toggle').forEach(el => {el.addEventListener('click', function(){ document.getElementById(this.getAttribute('data-target')).classList.toggle('hidden'); });});
-    document.querySelectorAll('.hp-del').forEach(el => {el.addEventListener('click', function(e){ e.stopPropagation(); const i=parseInt(this.getAttribute('data-idx')); delRepo('help',i); });});
-  }, 0);
-}
-
-function delRepo(type,idx){if(confirm('Delete this item?')){repoData[type].splice(idx,1);saveRepoData();if(type==='jds')renderJDList();if(type==='scripts')renderScripts();if(type==='help')renderHelp();}}
-function saveRepoData(){try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){console.warn('Repo save failed',e);}}
-function loadRepoData(){try{const d=localStorage.getItem('thp_repo');if(d)repoData=JSON.parse(d);}catch(e){console.warn('Repo load failed',e);}}
-function copyText(txt){navigator.clipboard.writeText(txt).then(()=>toast('ok','Copied!','Script copied to clipboard'));}
-function copyScriptContent(idx){if(repoData.scripts&&repoData.scripts[idx])copyText(repoData.scripts[idx].content);}
-function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-function dlChart(canvasId, name) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) { toast('warn','Chart not ready','Please load data first'); return; }
-  // Option: show modal to choose PNG or data CSV
-  showModal('⬇ Download — '+name.replace(/_/g,' '),
-    'Choose what to download:',
-    '',
-    '<button class="btn btn-t" onclick="closeModal();dlChartPNG(\''+canvasId+'\',\''+name+'\')">🖼 Download as Image (PNG)</button>' +
-    '<button class="btn btn-ghost" style="margin-top:6px;width:100%" onclick="closeModal()">Cancel</button>'
-  );
-}
-function dlChartPNG(canvasId, name) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const url = canvas.toDataURL('image/png');
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'THP_'+name+'_'+today()+'.png';
-  a.click();
-  toast('ok','Chart Downloaded', name.replace(/_/g,' ')+' saved as PNG');
 }
 
 </script>
