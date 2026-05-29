@@ -1795,7 +1795,7 @@ function viewCandModal(code){
   const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status',r[C.status]],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up Date',fmtD(r[C.followupDate])],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM','\u20b9'+(r[C.salaryPM]||'—')],['Expected Salary PM','\u20b9'+(r[C.expectedSalary]||'—')],['Offered Salary','\u20b9'+(r[C.offeredSalary]||'—')],['Expected DOJ',fmtD(r[C.doj])],['Remarks',r[C.remark]||'—'],['Last Updated By',r[C.updatedBy]||'—'],['Last Updated On',fmtD(r[C.updatedOn])]];
   const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]).map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:40%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
   window._mc=code;
-  showModal('\u{1F464} '+r[C.name],r[C.position]+' &middot; '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  showModal('👤 '+r[C.name],r[C.position]+' \u00b7 '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
 
 function dlAllRecords(){
@@ -3185,7 +3185,14 @@ function renderJDList(){
   const el=document.getElementById('jd-list');if(!el)return;
   const list=repoData.jds.filter(j=>!q||j.title.toLowerCase().includes(q)||(j.tags||'').toLowerCase().includes(q)||(j.client||'').toLowerCase().includes(q));
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px;color:var(--w60)">No JDs yet. Add your first JD above.</div>';return;}
-  el.innerHTML=list.map((j,i)=>'<div style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:6px"><div style="flex:1"><div style="font-size:13px;font-weight:600">'+j.title+'</div><div style="font-size:11px;color:var(--w60);margin-top:2px">'+(j.client?j.client+' · ':''+(j.dept?j.dept+' · ':''))+(j.tags?'Tags: '+j.tags:'')+'</div></div><a href="'+j.link+'" target="_blank" class="btn btn-t btn-sm" style="text-decoration:none">Open JD ↗</a><button class="btn btn-ghost btn-sm" onclick="sendJDToWA(\''+j.link.replace(/'/g,"\\'")+'\')" title="Send via WhatsApp">📱 WA</button><button class="btn btn-ghost btn-sm" onclick="delRepo(\'jds\','+repoData.jds.indexOf(j)+')" style="color:#ff6b6b">✕</button></div>').join('');
+  el.innerHTML=list.map(function(j,i){
+    return '<div style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:6px">'+
+      '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+j.title+'</div>'+
+      '<div style="font-size:11px;color:var(--w60);margin-top:2px">'+(j.client?j.client+' · ':'')+  (j.dept?j.dept+' · ':'')+(j.tags?'Tags: '+j.tags:'')+'</div></div>'+
+      '<a href="'+j.link+'" target="_blank" class="btn btn-t btn-sm" style="text-decoration:none">Open JD ↗</a>'+
+      '<button class="btn btn-ghost btn-sm" onclick="sendJDToWA(repoData.jds['+i+'].link)" title="Send via WhatsApp">📱 WA</button>'+
+      '<button class="btn btn-ghost btn-sm" onclick="delRepo('jds','+i+')" style="color:#ff6b6b">✕</button></div>';
+  }).join('');
 }
 function sendJDToWA(link){
   if(eIdx!==-1){sendJDWA(link);}else{toast('info','Select Candidate','Look up a candidate first in Update Record, then use WA from there.');}
@@ -3203,11 +3210,19 @@ function saveScript(){
 function renderScripts(){
   const q=(gv('sc-search')||'').toLowerCase();
   const el=document.getElementById('sc-list');if(!el)return;
-  const list=repoData.scripts.filter(s=>!q||s.title.toLowerCase().includes(q)||(s.tags||'').toLowerCase().includes(q)||(s.content||'').toLowerCase().includes(q));
+  const list=repoData.scripts.filter(s=>!q||s.title.toLowerCase().includes(s)||(s.tags||'').toLowerCase().includes(q)||(s.content||'').toLowerCase().includes(q));
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px;color:var(--w60)">No scripts yet. Add your first recruiter script above.</div>';return;}
-  el.innerHTML=list.map((s,i)=>'<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:8px;overflow:hidden"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.classList.toggle(\'hidden\')"><div style="flex:1"><div style="font-size:13px;font-weight:600">'+s.title+'</div><div style="font-size:11px;color:var(--w60)">'+(s.category||'')+(s.tags?' · '+s.tags:'')+'</div></div><span style="font-size:11px;color:var(--teal)">▼ expand</span><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();copyText(\''+s.content.replace(/'/g,"\\'").replace(/\n/g,'\\n')+'\')" style="padding:3px 8px;font-size:10px">Copy</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();delRepo(\'scripts\','+repoData.scripts.indexOf(s)+')" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div><div class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.6">'+s.content+'</div></div>').join('');
+  el.innerHTML=list.map(function(s,i){
+    return '<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:8px;overflow:hidden">'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">'+
+      '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+s.title+'</div>'+
+      '<div style="font-size:11px;color:var(--w60)">'+(s.category||'')+(s.tags?' · '+s.tags:'')+'</div></div>'+
+      '<span style="font-size:11px;color:var(--teal)">▼ expand</span>'+
+      '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();copyScriptContent('+i+')" style="padding:3px 8px;font-size:10px">Copy</button>'+
+      '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();delRepo('scripts','+i+')" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div>'+
+      '<div class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.6">'+escHtml(s.content)+'</div></div>';
+  }).join('');
 }
-
 // Help
 function openAddHelp(){['hp-title','hp-tags','hp-content'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('hp-add-form').classList.remove('hidden');}
 function saveHelp(){
@@ -3231,7 +3246,8 @@ function delRepo(type,idx){if(confirm('Delete this item?')){repoData[type].splic
 function saveRepoData(){try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){console.warn('Repo save failed',e);}}
 function loadRepoData(){try{const d=localStorage.getItem('thp_repo');if(d)repoData=JSON.parse(d);}catch(e){console.warn('Repo load failed',e);}}
 function copyText(txt){navigator.clipboard.writeText(txt).then(()=>toast('ok','Copied!','Script copied to clipboard'));}
-
+function copyScriptContent(idx){if(repoData.scripts&&repoData.scripts[idx])copyText(repoData.scripts[idx].content);}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function dlChart(canvasId, name) {
   const canvas = document.getElementById(canvasId);
