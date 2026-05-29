@@ -881,8 +881,8 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div id="bulkAlert"></div>
 <div class="sl2">📥 Step 1 — Download Template</div>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
-<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Recruiter Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">20 columns. Daily sourcing uploads. Includes Valid Values Reference.</div><button class="btn btn-t btn-sm" onclick="dlTemplate('recruiter')">⬇ Recruiter Template</button></div>
-<div style="background:var(--gdim);border:1px solid rgba(233,152,43,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Admin Migration Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">Full schema. Historical data import and migration.</div><button class="btn btn-g btn-sm" onclick="dlTemplate('admin')">⬇ Admin Template</button></div>
+<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Recruiter Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">26 columns. Daily sourcing uploads. Includes Recruiter, Vacancy Code, Sourcing &amp; Screening Date fields.</div><button class="btn btn-t btn-sm" onclick="dlTemplate('recruiter')">⬇ Recruiter Template</button></div>
+<div style="background:var(--gdim);border:1px solid rgba(233,152,43,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Admin Migration Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">52 columns. Full schema — matches Data sheet exactly. For historical imports and migration.</div><button class="btn btn-g btn-sm" onclick="dlTemplate('admin')">⬇ Admin Template</button></div>
 <div style="background:var(--bdim);border:1px solid rgba(31,92,147,.3);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Candidate Status Update</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">Update status, follow-up date & remarks for existing candidates in bulk.</div><button class="btn btn-p btn-sm" onclick="dlTemplate('status')">⬇ Status Update Template</button></div>
 </div>
 <div class="sl2">📤 Step 2 — Upload Filled File</div>
@@ -1882,9 +1882,9 @@ async function createMeeting(){const r=MD[eIdx];const d=document.getElementById(
 // dlTemplate replaced by ExcelJS version below
 function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)procBulk(f);}
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
-function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
+function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){const rn=rows[i].map(c=>String(c).replace(/\s*[★\*]+\s*/g,'').trim());if(rn.some(c=>c==='Name')&&(rn.includes('Contact no')||rn.includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).replace(/\s*[★\*]+\s*/g,'').trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(!obj['Recruiter'])iss.push('Recruiter required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
 function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
-async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
+async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing Date']||obj['Profile Sourcing date']||today();nr[C.screeningDate]=obj['Profile Screening Date']||obj['Profile Screening date']||'';nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.altContact]=(obj['Alternate contact number']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.altEmail]=obj['Alternate Email']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.vacCode]=obj['Vacancy Code']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=obj['Recruiter']||(acct&&acct.name?acct.name.split(' ')[0]:'');nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // ADMIN PANEL
@@ -2575,32 +2575,94 @@ async function dlTemplate(type) {
   t4.getCell(1).font = { color:XL.red, size:10 };
 
   // Merge title cells
-  ws.mergeCells('A1:T1'); ws.mergeCells('A2:T2');
-  ws.mergeCells('A3:T3'); ws.mergeCells('A4:T4');
+  ws.mergeCells('A1:Z1'); ws.mergeCells('A2:Z2');
+  ws.mergeCells('A3:Z3'); ws.mergeCells('A4:Z4');
   ws.getRow(1).height = 22; ws.getRow(3).height = 18;
 
   // ── COLUMN DEFINITIONS ──
+  // _Masters col indices: 1=Clients, 2=Departments, 3=Sources, 4=NoticePeriods, 5=Statuses, 6=Cities, 7=Recruiters
   const recruiterCols = [
-    { key:'name',     label:'Name',                    req:true,  width:22, type:'text' },
-    { key:'mobile',   label:'Contact no',              req:true,  width:14, type:'number', note:'10 digits only, no spaces' },
-    { key:'altMob',   label:'Alternate contact number',req:false, width:14, type:'number' },
-    { key:'email',    label:'Personal Email ID',       req:true,  width:26, type:'text' },
-    { key:'city',     label:'Current Location',        req:true,  width:18, type:'list', master:'cities', col:6 },
-    { key:'exp',      label:'Total Yrs of Exp',        req:false, width:12, type:'text', note:'Number or Fresher' },
-    { key:'notice',   label:'Notice Period',           req:false, width:14, type:'list', master:'noticePeriods', col:4 },
-    { key:'company',  label:'Current Company Name',    req:false, width:22, type:'text' },
-    { key:'desig',    label:'Current Designation',     req:false, width:22, type:'text' },
-    { key:'reason',   label:'Reason for leaving',      req:false, width:22, type:'text' },
-    { key:'salPM',    label:'Current Salary (Rs. PM)', req:false, width:16, type:'number', note:'Numbers only' },
-    { key:'expSal',   label:'Expected Salary (Rs.)',   req:false, width:16, type:'number', note:'Numbers only' },
-    { key:'source',   label:'Source',                  req:true,  width:16, type:'list', master:'sources', col:3 },
-    { key:'srcDet',   label:'Source Details',          req:false, width:20, type:'text' },
-    { key:'client',   label:'Client Name',             req:true,  width:16, type:'list', master:'clients', col:1 },
-    { key:'dept',     label:'Department',              req:true,  width:18, type:'list', master:'departments', col:2 },
-    { key:'position', label:'Position applied for',   req:true,  width:24, type:'text' },
-    { key:'status',   label:'Final Status',            req:false, width:22, type:'list', master:'statuses', col:5 },
-    { key:'fuDate',   label:'Follow-up Date',          req:false, width:14, type:'text', note:'YYYY-MM-DD' },
-    { key:'remark',   label:'Remark',                  req:false, width:24, type:'text' },
+    { key:'sourDate',   label:'Profile Sourcing Date',    req:false, width:18, type:'text',   note:'YYYY-MM-DD. Defaults to today if blank' },
+    { key:'screenDate', label:'Profile Screening Date',   req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
+    { key:'recruiter',  label:'Recruiter',                req:true,  width:16, type:'list',   master:'recruiters', col:7 },
+    { key:'name',       label:'Name',                     req:true,  width:22, type:'text' },
+    { key:'mobile',     label:'Contact no',               req:true,  width:14, type:'number', note:'10 digits only, no spaces' },
+    { key:'altMob',     label:'Alternate contact number', req:false, width:14, type:'number' },
+    { key:'email',      label:'Personal Email ID',        req:true,  width:26, type:'text' },
+    { key:'altEmail',   label:'Alternate Email',          req:false, width:26, type:'text' },
+    { key:'city',       label:'Current Location',         req:true,  width:18, type:'list',   master:'cities', col:6 },
+    { key:'exp',        label:'Total Yrs of Exp',         req:false, width:12, type:'text',   note:'Number or Fresher' },
+    { key:'notice',     label:'Notice Period',            req:false, width:14, type:'list',   master:'noticePeriods', col:4 },
+    { key:'company',    label:'Current Company Name',     req:false, width:22, type:'text' },
+    { key:'desig',      label:'Current Designation',      req:false, width:22, type:'text' },
+    { key:'reason',     label:'Reason for leaving',       req:false, width:22, type:'text' },
+    { key:'salPM',      label:'Current Salary (Rs. PM)',  req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'expSal',     label:'Expected Salary (Rs.)',    req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'source',     label:'Source',                   req:true,  width:16, type:'list',   master:'sources', col:3 },
+    { key:'srcDet',     label:'Source Details',           req:false, width:20, type:'text' },
+    { key:'client',     label:'Client Name',              req:true,  width:16, type:'list',   master:'clients', col:1 },
+    { key:'dept',       label:'Department',               req:true,  width:18, type:'list',   master:'departments', col:2 },
+    { key:'position',   label:'Position applied for',     req:true,  width:24, type:'text' },
+    { key:'vacCode',    label:'Vacancy Code',             req:false, width:16, type:'text',   note:'e.g. VC-2026-0001. Leave blank if unknown' },
+    { key:'status',     label:'Final Status',             req:false, width:22, type:'list',   master:'statuses', col:5 },
+    { key:'fuDate',     label:'Follow-up Date',           req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
+    { key:'remark',     label:'Remark',                   req:false, width:24, type:'text' },
+  ];
+
+  // Admin migration template — all 52 master columns, matches Data sheet exactly
+  const adminCols = [
+    { key:'candCode',   label:'Candidate code',             req:false, width:22, type:'text',   note:'Leave blank — app generates. Fill only when migrating existing records.' },
+    { key:'sourDate',   label:'Profile Sourcing date',      req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
+    { key:'screenDate', label:'Profile Screening date',     req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
+    { key:'source',     label:'Source',                     req:true,  width:16, type:'list',   master:'sources', col:3 },
+    { key:'srcDet',     label:'Source Details',             req:false, width:20, type:'text' },
+    { key:'name',       label:'Name',                       req:true,  width:22, type:'text' },
+    { key:'combLoc',    label:'Combined Location',          req:false, width:18, type:'text',   note:'Auto-derived. Leave blank.' },
+    { key:'city',       label:'Current Location',           req:true,  width:18, type:'list',   master:'cities', col:6 },
+    { key:'dept',       label:'Department',                 req:true,  width:18, type:'list',   master:'departments', col:2 },
+    { key:'position',   label:'Position applied for',       req:true,  width:24, type:'text' },
+    { key:'roleInt',    label:'Role Interested in',         req:false, width:22, type:'text' },
+    { key:'mobile',     label:'Contact no',                 req:true,  width:14, type:'number', note:'10 digits only' },
+    { key:'altMob',     label:'Alternate contact number',   req:false, width:14, type:'number' },
+    { key:'email',      label:'Personal Email ID',          req:false, width:26, type:'text' },
+    { key:'altEmail',   label:'Alternate Email',            req:false, width:26, type:'text' },
+    { key:'exp',        label:'Total Yrs of Exp',           req:false, width:12, type:'text' },
+    { key:'expTenure',  label:'Exp. Tenure',                req:false, width:14, type:'text' },
+    { key:'company',    label:'Current Company Name',       req:false, width:22, type:'text' },
+    { key:'desig',      label:'Current Designation',        req:false, width:22, type:'text' },
+    { key:'notice',     label:'Notice Period',              req:false, width:14, type:'list',   master:'noticePeriods', col:4 },
+    { key:'reason',     label:'Reason for leaving',         req:false, width:22, type:'text' },
+    { key:'salPM',      label:'Current Salary (Rs. PM)',    req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'salPA',      label:'Current Salary (Rs. PA)',    req:false, width:16, type:'number', note:'Auto-calc. Leave blank.' },
+    { key:'salFinal',   label:'Final Current Annual Salary',req:false, width:18, type:'number' },
+    { key:'salBkt',     label:'Current Salary Bracket',     req:false, width:18, type:'text',   note:'Auto-assigned by app.' },
+    { key:'expSal',     label:'Expected Salary (Rs.)',      req:false, width:16, type:'number', note:'Monthly amount' },
+    { key:'offSal',     label:'Offered Salary',             req:false, width:14, type:'number' },
+    { key:'offDate',    label:'Offer Date',                 req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
+    { key:'client',     label:'Client Name',                req:true,  width:16, type:'list',   master:'clients', col:1 },
+    { key:'vacCode',    label:'Vacancy Code',               req:false, width:16, type:'text',   note:'e.g. VC-2026-0001' },
+    { key:'status',     label:'Final Status',               req:false, width:22, type:'list',   master:'statuses', col:5 },
+    { key:'dm',         label:'Final Decision Maker',       req:false, width:20, type:'text' },
+    { key:'ivName',     label:'Client Interviewer Name',    req:false, width:22, type:'text' },
+    { key:'ivDate',     label:'Client Interview Date',      req:false, width:16, type:'text',   note:'YYYY-MM-DD' },
+    { key:'selDate',    label:'Client Selection Date',      req:false, width:16, type:'text',   note:'YYYY-MM-DD' },
+    { key:'doj',        label:'Expected/DOJ',               req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
+    { key:'fuDate',     label:'Follow-up Date',             req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
+    { key:'fuNotes',    label:'Follow-up Notes',            req:false, width:24, type:'text' },
+    { key:'fuCount',    label:'Follow-up Attempt Count',    req:false, width:14, type:'number' },
+    { key:'remark',     label:'Remark',                     req:false, width:24, type:'text' },
+    { key:'otherComm',  label:'Other comments',             req:false, width:24, type:'text' },
+    { key:'roleSumm',   label:'Role summary',               req:false, width:24, type:'text' },
+    { key:'consent',    label:'Consent Obtained',           req:false, width:12, type:'text',   note:'Y or N' },
+    { key:'docLink',    label:'Document Link',              req:false, width:28, type:'text' },
+    { key:'prevCode',   label:'Previous Candidate code',    req:false, width:22, type:'text' },
+    { key:'updBy',      label:'Last Updated By',            req:false, width:18, type:'text',   note:'Auto-filled by app.' },
+    { key:'updOn',      label:'Last Updated On',            req:false, width:16, type:'text',   note:'Auto-filled by app.' },
+    { key:'archFlag',   label:'Archive Flag',               req:false, width:12, type:'text',   note:'Y or N' },
+    { key:'tat',        label:'TAT',                        req:false, width:10, type:'number', note:'Auto-calculated.' },
+    { key:'sNo',        label:'S. No',                      req:false, width:8,  type:'number', note:'Auto-assigned.' },
+    { key:'recruiter',  label:'Recruiter',                  req:true,  width:16, type:'list',   master:'recruiters', col:7 },
+    { key:'repDate',    label:'Data base reporting date',   req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
   ];
 
   // Status update template — separate early return
@@ -2664,7 +2726,7 @@ async function dlTemplate(type) {
     return;
   }
 
-  const cols = type === 'recruiter' ? recruiterCols : recruiterCols; // extend for admin later
+  const cols = type === 'recruiter' ? recruiterCols : adminCols; // extend for admin later
 
   // ── HEADER ROW (row 5) ──
   const headerRow = ws.getRow(5);
@@ -2680,12 +2742,21 @@ async function dlTemplate(type) {
   });
 
   // ── SAMPLE ROW (row 6) ──
-  const sampleValues = [
-    'Sample: Priya Sharma', '9876543210', '', 'priya@gmail.com',
+  const sampleValues = type === 'recruiter' ? [
+    new Date().toISOString().split('T')[0], '', aR[0]||'',
+    'Sample: Priya Sharma', '9876543210', '', 'priya@gmail.com', '',
     aL[0]||'Mumbai', '3', aN[0]||'30 days', 'ABC Pvt Ltd', 'Senior Executive',
     'Better growth', '45000', '55000', aS[0]||'Portal', 'Naukri',
-    aC[0]||'', aD[0]||'', 'Operations Manager', 'Active',
-    new Date().toISOString().split('T')[0], 'Initial contact made'
+    aC[0]||'', aD[0]||'', 'Operations Manager', '',
+    'Active', new Date().toISOString().split('T')[0], 'Initial contact made'
+  ] : [
+    '', new Date().toISOString().split('T')[0], '', aS[0]||'Portal', 'Naukri',
+    'Sample: Rahul Mehta', '', aL[0]||'Mumbai', aD[0]||'Operations', 'Operations Manager', '',
+    '9876543210', '', 'rahul@gmail.com', '', '5', '3-5 yrs',
+    'XYZ Corp', 'Manager', aN[0]||'30 days', 'Growth', '60000', '', '720000', '',
+    '70000', '', '', aC[0]||'', '', 'Active', 'Consultant', '', '', '', '',
+    new Date().toISOString().split('T')[0], '', '0', 'Strong candidate', '', '', 'Y', '', '',
+    '', '', '', '', 1, aR[0]||'', new Date().toISOString().split('T')[0]
   ];
   const sampleRow = ws.getRow(6);
   sampleRow.height = 16;
@@ -2747,30 +2818,80 @@ async function dlTemplate(type) {
 
   // ── VALIDATION RULES SHEET ──
   const wsR = wb.addWorksheet('Validation Rules');
-  const ruleData = [
+  const recruiterRules = [
     ['FIELD','REQUIRED?','RULE','EXAMPLE','COMMON MISTAKES'],
+    ['Profile Sourcing Date','NO','YYYY-MM-DD. Defaults to today if blank','2026-05-30','30/05/2026'],
+    ['Profile Screening Date','NO','YYYY-MM-DD','2026-05-30','30/05/2026'],
+    ['Recruiter','YES','Select from dropdown — must match active recruiter','Siddhi','Free-typing or leaving blank'],
     ['Name','YES','Full name, no special characters','Priya Sharma','Using initials only'],
-    ['Contact no','YES','Exactly 10 digits, no spaces or +91','9876543210','9876543210 not +919876543210'],
+    ['Contact no','YES','Exactly 10 digits, no spaces or +91','9876543210','+919876543210 or 98765 43210'],
+    ['Alternate contact number','NO','10 digits, must differ from primary','9123456789','Same as primary'],
     ['Personal Email ID','YES','Valid email with @ symbol','priya@gmail.com','Spaces in email'],
-    ['Current Location','YES','Select from dropdown only','Mumbai','Typing Mumbai instead of selecting'],
-    ['Source','YES','Select from dropdown only','Portal','Mis-spelling source name'],
-    ['Client Name','YES','Select from dropdown only - case sensitive','Atmann','ATMANN vs Atmann'],
-    ['Department','YES','Select from dropdown only','Operations','Operations vs Ops'],
-    ['Position applied for','YES','Free text - job title only','Operations Manager','Leaving blank'],
-    ['Current Salary (Rs. PM)','NO','Numbers only - monthly amount','45000','45,000 or Rs.45000 or 45k'],
-    ['Expected Salary (Rs.)','NO','Numbers only - monthly amount','55000','55,000 or 55K'],
+    ['Alternate Email','NO','Valid email format','priya.work@co.com','Missing @'],
+    ['Current Location','YES','Select from dropdown only','Mumbai','Typing instead of selecting'],
     ['Total Yrs of Exp','NO','Number (decimals ok) or word Fresher','3.5 or Fresher','3 years or Three'],
     ['Notice Period','NO','Select from dropdown only','30 days','30days or One month'],
-    ['Final Status','NO','Select from dropdown - default is Active','Active','Leaving blank = Active'],
-    ['Follow-up Date','NO','YYYY-MM-DD format only','2026-06-15','15/06/2026 or 15-Jun-2026'],
+    ['Current Company Name','NO','Full company name','ABC Pvt Ltd','Abbreviations'],
+    ['Current Designation','NO','Job title','Senior Executive',''],
+    ['Reason for leaving','NO','Free text','Better growth',''],
+    ['Current Salary (Rs. PM)','NO','Numbers only — monthly','45000','45,000 or Rs.45000 or 45k'],
+    ['Expected Salary (Rs.)','NO','Numbers only — monthly','55000','55,000 or 55K'],
+    ['Source','YES','Select from dropdown only','Portal','Mis-spelling source name'],
+    ['Source Details','NO','Platform or referrer name','Naukri',''],
+    ['Client Name','YES','Select from dropdown — case sensitive','VSAR Tech','VSAR TECH vs VSAR Tech'],
+    ['Department','YES','Select from dropdown only','Operations','Operations vs Ops'],
+    ['Position applied for','YES','Job title — free text','Operations Manager','Leaving blank'],
+    ['Vacancy Code','NO','From Vacancies list in app. Leave blank if unknown','VC-2026-0001','Making up a code'],
+    ['Final Status','NO','Select from dropdown — defaults to Active if blank','Active',''],
+    ['Follow-up Date','NO','YYYY-MM-DD format only','2026-06-15','15/06/2026'],
+    ['Remark','NO','Free text notes','Initial contact made',''],
     [],
     ['PRE-UPLOAD CHECKLIST','','','',''],
     ['STEP 1','Delete the sample row (row 6) before uploading','','',''],
     ['STEP 2','Make sure no blank rows exist between your data','','',''],
-    ['STEP 3','Use the Validate File button in the app to check for errors before committing','','',''],
+    ['STEP 3','Use the Validate File button in the app to check for errors','','',''],
     ['STEP 4','Fix any red-highlighted errors shown in the validation report','','',''],
     ['STEP 5','Re-upload the corrected file and click Commit','','',''],
   ];
+  const adminRules = [
+    ['FIELD','REQUIRED?','RULE / NOTE','EXAMPLE',''],
+    ['Candidate code','NO','Leave blank for new records. Fill only when migrating existing codes.','Talent+Hire/2025/000001',''],
+    ['Profile Sourcing date','NO','YYYY-MM-DD','2026-05-30',''],
+    ['Profile Screening date','NO','YYYY-MM-DD','2026-05-30',''],
+    ['Source','YES','Select from dropdown','Portal',''],
+    ['Name','YES','Full candidate name','Priya Sharma',''],
+    ['Current Location','YES','Select from dropdown','Mumbai',''],
+    ['Department','YES','Select from dropdown','Operations',''],
+    ['Position applied for','YES','Job title free text','Operations Manager',''],
+    ['Contact no','YES','10 digits, no spaces or +91','9876543210',''],
+    ['Personal Email ID','NO','Valid email with @','priya@gmail.com',''],
+    ['Current Salary (Rs. PM)','NO','Numbers only — monthly','45000',''],
+    ['Current Salary (Rs. PA)','NO','Auto-calculated — leave blank','',''],
+    ['Current Salary Bracket','NO','Auto-assigned by app — leave blank','',''],
+    ['Expected Salary (Rs.)','NO','Numbers only — monthly','55000',''],
+    ['Offered Salary','NO','Numbers only','60000',''],
+    ['Offer Date','NO','YYYY-MM-DD','2026-06-01',''],
+    ['Client Name','YES','Select from dropdown','VSAR Tech',''],
+    ['Vacancy Code','NO','e.g. VC-2026-0001','VC-2026-0001',''],
+    ['Final Status','NO','Select from dropdown. Defaults to Active.','Active',''],
+    ['Final Decision Maker','NO','Consultant or Client','Consultant',''],
+    ['Client Interview Date','NO','YYYY-MM-DD','2026-06-10',''],
+    ['Client Selection Date','NO','YYYY-MM-DD','2026-06-12',''],
+    ['Expected/DOJ','NO','YYYY-MM-DD','2026-07-01',''],
+    ['Follow-up Date','NO','YYYY-MM-DD','2026-06-15',''],
+    ['Consent Obtained','NO','Y or N','Y',''],
+    ['Archive Flag','NO','Y or N — leave blank for active records','',''],
+    ['TAT / S. No / Last Updated','NO','Auto-calculated — leave blank','',''],
+    ['Recruiter','YES','Select from dropdown','Siddhi',''],
+    [],
+    ['PRE-UPLOAD CHECKLIST FOR ADMIN MIGRATION','','','',''],
+    ['STEP 1','Delete the sample row (row 6) before uploading','','',''],
+    ['STEP 2','Candidate code — leave blank for new records, fill for existing migrations','','',''],
+    ['STEP 3','Auto-calculated columns (PA Salary, Bracket, TAT, S.No) — leave blank','','',''],
+    ['STEP 4','Use Validate File in app before committing','','',''],
+    ['STEP 5','After commit verify totals in All Records match expected count','','',''],
+  ];
+  const ruleData = type === 'recruiter' ? recruiterRules : adminRules;
   ruleData.forEach((row,i) => {
     const wsRow = wsR.addRow(row);
     if(i===0){wsRow.eachCell(cell=>{cell.fill=XL.headerFill;cell.font={bold:true,color:XL.white};});}
@@ -2813,7 +2934,7 @@ async function validateBulkFile(event) {
       if (rows[i].some(c => String(c).includes('Name')) &&
           rows[i].some(c => String(c).includes('Contact'))) { hi = i; break; }
     }
-    const hdrs2 = rows[hi].map(h => String(h).replace(' ★','').replace(' *','').trim());
+    const hdrs2 = rows[hi].map(h => String(h).replace(/\s*[★\*]+\s*/g,'').trim());
     const dataRows2 = rows.slice(hi+1).filter(r => r.some(c => c !== '' && c !== null));
 
     // Master sets for validation
@@ -2823,13 +2944,14 @@ async function validateBulkFile(event) {
       'Client Name':       new Set(mA('clients').map(s=>s.toLowerCase())),
       'Department':        new Set(mA('departments').map(s=>s.toLowerCase())),
       'Notice Period':     new Set(mA('noticePeriods').map(s=>s.toLowerCase())),
+      'Recruiter':         new Set(mA('recruiters').map(s=>s.toLowerCase())),
       'Final Status':      new Set(['active','not contactable','not interested','dropped',
         'consultant interview in progress','shortlisted for client i/w','rejected by consultant',
         'client i/w in progress','rejected by client','on hold','selected','offered',
         'offer revoked','offer declined','joining in progress','joined']),
     };
     const required = new Set(['Name','Contact no','Personal Email ID','Current Location',
-      'Source','Client Name','Department','Position applied for']);
+      'Source','Client Name','Department','Position applied for','Recruiter']);
 
     valErrors = [];
     valRowData = dataRows2.map((row, ri) => {
@@ -2858,7 +2980,8 @@ async function validateBulkFile(event) {
         if (val && masters[hdr] && !masters[hdr].has(val.toLowerCase())) {
           const validList = mA({
             'Current Location':'cities','Source':'sources','Client Name':'clients',
-            'Department':'departments','Notice Period':'noticePeriods','Final Status':'statuses'
+            'Department':'departments','Notice Period':'noticePeriods','Final Status':'statuses',
+            'Recruiter':'recruiters'
           }[hdr]||'').join(', ');
           errors.push({ row:rowNum, name:nameVal, field:hdr,
             value:val, issue:'Not in approved master list (check capitalisation)',
@@ -2885,8 +3008,8 @@ async function validateBulkFile(event) {
             valid:'e.g. 45000' });
         }
 
-        // Date format
-        if (hdr==='Follow-up Date' && val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        // Date format — all date fields
+        if (['Follow-up Date','Profile Sourcing Date','Profile Sourcing date','Profile Screening Date','Profile Screening date'].includes(hdr) && val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
           errors.push({ row:rowNum, name:nameVal, field:'Follow-up Date',
             value:val, issue:'Date must be in YYYY-MM-DD format',
             valid:'e.g. 2026-06-15' });
