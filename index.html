@@ -8,6 +8,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Talent+ Hire Pulse — WithAWill HR v2.5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -754,7 +755,15 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- BULK UPLOAD -->
 <div class="panel" id="p-bulk">
 <div class="card">
-<div class="card-hdr"><div class="card-title"><span class="ac">⬆</span> Bulk Upload</div></div>
+<div class="card-hdr">
+  <div class="card-title"><span class="ac">⬆</span> Bulk Upload</div>
+  <div class="flex gap8">
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('bulkValFI').click()" title="Upload a filled template to check for errors before committing">
+      🔍 Validate File
+    </button>
+    <input type="file" id="bulkValFI" accept=".xlsx,.xls" style="display:none" onchange="validateBulkFile(event)">
+  </div>
+</div>
 <div id="bulkAlert"></div>
 <div class="sl2">📥 Step 1 — Download Template</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
@@ -839,6 +848,23 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Type</th><th>Role</th><th>Client</th><th>Status</th><th>Actions</th></tr></thead><tbody id="uBody"></tbody></table></div>
 </div></div>
+
+<!-- VALIDATION RESULTS -->
+<div class="card hidden" id="valResultCard">
+  <div class="card-hdr">
+    <div class="card-title"><span class="ac" style="color:var(--gold)">🔍</span> Validation Results</div>
+    <div class="flex gap8">
+      <button class="btn btn-t btn-sm" onclick="downloadValidationReport()">⬇ Download Error Report</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('valResultCard').classList.add('hidden')">✕ Close</button>
+    </div>
+  </div>
+  <div id="valSummary" style="margin-bottom:14px"></div>
+  <div class="tw"><table>
+    <thead><tr><th>Row</th><th>Name</th><th>Field</th><th>Value Entered</th><th>Issue</th><th>Valid Values</th></tr></thead>
+    <tbody id="valBody"></tbody>
+  </table></div>
+</div>
+
 </div>
 
 <!-- UPDATE RECORD -->
@@ -1538,142 +1564,7 @@ async function createMeeting(){const r=MD[eIdx];const d=document.getElementById(
 // ══════════════════════════════════════════════════════
 // BULK UPLOAD
 // ══════════════════════════════════════════════════════
-function dlTemplate(type){
-  const wb2 = XLSX.utils.book_new();
-
-  // Master lists from app
-  const aC = mA('clients');
-  const aD = mA('departments');
-  const aS = mA('sources');
-  const aN = mA('noticePeriods');
-  const aR = mA('recruiters');
-  const aL = mA('cities');
-  const aE = mA('expLevels');
-  const aVS= mA('vacStatuses');
-  const statuses = ['Active','Not Contactable','Not Interested','Dropped',
-    'Consultant Interview in Progress','Shortlisted for Client I/W','Rejected by Consultant',
-    'Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered',
-    'Offer Revoked','Offer Declined','Joining in Progress','Joined'];
-
-  // ── RECRUITER TEMPLATE ──
-  if(type==='recruiter'){
-    const cols = ['Name','Contact no','Alternate contact number','Personal Email ID',
-      'Current Location','Total Yrs of Exp','Notice Period','Current Company Name',
-      'Current Designation','Reason for leaving','Current Salary (Rs. PM)',
-      'Expected Salary (Rs.)','Source','Source Details','Client Name','Department',
-      'Position applied for','Final Status','Follow-up Date','Remark'];
-
-    // Instruction rows
-    const instr = [
-      ['TALENT+ HIRE PULSE — Recruiter Upload Template'],
-      ['WithAWill HR Consultancy Services LLP · Generated: '+new Date().toLocaleDateString('en-IN')],
-      ['INSTRUCTIONS: Fill from row 6 onwards. Columns with * are required. Use ONLY values from the Valid Values sheet.'],
-      ['Do NOT change column headers. Date format: YYYY-MM-DD. Mobile: 10 digits only. Salary: numbers only.'],
-      []
-    ];
-
-    // Header row with required markers
-    const reqCols = new Set(['Name','Contact no','Personal Email ID','Current Location',
-      'Source','Client Name','Department','Position applied for']);
-    const headerRow = cols.map(h => reqCols.has(h) ? h+' *' : h);
-
-    const ws = XLSX.utils.aoa_to_sheet([...instr, headerRow]);
-
-    // Add data validation via named ranges approach
-    // Column widths
-    ws['!cols'] = cols.map(h => ({wch: Math.max(h.length+2, 18)}));
-
-    // Add sample row to show format
-    const sampleRow = ['Priya Sharma','9876543210','','priya@email.com','Mumbai',
-      '3','30 days','ABC Pvt Ltd','Senior Executive','Better opportunity',
-      '45000','55000','Portal','Naukri','','' ,'Operations Manager','Active',
-      new Date().toISOString().split('T')[0],'Initial contact made'];
-    XLSX.utils.sheet_add_aoa(ws, [['--- SAMPLE ROW (delete before uploading) ---']], {origin: 'A6'});
-    XLSX.utils.sheet_add_aoa(ws, [sampleRow], {origin: 'A7'});
-
-    XLSX.utils.book_append_sheet(wb2, ws, 'Upload');
-
-    // ── VALID VALUES SHEET ──
-    const maxLen = Math.max(aC.length,aD.length,aS.length,aN.length,aR.length,aL.length,statuses.length);
-    const valData = [
-      ['CLIENTS *','DEPARTMENTS *','SOURCES *','NOTICE PERIOD','RECRUITERS',
-       'CITIES *','EXPERIENCE LEVELS','STATUS VALUES',''],
-      ['Use EXACT spelling','Use EXACT spelling','Use EXACT spelling','Optional',
-       'Info only','Use EXACT spelling','Info only','Use EXACT spelling',''],
-      ...Array.from({length: maxLen}, (_,i) => [
-        aC[i]||'', aD[i]||'', aS[i]||'', aN[i]||'', aR[i]||'',
-        aL[i]||'', aE[i]||'', statuses[i]||'', ''
-      ])
-    ];
-    const wsV = XLSX.utils.aoa_to_sheet(valData);
-    wsV['!cols'] = Array(9).fill({wch: 26});
-    XLSX.utils.book_append_sheet(wb2, wsV, 'Valid Values');
-
-    // ── VALIDATION RULES SHEET ──
-    const rules = [
-      ['FIELD','RULE','EXAMPLE','COMMON ERRORS TO AVOID'],
-      ['Name *','Full name, no special chars','Priya Sharma',"Don't use initials only"],
-      ['Contact no *','Exactly 10 digits, no spaces','9876543210',"Don't include +91 or spaces"],
-      ['Personal Email ID *','Valid email with @','priya@gmail.com','No spaces in email'],
-      ['Current Location *','Must match Cities list exactly','Mumbai','Check Valid Values sheet'],
-      ['Source *','Must match Sources list exactly','Portal','Check Valid Values sheet'],
-      ['Client Name *','Must match Clients list exactly','Atmann','Check Valid Values sheet'],
-      ['Department *','Must match Departments list exactly','Operations','Check Valid Values sheet'],
-      ['Position applied for *','Free text - job title','Operations Manager','Cannot be blank'],
-      ['Current Salary (Rs. PM)','Numbers only, monthly','45000','No commas, no ₹ symbol'],
-      ['Expected Salary (Rs.)','Numbers only, monthly','55000','No commas, no ₹ symbol'],
-      ['Total Yrs of Exp','Number or "Fresher"','3 or 3.5 or Fresher','No text like "3 years"'],
-      ['Notice Period','Must match Notice Period list','30 days','Check Valid Values sheet'],
-      ['Final Status','Must match Status list exactly','Active','Default is Active if blank'],
-      ['Follow-up Date','YYYY-MM-DD format','2026-06-15',"Don't use DD/MM/YYYY format"],
-      [],
-      ['PRE-UPLOAD CHECKLIST','','',''],
-      ['✓ No blank rows between data rows','','',''],
-      ['✓ No merged cells','','',''],
-      ['✓ Client, Department, Source match Valid Values exactly (case sensitive)','','',''],
-      ['✓ Mobile numbers are 10 digits with no spaces or country code','','',''],
-      ['✓ Dates are in YYYY-MM-DD format','','',''],
-      ['✓ Salary fields contain numbers only','','',''],
-      ['✓ Sample row (row 7) has been deleted','','',''],
-    ];
-    const wsR = XLSX.utils.aoa_to_sheet(rules);
-    wsR['!cols'] = [{wch:30},{wch:35},{wch:20},{wch:40}];
-    XLSX.utils.book_append_sheet(wb2, wsR, 'Validation Rules');
-
-    XLSX.writeFile(wb2, 'THP_Recruiter_Upload_Template.xlsx');
-    toast('ok','Template Downloaded',
-      'Recruiter template with '+aC.length+' clients, '+aS.length+' sources loaded. See Validation Rules sheet.');
-
-  } else {
-    // ── ADMIN MIGRATION TEMPLATE ──
-    const cols = HDR.length > 0 ? HDR : ['Candidate code','Name','Contact no','Personal Email ID',
-      'Current Location','Source','Client Name','Department','Position applied for','Final Status'];
-
-    const instr = [
-      ['TALENT+ HIRE PULSE — Admin Migration Template'],
-      ['WithAWill HR Consultancy Services LLP · Generated: '+new Date().toLocaleDateString('en-IN')],
-      ['Full schema migration template. All master fields pre-loaded. See Valid Values sheet.'],
-      []
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet([...instr, cols]);
-    ws['!cols'] = cols.map(()=>({wch:22}));
-    XLSX.utils.book_append_sheet(wb2, ws, 'Migration');
-
-    // Valid values sheet same as recruiter
-    const maxLen = Math.max(aC.length,aD.length,aS.length,aN.length,statuses.length);
-    const valData = [
-      ['CLIENTS','DEPARTMENTS','SOURCES','NOTICE PERIOD','STATUS VALUES'],
-      ...Array.from({length: maxLen}, (_,i) => [aC[i]||'',aD[i]||'',aS[i]||'',aN[i]||'',statuses[i]||''])
-    ];
-    const wsV = XLSX.utils.aoa_to_sheet(valData);
-    wsV['!cols'] = Array(5).fill({wch:26});
-    XLSX.utils.book_append_sheet(wb2, wsV, 'Valid Values');
-
-    XLSX.writeFile(wb2, 'THP_Admin_Migration_Template.xlsx');
-    toast('ok','Admin Template Downloaded','Full schema with all master data loaded.');
-  }
-}
+// dlTemplate replaced by ExcelJS version below
 function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)procBulk(f);}
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
 function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
@@ -2281,6 +2172,454 @@ function exportDashReport() {
 }
 
 // Dashboard render triggered from goPanel and initUI directly
+
+
+// ════════════════════════════════════════════════════════
+//  BULK UPLOAD TEMPLATE & VALIDATION (ExcelJS)
+// ════════════════════════════════════════════════════════
+
+// Colours
+const XL = {
+  headerFill:  { type:'pattern', pattern:'solid', fgColor:{argb:'FF1F5C93'} },
+  reqFill:     { type:'pattern', pattern:'solid', fgColor:{argb:'FF291B39'} },
+  sampleFill:  { type:'pattern', pattern:'solid', fgColor:{argb:'FF0D2137'} },
+  errorFill:   { type:'pattern', pattern:'solid', fgColor:{argb:'FFFF4444'} },
+  warnFill:    { type:'pattern', pattern:'solid', fgColor:{argb:'FFE9982B'} },
+  okFill:      { type:'pattern', pattern:'solid', fgColor:{argb:'FF1A3A2A'} },
+  white:       { color:{argb:'FFFBFBFA'} },
+  gold:        { color:{argb:'FFE9982B'} },
+  red:         { color:{argb:'FFFF4444'} },
+  teal:        { color:{argb:'FF34BAC6'} },
+};
+
+async function dlTemplate(type) {
+  if (typeof ExcelJS === 'undefined') {
+    toast('warn','Loading Excel engine...','Please try again in a moment');
+    return;
+  }
+
+  const aC = mA('clients'),  aD = mA('departments'), aS = mA('sources');
+  const aN = mA('noticePeriods'), aR = mA('recruiters'), aL = mA('cities');
+  const statuses = ['Active','Not Contactable','Not Interested','Dropped',
+    'Consultant Interview in Progress','Shortlisted for Client I/W','Rejected by Consultant',
+    'Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered',
+    'Offer Revoked','Offer Declined','Joining in Progress','Joined'];
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'WithAWill HR Consultancy Services LLP';
+  wb.created = new Date();
+
+  // ── VALID VALUES SHEET (hidden - used by data validation) ──
+  const wsV = wb.addWorksheet('_Masters', { state:'visible' });
+  wsV.getColumn(1).header = 'Clients';
+  wsV.getColumn(2).header = 'Departments';
+  wsV.getColumn(3).header = 'Sources';
+  wsV.getColumn(4).header = 'Notice Periods';
+  wsV.getColumn(5).header = 'Statuses';
+  wsV.getColumn(6).header = 'Cities';
+  wsV.getColumn(7).header = 'Recruiters';
+
+  // Style header row
+  wsV.getRow(1).eachCell(cell => {
+    cell.fill = XL.headerFill;
+    cell.font = { bold:true, color:XL.white };
+  });
+
+  const maxLen = Math.max(aC.length,aD.length,aS.length,aN.length,statuses.length,aL.length,aR.length);
+  for (let i = 0; i < maxLen; i++) {
+    wsV.addRow([
+      aC[i]||'', aD[i]||'', aS[i]||'', aN[i]||'',
+      statuses[i]||'', aL[i]||'', aR[i]||''
+    ]);
+  }
+  [20,20,20,16,32,20,16].forEach((w,i) => { wsV.getColumn(i+1).width = w; });
+
+  // Define named ranges for data validation
+  const dataStartRow = 2;
+  const masterLastRow = maxLen + 1;
+
+  // ── UPLOAD SHEET ──
+  const ws = wb.addWorksheet('Upload', { views:[{state:'frozen',ySplit:5}] });
+
+  // Title rows
+  const t1 = ws.getRow(1); t1.getCell(1).value = 'TALENT+ HIRE PULSE — '+(type==='recruiter'?'Recruiter':'Admin Migration')+' Upload Template';
+  t1.getCell(1).font = { bold:true, size:13, color:XL.teal };
+  t1.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF0A0A14'} };
+
+  const t2 = ws.getRow(2); t2.getCell(1).value = 'WithAWill HR Consultancy Services LLP · Generated: '+new Date().toLocaleDateString('en-IN');
+  t2.getCell(1).font = { italic:true, color:{ color:{argb:'FF888888'} } };
+
+  const t3 = ws.getRow(3); t3.getCell(1).value = type==='recruiter'
+    ? '★ Required fields are highlighted in purple. All dropdowns show valid values. Delete row 6 (sample) before uploading.'
+    : '★ Full migration template. Required fields highlighted. Delete sample row before uploading.';
+  t3.getCell(1).font = { bold:true, color:XL.gold };
+
+  const t4 = ws.getRow(4); t4.getCell(1).value = '⚠ DATA ENTRY RULES: Mobile = 10 digits only (no +91). Salary = numbers only (no ₹ or commas). Date = YYYY-MM-DD. Dropdowns = select from list only.';
+  t4.getCell(1).font = { color:XL.red, size:10 };
+
+  // Merge title cells
+  ws.mergeCells('A1:T1'); ws.mergeCells('A2:T2');
+  ws.mergeCells('A3:T3'); ws.mergeCells('A4:T4');
+  ws.getRow(1).height = 22; ws.getRow(3).height = 18;
+
+  // ── COLUMN DEFINITIONS ──
+  const recruiterCols = [
+    { key:'name',     label:'Name',                    req:true,  width:22, type:'text' },
+    { key:'mobile',   label:'Contact no',              req:true,  width:14, type:'number', note:'10 digits only, no spaces' },
+    { key:'altMob',   label:'Alternate contact number',req:false, width:14, type:'number' },
+    { key:'email',    label:'Personal Email ID',       req:true,  width:26, type:'text' },
+    { key:'city',     label:'Current Location',        req:true,  width:18, type:'list', master:'cities', col:6 },
+    { key:'exp',      label:'Total Yrs of Exp',        req:false, width:12, type:'text', note:'Number or Fresher' },
+    { key:'notice',   label:'Notice Period',           req:false, width:14, type:'list', master:'noticePeriods', col:4 },
+    { key:'company',  label:'Current Company Name',    req:false, width:22, type:'text' },
+    { key:'desig',    label:'Current Designation',     req:false, width:22, type:'text' },
+    { key:'reason',   label:'Reason for leaving',      req:false, width:22, type:'text' },
+    { key:'salPM',    label:'Current Salary (Rs. PM)', req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'expSal',   label:'Expected Salary (Rs.)',   req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'source',   label:'Source',                  req:true,  width:16, type:'list', master:'sources', col:3 },
+    { key:'srcDet',   label:'Source Details',          req:false, width:20, type:'text' },
+    { key:'client',   label:'Client Name',             req:true,  width:16, type:'list', master:'clients', col:1 },
+    { key:'dept',     label:'Department',              req:true,  width:18, type:'list', master:'departments', col:2 },
+    { key:'position', label:'Position applied for',   req:true,  width:24, type:'text' },
+    { key:'status',   label:'Final Status',            req:false, width:22, type:'list', master:'statuses', col:5 },
+    { key:'fuDate',   label:'Follow-up Date',          req:false, width:14, type:'text', note:'YYYY-MM-DD' },
+    { key:'remark',   label:'Remark',                  req:false, width:24, type:'text' },
+  ];
+
+  const cols = type === 'recruiter' ? recruiterCols : recruiterCols; // extend for admin later
+
+  // ── HEADER ROW (row 5) ──
+  const headerRow = ws.getRow(5);
+  headerRow.height = 20;
+  cols.forEach((col, i) => {
+    const cell = headerRow.getCell(i+1);
+    cell.value = col.req ? col.label + ' ★' : col.label;
+    cell.fill = col.req ? XL.reqFill : XL.headerFill;
+    cell.font = { bold:true, color:XL.white, size:10 };
+    cell.alignment = { vertical:'middle', wrapText:true };
+    cell.border = { bottom:{ style:'medium', color:{ argb:'FF34BAC6'} } };
+    ws.getColumn(i+1).width = col.width;
+  });
+
+  // ── SAMPLE ROW (row 6) ──
+  const sampleValues = [
+    'Sample: Priya Sharma', '9876543210', '', 'priya@gmail.com',
+    aL[0]||'Mumbai', '3', aN[0]||'30 days', 'ABC Pvt Ltd', 'Senior Executive',
+    'Better growth', '45000', '55000', aS[0]||'Portal', 'Naukri',
+    aC[0]||'', aD[0]||'', 'Operations Manager', 'Active',
+    new Date().toISOString().split('T')[0], 'Initial contact made'
+  ];
+  const sampleRow = ws.getRow(6);
+  sampleRow.height = 16;
+  sampleValues.forEach((val, i) => {
+    const cell = sampleRow.getCell(i+1);
+    cell.value = val;
+    cell.fill = XL.sampleFill;
+    cell.font = { italic:true, color:{ argb:'FF888888' }, size:9 };
+  });
+  const sampleLbl = ws.getRow(6).getCell(1);
+  sampleLbl.note = { texts:[{text:'DELETE THIS ROW BEFORE UPLOADING'}] };
+
+  // ── DATA ROWS (7 onwards) with data validation ──
+  const dataRows = 200; // allow 200 rows
+  for (let r = 7; r <= 7 + dataRows; r++) {
+    const row = ws.getRow(r);
+    row.height = 15;
+    cols.forEach((col, i) => {
+      const cell = row.getCell(i+1);
+      // Alternate row shading
+      if (r % 2 === 0) cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF0D0D1A'} };
+      cell.font = { color:XL.white, size:10 };
+      cell.alignment = { vertical:'middle' };
+
+      // Data validation for list columns
+      if (col.type === 'list' && col.col) {
+        cell.dataValidation = {
+          type: 'list',
+          allowBlank: !col.req,
+          formulae: [`_Masters!$${String.fromCharCode(64+col.col)}$${dataStartRow}:$${String.fromCharCode(64+col.col)}$${masterLastRow}`],
+          showErrorMessage: true,
+          errorStyle: 'stop',
+          errorTitle: 'Invalid Value',
+          error: `Please select a value from the dropdown list. Check the _Masters sheet for valid values.`,
+          showInputMessage: true,
+          promptTitle: col.label,
+          prompt: `Select from the approved list of ${col.label} values`
+        };
+      }
+      // Number validation for salary/mobile
+      if (col.type === 'number' && col.key === 'mobile') {
+        cell.dataValidation = {
+          type: 'textLength', operator:'equal', formulae:[10],
+          allowBlank:true,
+          showErrorMessage:true, errorStyle:'warning',
+          errorTitle:'Mobile Format', error:'Mobile number must be exactly 10 digits'
+        };
+      }
+      if (col.type === 'number' && (col.key==='salPM'||col.key==='expSal')) {
+        cell.dataValidation = {
+          type:'whole', operator:'greaterThanOrEqual', formulae:[0],
+          allowBlank:true,
+          showErrorMessage:true, errorStyle:'warning',
+          errorTitle:'Salary Format', error:'Salary must be a number (no commas or ₹ symbol)'
+        };
+      }
+    });
+  }
+
+  // ── VALIDATION RULES SHEET ──
+  const wsR = wb.addWorksheet('Validation Rules');
+  const ruleData = [
+    ['FIELD','REQUIRED?','RULE','EXAMPLE','COMMON MISTAKES'],
+    ['Name','YES','Full name, no special characters','Priya Sharma','Using initials only'],
+    ['Contact no','YES','Exactly 10 digits, no spaces or +91','9876543210','9876543210 not +919876543210'],
+    ['Personal Email ID','YES','Valid email with @ symbol','priya@gmail.com','Spaces in email'],
+    ['Current Location','YES','Select from dropdown only','Mumbai','Typing Mumbai instead of selecting'],
+    ['Source','YES','Select from dropdown only','Portal','Mis-spelling source name'],
+    ['Client Name','YES','Select from dropdown only - case sensitive','Atmann','ATMANN vs Atmann'],
+    ['Department','YES','Select from dropdown only','Operations','Operations vs Ops'],
+    ['Position applied for','YES','Free text - job title only','Operations Manager','Leaving blank'],
+    ['Current Salary (Rs. PM)','NO','Numbers only - monthly amount','45000','45,000 or Rs.45000 or 45k'],
+    ['Expected Salary (Rs.)','NO','Numbers only - monthly amount','55000','55,000 or 55K'],
+    ['Total Yrs of Exp','NO','Number (decimals ok) or word Fresher','3.5 or Fresher','3 years or Three'],
+    ['Notice Period','NO','Select from dropdown only','30 days','30days or One month'],
+    ['Final Status','NO','Select from dropdown - default is Active','Active','Leaving blank = Active'],
+    ['Follow-up Date','NO','YYYY-MM-DD format only','2026-06-15','15/06/2026 or 15-Jun-2026'],
+    [],
+    ['PRE-UPLOAD CHECKLIST','','','',''],
+    ['STEP 1','Delete the sample row (row 6) before uploading','','',''],
+    ['STEP 2','Make sure no blank rows exist between your data','','',''],
+    ['STEP 3','Use the Validate File button in the app to check for errors before committing','','',''],
+    ['STEP 4','Fix any red-highlighted errors shown in the validation report','','',''],
+    ['STEP 5','Re-upload the corrected file and click Commit','','',''],
+  ];
+  ruleData.forEach((row,i) => {
+    const wsRow = wsR.addRow(row);
+    if(i===0){wsRow.eachCell(cell=>{cell.fill=XL.headerFill;cell.font={bold:true,color:XL.white};});}
+    if(i>=16&&i<17){wsRow.eachCell(cell=>{cell.font={bold:true,color:XL.teal};});}
+    if(i>=17){wsRow.getCell(1).font={bold:true,color:XL.gold};}
+  });
+  wsR.columns=[{width:28},{width:12},{width:40},{width:20},{width:35}];
+  wsR.views=[{state:'frozen',ySplit:1}];
+
+  // ── WRITE FILE ──
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download = type==='recruiter' ? 'THP_Recruiter_Upload_Template.xlsx' : 'THP_Admin_Migration_Template.xlsx';
+  a.click(); URL.revokeObjectURL(url);
+  toast('ok','Template Downloaded',
+    'Dropdowns pre-loaded with '+aC.length+' clients, '+aS.length+' sources, '+aD.length+' departments');
+}
+
+// ════════════════════════════════════════════════════════
+//  FILE VALIDATION BEFORE UPLOAD
+// ════════════════════════════════════════════════════════
+let valErrors = [], valRowData = [];
+
+async function validateBulkFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  showLoad('Validating file...');
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb2 = XLSX.read(buf, {type:'array', cellDates:true});
+    const ws = wb2.Sheets[wb2.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+
+    // Find header row (row with Name and Contact)
+    let hi = 0;
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+      if (rows[i].some(c => String(c).includes('Name')) &&
+          rows[i].some(c => String(c).includes('Contact'))) { hi = i; break; }
+    }
+    const hdrs2 = rows[hi].map(h => String(h).replace(' ★','').replace(' *','').trim());
+    const dataRows2 = rows.slice(hi+1).filter(r => r.some(c => c !== '' && c !== null));
+
+    // Master sets for validation
+    const masters = {
+      'Current Location':  new Set(mA('cities').map(s=>s.toLowerCase())),
+      'Source':            new Set(mA('sources').map(s=>s.toLowerCase())),
+      'Client Name':       new Set(mA('clients').map(s=>s.toLowerCase())),
+      'Department':        new Set(mA('departments').map(s=>s.toLowerCase())),
+      'Notice Period':     new Set(mA('noticePeriods').map(s=>s.toLowerCase())),
+      'Final Status':      new Set(['active','not contactable','not interested','dropped',
+        'consultant interview in progress','shortlisted for client i/w','rejected by consultant',
+        'client i/w in progress','rejected by client','on hold','selected','offered',
+        'offer revoked','offer declined','joining in progress','joined']),
+    };
+    const required = new Set(['Name','Contact no','Personal Email ID','Current Location',
+      'Source','Client Name','Department','Position applied for']);
+
+    valErrors = [];
+    valRowData = dataRows2.map((row, ri) => {
+      const obj = {};
+      hdrs2.forEach((h,j) => { obj[h] = String(row[j]||'').trim(); });
+      return obj;
+    });
+
+    dataRows2.forEach((row, ri) => {
+      const rowNum = hi + 2 + ri; // actual Excel row number
+      // Skip sample rows
+      const nameVal = String(row[hdrs2.indexOf('Name')]||'').trim();
+      if (nameVal.startsWith('Sample:') || nameVal.startsWith('---')) return;
+
+      hdrs2.forEach((hdr, ci) => {
+        const val = String(row[ci]||'').trim();
+        const errors = [];
+
+        // Required check
+        if (required.has(hdr) && !val) {
+          errors.push({ row:rowNum, name:nameVal||'(blank)', field:hdr,
+            value:'(empty)', issue:'Required field is blank', valid:'' });
+        }
+
+        // Master value check
+        if (val && masters[hdr] && !masters[hdr].has(val.toLowerCase())) {
+          const validList = mA({
+            'Current Location':'cities','Source':'sources','Client Name':'clients',
+            'Department':'departments','Notice Period':'noticePeriods','Final Status':'statuses'
+          }[hdr]||'').join(', ');
+          errors.push({ row:rowNum, name:nameVal, field:hdr,
+            value:val, issue:'Not in approved master list (check capitalisation)',
+            valid: validList.length > 80 ? validList.substring(0,80)+'...' : validList });
+        }
+
+        // Mobile format
+        if (hdr==='Contact no' && val && !/^\d{10}$/.test(val.replace(/\s/g,''))) {
+          errors.push({ row:rowNum, name:nameVal, field:'Contact no',
+            value:val, issue:'Must be exactly 10 digits, no spaces or country code',
+            valid:'e.g. 9876543210' });
+        }
+
+        // Email format
+        if (hdr==='Personal Email ID' && val && !val.includes('@')) {
+          errors.push({ row:rowNum, name:nameVal, field:'Personal Email ID',
+            value:val, issue:'Invalid email — must contain @', valid:'e.g. name@email.com' });
+        }
+
+        // Salary format
+        if ((hdr==='Current Salary (Rs. PM)'||hdr==='Expected Salary (Rs.)') && val && isNaN(parseFloat(val.replace(/,/g,'')))) {
+          errors.push({ row:rowNum, name:nameVal, field:hdr,
+            value:val, issue:'Must be a number only (no ₹, commas or text)',
+            valid:'e.g. 45000' });
+        }
+
+        // Date format
+        if (hdr==='Follow-up Date' && val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+          errors.push({ row:rowNum, name:nameVal, field:'Follow-up Date',
+            value:val, issue:'Date must be in YYYY-MM-DD format',
+            valid:'e.g. 2026-06-15' });
+        }
+
+        // Duplicate mobile check
+        if (hdr==='Contact no' && val && /^\d{10}$/.test(val)) {
+          const dup = MD.find(r => String(r[C.contact]).trim()===val);
+          if (dup) errors.push({ row:rowNum, name:nameVal, field:'Contact no',
+            value:val, issue:'Duplicate — already exists as '+dup[C.code],
+            valid:'Use Update Record instead' });
+        }
+
+        valErrors.push(...errors);
+      });
+    });
+
+    hideLoad();
+    renderValidationResults(dataRows2.length, valErrors);
+
+  } catch(e) {
+    hideLoad();
+    toast('err','Validation failed',e.message);
+    console.error(e);
+  }
+  event.target.value = ''; // reset file input
+}
+
+function renderValidationResults(totalRows, errors) {
+  const card = document.getElementById('valResultCard');
+  const sumEl = document.getElementById('valSummary');
+  const body  = document.getElementById('valBody');
+  if (!card) return;
+  card.classList.remove('hidden');
+
+  const errCount  = errors.length;
+  const rowsWithErrors = [...new Set(errors.map(e=>e.row))].length;
+  const cleanRows = totalRows - rowsWithErrors;
+
+  sumEl.innerHTML = `
+    <div class="flex gap8" style="flex-wrap:wrap;align-items:center">
+      <div style="background:var(--tdim);border:1px solid rgba(52,186,198,.25);border-radius:var(--rs);padding:10px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--teal)">${totalRows}</div>
+        <div style="font-size:10px;color:var(--w60)">ROWS SCANNED</div>
+      </div>
+      <div style="background:${errCount===0?'var(--tdim)':'rgba(220,50,50,.12)'};border:1px solid ${errCount===0?'rgba(52,186,198,.25)':'rgba(220,50,50,.3)'};border-radius:var(--rs);padding:10px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:${errCount===0?'var(--teal)':'#ff6b6b'}">${errCount}</div>
+        <div style="font-size:10px;color:var(--w60)">ERRORS FOUND</div>
+      </div>
+      <div style="background:var(--gdim);border:1px solid rgba(233,152,43,.2);border-radius:var(--rs);padding:10px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--gold)">${rowsWithErrors}</div>
+        <div style="font-size:10px;color:var(--w60)">ROWS WITH ISSUES</div>
+      </div>
+      <div style="background:rgba(52,199,122,.1);border:1px solid rgba(52,199,122,.25);border-radius:var(--rs);padding:10px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:#52c77a">${cleanRows}</div>
+        <div style="font-size:10px;color:var(--w60)">CLEAN ROWS</div>
+      </div>
+      ${errCount===0?'<div style="flex:1;background:rgba(52,199,122,.1);border:1px solid rgba(52,199,122,.25);border-radius:var(--rs);padding:12px 16px;color:#52c77a;font-weight:600">✅ All rows passed validation — safe to upload!</div>':'<div style="flex:1;background:rgba(220,50,50,.08);border:1px solid rgba(220,50,50,.2);border-radius:var(--rs);padding:12px 16px;color:#ff6b6b">⚠ Fix errors below, then re-download the error report to correct your file before uploading.</div>'}
+    </div>`;
+
+  if (errors.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--teal)">✅ No errors found — all rows ready to upload!</td></tr>';
+  } else {
+    body.innerHTML = errors.map(e =>
+      `<tr style="background:rgba(220,50,50,.06)">
+        <td class="mono" style="color:#ff6b6b">${e.row}</td>
+        <td><strong>${e.name}</strong></td>
+        <td style="color:var(--gold)">${e.field}</td>
+        <td style="color:#ff6b6b;font-family:monospace;font-size:11px">${e.value||'(blank)'}</td>
+        <td style="font-size:11px">${e.issue}</td>
+        <td style="font-size:10px;color:var(--w60)">${e.valid}</td>
+      </tr>`
+    ).join('');
+  }
+  card.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+async function downloadValidationReport() {
+  if (!valErrors.length && !valRowData.length) {
+    toast('warn','No data','Run validation first');
+    return;
+  }
+  if (typeof ExcelJS === 'undefined') { toast('warn','Loading...','Try again in a moment'); return; }
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Validation Report');
+
+  // Header
+  ws.addRow(['TALENT+ HIRE PULSE — Bulk Upload Validation Report']);
+  ws.addRow(['Generated: '+new Date().toLocaleString('en-IN')+' · Errors: '+valErrors.length]);
+  ws.addRow([]);
+  ws.addRow(['Row','Name','Field with Error','Value Entered','Issue','Valid Values']);
+  ws.getRow(4).eachCell(c2 => { c2.fill=XL.headerFill; c2.font={bold:true,color:XL.white}; });
+
+  valErrors.forEach(e => {
+    const row = ws.addRow([e.row, e.name, e.field, e.value, e.issue, e.valid]);
+    row.eachCell(c2 => { c2.fill=XL.errorFill; c2.font={color:XL.white,size:10}; });
+    row.getCell(4).font = { bold:true, color:XL.white };
+  });
+
+  ws.columns = [{width:8},{width:22},{width:26},{width:20},{width:40},{width:35}];
+  ws.views = [{state:'frozen',ySplit:4}];
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download='THP_Validation_Report_'+today()+'.xlsx';
+  a.click(); URL.revokeObjectURL(url);
+  toast('ok','Report Downloaded','Fix red-highlighted rows then re-upload');
+}
 
 </script>
 </body>
