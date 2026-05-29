@@ -1551,12 +1551,24 @@ VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv
 // ══════════════════════════════════════════════════════
 function initUI(){updateTopbar();loadDash();renderRec();renderVac();initMastersGrid();}
 function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
-function goPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const p=document.getElementById('p-'+name);if(p)p.classList.add('active');const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));if(nav)nav.classList.add('active');if(name==='adm')initAdmin();if(name==='home'){loadDash();}if(name==='analytics'){setTimeout(renderDash,200);}if(name==='repos'){switchRepoTab(\'jd\');}if(name==='incentive'){
-    // Populate recruiter dropdown
+function goPanel(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const p=document.getElementById('p-'+name);
+  if(p)p.classList.add('active');
+  const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));
+  if(nav)nav.classList.add('active');
+  if(name==='adm')initAdmin();
+  if(name==='home'){loadDash();}
+  if(name==='analytics'){setTimeout(renderDash,200);}
+  if(name==='repos'){switchRepoTab('jd');}
+  if(name==='incentive'){
     const incRec=document.getElementById('inc-rec');
     if(incRec){incRec.innerHTML='<option value="">Me (Logged In)</option>';mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;incRec.appendChild(o);});}
     calcIncentives();
-  }if(name==='invoice'){renderInvoices();updateInvStats();}}
+  }
+  if(name==='invoice'){renderInvoices();updateInvStats();}
+}
 
 // ══════════════════════════════════════════════════════
 // DASHBOARD
@@ -1602,7 +1614,7 @@ function openBtn(el, type){
   if(type==='upd')qUpd(code);
   else if(type==='view'){window._mc=code;viewCandModal(code);}
 }
-function qUpd(code){document.getElementById('uCode').value=code;goPanel(\'upd\');doLookup();}
+function qUpd(code){document.getElementById('uCode').value=code;goPanel('upd');doLookup();}
 
 // ══════════════════════════════════════════════════════
 // SALARY CALC
@@ -3190,9 +3202,13 @@ function renderJDList(){
       '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+j.title+'</div>'+
       '<div style="font-size:11px;color:var(--w60);margin-top:2px">'+(j.client?j.client+' · ':'')+  (j.dept?j.dept+' · ':'')+(j.tags?'Tags: '+j.tags:'')+'</div></div>'+
       '<a href="'+j.link+'" target="_blank" class="btn btn-t btn-sm" style="text-decoration:none">Open JD ↗</a>'+
-      '<button class="btn btn-ghost btn-sm" onclick="sendJDToWA(repoData.jds['+i+'].link)" title="Send via WhatsApp">📱 WA</button>'+
-      '<button class="btn btn-ghost btn-sm" onclick="delRepo(\'jds\','+i+')" style="color:#ff6b6b">✕</button></div>';
+      '<button class="btn btn-ghost btn-sm jd-wa" data-idx="'+i+'" title="Send via WhatsApp">📱 WA</button>'+
+      '<button class="btn btn-ghost btn-sm jd-del" data-idx="'+i+'" style="color:#ff6b6b">✕</button></div>';
   }).join('');
+  setTimeout(function(){
+    document.querySelectorAll('.jd-wa').forEach(el => {el.addEventListener('click', function(){ const i=parseInt(this.getAttribute('data-idx')); if(repoData.jds[i])sendJDToWA(repoData.jds[i].link); });});
+    document.querySelectorAll('.jd-del').forEach(el => {el.addEventListener('click', function(){ const i=parseInt(this.getAttribute('data-idx')); delRepo('jds',i); });});
+  }, 0);
 }
 function sendJDToWA(link){
   if(eIdx!==-1){sendJDWA(link);}else{toast('info','Select Candidate','Look up a candidate first in Update Record, then use WA from there.');}
@@ -3213,15 +3229,21 @@ function renderScripts(){
   const list=repoData.scripts.filter(s=>!q||s.title.toLowerCase().includes(s)||(s.tags||'').toLowerCase().includes(q)||(s.content||'').toLowerCase().includes(q));
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px;color:var(--w60)">No scripts yet. Add your first recruiter script above.</div>';return;}
   el.innerHTML=list.map(function(s,i){
+    const divId = 'sc-content-'+i;
     return '<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:8px;overflow:hidden">'+
-      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.classList.toggle(\'hidden\')">'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" class="sc-toggle" data-target="'+divId+'">'+
       '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+s.title+'</div>'+
       '<div style="font-size:11px;color:var(--w60)">'+(s.category||'')+(s.tags?' · '+s.tags:'')+'</div></div>'+
       '<span style="font-size:11px;color:var(--teal)">▼ expand</span>'+
-      '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();copyScriptContent('+i+')" style="padding:3px 8px;font-size:10px">Copy</button>'+
-      '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();delRepo(\'scripts\','+i+')" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div>'+
-      '<div class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.6">'+escHtml(s.content)+'</div></div>';
+      '<button class="btn btn-ghost btn-sm sc-copy" data-idx="'+i+'" style="padding:3px 8px;font-size:10px">Copy</button>'+
+      '<button class="btn btn-ghost btn-sm sc-del" data-idx="'+i+'" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div>'+
+      '<div id="'+divId+'" class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.6">'+escHtml(s.content)+'</div></div>';
   }).join('');
+  setTimeout(function(){
+    document.querySelectorAll('.sc-toggle').forEach(el => {el.addEventListener('click', function(){ document.getElementById(this.getAttribute('data-target')).classList.toggle('hidden'); });});
+    document.querySelectorAll('.sc-copy').forEach(el => {el.addEventListener('click', function(e){ e.stopPropagation(); const i=parseInt(this.getAttribute('data-idx')); if(repoData.scripts[i])copyText(repoData.scripts[i].content); });});
+    document.querySelectorAll('.sc-del').forEach(el => {el.addEventListener('click', function(e){ e.stopPropagation(); const i=parseInt(this.getAttribute('data-idx')); delRepo('scripts',i); });});
+  }, 0);
 }
 // Help
 function openAddHelp(){['hp-title','hp-tags','hp-content'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('hp-add-form').classList.remove('hidden');}
@@ -3239,7 +3261,20 @@ function renderHelp(){
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px;color:var(--w60)">No help articles yet. Add your first help topic above.</div>';return;}
   // Group by category
   const cats={};list.forEach(h=>{const c=h.category||'Other';if(!cats[c])cats[c]=[];cats[c].push(h);});
-  el.innerHTML=Object.entries(cats).map(([cat,items])=>'<div style="margin-bottom:16px"><div class="sl2">'+cat+'</div>'+items.map(h=>'<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:6px;overflow:hidden"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.classList.toggle(\'hidden\')"><div style="flex:1"><div style="font-size:13px;font-weight:600">'+h.title+'</div>'+(h.tags?'<div style="font-size:11px;color:var(--w60)">'+h.tags+'</div>':'')+'</div><span style="font-size:11px;color:var(--teal)">▼ expand</span><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();delRepo(\'help\','+repoData.help.indexOf(h)+')" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div><div class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.7">'+h.content+'</div></div>').join('')+'</div>').join('');
+  let html='';
+  Object.entries(cats).forEach(function([cat,items]){
+    html+='<div style="margin-bottom:16px"><div class="sl2">'+cat+'</div>';
+    items.forEach(function(h,idx){
+      const helpId='hp-content-'+repoData.help.indexOf(h);
+      html+='<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:6px;overflow:hidden"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer" class="hp-toggle" data-target="'+helpId+'"><div style="flex:1"><div style="font-size:13px;font-weight:600">'+h.title+'</div>'+(h.tags?'<div style="font-size:11px;color:var(--w60)">'+h.tags+'</div>':'')+'</div><span style="font-size:11px;color:var(--teal)">▼ expand</span><button class="btn btn-ghost btn-sm hp-del" data-idx="'+repoData.help.indexOf(h)+'" style="color:#ff6b6b;padding:3px 8px;font-size:10px">✕</button></div><div id="'+helpId+'" class="hidden" style="padding:12px 14px;border-top:1px solid var(--w08);font-size:12px;color:var(--ow);white-space:pre-wrap;line-height:1.7">'+h.content+'</div></div>';
+    });
+    html+='</div>';
+  });
+  el.innerHTML=html;
+  setTimeout(function(){
+    document.querySelectorAll('.hp-toggle').forEach(el => {el.addEventListener('click', function(){ document.getElementById(this.getAttribute('data-target')).classList.toggle('hidden'); });});
+    document.querySelectorAll('.hp-del').forEach(el => {el.addEventListener('click', function(e){ e.stopPropagation(); const i=parseInt(this.getAttribute('data-idx')); delRepo('help',i); });});
+  }, 0);
 }
 
 function delRepo(type,idx){if(confirm('Delete this item?')){repoData[type].splice(idx,1);saveRepoData();if(type==='jds')renderJDList();if(type==='scripts')renderScripts();if(type==='help')renderHelp();}}
