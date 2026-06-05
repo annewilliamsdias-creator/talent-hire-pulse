@@ -19,10 +19,10 @@
 --gdim:rgba(233,152,43,.12);--bdim:rgba(31,92,147,.15);--r:12px;--rs:7px;
 --sh:0 8px 32px rgba(0,0,0,.25);}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:#000000;color:var(--ow);min-height:100vh}
+body{font-family:'DM Sans',sans-serif;background:#0A1628;color:var(--ow);min-height:100vh}
 /* LOGIN */
 #loginScreen{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;
-background:#000000}
+background:#0A1628}
 .lcard{width:420px;max-width:90vw;background:rgba(20,10,40,.6);border:1px solid rgba(52,186,198,.2);
 border-radius:20px;padding:48px 44px;backdrop-filter:blur(20px);box-shadow:var(--sh);text-align:center;
 animation:fadeUp .6s ease both}
@@ -426,11 +426,22 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="panel active" id="p-home">
 
 
+<!-- HOME FILTERS -->
+<div class="card mb0" style="margin-bottom:10px">
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+    <span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--teal)">⚡ FILTERS</span>
+    <select id="hf-rec" onchange="loadDash()" style="flex:1;min-width:130px;max-width:180px;font-size:11px"><option value="">All Recruiters</option></select>
+    <select id="hf-cli" onchange="loadDash()" style="flex:1;min-width:130px;max-width:180px;font-size:11px"><option value="">All Clients</option></select>
+    <input type="date" id="hf-from" onchange="loadDash()" style="flex:1;min-width:120px;max-width:150px;font-size:11px" title="Follow-up from">
+    <input type="date" id="hf-to" onchange="loadDash()" style="flex:1;min-width:120px;max-width:150px;font-size:11px" title="Follow-up to">
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('hf-rec').value='';document.getElementById('hf-cli').value='';document.getElementById('hf-from').value='';document.getElementById('hf-to').value='';loadDash()">✕ Clear</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadDash()">↺ Refresh</button>
+  </div>
+</div>
 <!-- ACTION QUEUE (kept from before) -->
 <div class="card">
   <div class="card-hdr">
     <div class="card-title"><span class="ac">⚡</span> My Action Queue</div>
-    <button class="btn btn-ghost btn-sm" onclick="loadDash()">↺ Refresh</button>
   </div>
   <div id="aq-list"></div>
 </div>
@@ -691,12 +702,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="fg3">
 <div class="field"><label>New Status <span class="req">*</span></label><select id="uS" onchange="onStatCh()"><option>WIP</option><option>Not Contactable</option><option>Not Interested</option><option>Dropped</option><option>Consultant Interview in Progress</option><option>Rejected by Consultant</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Rejected by Client</option><option>On Hold</option><option>Selected</option><option>Offered</option><option>Offer Revoked</option><option>Offer Declined</option><option>Joining in Progress</option><option>Joined</option></select></div>
 <div class="field" id="uDMF"><label>Decision Maker</label><select id="uDM"><option value="">— Select —</option><option>Consultant</option><option>Client</option></select></div>
-<div class="field"><label>Follow-up Date <span class="req" id="uFUReq">*</span></label><input type="date" id="uFU"></div>
+<div class="field"><label>Follow-up Date <span class="req" id="uFUReq">*</span></label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="uFU" style="flex:1"><button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="document.getElementById('uFU').value=''" title="Clear date">✕</button></div></div>
 </div>
 <div class="sl2">🤝 Interview</div>
 <div class="fg3">
 <div class="field"><label>Client Interviewer</label><input type="text" id="uIvr"></div>
-<div class="field"><label>Interview Date</label><input type="date" id="uIvD"></div>
+<div class="field"><label>Interview Date <span style="font-size:10px;color:var(--w60)">(optional)</span></label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="uIvD" style="flex:1"><button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="document.getElementById('uIvD').value=''">✕</button></div></div>
 <div class="field"><label>Client Decision Date</label><input type="date" id="uDecD"></div>
 </div>
 <div class="sl2">📋 Offer &amp; Joining</div>
@@ -777,13 +788,15 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <option value="all">All Records</option>
   <option value="active">Active Only</option>
 </select>
-<input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:200px" oninput="renderRec()">
+<input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:180px" oninput="renderRec()">
 <select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
 <select id="rCli" onchange="renderRec()" style="width:120px"><option value="">All Clients</option></select>
+<select id="rRec" onchange="renderRec()" style="width:120px"><option value="">All Recruiters</option></select>
+<button class="btn btn-ghost btn-sm" id="refreshRecBtn" onclick="refreshAllRecords()" title="Reload latest data">⟳ Refresh</button>
 <button class="btn btn-ghost btn-sm" onclick="dlAllRecords()">⬇ Download</button>
 </div>
 </div>
-<div class="tw"><table><thead><tr><th>Code</th><th>Name</th><th>Position</th><th>Client</th><th>Status</th><th>Follow-up</th><th>Recruiter</th><th>Sourced</th><th>Actions</th></tr></thead><tbody id="rBody"></tbody></table></div>
+<div class="tw"><table id="recTable"><thead><tr><th onclick="sortRec(0,'code')">Code</th><th onclick="sortRec(1,'name')">Name</th><th onclick="sortRec(2,'position')">Position</th><th onclick="sortRec(3,'client')">Client</th><th onclick="sortRec(4,'status')">Status</th><th onclick="sortRec(5,'followupDate')">Follow-up</th><th onclick="sortRec(6,'recruiter')">Recruiter</th><th onclick="sortRec(7,'sourcingDate')">Sourced</th><th>Actions</th></tr></thead><tbody id="rBody"></tbody></table></div>
 <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="rCount"></div>
 </div>
 </div>
@@ -791,8 +804,19 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- VACANCIES -->
 <div class="panel" id="p-vac">
 <div class="card">
-<div class="card-hdr"><div class="card-title"><span class="ac">◆</span> Vacancies</div></div>
-<div class="tw"><table><thead><tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Priority</th><th>Status</th><th>View</th></tr></thead><tbody id="vBody"></tbody></table></div>
+<div class="card-hdr">
+  <div class="card-title"><span class="ac">◆</span> Vacancies</div>
+  <button class="btn btn-ghost btn-sm" onclick="renderVac()">↺ Refresh</button>
+</div>
+<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+  <select id="vf-rec" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All Recruiters</option></select>
+  <select id="vf-cli" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All Clients</option></select>
+  <select id="vf-dept" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All Departments</option></select>
+  <select id="vf-loc" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All Locations</option></select>
+  <select id="vf-tat" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All TAT</option><option value="green">On Track</option><option value="amber">At Risk</option><option value="red">Overdue</option></select>
+  <button class="btn btn-ghost btn-sm" onclick="['vf-rec','vf-cli','vf-dept','vf-loc','vf-tat'].forEach(function(id){var e=document.getElementById(id);if(e)e.selectedIndex=0;});renderVac()">✕ Clear</button>
+</div>
+<div class="tw"><table id="vacTable"><thead><tr><th onclick="sortVac(0)">Code</th><th onclick="sortVac(1)">Client</th><th onclick="sortVac(2)">Role</th><th onclick="sortVac(3)">Dept</th><th onclick="sortVac(4)">Location</th><th onclick="sortVac(5)">Budget</th><th onclick="sortVac(6)">Recruiter</th><th onclick="sortVac(7)">Priority</th><th onclick="sortVac(8)">TAT</th><th onclick="sortVac(9)">Status</th><th>View</th></tr></thead><tbody id="vBody"></tbody></table></div>
 </div>
 </div>
 
@@ -881,8 +905,8 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div id="bulkAlert"></div>
 <div class="sl2">📥 Step 1 — Download Template</div>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
-<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Recruiter Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">26 columns. Daily sourcing uploads. Includes Recruiter, Vacancy Code, Sourcing &amp; Screening Date fields.</div><button class="btn btn-t btn-sm" onclick="dlTemplate('recruiter')">⬇ Recruiter Template</button></div>
-<div style="background:var(--gdim);border:1px solid rgba(233,152,43,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Admin Migration Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">52 columns. Full schema — matches Data sheet exactly. For historical imports and migration.</div><button class="btn btn-g btn-sm" onclick="dlTemplate('admin')">⬇ Admin Template</button></div>
+<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Recruiter Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">20 columns. Daily sourcing uploads. Includes Valid Values Reference.</div><button class="btn btn-t btn-sm" onclick="dlTemplate('recruiter')">⬇ Recruiter Template</button></div>
+<div style="background:var(--gdim);border:1px solid rgba(233,152,43,.2);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Admin Migration Template</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">Full schema. Historical data import and migration.</div><button class="btn btn-g btn-sm" onclick="dlTemplate('admin')">⬇ Admin Template</button></div>
 <div style="background:var(--bdim);border:1px solid rgba(31,92,147,.3);border-radius:var(--r);padding:16px 18px"><div style="font-size:13px;font-weight:600;margin-bottom:4px">Candidate Status Update</div><div style="font-size:11px;color:var(--w60);margin-bottom:10px">Update status, follow-up date & remarks for existing candidates in bulk.</div><button class="btn btn-p btn-sm" onclick="dlTemplate('status')">⬇ Status Update Template</button></div>
 </div>
 <div class="sl2">📤 Step 2 — Upload Filled File</div>
@@ -1023,9 +1047,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Role / Designation <span class="req">*</span></label><input type="text" id="avRole" placeholder="e.g. Operations Executive"></div>
 <div class="field"><label>Department <span class="req">*</span></label><select id="avDept"><option value="">— Select —</option></select></div>
 <div class="field"><label>Location</label><select id="avLoc"><option value="">— Select —</option></select></div>
-<div class="field"><label>Monthly Budget Min ₹ <span class="fhint">PM</span></label><input type="number" id="avBudgetMin" placeholder="e.g. 30000" oninput="calcVacAnnual()"></div>
-<div class="field"><label>Monthly Budget Max ₹ <span class="fhint">PM</span></label><input type="number" id="avBudgetMax" placeholder="e.g. 45000" oninput="calcVacAnnual()"></div>
-<div class="field"><label>Annual Budget Range <span class="fhint">(auto)</span></label><input type="text" id="avBudgetAnnual" readonly placeholder="Auto-calculated" style="color:var(--teal);background:var(--w06)"></div>
+<div class="field"><label>Monthly Budget ₹</label><input type="number" id="avBudget"></div>
 <div class="field"><label>Experience Required</label><input type="text" id="avExp" placeholder="e.g. 2-4 years"></div>
 <div class="field"><label>Recruiter Assigned</label><select id="avRec"><option value="">— Select —</option></select></div>
 <div class="field"><label>Hiring Manager</label><input type="text" id="avHiringMgr" placeholder="Name of hiring manager"></div>
@@ -1134,7 +1156,7 @@ const ACTIVE_STATUSES=new Set(['Active','Not Contactable','Consultant Interview 
 // Inactive statuses (can be re-approached)
 const INACTIVE_STATUSES=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
 const STATUS_DM={'Consultant Interview in Progress':'Consultant','Rejected by Consultant':'Consultant','Shortlisted for Client I/W':'Consultant','Client I/W in Progress':'Client','Rejected by Client':'Client','Selected':'Client','Offered':'Client','Offer Revoked':'Client','Offer Declined':'Client','Joining in Progress':'Client','Joined':'Client'};
-const FLOW={'Active':['Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress'],'Not Contactable':['Not Contactable','Not Interested','Dropped','Active','Consultant Interview in Progress'],'Not Interested':['Not Interested','Active'],'Dropped':['Dropped','Active'],'Consultant Interview in Progress':['Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','On Hold','Dropped'],'Rejected by Consultant':['Rejected by Consultant','Active'],'Shortlisted for Client I/W':['Shortlisted for Client I/W','Client I/W in Progress','On Hold','Rejected by Consultant'],'Client I/W in Progress':['Client I/W in Progress','Rejected by Client','Selected','On Hold'],'Rejected by Client':['Rejected by Client','Active','Shortlisted for Client I/W'],'On Hold':['On Hold','Active','Consultant Interview in Progress','Client I/W in Progress'],'Selected':['Selected','Offered','On Hold'],'Offered':['Offered','Offer Revoked','Offer Declined','Joining in Progress'],'Offer Revoked':['Offer Revoked','Active'],'Offer Declined':['Offer Declined','Active'],'Joining in Progress':['Joining in Progress','Joined','Offer Revoked'],'Joined':['Joined']};
+const FLOW={'WIP':['WIP','Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress'],'Active':['Active','WIP','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress'],'Not Contactable':['Not Contactable','WIP','Not Interested','Dropped','Active','Consultant Interview in Progress'],'Not Interested':['Not Interested','WIP','Active'],'Dropped':['Dropped','WIP','Active'],'Consultant Interview in Progress':['Consultant Interview in Progress','WIP','Rejected by Consultant','Shortlisted for Client I/W','On Hold','Dropped'],'Rejected by Consultant':['Rejected by Consultant','WIP','Active'],'Shortlisted for Client I/W':['Shortlisted for Client I/W','WIP','Client I/W in Progress','On Hold','Rejected by Consultant'],'Client I/W in Progress':['Client I/W in Progress','WIP','Rejected by Client','Selected','On Hold'],'Rejected by Client':['Rejected by Client','WIP','Active','Shortlisted for Client I/W'],'On Hold':['On Hold','WIP','Active','Consultant Interview in Progress','Client I/W in Progress'],'Selected':['Selected','WIP','Offered','On Hold'],'Offered':['Offered','WIP','Offer Revoked','Offer Declined','Joining in Progress'],'Offer Revoked':['Offer Revoked','WIP','Active'],'Offer Declined':['Offer Declined','WIP','Active'],'Joining in Progress':['Joining in Progress','WIP','Joined','Offer Revoked'],'Joined':['Joined','WIP']};
 
 let M={
 clients:['Atmann','DMC Bazaar','GIFTS','One Above','VSAR Tech'].map(n=>({name:n,active:true})),
@@ -1512,6 +1534,10 @@ for(let i=hi+1;i<rows.length;i++){const row=rows[i];if(row.every(c=>c===''||c===
 const wsv=WB.Sheets['Vacancies'];
 if(wsv){const vr=XLSX.utils.sheet_to_json(wsv,{header:1,defval:'',raw:false});VHDR=vr[0]?vr[0].map(h=>String(h).trim()):[];VD=[];
 for(let i=1;i<vr.length;i++){if(vr[i].every(c=>c===''||c===null))continue;const obj={};VHDR.forEach((h,j)=>{obj[h]=vr[i][j]!==undefined?String(vr[i][j]).trim():'';});VD.push(obj);}}
+// Load repo data from SharePoint workbook (shared across all users)
+const wsr=WB.Sheets['Repository'];
+if(wsr){try{const rrows=XLSX.utils.sheet_to_json(wsr,{header:1,defval:'',raw:false}).slice(1).filter(r=>r[0]);repoData={jds:[],scripts:[],help:[]};rrows.forEach(r=>{const t=String(r[0]||'').trim();const d=r[1]?JSON.parse(r[1]):{};if(t==='jd')repoData.jds.push(d);else if(t==='script')repoData.scripts.push(d);else if(t==='help')repoData.help.push(d);});}catch(e){console.warn('Repo parse',e);loadRepoData();}}
+else{loadRepoData();}
 loadUsersCfg();resolveRole();fillDrops();}
 async function saveWB(msg){
 if(!WB)return;showLoad(msg||'Saving...');
@@ -1522,7 +1548,7 @@ if(!r.ok)throw new Error('Upload failed: '+r.status);
 hideLoad();toast('ok','Saved','Changes written to SharePoint');
 }catch(e){hideLoad();toast('err','Save Failed',e.message);throw e;}}
 function rebuildDS(){const ws=WB.Sheets['Data'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}const keep=rows.slice(0,hi+1);const data=MD.map(obj=>HDR.map(h=>obj[h]!==undefined?obj[h]:''));WB.Sheets['Data']=XLSX.utils.aoa_to_sheet([...keep,...data]);}
-function writeCL(action,code,field,oldV,newV,nm){try{if(!WB||!WB.Sheets['Change Log'])return;const ws=WB.Sheets['Change Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),acct&&acct.name?acct.name:'Unknown',code,action,field,oldV,newV,nm]);WB.Sheets['Change Log']=XLSX.utils.aoa_to_sheet(rows);}catch(e){console.warn('CL',e);}}
+function writeCL(action,code,field,oldV,newV,nm){try{if(!WB||!WB.Sheets['Change Log'])return;const ws=WB.Sheets['Change Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const role=curRole||'Unknown';rows.push([new Date().toISOString(),acct&&acct.name?acct.name:'Unknown',role,code,action,field,String(oldV||''),String(newV||''),nm]);WB.Sheets['Change Log']=XLSX.utils.aoa_to_sheet(rows);}catch(e){console.warn('CL',e);}}
 
 // ══════════════════════════════════════════════════════
 // ROLES
@@ -1576,8 +1602,15 @@ function goPanel(name){
 // DASHBOARD
 // ══════════════════════════════════════════════════════
 function loadDash(){
+// Populate filter dropdowns first
+['hf-rec','hf-cli'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;const key=id==='hf-rec'?'recruiters':'clients';el.innerHTML='<option value="">All '+(id==='hf-rec'?'Recruiters':'Clients')+'</option>'+mA(key).map(v=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'</option>').join('');});
+const hfRec=(document.getElementById('hf-rec')&&document.getElementById('hf-rec').value)||'';
+const hfCli=(document.getElementById('hf-cli')&&document.getElementById('hf-cli').value)||'';
+const hfFrom=(document.getElementById('hf-from')&&document.getElementById('hf-from').value)||'';
+const hfTo=(document.getElementById('hf-to')&&document.getElementById('hf-to').value)||'';
+const hfMD=MD.filter(r=>(!hfRec||r[C.recruiter]===hfRec)&&(!hfCli||r[C.client]===hfCli)&&(!hfFrom||!r[C.followupDate]||r[C.followupDate]>=hfFrom)&&(!hfTo||!r[C.followupDate]||r[C.followupDate]<=hfTo));
 const td=today(),tm=td.slice(0,7),in3=addDays(td,3);
-const pend=MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
+const pend=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
 // Update both KPI row and topbar
 const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
 sv2('kpi-total', MD.length);
@@ -1589,16 +1622,16 @@ sv2('tbTot', MD.length);
 sv2('tbAct', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
 const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
 // Action queue
-const items=MD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])).map(r=>{const fd=r[C.followupDate];const u=fd<td?'ov':fd===td?'td':fd<=in3?'up':null;return u?{r,fd,u}:null;}).filter(Boolean).sort((a,b)=>{const o={ov:0,td:1,up:2};return o[a.u]-o[b.u]||a.fd.localeCompare(b.fd);}).slice(0,25);
+const items=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])).map(r=>{const fd=r[C.followupDate];const u=fd<td?'ov':fd===td?'td':fd<=in3?'up':null;return u?{r,fd,u}:null;}).filter(Boolean).sort((a,b)=>{const o={ov:0,td:1,up:2};return o[a.u]-o[b.u]||a.fd.localeCompare(b.fd);}).slice(0,25);
 const aq=document.getElementById('aq-list');
 if(aq)aq.innerHTML=items.length?items.map(({r,fd,u})=>'<div class="pi '+u+'" onclick="qUpd(\''+r[C.code]+'\')"><div class="pd '+u+'"></div><div style="flex:1"><div class="pn">'+r[C.name]+'</div><div class="pdet">'+(r[C.position]||'—')+' · '+(r[C.client]||'—')+' · '+(r[C.status]||'—')+'</div>'+(r[C.followupNotes]?'<div style="font-size:10px;color:var(--teal);margin-top:1px">'+r[C.followupNotes]+'</div>':'')+'</div><div class="pdate '+u+'">'+fmtD(fd)+'<br><span style="font-size:10px">'+(u==='ov'?'OVERDUE':u==='td'?'TODAY':'UPCOMING')+'</span></div></div>').join(''):'<div style="text-align:center;padding:26px;color:var(--w60)">✅ No pending follow-ups — all clear!</div>';
 // Interviews
 const in7=addDays(td,7);
-const ivs=MD.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=td&&r[C.interviewDate]<=in7).sort((a,b)=>a[C.interviewDate].localeCompare(b[C.interviewDate])).slice(0,10);
+const ivs=hfMD.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=td&&r[C.interviewDate]<=in7).sort((a,b)=>a[C.interviewDate].localeCompare(b[C.interviewDate])).slice(0,10);
 const iv=document.getElementById('iv-list');
 if(iv)iv.innerHTML=ivs.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Interviewer</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>'+ivs.map(r=>'<tr><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="m">'+(r[C.interviewerName]||'—')+'</td><td class="mono">'+fmtD(r[C.interviewDate])+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No interviews in next 7 days</div>';
 // Joining in progress
-const jp=MD.filter(r=>r[C.status]==='Joining in Progress'&&r[C.doj]);
+const jp=hfMD.filter(r=>r[C.status]==='Joining in Progress'&&r[C.doj]);
 const jpe=document.getElementById('jp-list');
 if(jpe)jpe.innerHTML=jp.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Expected DOJ</th><th>Follow-up (Day Before)</th><th></th></tr></thead><tbody>'+jp.map(r=>{const db=addDays(r[C.doj],-1);const urg=db<=td;return'<tr style="'+(urg?'background:rgba(233,152,43,.06)':'')+'"><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="mono">'+fmtD(r[C.doj])+'</td><td><span class="badge '+(urg?'b-wip':'b-progress')+'">'+fmtD(db)+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>';}).join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No active joinings tracked</div>';}
 function goRecFiltered(scope, status){
@@ -1700,8 +1733,9 @@ if(dups.length){const d=dups[0];const r=d.r;const isInactive=INACTIVE_STATUSES.h
   const title=isInactive?'♻ Re-engage Candidate?':'⚠ Duplicate Found';
   const msg=isInactive?'This candidate was previously marked <strong>'+r[C.status]+'</strong> but can be re-approached for a new opportunity.':'A candidate with the same '+d.type+' already exists.';
   showModal(title,msg,'<strong>'+r[C.name]+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br><span style="font-size:12px;color:var(--w60)">'+r[C.position]+' @ '+r[C.client]+' · '+r[C.status]+'</span>',
-  (isInactive?'<button class="btn btn-t" onclick="closeModal();qUpd(\'' + r[C.code] + '\')">Update Existing Record</button>':'')+
-  '<button class="btn btn-g" onclick="closeModal();window._doAdd()">Add as New Record</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
+  '<button class="btn btn-t" onclick="closeModal();qUpd(\'' + r[C.code] + '\')">Update Profile</button>'+
+  (isInactive?'<button class="btn btn-g" onclick="closeModal();window._doAdd()">Add as New Record</button>':'')+
+  '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
   window._doAdd=doAdd;}
 else await doAdd();}
 
@@ -1755,10 +1789,14 @@ writeCL('Status Update',r[C.code],C.status,oldStat,stat,r[C.name]);
 await saveWB('Updating record...');
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(stat)+'">'+stat+'</span>';
 toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();
-  // Clear update form
+  const updCode=r[C.code];const updName=r[C.name];
   document.getElementById('uForm').classList.add('hidden');
-  document.getElementById('uCode').value='';
-  eIdx=-1;}
+  document.getElementById('uCode').value='';eIdx=-1;
+  showModal('✅ Record Updated','<strong>'+updName+'</strong> moved to <strong>'+stat+'</strong>. What would you like to do?','',
+    '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
+    '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
+    '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'home\')">Dashboard</button>');
+  }
 
 // ══════════════════════════════════════════════════════
 // EDIT PROFILE
@@ -1793,12 +1831,14 @@ await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.le
 // ALL RECORDS
 // ══════════════════════════════════════════════════════
 function renderRec(){
-const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli');
+const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec');
 const scope=gv('rScope')||'all';
+// Populate recruiter dropdown
+const rrEl=document.getElementById('rRec');if(rrEl&&rrEl.options.length<=1){mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;rrEl.appendChild(o);});}
 const filtered=MD.filter(r=>{
   const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch);
   const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
-  return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf);
+  return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf)&&(!rf||r[C.recruiter]===rf);
 });
 const tb=document.getElementById('rBody');if(!tb)return;
 tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
@@ -1806,18 +1846,20 @@ const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.
 
 function viewCandModal(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
-  const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status',r[C.status]],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up Date',fmtD(r[C.followupDate])],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM','\u20b9'+(r[C.salaryPM]||'—')],['Expected Salary PM','\u20b9'+(r[C.expectedSalary]||'—')],['Offered Salary','\u20b9'+(r[C.offeredSalary]||'—')],['Expected DOJ',fmtD(r[C.doj])],['Remarks',r[C.remark]||'—'],['Last Updated By',r[C.updatedBy]||'—'],['Last Updated On',fmtD(r[C.updatedOn])]];
-  const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]).map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:40%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
+  const allRem=(r[C.remark]||'').split('|').map(s=>s.trim()).filter(Boolean);
+  const latestRem=allRem.length?allRem[allRem.length-1]:'—';
+  const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status','<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>'],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up',fmtD(r[C.followupDate])],['Interview',r[C.interviewDate]?fmtD(r[C.interviewDate])+(r._iTime?' @ '+r._iTime:''):'—'],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM',r[C.salaryPM]?'₹'+r[C.salaryPM]:'—'],['Exp Salary PM',r[C.expectedSalary]?'₹'+r[C.expectedSalary]:'—'],['Offered Salary',r[C.offeredSalary]?'₹'+r[C.offeredSalary]:'—'],['Expected DOJ',r[C.doj]?fmtD(r[C.doj]):'—'],['Latest Remark',escHtml(latestRem)],['Updated By',r[C.updatedBy]||'—'],['Updated On',fmtD(r[C.updatedOn])]];
+  let tableHtml='<div style="max-height:260px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
+  if(allRem.length>1){const prev=allRem.slice(0,-1).reverse();tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">📋 Remarks History</div>'+prev.map((rm,i)=>'<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="font-size:9px;color:rgba(251,251,250,.35)">PREV '+(prev.length-i)+'</span><span style="color:var(--w60);margin-left:6px">'+escHtml(rm)+'</span></div>').join('')+'</div>';}
   window._mc=code;
-  showModal('👤 '+r[C.name],r[C.position]+' \u00b7 '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  showModal('👤 '+r[C.name],r[C.position]+' · '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
-
 function dlAllRecords(){
-  const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),scope=gv('rScope')||'all';
+  const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec'),scope=gv('rScope')||'all';
   const data=MD.filter(r=>{
     const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch);
     const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
-    return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf);
+    return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf)&&(!rf||r[C.recruiter]===rf);
   });
   const cols=[C.code,C.name,C.contact,C.email,C.client,C.position,C.dept,C.status,C.recruiter,C.sourcingDate,C.followupDate,C.company,C.salaryPM,C.expectedSalary,C.offeredSalary,C.doj,C.remark];
   const labels=['Code','Name','Contact','Email','Client','Position','Department','Status','Recruiter','Sourced','Follow-up','Company','Cur Sal PM','Exp Sal PM','Offered Sal','DOJ','Remarks'];
@@ -1826,13 +1868,65 @@ function dlAllRecords(){
   XLSX.writeFile(wb2,'THP_Records_'+today()+'.xlsx');
   toast('ok','Downloaded',data.length+' records exported');
 }
+// ── SORT & REFRESH ──────────────────────────────────────
+let _rSortCol=null,_rSortDir='asc',_vSortCol=null,_vSortDir='asc';
+function sortRec(col,key){
+  const th=document.querySelectorAll('#recTable thead th');
+  th.forEach(t=>{t.classList.remove('sort-asc','sort-desc');});
+  if(_rSortCol===col){_rSortDir=_rSortDir==='asc'?'desc':'asc';}else{_rSortCol=col;_rSortDir='asc';}
+  if(th[col])th[col].classList.add(_rSortDir==='asc'?'sort-asc':'sort-desc');
+  MD.sort((a,b)=>{const av=String(a[C[key]]||'').toLowerCase(),bv=String(b[C[key]]||'').toLowerCase();return _rSortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);});
+  renderRec();
+}
+function sortVac(col){
+  const th=document.querySelectorAll('#vacTable thead th');
+  th.forEach(t=>{t.classList.remove('sort-asc','sort-desc');});
+  if(_vSortCol===col){_vSortDir=_vSortDir==='asc'?'desc':'asc';}else{_vSortCol=col;_vSortDir='asc';}
+  if(th[col])th[col].classList.add(_vSortDir==='asc'?'sort-asc':'sort-desc');
+  const keys=['Vacancy Code','Company','Designation','Department','Location','Monthly Budget','Recruiter','Priority','','Current Status'];
+  const k=keys[col]||'';
+  if(k)VD.sort((a,b)=>{const av=String(a[k]||'').toLowerCase(),bv=String(b[k]||'').toLowerCase();return _vSortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);});
+  renderVac();
+}
+async function refreshAllRecords(){
+  const btn=document.getElementById('refreshRecBtn');
+  if(btn){btn.disabled=true;btn.textContent='⟳ Loading...';}
+  try{await loadData();renderRec();toast('ok','Refreshed','Latest data loaded');}
+  catch(e){toast('err','Refresh failed',e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='⟳ Refresh';}}
+}
 // ══════════════════════════════════════════════════════
 // VACANCIES
 // ══════════════════════════════════════════════════════
 function renderVac(){
 const tb=document.getElementById('vBody');if(!tb)return;
-if(!VD.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--w60)">No vacancies — add from Admin → Vacancies</td></tr>';return;}
-tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';const pri=v['Priority']||'';const priCol=pri==='High'?'#ff6b6b':pri==='Medium'?'var(--gold)':'var(--teal)';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong>'+(v['Positions Count']&&v['Positions Count']!=='1'?'<span style="font-size:10px;color:var(--teal);margin-left:5px">(×'+v['Positions Count']+')</span>':'')+'</td><td class="m">'+v['Department']+'</td><td class="m">'+(v['Location']||'—')+'</td><td class="m">'+(v['Monthly Budget Min']?'₹'+v['Monthly Budget Min']+(v['Monthly Budget Max']?'–'+v['Monthly Budget Max']:''):'—')+'</td><td class="m">'+(v['Recruiter']||'—')+'</td>'+(pri?'<td><span style="font-size:10px;font-weight:700;color:'+priCol+'">'+pri+'</span></td>':'<td class="m">—</td>')+'<td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="viewVacModal('+i+')" style="padding:3px 8px;font-size:10px">View</button></div></td></tr>';}).join('');}
+// Populate filter dropdowns
+const _pDrop=(id,arr)=>{const el=document.getElementById(id);if(!el||el.options.length>1)return;arr.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});};
+_pDrop('vf-rec',mA('recruiters'));_pDrop('vf-cli',mA('clients'));_pDrop('vf-dept',mA('departments'));_pDrop('vf-loc',mA('cities'));
+const fRec=document.getElementById('vf-rec')&&document.getElementById('vf-rec').value||'';
+const fCli=document.getElementById('vf-cli')&&document.getElementById('vf-cli').value||'';
+const fDept=document.getElementById('vf-dept')&&document.getElementById('vf-dept').value||'';
+const fLoc=document.getElementById('vf-loc')&&document.getElementById('vf-loc').value||'';
+const fTat=document.getElementById('vf-tat')&&document.getElementById('vf-tat').value||'';
+const todayMs=new Date().getTime();
+const vis=VD.filter(v=>{
+  if(fRec&&(v['Recruiter']||'')!==fRec)return false;
+  if(fCli&&(v['Company']||'')!==fCli)return false;
+  if(fDept&&(v['Department']||'')!==fDept)return false;
+  if(fLoc&&(v['Location']||'')!==fLoc)return false;
+  if(fTat){const vd=v['Date of Vacancy'],tfd=v['Target Fill Date'];if(!vd||!tfd)return false;
+    const age=Math.floor((todayMs-new Date(vd).getTime())/86400000);
+    if(fTat==='green'&&age>30)return false;if(fTat==='amber'&&(age<=30||age>60))return false;if(fTat==='red'&&age<=60)return false;}
+  return true;
+});
+if(!vis.length){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies — add from Admin')+'</td></tr>';return;}
+tb.innerHTML=vis.map(v=>{
+  const i=VD.indexOf(v);const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';const pri=v['Priority']||'';const priCol=pri==='High'?'#ff6b6b':pri==='Medium'?'var(--gold)':'var(--teal)';
+  let tatHtml='<td class="m">—</td>';
+  const vd=v['Date of Vacancy'],tfd=v['Target Fill Date'];
+  if(vd&&tfd){const age=Math.floor((todayMs-new Date(vd).getTime())/86400000);const span=Math.floor((new Date(tfd)-new Date(vd))/86400000);const ico=age<=30?'🟢':age<=60?'🟡':'🔴';const col=age<=30?'var(--teal)':age<=60?'var(--gold)':'#ff6b6b';tatHtml='<td class="m"><span style="color:'+col+';font-size:11px">'+ico+' '+age+'d</span><span style="font-size:9px;color:var(--w60)"> /'+span+'d</span></td>';}
+  return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong>'+(v['Positions Count']&&v['Positions Count']!=='1'?'<span style="font-size:10px;color:var(--teal);margin-left:5px">(×'+v['Positions Count']+')</span>':'')+'</td><td class="m">'+v['Department']+'</td><td class="m">'+(v['Location']||'—')+'</td><td class="m">'+(v['Monthly Budget']?'₹'+v['Monthly Budget']:'—')+'</td><td class="m">'+(v['Recruiter']||'—')+'</td>'+(pri?'<td><span style="font-size:10px;font-weight:700;color:'+priCol+'">'+pri+'</span></td>':'<td class="m">—</td>')+tatHtml+'<td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="viewVacModal('+i+')" style="padding:3px 8px;font-size:10px">View</button></div></td></tr>';
+}).join('');}
 
 function viewVacModal(idx){
   const v=VD[idx];if(!v)return;
@@ -1842,7 +1936,7 @@ function viewVacModal(idx){
     ['Department',v['Department']||'—'],['Location',v['Location']||'—'],
     ['Priority',v['Priority']||'—'],['# Positions',v['Positions Count']||'1'],
     ['Status',v['Current Status']||'—'],['Active',v['Active']==='N'?'No':'Yes'],
-    ['Monthly Budget','₹'+(v['Monthly Budget Min']||'—')+' – ₹'+(v['Monthly Budget Max']||'—')+' PM'],['Annual Budget',(v['Annual Budget']||'—')],['Experience Required',v['Experience']||'—'],
+    ['Monthly Budget','₹'+(v['Monthly Budget']||'—')],['Experience Required',v['Experience']||'—'],
     ['Recruiter Assigned',v['Recruiter']||'—'],['Hiring Manager',v['Hiring Manager']||'—'],
     ['Manager Name',v['Manager Name']||'—'],['Date of Vacancy',fmtD(v['Date of Vacancy'])],
     ['Target Fill Date',fmtD(v['Target Fill Date'])],['Remarks',v['Remarks']||'—'],
@@ -1871,7 +1965,7 @@ const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['
 const jdBtn=jdLink?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="closeModal();sendJDWA(\''+jdLink+'\')">📄 Send JD (from Vacancy)</button>':'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;opacity:.5" onclick="showCustomJD()">📄 Send JD (enter link)</button>';
 showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',jdBtn+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+'<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
 
-function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find the Job Description for the '+r[C.position]+' role with '+r[C.client]+' below:\n\n'+jdLink+'\n\nPlease review and let us know your interest. - '+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Sent','JD link shared with '+r[C.name]);}
+function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
 
 function showCustomJD(){if(eIdx===-1)return;const r=MD[eIdx];const lnk=prompt('Enter JD link or SharePoint URL to share:');if(lnk&&lnk.trim())sendJDWA(lnk.trim());}
 function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}saveWB(false);}
@@ -1884,9 +1978,9 @@ async function createMeeting(){const r=MD[eIdx];const d=document.getElementById(
 // dlTemplate replaced by ExcelJS version below
 function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)procBulk(f);}
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
-function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){const rn=rows[i].map(c=>String(c).replace(/\s*[★\*]+\s*/g,'').trim());if(rn.some(c=>c==='Name')&&(rn.includes('Contact no')||rn.includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).replace(/\s*[★\*]+\s*/g,'').trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(!obj['Recruiter'])iss.push('Recruiter required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
+function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
 function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
-async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing Date']||obj['Profile Sourcing date']||today();nr[C.screeningDate]=obj['Profile Screening Date']||obj['Profile Screening date']||'';nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.altContact]=(obj['Alternate contact number']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.altEmail]=obj['Alternate Email']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.vacCode]=obj['Vacancy Code']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=obj['Recruiter']||(acct&&acct.name?acct.name.split(' ')[0]:'');nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
+async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // ADMIN PANEL
@@ -1908,15 +2002,14 @@ function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx
 function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});el.value='';renderMT(key);fillDrops();toast('ok','Added',nm+' added.');}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
 // VACANCIES ADMIN
-function calcVacAnnual(){const mn=parseFloat(document.getElementById('avBudgetMin')&&document.getElementById('avBudgetMin').value||0);const mx=parseFloat(document.getElementById('avBudgetMax')&&document.getElementById('avBudgetMax').value||0);const el=document.getElementById('avBudgetAnnual');if(!el)return;if(!mn&&!mx){el.value='';return;}const fmtL=v=>v>=100000?'₹'+(v/100000).toFixed(1)+'L':'₹'+v.toLocaleString('en-IN');if(mn&&mx&&mn!==mx){el.value=fmtL(mn*12)+' – '+fmtL(mx*12)+' PA';}else if(mn){el.value=fmtL(mn*12)+' PA';}else{el.value=fmtL(mx*12)+' PA';}}
-function openAddVac(){vacEIdx=-1;['avRole','avBudgetMin','avBudgetMax','avBudgetAnnual','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
-function renderAVacs(){const tb=document.getElementById('avBody');if(!tb)return;if(!VD.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--w60)">No vacancies yet.</td></tr>';return;}tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+(v['Monthly Budget Min']?'₹'+v['Monthly Budget Min']+(v['Monthly Budget Max']?'–'+v['Monthly Budget Max']:''):'—')+'</td><td class="m">'+(v['Recruiter']||'—')+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
-function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudgetMin','Monthly Budget Min'],['avBudgetMax','Monthly Budget Max'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';document.getElementById('avForm').classList.remove('hidden');fillDrops();calcVacAnnual();}
+function openAddVac(){vacEIdx=-1;['avRole','avBudget','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
+function renderAVacs(){const tb=document.getElementById('avBody');if(!tb)return;if(!VD.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--w60)">No vacancies yet.</td></tr>';return;}tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
+function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudget','Monthly Budget'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
 async function saveVac(){
 const cli=gv('avCli'),role=gv('avRole'),dept=gv('avDept');
 if(!cli||!role||!dept){showAlert('avAlert','err','Client, Role and Department required.');return;}
 const isNew=vacEIdx===-1;
-const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget Min':gv('avBudgetMin'),'Monthly Budget Max':gv('avBudgetMax'),'Monthly Budget':gv('avBudgetMin')+(gv('avBudgetMax')?'-'+gv('avBudgetMax'):''),'Annual Budget':gv('avBudgetAnnual'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y'};
+const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudget'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y'};
 if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{const m=String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);return m?parseInt(m[1]):0;}));vd['Vacancy code']='VC-'+yr+'-'+String(mx+1).padStart(4,'0');vd['Sr. No.']=VD.length+1;VD.push(vd);}else{Object.assign(VD[vacEIdx],vd);}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];if(!vh.includes('Active'))vh.push('Active');WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
 await saveWB('Saving vacancy...');document.getElementById('avForm').classList.add('hidden');renderAVacs();renderVac();fillPosDrop();toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
@@ -2578,94 +2671,32 @@ async function dlTemplate(type) {
   t4.getCell(1).font = { color:XL.red, size:10 };
 
   // Merge title cells
-  ws.mergeCells('A1:Z1'); ws.mergeCells('A2:Z2');
-  ws.mergeCells('A3:Z3'); ws.mergeCells('A4:Z4');
+  ws.mergeCells('A1:T1'); ws.mergeCells('A2:T2');
+  ws.mergeCells('A3:T3'); ws.mergeCells('A4:T4');
   ws.getRow(1).height = 22; ws.getRow(3).height = 18;
 
   // ── COLUMN DEFINITIONS ──
-  // _Masters col indices: 1=Clients, 2=Departments, 3=Sources, 4=NoticePeriods, 5=Statuses, 6=Cities, 7=Recruiters
   const recruiterCols = [
-    { key:'sourDate',   label:'Profile Sourcing Date',    req:false, width:18, type:'text',   note:'YYYY-MM-DD. Defaults to today if blank' },
-    { key:'screenDate', label:'Profile Screening Date',   req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
-    { key:'recruiter',  label:'Recruiter',                req:true,  width:16, type:'list',   master:'recruiters', col:7 },
-    { key:'name',       label:'Name',                     req:true,  width:22, type:'text' },
-    { key:'mobile',     label:'Contact no',               req:true,  width:14, type:'number', note:'10 digits only, no spaces' },
-    { key:'altMob',     label:'Alternate contact number', req:false, width:14, type:'number' },
-    { key:'email',      label:'Personal Email ID',        req:true,  width:26, type:'text' },
-    { key:'altEmail',   label:'Alternate Email',          req:false, width:26, type:'text' },
-    { key:'city',       label:'Current Location',         req:true,  width:18, type:'list',   master:'cities', col:6 },
-    { key:'exp',        label:'Total Yrs of Exp',         req:false, width:12, type:'text',   note:'Number or Fresher' },
-    { key:'notice',     label:'Notice Period',            req:false, width:14, type:'list',   master:'noticePeriods', col:4 },
-    { key:'company',    label:'Current Company Name',     req:false, width:22, type:'text' },
-    { key:'desig',      label:'Current Designation',      req:false, width:22, type:'text' },
-    { key:'reason',     label:'Reason for leaving',       req:false, width:22, type:'text' },
-    { key:'salPM',      label:'Current Salary (Rs. PM)',  req:false, width:16, type:'number', note:'Numbers only' },
-    { key:'expSal',     label:'Expected Salary (Rs.)',    req:false, width:16, type:'number', note:'Numbers only' },
-    { key:'source',     label:'Source',                   req:true,  width:16, type:'list',   master:'sources', col:3 },
-    { key:'srcDet',     label:'Source Details',           req:false, width:20, type:'text' },
-    { key:'client',     label:'Client Name',              req:true,  width:16, type:'list',   master:'clients', col:1 },
-    { key:'dept',       label:'Department',               req:true,  width:18, type:'list',   master:'departments', col:2 },
-    { key:'position',   label:'Position applied for',     req:true,  width:24, type:'text' },
-    { key:'vacCode',    label:'Vacancy Code',             req:false, width:16, type:'text',   note:'e.g. VC-2026-0001. Leave blank if unknown' },
-    { key:'status',     label:'Final Status',             req:false, width:22, type:'list',   master:'statuses', col:5 },
-    { key:'fuDate',     label:'Follow-up Date',           req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
-    { key:'remark',     label:'Remark',                   req:false, width:24, type:'text' },
-  ];
-
-  // Admin migration template — all 52 master columns, matches Data sheet exactly
-  const adminCols = [
-    { key:'candCode',   label:'Candidate code',             req:false, width:22, type:'text',   note:'Leave blank — app generates. Fill only when migrating existing records.' },
-    { key:'sourDate',   label:'Profile Sourcing date',      req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
-    { key:'screenDate', label:'Profile Screening date',     req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
-    { key:'source',     label:'Source',                     req:true,  width:16, type:'list',   master:'sources', col:3 },
-    { key:'srcDet',     label:'Source Details',             req:false, width:20, type:'text' },
-    { key:'name',       label:'Name',                       req:true,  width:22, type:'text' },
-    { key:'combLoc',    label:'Combined Location',          req:false, width:18, type:'text',   note:'Auto-derived. Leave blank.' },
-    { key:'city',       label:'Current Location',           req:true,  width:18, type:'list',   master:'cities', col:6 },
-    { key:'dept',       label:'Department',                 req:true,  width:18, type:'list',   master:'departments', col:2 },
-    { key:'position',   label:'Position applied for',       req:true,  width:24, type:'text' },
-    { key:'roleInt',    label:'Role Interested in',         req:false, width:22, type:'text' },
-    { key:'mobile',     label:'Contact no',                 req:true,  width:14, type:'number', note:'10 digits only' },
-    { key:'altMob',     label:'Alternate contact number',   req:false, width:14, type:'number' },
-    { key:'email',      label:'Personal Email ID',          req:false, width:26, type:'text' },
-    { key:'altEmail',   label:'Alternate Email',            req:false, width:26, type:'text' },
-    { key:'exp',        label:'Total Yrs of Exp',           req:false, width:12, type:'text' },
-    { key:'expTenure',  label:'Exp. Tenure',                req:false, width:14, type:'text' },
-    { key:'company',    label:'Current Company Name',       req:false, width:22, type:'text' },
-    { key:'desig',      label:'Current Designation',        req:false, width:22, type:'text' },
-    { key:'notice',     label:'Notice Period',              req:false, width:14, type:'list',   master:'noticePeriods', col:4 },
-    { key:'reason',     label:'Reason for leaving',         req:false, width:22, type:'text' },
-    { key:'salPM',      label:'Current Salary (Rs. PM)',    req:false, width:16, type:'number', note:'Numbers only' },
-    { key:'salPA',      label:'Current Salary (Rs. PA)',    req:false, width:16, type:'number', note:'Auto-calc. Leave blank.' },
-    { key:'salFinal',   label:'Final Current Annual Salary',req:false, width:18, type:'number' },
-    { key:'salBkt',     label:'Current Salary Bracket',     req:false, width:18, type:'text',   note:'Auto-assigned by app.' },
-    { key:'expSal',     label:'Expected Salary (Rs.)',      req:false, width:16, type:'number', note:'Monthly amount' },
-    { key:'offSal',     label:'Offered Salary',             req:false, width:14, type:'number' },
-    { key:'offDate',    label:'Offer Date',                 req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
-    { key:'client',     label:'Client Name',                req:true,  width:16, type:'list',   master:'clients', col:1 },
-    { key:'vacCode',    label:'Vacancy Code',               req:false, width:16, type:'text',   note:'e.g. VC-2026-0001' },
-    { key:'status',     label:'Final Status',               req:false, width:22, type:'list',   master:'statuses', col:5 },
-    { key:'dm',         label:'Final Decision Maker',       req:false, width:20, type:'text' },
-    { key:'ivName',     label:'Client Interviewer Name',    req:false, width:22, type:'text' },
-    { key:'ivDate',     label:'Client Interview Date',      req:false, width:16, type:'text',   note:'YYYY-MM-DD' },
-    { key:'selDate',    label:'Client Selection Date',      req:false, width:16, type:'text',   note:'YYYY-MM-DD' },
-    { key:'doj',        label:'Expected/DOJ',               req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
-    { key:'fuDate',     label:'Follow-up Date',             req:false, width:14, type:'text',   note:'YYYY-MM-DD' },
-    { key:'fuNotes',    label:'Follow-up Notes',            req:false, width:24, type:'text' },
-    { key:'fuCount',    label:'Follow-up Attempt Count',    req:false, width:14, type:'number' },
-    { key:'remark',     label:'Remark',                     req:false, width:24, type:'text' },
-    { key:'otherComm',  label:'Other comments',             req:false, width:24, type:'text' },
-    { key:'roleSumm',   label:'Role summary',               req:false, width:24, type:'text' },
-    { key:'consent',    label:'Consent Obtained',           req:false, width:12, type:'text',   note:'Y or N' },
-    { key:'docLink',    label:'Document Link',              req:false, width:28, type:'text' },
-    { key:'prevCode',   label:'Previous Candidate code',    req:false, width:22, type:'text' },
-    { key:'updBy',      label:'Last Updated By',            req:false, width:18, type:'text',   note:'Auto-filled by app.' },
-    { key:'updOn',      label:'Last Updated On',            req:false, width:16, type:'text',   note:'Auto-filled by app.' },
-    { key:'archFlag',   label:'Archive Flag',               req:false, width:12, type:'text',   note:'Y or N' },
-    { key:'tat',        label:'TAT',                        req:false, width:10, type:'number', note:'Auto-calculated.' },
-    { key:'sNo',        label:'S. No',                      req:false, width:8,  type:'number', note:'Auto-assigned.' },
-    { key:'recruiter',  label:'Recruiter',                  req:true,  width:16, type:'list',   master:'recruiters', col:7 },
-    { key:'repDate',    label:'Data base reporting date',   req:false, width:18, type:'text',   note:'YYYY-MM-DD' },
+    { key:'name',     label:'Name',                    req:true,  width:22, type:'text' },
+    { key:'mobile',   label:'Contact no',              req:true,  width:14, type:'number', note:'10 digits only, no spaces' },
+    { key:'altMob',   label:'Alternate contact number',req:false, width:14, type:'number' },
+    { key:'email',    label:'Personal Email ID',       req:true,  width:26, type:'text' },
+    { key:'city',     label:'Current Location',        req:true,  width:18, type:'list', master:'cities', col:6 },
+    { key:'exp',      label:'Total Yrs of Exp',        req:false, width:12, type:'text', note:'Number or Fresher' },
+    { key:'notice',   label:'Notice Period',           req:false, width:14, type:'list', master:'noticePeriods', col:4 },
+    { key:'company',  label:'Current Company Name',    req:false, width:22, type:'text' },
+    { key:'desig',    label:'Current Designation',     req:false, width:22, type:'text' },
+    { key:'reason',   label:'Reason for leaving',      req:false, width:22, type:'text' },
+    { key:'salPM',    label:'Current Salary (Rs. PM)', req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'expSal',   label:'Expected Salary (Rs.)',   req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'source',   label:'Source',                  req:true,  width:16, type:'list', master:'sources', col:3 },
+    { key:'srcDet',   label:'Source Details',          req:false, width:20, type:'text' },
+    { key:'client',   label:'Client Name',             req:true,  width:16, type:'list', master:'clients', col:1 },
+    { key:'dept',     label:'Department',              req:true,  width:18, type:'list', master:'departments', col:2 },
+    { key:'position', label:'Position applied for',   req:true,  width:24, type:'text' },
+    { key:'status',   label:'Final Status',            req:false, width:22, type:'list', master:'statuses', col:5 },
+    { key:'fuDate',   label:'Follow-up Date',          req:false, width:14, type:'text', note:'YYYY-MM-DD' },
+    { key:'remark',   label:'Remark',                  req:false, width:24, type:'text' },
   ];
 
   // Status update template — separate early return
@@ -2729,7 +2760,7 @@ async function dlTemplate(type) {
     return;
   }
 
-  const cols = type === 'recruiter' ? recruiterCols : adminCols; // extend for admin later
+  const cols = type === 'recruiter' ? recruiterCols : recruiterCols; // extend for admin later
 
   // ── HEADER ROW (row 5) ──
   const headerRow = ws.getRow(5);
@@ -2745,21 +2776,12 @@ async function dlTemplate(type) {
   });
 
   // ── SAMPLE ROW (row 6) ──
-  const sampleValues = type === 'recruiter' ? [
-    new Date().toISOString().split('T')[0], '', aR[0]||'',
-    'Sample: Priya Sharma', '9876543210', '', 'priya@gmail.com', '',
+  const sampleValues = [
+    'Sample: Priya Sharma', '9876543210', '', 'priya@gmail.com',
     aL[0]||'Mumbai', '3', aN[0]||'30 days', 'ABC Pvt Ltd', 'Senior Executive',
     'Better growth', '45000', '55000', aS[0]||'Portal', 'Naukri',
-    aC[0]||'', aD[0]||'', 'Operations Manager', '',
-    'Active', new Date().toISOString().split('T')[0], 'Initial contact made'
-  ] : [
-    '', new Date().toISOString().split('T')[0], '', aS[0]||'Portal', 'Naukri',
-    'Sample: Rahul Mehta', '', aL[0]||'Mumbai', aD[0]||'Operations', 'Operations Manager', '',
-    '9876543210', '', 'rahul@gmail.com', '', '5', '3-5 yrs',
-    'XYZ Corp', 'Manager', aN[0]||'30 days', 'Growth', '60000', '', '720000', '',
-    '70000', '', '', aC[0]||'', '', 'Active', 'Consultant', '', '', '', '',
-    new Date().toISOString().split('T')[0], '', '0', 'Strong candidate', '', '', 'Y', '', '',
-    '', '', '', '', 1, aR[0]||'', new Date().toISOString().split('T')[0]
+    aC[0]||'', aD[0]||'', 'Operations Manager', 'Active',
+    new Date().toISOString().split('T')[0], 'Initial contact made'
   ];
   const sampleRow = ws.getRow(6);
   sampleRow.height = 16;
@@ -2821,80 +2843,30 @@ async function dlTemplate(type) {
 
   // ── VALIDATION RULES SHEET ──
   const wsR = wb.addWorksheet('Validation Rules');
-  const recruiterRules = [
+  const ruleData = [
     ['FIELD','REQUIRED?','RULE','EXAMPLE','COMMON MISTAKES'],
-    ['Profile Sourcing Date','NO','YYYY-MM-DD. Defaults to today if blank','2026-05-30','30/05/2026'],
-    ['Profile Screening Date','NO','YYYY-MM-DD','2026-05-30','30/05/2026'],
-    ['Recruiter','YES','Select from dropdown — must match active recruiter','Siddhi','Free-typing or leaving blank'],
     ['Name','YES','Full name, no special characters','Priya Sharma','Using initials only'],
-    ['Contact no','YES','Exactly 10 digits, no spaces or +91','9876543210','+919876543210 or 98765 43210'],
-    ['Alternate contact number','NO','10 digits, must differ from primary','9123456789','Same as primary'],
+    ['Contact no','YES','Exactly 10 digits, no spaces or +91','9876543210','9876543210 not +919876543210'],
     ['Personal Email ID','YES','Valid email with @ symbol','priya@gmail.com','Spaces in email'],
-    ['Alternate Email','NO','Valid email format','priya.work@co.com','Missing @'],
-    ['Current Location','YES','Select from dropdown only','Mumbai','Typing instead of selecting'],
+    ['Current Location','YES','Select from dropdown only','Mumbai','Typing Mumbai instead of selecting'],
+    ['Source','YES','Select from dropdown only','Portal','Mis-spelling source name'],
+    ['Client Name','YES','Select from dropdown only - case sensitive','Atmann','ATMANN vs Atmann'],
+    ['Department','YES','Select from dropdown only','Operations','Operations vs Ops'],
+    ['Position applied for','YES','Free text - job title only','Operations Manager','Leaving blank'],
+    ['Current Salary (Rs. PM)','NO','Numbers only - monthly amount','45000','45,000 or Rs.45000 or 45k'],
+    ['Expected Salary (Rs.)','NO','Numbers only - monthly amount','55000','55,000 or 55K'],
     ['Total Yrs of Exp','NO','Number (decimals ok) or word Fresher','3.5 or Fresher','3 years or Three'],
     ['Notice Period','NO','Select from dropdown only','30 days','30days or One month'],
-    ['Current Company Name','NO','Full company name','ABC Pvt Ltd','Abbreviations'],
-    ['Current Designation','NO','Job title','Senior Executive',''],
-    ['Reason for leaving','NO','Free text','Better growth',''],
-    ['Current Salary (Rs. PM)','NO','Numbers only — monthly','45000','45,000 or Rs.45000 or 45k'],
-    ['Expected Salary (Rs.)','NO','Numbers only — monthly','55000','55,000 or 55K'],
-    ['Source','YES','Select from dropdown only','Portal','Mis-spelling source name'],
-    ['Source Details','NO','Platform or referrer name','Naukri',''],
-    ['Client Name','YES','Select from dropdown — case sensitive','VSAR Tech','VSAR TECH vs VSAR Tech'],
-    ['Department','YES','Select from dropdown only','Operations','Operations vs Ops'],
-    ['Position applied for','YES','Job title — free text','Operations Manager','Leaving blank'],
-    ['Vacancy Code','NO','From Vacancies list in app. Leave blank if unknown','VC-2026-0001','Making up a code'],
-    ['Final Status','NO','Select from dropdown — defaults to Active if blank','Active',''],
-    ['Follow-up Date','NO','YYYY-MM-DD format only','2026-06-15','15/06/2026'],
-    ['Remark','NO','Free text notes','Initial contact made',''],
+    ['Final Status','NO','Select from dropdown - default is Active','Active','Leaving blank = Active'],
+    ['Follow-up Date','NO','YYYY-MM-DD format only','2026-06-15','15/06/2026 or 15-Jun-2026'],
     [],
     ['PRE-UPLOAD CHECKLIST','','','',''],
     ['STEP 1','Delete the sample row (row 6) before uploading','','',''],
     ['STEP 2','Make sure no blank rows exist between your data','','',''],
-    ['STEP 3','Use the Validate File button in the app to check for errors','','',''],
+    ['STEP 3','Use the Validate File button in the app to check for errors before committing','','',''],
     ['STEP 4','Fix any red-highlighted errors shown in the validation report','','',''],
     ['STEP 5','Re-upload the corrected file and click Commit','','',''],
   ];
-  const adminRules = [
-    ['FIELD','REQUIRED?','RULE / NOTE','EXAMPLE',''],
-    ['Candidate code','NO','Leave blank for new records. Fill only when migrating existing codes.','Talent+Hire/2025/000001',''],
-    ['Profile Sourcing date','NO','YYYY-MM-DD','2026-05-30',''],
-    ['Profile Screening date','NO','YYYY-MM-DD','2026-05-30',''],
-    ['Source','YES','Select from dropdown','Portal',''],
-    ['Name','YES','Full candidate name','Priya Sharma',''],
-    ['Current Location','YES','Select from dropdown','Mumbai',''],
-    ['Department','YES','Select from dropdown','Operations',''],
-    ['Position applied for','YES','Job title free text','Operations Manager',''],
-    ['Contact no','YES','10 digits, no spaces or +91','9876543210',''],
-    ['Personal Email ID','NO','Valid email with @','priya@gmail.com',''],
-    ['Current Salary (Rs. PM)','NO','Numbers only — monthly','45000',''],
-    ['Current Salary (Rs. PA)','NO','Auto-calculated — leave blank','',''],
-    ['Current Salary Bracket','NO','Auto-assigned by app — leave blank','',''],
-    ['Expected Salary (Rs.)','NO','Numbers only — monthly','55000',''],
-    ['Offered Salary','NO','Numbers only','60000',''],
-    ['Offer Date','NO','YYYY-MM-DD','2026-06-01',''],
-    ['Client Name','YES','Select from dropdown','VSAR Tech',''],
-    ['Vacancy Code','NO','e.g. VC-2026-0001','VC-2026-0001',''],
-    ['Final Status','NO','Select from dropdown. Defaults to Active.','Active',''],
-    ['Final Decision Maker','NO','Consultant or Client','Consultant',''],
-    ['Client Interview Date','NO','YYYY-MM-DD','2026-06-10',''],
-    ['Client Selection Date','NO','YYYY-MM-DD','2026-06-12',''],
-    ['Expected/DOJ','NO','YYYY-MM-DD','2026-07-01',''],
-    ['Follow-up Date','NO','YYYY-MM-DD','2026-06-15',''],
-    ['Consent Obtained','NO','Y or N','Y',''],
-    ['Archive Flag','NO','Y or N — leave blank for active records','',''],
-    ['TAT / S. No / Last Updated','NO','Auto-calculated — leave blank','',''],
-    ['Recruiter','YES','Select from dropdown','Siddhi',''],
-    [],
-    ['PRE-UPLOAD CHECKLIST FOR ADMIN MIGRATION','','','',''],
-    ['STEP 1','Delete the sample row (row 6) before uploading','','',''],
-    ['STEP 2','Candidate code — leave blank for new records, fill for existing migrations','','',''],
-    ['STEP 3','Auto-calculated columns (PA Salary, Bracket, TAT, S.No) — leave blank','','',''],
-    ['STEP 4','Use Validate File in app before committing','','',''],
-    ['STEP 5','After commit verify totals in All Records match expected count','','',''],
-  ];
-  const ruleData = type === 'recruiter' ? recruiterRules : adminRules;
   ruleData.forEach((row,i) => {
     const wsRow = wsR.addRow(row);
     if(i===0){wsRow.eachCell(cell=>{cell.fill=XL.headerFill;cell.font={bold:true,color:XL.white};});}
@@ -2937,7 +2909,7 @@ async function validateBulkFile(event) {
       if (rows[i].some(c => String(c).includes('Name')) &&
           rows[i].some(c => String(c).includes('Contact'))) { hi = i; break; }
     }
-    const hdrs2 = rows[hi].map(h => String(h).replace(/\s*[★\*]+\s*/g,'').trim());
+    const hdrs2 = rows[hi].map(h => String(h).replace(' ★','').replace(' *','').trim());
     const dataRows2 = rows.slice(hi+1).filter(r => r.some(c => c !== '' && c !== null));
 
     // Master sets for validation
@@ -2947,14 +2919,13 @@ async function validateBulkFile(event) {
       'Client Name':       new Set(mA('clients').map(s=>s.toLowerCase())),
       'Department':        new Set(mA('departments').map(s=>s.toLowerCase())),
       'Notice Period':     new Set(mA('noticePeriods').map(s=>s.toLowerCase())),
-      'Recruiter':         new Set(mA('recruiters').map(s=>s.toLowerCase())),
       'Final Status':      new Set(['active','not contactable','not interested','dropped',
         'consultant interview in progress','shortlisted for client i/w','rejected by consultant',
         'client i/w in progress','rejected by client','on hold','selected','offered',
         'offer revoked','offer declined','joining in progress','joined']),
     };
     const required = new Set(['Name','Contact no','Personal Email ID','Current Location',
-      'Source','Client Name','Department','Position applied for','Recruiter']);
+      'Source','Client Name','Department','Position applied for']);
 
     valErrors = [];
     valRowData = dataRows2.map((row, ri) => {
@@ -2983,8 +2954,7 @@ async function validateBulkFile(event) {
         if (val && masters[hdr] && !masters[hdr].has(val.toLowerCase())) {
           const validList = mA({
             'Current Location':'cities','Source':'sources','Client Name':'clients',
-            'Department':'departments','Notice Period':'noticePeriods','Final Status':'statuses',
-            'Recruiter':'recruiters'
+            'Department':'departments','Notice Period':'noticePeriods','Final Status':'statuses'
           }[hdr]||'').join(', ');
           errors.push({ row:rowNum, name:nameVal, field:hdr,
             value:val, issue:'Not in approved master list (check capitalisation)',
@@ -3011,8 +2981,8 @@ async function validateBulkFile(event) {
             valid:'e.g. 45000' });
         }
 
-        // Date format — all date fields
-        if (['Follow-up Date','Profile Sourcing Date','Profile Sourcing date','Profile Screening Date','Profile Screening date'].includes(hdr) && val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        // Date format
+        if (hdr==='Follow-up Date' && val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
           errors.push({ row:rowNum, name:nameVal, field:'Follow-up Date',
             value:val, issue:'Date must be in YYYY-MM-DD format',
             valid:'e.g. 2026-06-15' });
@@ -3200,14 +3170,14 @@ function genScenarios(){
   // Single close
   open.slice(0,8).forEach(v=>{
     const mat=billingMatrix.find(m=>m.client===v['Company'])||{model:'pct',rate:8.33,share:20};
-    const mMin=parseFloat(v['Monthly Budget Min']||v['Monthly Budget']||0);const mMax=parseFloat(v['Monthly Budget Max']||mMin);const ctc=((mMin+mMax)/2)*12;
+    const ctc=parseFloat(v['Monthly Budget']||0)*12;
     const fee=mat.model==='pct'?ctc*(mat.rate/100):mat.rate;
     const rec=fee*(mat.share/100);
     scenes.push({label:'Close: '+v['Designation']+' @ '+v['Company'],cnt:1,fee,rec});
   });
   // Close all
   let totFee=0,totRec=0;
-  open.forEach(v=>{const mat=billingMatrix.find(m=>m.client===v['Company'])||{model:'pct',rate:8.33,share:20};const mMin2=parseFloat(v['Monthly Budget Min']||v['Monthly Budget']||0);const mMax2=parseFloat(v['Monthly Budget Max']||mMin2);const ctc=((mMin2+mMax2)/2)*12;const f=mat.model==='pct'?ctc*(mat.rate/100):mat.rate;totFee+=f;totRec+=f*(mat.share/100);});
+  open.forEach(v=>{const mat=billingMatrix.find(m=>m.client===v['Company'])||{model:'pct',rate:8.33,share:20};const ctc=parseFloat(v['Monthly Budget']||0)*12;const f=mat.model==='pct'?ctc*(mat.rate/100):mat.rate;totFee+=f;totRec+=f*(mat.share/100);});
   scenes.push({label:'Close ALL '+open.length+' open vacancies',cnt:open.length,fee:totFee,rec:totRec,bold:true});
   el.innerHTML='<div style="font-size:11px;color:var(--w60);margin-bottom:10px">Estimates based on monthly budget × 12. Actual CTC may differ.</div>'+'<div class="tw"><table><thead><tr><th>Scenario</th><th>Firm Revenue</th><th>Your Incentive</th></tr></thead><tbody>'+scenes.map(s=>'<tr style="'+(s.bold?'background:rgba(52,186,198,.08)':'')+'"><td style="'+(s.bold?'font-weight:700':'')+'">'+s.label+'</td><td class="m">₹'+Math.round(s.fee).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:'+(s.bold?'700':'500')+'">₹'+Math.round(s.rec).toLocaleString('en-IN')+'</td></tr>').join('')+'</tbody></table></div>';
 }
@@ -3336,7 +3306,7 @@ function renderJDList(){
     document.querySelectorAll('.jd-del').forEach(el => {el.addEventListener('click', function(){ const i=parseInt(this.getAttribute('data-idx')); delRepo('jds',i); });});
   }, 0);
 }
-function sendJDToWA(link){
+function sendJDToWA(link){if(!link){toast('warn','No Link','No SharePoint link saved for this JD.');return;}
   if(eIdx!==-1){sendJDWA(link);}else{toast('info','Select Candidate','Look up a candidate first in Update Record, then use WA from there.');}
 }
 
@@ -3404,7 +3374,11 @@ function renderHelp(){
 }
 
 function delRepo(type,idx){if(confirm('Delete this item?')){repoData[type].splice(idx,1);saveRepoData();if(type==='jds')renderJDList();if(type==='scripts')renderScripts();if(type==='help')renderHelp();}}
-function saveRepoData(){try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){console.warn('Repo save failed',e);}}
+function saveRepoData(){
+  try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){console.warn('Repo local save failed',e);}
+  // Also save to SharePoint workbook so all users see same repos
+  if(WB){try{const rows=[['type','data'],...repoData.jds.map(d=>['jd',JSON.stringify(d)]),...repoData.scripts.map(d=>['script',JSON.stringify(d)]),...repoData.help.map(d=>['help',JSON.stringify(d)])];WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);saveWB(false);}catch(e){console.warn('Repo WB save failed',e);}}
+}
 function loadRepoData(){try{const d=localStorage.getItem('thp_repo');if(d)repoData=JSON.parse(d);}catch(e){console.warn('Repo load failed',e);}}
 function copyText(txt){navigator.clipboard.writeText(txt).then(()=>toast('ok','Copied!','Script copied to clipboard'));}
 function copyScriptContent(idx){if(repoData.scripts&&repoData.scripts[idx])copyText(repoData.scripts[idx].content);}
