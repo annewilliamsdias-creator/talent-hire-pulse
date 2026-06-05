@@ -1577,7 +1577,7 @@ VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv
 // ══════════════════════════════════════════════════════
 // UI INIT
 // ══════════════════════════════════════════════════════
-function initUI(){updateTopbar();loadDash();renderRec();renderVac();initMastersGrid();}
+function initUI(){updateTopbar();refreshAllFilters();loadDash();renderRec();renderVac();initMastersGrid();}
 function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
 function goPanel(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -1602,8 +1602,7 @@ function goPanel(name){
 // DASHBOARD
 // ══════════════════════════════════════════════════════
 function loadDash(){
-// Populate filter dropdowns first
-['hf-rec','hf-cli'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;const key=id==='hf-rec'?'recruiters':'clients';el.innerHTML='<option value="">All '+(id==='hf-rec'?'Recruiters':'Clients')+'</option>'+mA(key).map(v=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'</option>').join('');});
+refreshAllFilters();
 const hfRec=(document.getElementById('hf-rec')&&document.getElementById('hf-rec').value)||'';
 const hfCli=(document.getElementById('hf-cli')&&document.getElementById('hf-cli').value)||'';
 const hfFrom=(document.getElementById('hf-from')&&document.getElementById('hf-from').value)||'';
@@ -1833,8 +1832,7 @@ await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.le
 function renderRec(){
 const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec');
 const scope=gv('rScope')||'all';
-// Populate recruiter dropdown
-const rrEl=document.getElementById('rRec');if(rrEl&&rrEl.options.length<=1){mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;rrEl.appendChild(o);});}
+refreshAllFilters();
 const filtered=MD.filter(r=>{
   const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch);
   const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
@@ -1868,7 +1866,27 @@ function dlAllRecords(){
   XLSX.writeFile(wb2,'THP_Records_'+today()+'.xlsx');
   toast('ok','Downloaded',data.length+' records exported');
 }
-// ── SORT & REFRESH ──────────────────────────────────────
+// ── DATA-DRIVEN FILTER DROPDOWNS ─────────────────────────────────────────────
+// Always built from actual record values — never needs manual master sync
+function buildDrop(elId, values, label){
+  const el=document.getElementById(elId);if(!el)return;
+  const cur=el.value;
+  const sorted=[...new Set(values.filter(v=>v&&v.trim()))].sort();
+  el.innerHTML='<option value="">'+label+'</option>'+sorted.map(v=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'</option>').join('');
+}
+function refreshAllFilters(){
+  // Home filters - from candidate records
+  buildDrop('hf-rec',MD.map(r=>r[C.recruiter]),'All Recruiters');
+  buildDrop('hf-cli',MD.map(r=>r[C.client]),'All Clients');
+  // All Records filters - from candidate records
+  buildDrop('rRec',MD.map(r=>r[C.recruiter]),'All Recruiters');
+  buildDrop('rCli',MD.map(r=>r[C.client]),'All Clients');
+  // Vacancy filters - from vacancy records
+  buildDrop('vf-rec',VD.map(v=>v['Recruiter']),'All Recruiters');
+  buildDrop('vf-cli',VD.map(v=>v['Company']),'All Clients');
+  buildDrop('vf-dept',VD.map(v=>v['Department']),'All Departments');
+  buildDrop('vf-loc',VD.map(v=>v['Location']),'All Locations');
+}
 let _rSortCol=null,_rSortDir='asc',_vSortCol=null,_vSortDir='asc';
 function sortRec(col,key){
   const th=document.querySelectorAll('#recTable thead th');
@@ -1900,9 +1918,7 @@ async function refreshAllRecords(){
 // ══════════════════════════════════════════════════════
 function renderVac(){
 const tb=document.getElementById('vBody');if(!tb)return;
-// Populate filter dropdowns
-const _pDrop=(id,arr)=>{const el=document.getElementById(id);if(!el||el.options.length>1)return;arr.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});};
-_pDrop('vf-rec',mA('recruiters'));_pDrop('vf-cli',mA('clients'));_pDrop('vf-dept',mA('departments'));_pDrop('vf-loc',mA('cities'));
+refreshAllFilters();
 const fRec=document.getElementById('vf-rec')&&document.getElementById('vf-rec').value||'';
 const fCli=document.getElementById('vf-cli')&&document.getElementById('vf-cli').value||'';
 const fDept=document.getElementById('vf-dept')&&document.getElementById('vf-dept').value||'';
@@ -1998,8 +2014,8 @@ let mgridInited=false;
 function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div id="wa-ed"></div></div>';loadCfg();}
 function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML=Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+k.replace(/_/g,' ')+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
 function renderMT(key){const el=document.getElementById('mt-'+key);if(!el)return;const items=M[key]||[];el.innerHTML=items.map((it,i)=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="flex:1;font-size:11px;color:'+(it.active?'var(--ow)':'var(--w60)')+'">'+it.name+'</span><span class="badge '+(it.active?'b-active':'b-inactive')+'" style="font-size:9px;padding:1px 6px">'+(it.active?'Active':'Inactive')+'</span><button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="toggleM(\''+key+'\','+i+')">'+(it.active?'Inactive':'Activate')+'</button></div>').join('');}
-function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx].active;renderMT(key);fillDrops();toast('info','Master Updated',M[key][idx].name+' is now '+(M[key][idx].active?'active':'inactive'));}}
-function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});el.value='';renderMT(key);fillDrops();toast('ok','Added',nm+' added.');}
+function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx].active;renderMT(key);fillDrops();refreshAllFilters();toast('info','Master Updated',M[key][idx].name+' is now '+(M[key][idx].active?'active':'inactive'));}}
+function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});el.value='';renderMT(key);fillDrops();refreshAllFilters();toast('ok','Added',nm+' added to '+key+'. Filters updated automatically.');}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
 // VACANCIES ADMIN
 function openAddVac(){vacEIdx=-1;['avRole','avBudget','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
