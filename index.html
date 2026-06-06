@@ -936,6 +936,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div class="atabs">
   <div class="atab on" id="it-calc" onclick="switchIncTab('calc')">🧮 My Earnings</div>
+  <div class="atab" id="it-plan" onclick="switchIncTab('plan')">🎯 Plan Earnings</div>
   <div class="atab" id="it-team" onclick="switchIncTab('team')">👥 Team Earnings</div>
   <div class="atab" id="it-policy" onclick="switchIncTab('policy')">📋 Policy</div>
   <div class="atab" id="it-proj" onclick="switchIncTab('proj')">💡 Projections</div>
@@ -943,12 +944,70 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- MY EARNINGS -->
 <div id="ip-calc">
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 16px">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 16px">
     <div class="field" style="margin:0"><label>Recruiter</label><select id="inc-rec"><option value="">Me (Logged In)</option></select></div>
     <div class="field" style="margin:0"><label>Period</label><select id="inc-period" onchange="calcIncentives()"><option value="month">This Month</option><option value="q">This Quarter</option><option value="fy">This FY</option><option value="policy">Policy Period</option></select></div>
+    <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="inc-my-salary" placeholder="e.g. 30000" min="0" oninput="calcIncentives()" onchange="calcIncentives()"></div>
     <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="calcIncentives()">Calculate</button></div>
   </div>
   <div id="inc-results"></div>
+</div>
+
+<!-- PLAN MY EARNINGS -->
+<div id="ip-plan" class="hidden">
+  <div style="font-size:11px;color:var(--w60);padding:10px 0 12px">Model your target earnings — enter your monthly salary and how many hires you want to achieve per experience bracket. See your projected incentive in real time.</div>
+  <div id="plan-policy-ref" style="margin-bottom:14px"></div>
+  <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;margin-bottom:16px">
+    <div class="field" style="margin:0">
+      <label>My Monthly Salary ₹</label>
+      <input type="number" id="plan-salary" placeholder="e.g. 30000" min="0" style="font-size:14px;font-weight:600" oninput="calcPlanEarnings()" onchange="calcPlanEarnings()">
+      <div style="font-size:10px;color:var(--w60);margin-top:4px">Gross monthly salary (affects incentive slab)</div>
+    </div>
+    <div id="plan-slab-indicator" style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:10px 14px;font-size:11px">
+      Enter your salary to see which incentive slab applies
+    </div>
+  </div>
+  <div id="plan-rows-wrap">
+    <div class="tw"><table id="plan-table">
+      <thead><tr>
+        <th>Experience Bracket</th>
+        <th>Fee Structure</th>
+        <th>Target Hires</th>
+        <th>Avg Monthly Salary ₹</th>
+        <th>Firm Fee / Hire</th>
+        <th>Firm Revenue Total</th>
+      </tr></thead>
+      <tbody id="plan-body"></tbody>
+      <tfoot>
+        <tr id="plan-totals" style="background:rgba(80,80,80,.06)">
+          <td colspan="2" style="padding:8px 11px;font-weight:700">Total Firm Revenue</td>
+          <td id="plan-tot-hires" style="padding:8px 11px;font-weight:700;text-align:center">0</td>
+          <td></td>
+          <td></td>
+          <td id="plan-tot-firm" style="padding:8px 11px;font-weight:700">₹0</td>
+        </tr>
+      </tfoot>
+    </table></div>
+  </div>
+  <!-- Incentive summary card -->
+  <div id="plan-incentive-summary" style="margin-top:14px;background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:14px 18px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--teal)">📊 Incentive Projection</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;font-size:11px" id="plan-summary-grid">
+      <div><span style="color:var(--w60)">Monthly Salary</span><br><strong id="psi-salary">—</strong></div>
+      <div><span style="color:var(--w60)">Total Firm Revenue</span><br><strong id="psi-revenue">—</strong></div>
+      <div><span style="color:var(--w60)">Revenue Multiple</span><br><strong id="psi-multiple">—</strong></div>
+      <div><span style="color:var(--w60)">Applicable Slab</span><br><strong id="psi-slab">—</strong></div>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(52,186,198,.2);display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;font-weight:600">Your Estimated Incentive</span>
+      <span id="psi-incentive" style="font-size:22px;font-weight:700;color:var(--teal)">₹0</span>
+    </div>
+    <div id="plan-slab-ladder" style="margin-top:12px;font-size:10px;color:var(--w60)"></div>
+  </div>
+  <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+    <button class="btn btn-t btn-sm" onclick="calcPlanEarnings()">🔄 Recalculate</button>
+    <button class="btn btn-ghost btn-sm" onclick="dlPlanEarnings()">⬇ Download Plan</button>
+  </div>
 </div>
 
 <!-- TEAM EARNINGS -->
@@ -3304,14 +3363,48 @@ async function downloadValidationReport() {
 let incPolicy = {
   periods: [{
     id: 'P001', title: 'FY 2026-27', from: '2026-03-01', to: '2027-03-31',
-    revision: 1, revisionDate: '2026-03-01', revisionNotes: 'Initial policy',
-    active: true, recruiterShare: 20,
+    revision: 1, revisionDate: '2026-03-01', revisionNotes: 'Initial policy — WithAWill Talent+ Hire',
+    active: true,
+    // Fee slabs (client billing / firm revenue)
     slabs: [
-      { expFrom: 0, expTo: 1,   model: 'fixed', amount: 5000  },
-      { expFrom: 1, expTo: 8,   model: 'pct',   rate: 7       },
-      { expFrom: 8, expTo: 20,  model: 'pct',   rate: 8.33    },
-      { expFrom: 20, expTo: 999,model: 'pct',   rate: 11      }
-    ]
+      { expFrom: 0,  expTo: 1,   model: 'fixed', amount: 5000  },
+      { expFrom: 1,  expTo: 8,   model: 'pct',   rate: 7       },
+      { expFrom: 8,  expTo: 20,  model: 'pct',   rate: 8.33    },
+      { expFrom: 20, expTo: 999, model: 'pct',   rate: 11      }
+    ],
+    // Revenue incentive slabs — applied to TOTAL realised revenue vs monthly salary
+    // Rate applied to entire total revenue (not just the excess)
+    incentiveSlabs: [
+      { multipleFrom: 0, multipleTo: 1, rate: 0  },
+      { multipleFrom: 1, multipleTo: 2, rate: 10 },
+      { multipleFrom: 2, multipleTo: 3, rate: 15 },
+      { multipleFrom: 3, multipleTo: 4, rate: 20 },
+      { multipleFrom: 4, multipleTo: 999, rate: 25 }
+    ],
+    // Ramp-up program (months 1–3, max ₹5,000 total)
+    rampUp: {
+      months: [
+        { month: 1, minDailyCalls: 30, minInterviews: 5  },
+        { month: 2, minDailyCalls: 35, minInterviews: 8  },
+        { month: 3, minDailyCalls: 40, minInterviews: 15 }
+      ],
+      incentives: [
+        { monthsMet: 1, amount: 1000 },
+        { monthsMet: 2, amount: 2500 },
+        { monthsMet: 3, amount: 5000 }
+      ],
+      maxTotal: 5000,
+      paidAfterMonth3: true
+    },
+    // Team bonus (quarterly)
+    teamBonus: [
+      { multipleFrom: 0, multipleTo: 3, pool: 0      },
+      { multipleFrom: 3, multipleTo: 4, pool: 15000  },
+      { multipleFrom: 4, multipleTo: 5, pool: 30000  },
+      { multipleFrom: 5, multipleTo: 6, pool: 45000  },
+      { multipleFrom: 6, multipleTo: 999, pool: 60000 }
+    ],
+    teamBonusWeights: { revenue: 70, interviews: 20, ats: 10 }
   }],
   clientOverrides: []
 };
@@ -3341,12 +3434,29 @@ function calcFirmFee(expYears, annualFixedPay, client, onDate){
   return 0;
 }
 
-function calcRecShare(firmFee, client, onDate){
-  const period = getActivePolicyPeriod(onDate);
-  const ov = incPolicy.clientOverrides.find(o => o.client === client);
-  const share = ov && ov.recruiterShare != null ? ov.recruiterShare
-              : period ? period.recruiterShare : 20;
-  return firmFee * (share / 100);
+// Legacy stub — kept so existing references don't break; returns 0 (incentive now needs total revenue context)
+function calcRecShare(firmFee, client, onDate){ return 0; }
+
+// ── Core recruiter incentive calculation (Section B) ───
+// totalRevenue: total realised firm fees for period
+// monthlySalary: recruiter's gross monthly salary
+// Returns: { rate, multiple, incentive, slab }
+function calcRecIncentive(totalRevenue, monthlySalary){
+  const p = getActivePolicyPeriod();
+  if(!p || !monthlySalary || monthlySalary <= 0) return {rate:0, multiple:0, incentive:0, slab:'Nil'};
+  const slabs = p.incentiveSlabs || [
+    {multipleFrom:0,multipleTo:1,rate:0},
+    {multipleFrom:1,multipleTo:2,rate:10},
+    {multipleFrom:2,multipleTo:3,rate:15},
+    {multipleFrom:3,multipleTo:4,rate:20},
+    {multipleFrom:4,multipleTo:999,rate:25}
+  ];
+  const multiple = totalRevenue / monthlySalary;
+  const slab = slabs.slice().reverse().find(s => multiple > s.multipleFrom) || slabs[0];
+  const rate = slab.rate || 0;
+  const incentive = totalRevenue * (rate / 100);
+  const slabLabel = rate === 0 ? 'Nil (below 1× salary)' : rate+'% ('+slab.multipleFrom+'×–'+(slab.multipleTo>=999?'above':slab.multipleTo+'×')+' salary)';
+  return { rate, multiple: Math.round(multiple*100)/100, incentive: Math.round(incentive), slab: slabLabel };
 }
 
 function parseExp(expStr){
@@ -3377,23 +3487,176 @@ function getPeriodDates(periodCode){
 
 // ── Tab switching ──────────────────────────────────────
 function switchIncTab(tab){
-  ['calc','team','policy','proj'].forEach(t=>{
+  ['calc','plan','team','policy','proj'].forEach(t=>{
     const el=document.getElementById('ip-'+t);const at=document.getElementById('it-'+t);
     if(el)el.classList.toggle('hidden',t!==tab);
     if(at)at.classList.toggle('on',t===tab);
   });
   renderPolicyBadge();
   if(tab==='calc')calcIncentives();
+  if(tab==='plan')initPlanEarnings();
   if(tab==='team')calcTeamEarnings();
   if(tab==='policy')renderPolicyView();
   if(tab==='proj')genProjections();
+}
+
+// ── Plan My Earnings ───────────────────────────────────
+let _planInputs = {};
+
+function initPlanEarnings(){
+  const p = getActivePolicyPeriod();
+  const prEl = document.getElementById('plan-policy-ref');
+  if(prEl && p){
+    prEl.innerHTML = '<div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:10px 14px;font-size:11px">'+
+      '<strong style="color:var(--teal)">Active Policy: '+p.title+'</strong> &nbsp;·&nbsp; '+
+      fmtD(p.from)+' – '+fmtD(p.to)+'&nbsp;·&nbsp; Rev #'+p.revision+
+      '&nbsp;·&nbsp; Effective from: '+fmtD(p.from)+'</div>';
+  }
+  buildPlanRows();
+}
+
+function buildPlanRows(){
+  const p = getActivePolicyPeriod();
+  const tbody = document.getElementById('plan-body');
+  if(!tbody || !p) return;
+  const slabLabels = p.slabs.map(s => {
+    if(s.expFrom===0 && s.expTo<=1) return '0 – 1 Year';
+    if(s.expTo>=999) return 'More than '+s.expFrom+' Years';
+    return 'More than '+s.expFrom+' up to '+s.expTo+' Years';
+  });
+  const feeLabel = s => s.model==='fixed'
+    ? 'Flat ₹'+s.amount.toLocaleString('en-IN')+' per hire'
+    : s.rate+'% of Annual Fixed Pay';
+  tbody.innerHTML = p.slabs.map((s,i)=>{
+    const saved = _planInputs[i] || {};
+    const hires  = saved.hires  || 0;
+    const salary = saved.salary || (s.model==='fixed' ? 0 : 40000);
+    const firmFee = s.model==='fixed' ? s.amount : salary*12*(s.rate/100);
+    const firmTotal = firmFee * hires;
+    return `<tr>
+      <td style="font-size:12px"><strong>${slabLabels[i]}</strong></td>
+      <td style="font-size:11px;color:var(--w60)">${feeLabel(s)}</td>
+      <td style="text-align:center"><input type="number" min="0" value="${hires}" style="width:60px;text-align:center" data-slab="${i}" data-field="hires" oninput="onPlanInput(this)"></td>
+      <td><input type="number" min="0" placeholder="e.g. 40000" value="${salary||''}" style="width:110px" data-slab="${i}" data-field="salary" oninput="onPlanInput(this)" ${s.model==='fixed'?'disabled style="opacity:.4;width:110px"':''}></td>
+      <td id="plan-fee-${i}" class="m" style="font-weight:600">₹${Math.round(firmFee).toLocaleString('en-IN')}</td>
+      <td id="plan-total-${i}" style="font-weight:600">₹${Math.round(firmTotal).toLocaleString('en-IN')}</td>
+    </tr>`;
+  }).join('');
+  calcPlanEarnings();
+}
+
+function onPlanInput(el){
+  const i = parseInt(el.getAttribute('data-slab'));
+  const field = el.getAttribute('data-field');
+  if(!_planInputs[i]) _planInputs[i]={};
+  _planInputs[i][field] = parseFloat(el.value)||0;
+  calcPlanEarnings();
+}
+
+function calcPlanEarnings(){
+  const p = getActivePolicyPeriod();
+  if(!p) return;
+  const monthlySalary = parseFloat(document.getElementById('plan-salary')?.value) || 0;
+  let totHires=0, totFirm=0;
+
+  p.slabs.forEach((s,i)=>{
+    const hires  = _planInputs[i]?.hires  || parseFloat(document.querySelector(`[data-slab="${i}"][data-field="hires"]`)?.value)||0;
+    const salary = _planInputs[i]?.salary || parseFloat(document.querySelector(`[data-slab="${i}"][data-field="salary"]`)?.value)||0;
+    const firmFee = s.model==='fixed' ? s.amount : salary*12*(s.rate/100);
+    const firmTotal = firmFee * hires;
+    const feeEl=document.getElementById('plan-fee-'+i);
+    const totEl=document.getElementById('plan-total-'+i);
+    if(feeEl) feeEl.textContent='₹'+Math.round(firmFee).toLocaleString('en-IN');
+    if(totEl) totEl.textContent='₹'+Math.round(firmTotal).toLocaleString('en-IN');
+    totHires+=hires; totFirm+=firmTotal;
+  });
+
+  const th=document.getElementById('plan-tot-hires');
+  const tf=document.getElementById('plan-tot-firm');
+  if(th) th.textContent=totHires;
+  if(tf) tf.textContent='₹'+Math.round(totFirm).toLocaleString('en-IN');
+
+  const defaultSlabs=[{multipleFrom:0,multipleTo:1,rate:0},{multipleFrom:1,multipleTo:2,rate:10},{multipleFrom:2,multipleTo:3,rate:15},{multipleFrom:3,multipleTo:4,rate:20},{multipleFrom:4,multipleTo:999,rate:25}];
+  const iSlabs = p.incentiveSlabs || defaultSlabs;
+  const inc = monthlySalary > 0 ? calcRecIncentive(totFirm, monthlySalary) : null;
+  const mult = monthlySalary > 0 ? totFirm/monthlySalary : 0;
+
+  // Slab indicator
+  const slabInd=document.getElementById('plan-slab-indicator');
+  if(slabInd){
+    if(!monthlySalary){
+      slabInd.innerHTML='<span style="color:var(--w60)">Enter your monthly salary above to see which incentive slab applies to you</span>';
+    } else {
+      const ladderHTML=iSlabs.map(sl=>{
+        const active=mult>sl.multipleFrom&&mult<=(sl.multipleTo>=999?Infinity:sl.multipleTo);
+        return `<span style="padding:3px 9px;border-radius:10px;margin-right:4px;font-size:10px;font-weight:${active?700:400};background:${active?'var(--teal)':'rgba(128,128,128,.1)'};color:${active?'#000':'var(--w60)'}">
+          ${sl.rate===0?'< 1×: Nil':sl.multipleFrom+'×'+(sl.multipleTo>=999?'+':' – '+sl.multipleTo+'×')+': '+sl.rate+'%'}</span>`;
+      }).join('');
+      slabInd.innerHTML=ladderHTML;
+    }
+  }
+
+  // Summary grid
+  const setSI=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setSI('psi-salary',  monthlySalary?'₹'+monthlySalary.toLocaleString('en-IN'):'—');
+  setSI('psi-revenue', totFirm?'₹'+Math.round(totFirm).toLocaleString('en-IN'):'—');
+  setSI('psi-multiple',inc?inc.multiple+'×':'—');
+  setSI('psi-slab',    inc?inc.slab:'—');
+  const incEl=document.getElementById('psi-incentive');
+  if(incEl) incEl.textContent=inc?'₹'+inc.incentive.toLocaleString('en-IN'):'₹0';
+
+  // Target ladder
+  const ladderEl=document.getElementById('plan-slab-ladder');
+  if(ladderEl&&monthlySalary>0){
+    const parts=iSlabs.filter(s=>s.rate>0).map(s=>{
+      const threshold=(s.multipleFrom+0.001)*monthlySalary;
+      const gap=threshold-totFirm;
+      if(gap<=0) return `<span style="color:var(--teal)">✓ ${s.rate}% slab reached</span>`;
+      return `<span>₹${Math.round(gap).toLocaleString('en-IN')} more → ${s.rate}%</span>`;
+    }).join(' &nbsp;·&nbsp; ');
+    ladderEl.innerHTML=parts;
+  }
+}
+
+function dlPlanEarnings(){
+  const p = getActivePolicyPeriod();
+  if(!p){ toast('warn','No Policy','Configure policy first');return;}
+  const monthlySalary = parseFloat(document.getElementById('plan-salary')?.value)||0;
+  const rows=[
+    ['Talent+ Hire Pulse — Incentive Earnings Plan'],
+    ['Policy: '+p.title,'Period: '+fmtD(p.from)+' – '+fmtD(p.to),'Generated: '+new Date().toLocaleString()],
+    [],
+    ['Experience Bracket','Fee Structure','Target Hires','Avg Monthly Salary ₹','Firm Fee / Hire ₹','Total Firm Revenue ₹']
+  ];
+  let totHires=0,totFirm=0;
+  p.slabs.forEach((s,i)=>{
+    const inp=_planInputs[i]||{};
+    const hires=inp.hires||0; const salary=inp.salary||0;
+    const lbl=s.expFrom===0&&s.expTo<=1?'0 – 1 Year':s.expTo>=999?'More than '+s.expFrom+' Years':'More than '+s.expFrom+' up to '+s.expTo+' Years';
+    const fee=s.model==='fixed'?s.amount:salary*12*(s.rate/100);
+    rows.push([lbl,s.model==='fixed'?'Flat ₹'+s.amount:s.rate+'% of Fixed Pay',hires,salary,Math.round(fee),Math.round(fee*hires)]);
+    totHires+=hires;totFirm+=fee*hires;
+  });
+  rows.push([]);
+  rows.push(['TOTAL','',totHires,'','',Math.round(totFirm)]);
+  if(monthlySalary){
+    const inc=calcRecIncentive(totFirm,monthlySalary);
+    rows.push([]);
+    rows.push(['Incentive Calculation (Section B)']);
+    rows.push(['Monthly Salary','Total Firm Revenue','Revenue Multiple','Applicable Rate','Incentive Earned']);
+    rows.push(['₹'+monthlySalary.toLocaleString('en-IN'),'₹'+Math.round(totFirm).toLocaleString('en-IN'),inc.multiple+'×',inc.rate+'%','₹'+inc.incentive.toLocaleString('en-IN')]);
+  }
+  const ws2=XLSX.utils.aoa_to_sheet(rows);const wb2=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2,ws2,'Earnings Plan');
+  XLSX.writeFile(wb2,'THP_Earnings_Plan_'+today()+'.xlsx');
+  toast('ok','Plan Downloaded','Earnings plan exported to Excel');
 }
 
 function renderPolicyBadge(){
   const p = getActivePolicyPeriod();
   const el = document.getElementById('inc-policy-badge');
   if(!el) return;
-  if(p){ el.textContent = p.title+' · Rev '+p.revision+' · '+fmtD(p.from)+' – '+fmtD(p.to); }
+  if(p){ el.textContent = p.title+' · Rev '+p.revision+' · Effective '+fmtD(p.from); }
   else { el.textContent = 'No active policy'; }
 }
 
@@ -3401,6 +3664,7 @@ function renderPolicyBadge(){
 function calcIncentives(){
   const period = gv('inc-period') || 'month';
   const recSel = gv('inc-rec') || ((acct&&acct.name) ? acct.name.split(' ')[0] : '');
+  const monthlySalary = parseFloat(document.getElementById('inc-my-salary')?.value) || 0;
   const {from, to} = getPeriodDates(period);
   renderPolicyBadge();
 
@@ -3409,19 +3673,22 @@ function calcIncentives(){
     (!recSel || r[C.recruiter]===recSel)
   );
 
-  let earned = 0, thisMonth = 0;
+  let totalFirmRevenue = 0;
   const tm = today().slice(0,7);
+  let thisMonthFirm = 0;
   const rows = joined.map(r => {
     const exp = parseExp(r[C.expYrs]);
     const ctc = (parseFloat(r[C.offeredSalary])||0) * 12;
     const fee = calcFirmFee(exp, ctc, r[C.client], r[C.doj]);
-    const share = calcRecShare(fee, r[C.client], r[C.doj]);
-    earned += share;
-    if(r[C.doj] && r[C.doj].slice(0,7) === tm) thisMonth += share;
-    return {name:r[C.name],client:r[C.client],pos:r[C.position],exp,doj:r[C.doj],ctc,fee,share};
+    totalFirmRevenue += fee;
+    if(r[C.doj] && r[C.doj].slice(0,7) === tm) thisMonthFirm += fee;
+    return {name:r[C.name],client:r[C.client],pos:r[C.position],exp,doj:r[C.doj],ctc,fee};
   });
 
-  // Pipeline potential
+  // Revenue incentive calculation
+  const inc = monthlySalary > 0 ? calcRecIncentive(totalFirmRevenue, monthlySalary) : null;
+
+  // Pipeline potential (firm fees)
   const pipe = MD.filter(r =>
     ['Selected','Offered','Joining in Progress'].includes(r[C.status]) &&
     (!recSel || r[C.recruiter]===recSel)
@@ -3430,21 +3697,20 @@ function calcIncentives(){
   pipe.forEach(r => {
     const exp = parseExp(r[C.expYrs]);
     const ctc = (parseFloat(r[C.expectedSalary])||0)*12;
-    const fee = calcFirmFee(exp, ctc, r[C.client]);
-    pot += calcRecShare(fee, r[C.client]);
+    pot += calcFirmFee(exp, ctc, r[C.client]);
   });
 
-  // Update KPI cards
+  // YTD firm revenue
   const ymtd = today().slice(0,4)+'-04-01';
   const ytdJoined = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=ymtd&&(!recSel||r[C.recruiter]===recSel));
-  let ytd = 0;
-  ytdJoined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0)*12;ytd+=calcRecShare(calcFirmFee(e,c,r[C.client],r[C.doj]),r[C.client],r[C.doj]);});
+  let ytdFirm = 0;
+  ytdJoined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0)*12;ytdFirm+=calcFirmFee(e,c,r[C.client],r[C.doj]);});
 
   const setEl = (id,v) => { const el=document.getElementById(id); if(el)el.textContent=v; };
-  setEl('inc-earned',  '₹'+Math.round(thisMonth).toLocaleString('en-IN'));
-  setEl('inc-ytd',     '₹'+Math.round(ytd).toLocaleString('en-IN'));
+  setEl('inc-earned',   '₹'+Math.round(thisMonthFirm).toLocaleString('en-IN'));
+  setEl('inc-ytd',      '₹'+Math.round(ytdFirm).toLocaleString('en-IN'));
   setEl('inc-potential','₹'+Math.round(pot).toLocaleString('en-IN'));
-  setEl('inc-closed',  joined.length);
+  setEl('inc-closed',   joined.length);
 
   const el = document.getElementById('inc-results');
   if(!el) return;
@@ -3452,10 +3718,27 @@ function calcIncentives(){
     el.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">No joined candidates for this period.</div>';
     return;
   }
-  el.innerHTML = '<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Position</th><th>Exp (yrs)</th><th>DOJ</th><th>CTC ₹ PA</th><th>Firm Fee</th><th>Your Share</th></tr></thead><tbody>'+
-    rows.map(r=>'<tr><td><strong>'+r.name+'</strong></td><td class="m">'+r.client+'</td><td class="m">'+r.pos+'</td><td class="m">'+r.exp.toFixed(1)+'</td><td class="mono">'+fmtD(r.doj)+'</td><td class="m">₹'+r.ctc.toLocaleString('en-IN')+'</td><td class="m">₹'+Math.round(r.fee).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:600">₹'+Math.round(r.share).toLocaleString('en-IN')+'</td></tr>').join('')+
-    '<tr style="background:rgba(52,186,198,.08)"><td colspan="7" style="padding:8px 11px;font-weight:700">Total for Period</td><td style="padding:8px 11px;color:var(--teal);font-weight:700">₹'+Math.round(earned).toLocaleString('en-IN')+'</td></tr>'+
-    '</tbody></table></div>';
+
+  const incHTML = inc ? `
+    <div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:14px 18px;margin-top:14px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--teal)">📊 Incentive Calculation (Section B)</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;font-size:11px;margin-bottom:10px">
+        <div><span style="color:var(--w60)">Monthly Salary</span><br><strong>₹${monthlySalary.toLocaleString('en-IN')}</strong></div>
+        <div><span style="color:var(--w60)">Total Firm Revenue</span><br><strong>₹${Math.round(totalFirmRevenue).toLocaleString('en-IN')}</strong></div>
+        <div><span style="color:var(--w60)">Revenue Multiple</span><br><strong>${inc.multiple}×</strong></div>
+        <div><span style="color:var(--w60)">Applicable Slab</span><br><strong>${inc.slab}</strong></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(52,186,198,.2)">
+        <span style="font-size:13px;font-weight:600">Your Incentive Earned</span>
+        <span style="font-size:22px;font-weight:700;color:var(--teal)">₹${inc.incentive.toLocaleString('en-IN')}</span>
+      </div>
+      ${inc.rate===0?'<div style="font-size:10px;color:var(--gold);margin-top:6px">⚠ Revenue does not yet exceed your monthly salary. Incentive is payable only above 1× salary.</div>':''}
+    </div>` : `<div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:10px 14px;margin-top:14px;font-size:11px;color:var(--gold)">💡 Enter your monthly salary above to calculate your incentive (Section B).</div>`;
+
+  el.innerHTML = '<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Position</th><th>Exp (yrs)</th><th>DOJ</th><th>CTC ₹ PA</th><th>Firm Fee</th></tr></thead><tbody>'+
+    rows.map(r=>'<tr><td><strong>'+r.name+'</strong></td><td class="m">'+r.client+'</td><td class="m">'+r.pos+'</td><td class="m">'+r.exp.toFixed(1)+'</td><td class="mono">'+fmtD(r.doj)+'</td><td class="m">₹'+r.ctc.toLocaleString('en-IN')+'</td><td class="m" style="font-weight:600">₹'+Math.round(r.fee).toLocaleString('en-IN')+'</td></tr>').join('')+
+    '<tr style="background:rgba(80,80,80,.06)"><td colspan="6" style="padding:8px 11px;font-weight:700">Total Firm Revenue for Period</td><td style="padding:8px 11px;font-weight:700">₹'+Math.round(totalFirmRevenue).toLocaleString('en-IN')+'</td></tr>'+
+    '</tbody></table></div>'+incHTML;
 }
 
 // ── Team Earnings ──────────────────────────────────────
@@ -3469,23 +3752,23 @@ function calcTeamEarnings(){
 
   const teamRows = recruiters.map(rec => {
     const joined = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=from&&r[C.doj]<=to&&r[C.recruiter]===rec);
-    let firmTotal = 0, recTotal = 0;
+    let firmTotal = 0;
     joined.forEach(r=>{
       const exp=parseExp(r[C.expYrs]);const ctc=(parseFloat(r[C.offeredSalary])||0)*12;
-      const fee=calcFirmFee(exp,ctc,r[C.client],r[C.doj]);firmTotal+=fee;recTotal+=calcRecShare(fee,r[C.client],r[C.doj]);
+      firmTotal += calcFirmFee(exp,ctc,r[C.client],r[C.doj]);
     });
     const pipe = MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&r[C.recruiter]===rec).length;
-    return {rec, cnt: joined.length, firmTotal, recTotal, pipe};
-  }).sort((a,b)=>b.recTotal-a.recTotal);
+    return {rec, cnt: joined.length, firmTotal, pipe};
+  }).sort((a,b)=>b.firmTotal-a.firmTotal);
 
   const totFirm = teamRows.reduce((s,r)=>s+r.firmTotal,0);
-  const totRec  = teamRows.reduce((s,r)=>s+r.recTotal,0);
   const totCnt  = teamRows.reduce((s,r)=>s+r.cnt,0);
 
-  el.innerHTML = '<div class="tw"><table><thead><tr><th>Recruiter</th><th>Hires</th><th>Pipeline</th><th>Firm Revenue</th><th>Recruiter Earnings</th></tr></thead><tbody>'+
-    teamRows.map(r=>'<tr><td><strong>'+r.rec+'</strong></td><td class="m">'+r.cnt+'</td><td class="m">'+r.pipe+'</td><td class="m">₹'+Math.round(r.firmTotal).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:600">₹'+Math.round(r.recTotal).toLocaleString('en-IN')+'</td></tr>').join('')+
-    '<tr style="background:rgba(52,186,198,.08)"><td style="font-weight:700">Total</td><td style="font-weight:700">'+totCnt+'</td><td></td><td style="font-weight:700">₹'+Math.round(totFirm).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:700">₹'+Math.round(totRec).toLocaleString('en-IN')+'</td></tr>'+
-    '</tbody></table></div>';
+  el.innerHTML = '<div class="tw"><table><thead><tr><th>Recruiter</th><th>Hires</th><th>Pipeline</th><th>Firm Revenue Generated</th></tr></thead><tbody>'+
+    teamRows.map(r=>'<tr><td><strong>'+r.rec+'</strong></td><td class="m">'+r.cnt+'</td><td class="m">'+r.pipe+'</td><td style="font-weight:600">₹'+Math.round(r.firmTotal).toLocaleString('en-IN')+'</td></tr>').join('')+
+    '<tr style="background:rgba(52,186,198,.08)"><td style="font-weight:700">Total</td><td style="font-weight:700">'+totCnt+'</td><td></td><td style="font-weight:700">₹'+Math.round(totFirm).toLocaleString('en-IN')+'</td></tr>'+
+    '</tbody></table></div>'+
+    '<div style="font-size:10px;color:var(--w60);margin-top:8px">ℹ Recruiter incentive (Section B) is calculated per recruiter using total revenue vs. their individual salary. Salary data must be entered in My Earnings tab.</div>';
 }
 
 function dlTeamEarnings(){
@@ -3497,14 +3780,14 @@ function dlTeamEarnings(){
     ['Talent+ Hire Pulse — Team Earnings Report'],
     ['Policy: '+(p?p.title:'N/A'), 'Period: '+fmtD(from)+' to '+fmtD(to), 'Generated: '+new Date().toLocaleString()],
     [],
-    ['Recruiter','Hires in Period','Active Pipeline','Firm Revenue ₹','Recruiter Earnings ₹']
+    ['Recruiter','Hires in Period','Active Pipeline','Firm Revenue Generated ₹']
   ];
   recruiters.forEach(rec=>{
     const joined=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=from&&r[C.doj]<=to&&r[C.recruiter]===rec);
-    let firm=0,share=0;
-    joined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0)*12;const f=calcFirmFee(e,c,r[C.client],r[C.doj]);firm+=f;share+=calcRecShare(f,r[C.client],r[C.doj]);});
+    let firm=0;
+    joined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0)*12;firm+=calcFirmFee(e,c,r[C.client],r[C.doj]);});
     const pipe=MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&r[C.recruiter]===rec).length;
-    rows.push([rec,joined.length,pipe,Math.round(firm),Math.round(share)]);
+    rows.push([rec,joined.length,pipe,Math.round(firm)]);
   });
   const ws2=XLSX.utils.aoa_to_sheet(rows);const wb2=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb2,ws2,'Team Earnings');
@@ -3517,31 +3800,102 @@ function renderPolicyView(){
   const p = getActivePolicyPeriod();
   const el = document.getElementById('inc-policy-current');
   if(!el) return;
+  if(!p){ el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No active policy configured.</div>'; return; }
 
-  const slabRows = p ? p.slabs.map(s=>`
-    <tr><td class="m">${s.expFrom === 0 ? '0' : 'More than '+s.expFrom} – ${s.expTo >= 999 ? 'Above '+s.expFrom : 'up to '+s.expTo} years</td>
-    <td class="m">${s.model==='fixed' ? 'Flat ₹'+s.amount.toLocaleString('en-IN')+' per hire' : s.rate+'% of Fixed Pay'}</td></tr>`).join('') : '';
+  const feeRows = p.slabs.map(s=>`<tr>
+    <td class="m">${s.expFrom===0?'0 – 1 Year':s.expTo>=999?'More than '+s.expFrom+' Years':'More than '+s.expFrom+' up to '+s.expTo+' Years'}</td>
+    <td class="m">${s.model==='fixed'?'Flat ₹'+s.amount.toLocaleString('en-IN')+' per hire':s.rate+'% of Annual Fixed Pay'}</td>
+  </tr>`).join('');
 
-  const ovRows = incPolicy.clientOverrides.length ? incPolicy.clientOverrides.map(o=>
-    `<tr><td class="m">${o.client}</td><td class="m">${o.model==='fixed'?'Flat ₹'+(o.amount||o.rate).toLocaleString('en-IN'):o.rate+'% of Fixed Pay'}</td><td class="m">${o.recruiterShare||'-'}%</td></tr>`
-  ).join('') : '<tr><td colspan="3" style="text-align:center;padding:10px;color:var(--w60)">No client overrides — standard slabs apply to all</td></tr>';
+  const iSlabs = (p.incentiveSlabs||[{multipleFrom:0,multipleTo:1,rate:0},{multipleFrom:1,multipleTo:2,rate:10},{multipleFrom:2,multipleTo:3,rate:15},{multipleFrom:3,multipleTo:4,rate:20},{multipleFrom:4,multipleTo:999,rate:25}]);
+  const incRows = iSlabs.map(s=>`<tr>
+    <td class="m">${s.rate===0?'Up to 1× monthly salary':s.multipleFrom+'× – '+(s.multipleTo>=999?'above '+s.multipleFrom+'×':s.multipleTo+'× monthly salary')}</td>
+    <td class="m" style="font-weight:600;color:${s.rate>0?'var(--teal)':'var(--w60)'}">${s.rate===0?'Nil':s.rate+'% of total realised revenue'}</td>
+  </tr>`).join('');
 
-  el.innerHTML = p ? `
-    <div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:14px 18px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="font-size:15px;font-weight:700">${p.title}</div>
-        <span style="background:var(--teal);color:#000;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700">ACTIVE</span>
+  const rampUp = p.rampUp || {};
+  const rampMonthRows = (rampUp.months||[{month:1,minDailyCalls:30,minInterviews:5},{month:2,minDailyCalls:35,minInterviews:8},{month:3,minDailyCalls:40,minInterviews:15}]).map(m=>`<tr>
+    <td class="m">Month ${m.month}</td><td class="m">${m.minDailyCalls} calls/day</td><td class="m">${m.minInterviews} interviews attended</td>
+  </tr>`).join('');
+  const rampIncRows = (rampUp.incentives||[{monthsMet:1,amount:1000},{monthsMet:2,amount:2500},{monthsMet:3,amount:5000}]).map(r=>`<tr>
+    <td class="m">Meets thresholds for ${r.monthsMet} month${r.monthsMet>1?'s':''}</td>
+    <td class="m" style="font-weight:600;color:var(--teal)">₹${r.amount.toLocaleString('en-IN')}</td>
+  </tr>`).join('');
+
+  const teamBonus = p.teamBonus || [{multipleFrom:0,multipleTo:3,pool:0},{multipleFrom:3,multipleTo:4,pool:15000},{multipleFrom:4,multipleTo:5,pool:30000},{multipleFrom:5,multipleTo:6,pool:45000},{multipleFrom:6,multipleTo:999,pool:60000}];
+  const teamRows = teamBonus.map(t=>`<tr>
+    <td class="m">${t.pool===0?'Up to 3× quarterly salary cost':t.multipleFrom+'× – '+(t.multipleTo>=999?'above '+t.multipleFrom+'×':t.multipleTo+'×')}</td>
+    <td class="m" style="font-weight:600;color:${t.pool>0?'var(--teal)':'var(--w60)'}">${t.pool===0?'Nil':'₹'+t.pool.toLocaleString('en-IN')}</td>
+  </tr>`).join('');
+  const w = p.teamBonusWeights || {revenue:70,interviews:20,ats:10};
+
+  const sec = (title,icon,content) => `
+    <div style="margin-bottom:16px;border:1px solid rgba(128,128,128,.15);border-radius:var(--rs);overflow:hidden">
+      <div style="background:rgba(52,186,198,.06);padding:10px 16px;font-weight:700;font-size:12px;border-bottom:1px solid rgba(128,128,128,.1)">${icon} ${title}</div>
+      <div style="padding:14px 16px">${content}</div>
+    </div>`;
+
+  el.innerHTML = `
+    <div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:15px;font-weight:700">${p.title} &nbsp;<span style="background:var(--teal);color:#000;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700">ACTIVE</span></div>
+        <div style="font-size:11px;color:var(--w60);margin-top:4px">Effective: ${fmtD(p.from)} – ${fmtD(p.to)} &nbsp;·&nbsp; Revision #${p.revision} (${fmtD(p.revisionDate)}) &nbsp;·&nbsp; ${p.revisionNotes||''}</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px;margin-bottom:12px">
-        <div><span style="color:var(--w60)">Applicable Period</span><br><strong>${fmtD(p.from)} – ${fmtD(p.to)}</strong></div>
-        <div><span style="color:var(--w60)">Revision</span><br><strong>#${p.revision} · ${fmtD(p.revisionDate)}</strong></div>
-        <div><span style="color:var(--w60)">Recruiter Share</span><br><strong>${p.recruiterShare}% of firm fee</strong></div>
-        <div><span style="color:var(--w60)">Notes</span><br><strong>${p.revisionNotes||'—'}</strong></div>
+    </div>
+
+    ${sec('Section A — Ramp-Up Incentive (Months 1–3)','🚀',`
+      <div style="font-size:11px;color:var(--w60);margin-bottom:10px">Maximum ₹5,000 payable for the entire 3-month period. Both call threshold and interview threshold must be met in the same month to qualify.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div class="sl2" style="margin-bottom:6px">Monthly Thresholds (must meet both)</div>
+          <div class="tw"><table><thead><tr><th>Month</th><th>Min Daily Calls</th><th>Min Interviews Attended</th></tr></thead><tbody>${rampMonthRows}</tbody></table></div>
+        </div>
+        <div>
+          <div class="sl2" style="margin-bottom:6px">Incentive (paid after Month 3)</div>
+          <div class="tw"><table><thead><tr><th>Achievement Level</th><th>Incentive</th></tr></thead><tbody>${rampIncRows}</tbody></table></div>
+        </div>
       </div>
-      <div class="sl2" style="margin-bottom:8px">Standard Fee Slabs</div>
-      <div class="tw"><table><thead><tr><th>Candidate Experience</th><th>Recruitment Fee</th></tr></thead><tbody>${slabRows}</tbody></table></div>
-      ${incPolicy.clientOverrides.length ? `<div class="sl2" style="margin:12px 0 8px">Client-Specific Overrides</div><div class="tw"><table><thead><tr><th>Client</th><th>Fee Structure</th><th>Rec Share %</th></tr></thead><tbody>${ovRows}</tbody></table></div>` : ''}
-    </div>` : '<div style="text-align:center;padding:20px;color:var(--w60)">No active policy. Configure in Admin → Billing Config.</div>';
+    `)}
+
+    ${sec('Section B — Revenue Incentive Plan (Month 4 onwards)','💰',`
+      <div style="font-size:11px;color:var(--w60);margin-bottom:12px">Incentive is paid on <strong>realised revenue only</strong> (funds received in Company bank account). Revenue must exceed the recruiter's monthly salary before any incentive is payable. Rate is applied to <strong>total revenue</strong>, not just the excess.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div class="sl2" style="margin-bottom:6px">Client Recruitment Fees (firm revenue per hire)</div>
+          <div class="tw"><table><thead><tr><th>Candidate Experience</th><th>Fee</th></tr></thead><tbody>${feeRows}</tbody></table></div>
+        </div>
+        <div>
+          <div class="sl2" style="margin-bottom:6px">Recruiter Incentive Slabs</div>
+          <div class="tw"><table><thead><tr><th>Realised Revenue</th><th>Incentive Rate</th></tr></thead><tbody>${incRows}</tbody></table></div>
+        </div>
+      </div>
+      <div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:8px 12px;margin-top:10px;font-size:11px">
+        <strong>Example:</strong> Salary ₹30,000 · Total Revenue ₹1,55,960 → Multiple = 5.20× → Rate 25% → Incentive = ₹38,990
+      </div>
+    `)}
+
+    ${sec('Section C — Team Performance Bonus (Quarterly)','👥',`
+      <div style="font-size:11px;color:var(--w60);margin-bottom:12px">Calculated quarterly based on realised revenue. All recruiters must maintain ATS compliance, no recruiter on PIP, and team revenue must exceed quarterly salary cost.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div class="sl2" style="margin-bottom:6px">Team Bonus Pool</div>
+          <div class="tw"><table><thead><tr><th>Quarterly Revenue vs Salary Cost</th><th>Bonus Pool</th></tr></thead><tbody>${teamRows}</tbody></table></div>
+        </div>
+        <div>
+          <div class="sl2" style="margin-bottom:6px">Bonus Distribution Weights</div>
+          <div class="tw"><table><thead><tr><th>Basis</th><th>Weight</th></tr></thead><tbody>
+            <tr><td class="m">Individual Revenue Contribution</td><td class="m" style="font-weight:600">${w.revenue}%</td></tr>
+            <tr><td class="m">Interview Generation</td><td class="m" style="font-weight:600">${w.interviews}%</td></tr>
+            <tr><td class="m">ATS Compliance & Data Quality</td><td class="m" style="font-weight:600">${w.ats}%</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+    `)}
+
+    ${sec('Section D — Quality & Compliance Conditions','✅',`
+      <div style="font-size:11px;color:var(--w60)">No incentive is payable if: candidate information is inaccurate, profile incomplete, duplicate submission, ATS records not updated, candidate exists in pre-March 2026 database, client complaint due to recruiter negligence, activity records falsified, or candidate/client is misrepresented.</div>
+      <div style="margin-top:8px;font-size:11px;font-weight:600;color:var(--gold)">Excluded candidate sources: Internal Referral · Candidate Client Portal · Rehire · Any candidate in database before March 1, 2026</div>
+    `)}`;
 
   const histEl = document.getElementById('inc-policy-history');
   if(histEl){
