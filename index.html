@@ -945,22 +945,28 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- MY EARNINGS -->
 <div id="ip-calc">
   <div style="display:grid;grid-template-columns:1fr 1fr 180px 1fr;gap:10px;margin:12px 0 8px">
-    <div class="field" style="margin:0"><label>Recruiter</label><select id="inc-rec" onchange="calcIncentives()"><option value="">Me (Logged In)</option></select></div>
+    <div class="field" style="margin:0"><label>Recruiter</label><select id="inc-rec" onchange="onIncRecChange()"><option value="">Me (Logged In)</option></select></div>
     <div class="field" style="margin:0"><label>Period</label><select id="inc-period" onchange="onIncPeriodChange()">
       <option value="month">This Month</option>
       <option value="q">This Quarter</option>
-      <option value="custom">Custom Date Range</option>
-      <option value="fy">This FY</option>
-      <option value="policy">Policy Period</option>
+      <optgroup label="── By Policy Section ──">
+        <option value="ramp_period">Section A — Ramp-Up (Months 1–3)</option>
+        <option value="revenue_period">Section B — Revenue (Month 4+)</option>
+      </optgroup>
+      <optgroup label="── Other ──">
+        <option value="custom">Custom Date Range</option>
+        <option value="fy">This FY</option>
+        <option value="policy">Policy Period</option>
+      </optgroup>
     </select></div>
     <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="inc-my-salary" placeholder="e.g. 30000" min="0" oninput="calcIncentives()" onchange="calcIncentives()"></div>
     <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="calcIncentives()">Calculate</button></div>
   </div>
-  <!-- Custom range row — shown only when Custom is selected -->
+  <!-- Shown for custom range or smart periods -->
   <div id="inc-custom-range" class="hidden" style="display:grid;grid-template-columns:180px 180px 1fr;gap:10px;margin-bottom:12px;align-items:end">
     <div class="field" style="margin:0"><label>From Date</label><input type="date" id="inc-from-date" onchange="calcIncentives()"></div>
     <div class="field" style="margin:0"><label>To Date</label><input type="date" id="inc-to-date" onchange="calcIncentives()"></div>
-    <div style="font-size:10px;color:var(--w60);padding-bottom:4px">Multi-month ranges show a month-by-month breakdown. Incentive for each month is calculated independently against your monthly salary.</div>
+    <div id="inc-period-hint" style="font-size:10px;color:var(--w60);padding-bottom:4px"></div>
   </div>
   <div id="inc-results"></div>
 </div>
@@ -3558,6 +3564,23 @@ function getPeriodDates(periodCode){
   } else if(periodCode === 'policy'){
     const p = getActivePolicyPeriod();
     return p ? {from: p.from, to: p.to > td ? td : p.to} : {from: '2000-01-01', to: td};
+  } else if(periodCode === 'ramp_period' || periodCode === 'revenue_period'){
+    // Auto-derive dates from recruiter DOJ
+    const recSel = gv('inc-rec') || ((acct&&acct.name)?acct.name.split(' ')[0]:'');
+    const rec = recSel && M.recruiters ? M.recruiters.find(r=>r.name===recSel) : null;
+    if(!rec || !rec.doj) return {from: td.slice(0,8)+'01', to: td}; // fallback
+    const doj = new Date(rec.doj+'T00:00:00');
+    // 3 months after DOJ = start of revenue period
+    const rev3 = new Date(doj.getFullYear(), doj.getMonth()+3, doj.getDate());
+    const rev3str = rev3.getFullYear()+'-'+String(rev3.getMonth()+1).padStart(2,'0')+'-'+String(rev3.getDate()).padStart(2,'0');
+    // Last day of ramp period = day before revenue starts
+    const rampEnd = new Date(rev3 - 86400000);
+    const rampEndStr = rampEnd.getFullYear()+'-'+String(rampEnd.getMonth()+1).padStart(2,'0')+'-'+String(rampEnd.getDate()).padStart(2,'0');
+    if(periodCode === 'ramp_period'){
+      return {from: rec.doj, to: rampEndStr < td ? rampEndStr : td};
+    } else {
+      return {from: rev3str, to: td};
+    }
   } else if(periodCode === 'custom'){
     const f = document.getElementById('inc-from-date')?.value || td.slice(0,8)+'01';
     const t = document.getElementById('inc-to-date')?.value  || td;
@@ -3566,19 +3589,60 @@ function getPeriodDates(periodCode){
   return {from: '2000-01-01', to: td};
 }
 
-// Show/hide custom date range inputs
+// Called when recruiter changes — refresh smart period dates if applicable
+function onIncRecChange(){
+  const v = gv('inc-period');
+  if(v === 'ramp_period' || v === 'revenue_period') onIncPeriodChange();
+  else calcIncentives();
+}
+
+// Show/hide date range row and compute smart dates
 function onIncPeriodChange(){
   const v = gv('inc-period');
   const cr = document.getElementById('inc-custom-range');
-  if(cr) cr.classList.toggle('hidden', v !== 'custom');
-  // Default custom dates to current month if not set
-  if(v === 'custom'){
-    const td = today();
+  const hint = document.getElementById('inc-period-hint');
+  const needsDates = v === 'custom' || v === 'ramp_period' || v === 'revenue_period';
+  if(cr) cr.classList.toggle('hidden', !needsDates);
+
+  const recSel = gv('inc-rec') || ((acct&&acct.name)?acct.name.split(' ')[0]:'');
+  const rec = recSel && M.recruiters ? M.recruiters.find(r=>r.name===recSel) : null;
+
+  if(v === 'ramp_period'){
+    if(rec && rec.doj){
+      const doj = new Date(rec.doj+'T00:00:00');
+      const rev3 = new Date(doj.getFullYear(), doj.getMonth()+3, doj.getDate());
+      const rampEnd = new Date(rev3 - 86400000);
+      const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const f = document.getElementById('inc-from-date');
+      const t = document.getElementById('inc-to-date');
+      if(f) f.value = rec.doj;
+      if(t) t.value = fmt(rampEnd);
+      if(hint) hint.innerHTML = `<span style="color:var(--gold)">🚀 Section A: ${fmtD(rec.doj)} → ${fmtD(fmt(rampEnd))}</span> &nbsp;·&nbsp; Months 1–3 of employment`;
+    } else {
+      if(hint) hint.innerHTML = `<span style="color:#ff6b6b">⚠ Set recruiter DOJ in Admin → Config → Recruiters first</span>`;
+    }
+  } else if(v === 'revenue_period'){
+    if(rec && rec.doj){
+      const doj = new Date(rec.doj+'T00:00:00');
+      const rev3 = new Date(doj.getFullYear(), doj.getMonth()+3, doj.getDate());
+      const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const f = document.getElementById('inc-from-date');
+      const t = document.getElementById('inc-to-date');
+      if(f) f.value = fmt(rev3);
+      if(t) t.value = today();
+      if(hint) hint.innerHTML = `<span style="color:var(--teal)">💰 Section B: ${fmtD(fmt(rev3))} → today</span> &nbsp;·&nbsp; Month 4+ of employment`;
+    } else {
+      if(hint) hint.innerHTML = `<span style="color:#ff6b6b">⚠ Set recruiter DOJ in Admin → Config → Recruiters first</span>`;
+    }
+  } else if(v === 'custom'){
+    const td2 = today();
     const f = document.getElementById('inc-from-date');
     const t = document.getElementById('inc-to-date');
-    if(f && !f.value) f.value = td.slice(0,8)+'01';
-    if(t && !t.value) t.value = td;
+    if(f && !f.value) f.value = td2.slice(0,8)+'01';
+    if(t && !t.value) t.value = td2;
+    if(hint) hint.innerHTML = 'Multi-month ranges show a month-by-month breakdown.';
   }
+
   calcIncentives();
 }
 
