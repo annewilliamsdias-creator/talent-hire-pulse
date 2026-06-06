@@ -2134,11 +2134,28 @@ if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{co
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];if(!vh.includes('Active'))vh.push('Active');WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
 await saveWB('Saving vacancy...');
 document.getElementById('avForm').classList.add('hidden');
-// NOTE: Vacancy changes do NOT update candidate records. Candidate recruiter
-// is stored on the candidate record itself (C.recruiter) and is independent
-// of the vacancy recruiter field. Changing vacancy recruiter only affects
-// future candidate assignments, not existing ones.
-renderAVacs();renderVac();fillPosDrop();
+// Auto-tag candidates: if recruiter changed on existing vacancy, update all
+// active candidates linked to this vacancy code to the new recruiter
+if(!isNew && vd['Recruiter']){
+  const vacCode=vd['Vacancy code']||VD[vacEIdx]['Vacancy code']||VD[vacEIdx]['Vacancy Code']||'';
+  const newRec=vd['Recruiter'];
+  let retagCount=0;
+  MD.forEach(r=>{
+    if(r[C.vacCode]===vacCode && r[C.recruiter]!==newRec && !TERMINAL.has(r[C.status])){
+      writeCL('Recruiter Reassigned',r[C.code],C.recruiter,r[C.recruiter],newRec,r[C.name]);
+      r[C.recruiter]=newRec;
+      r[C.updatedBy]=acct&&acct.name?acct.name:'Admin';
+      r[C.updatedOn]=today();
+      retagCount++;
+    }
+  });
+  if(retagCount>0){
+    rebuildDS();
+    await saveWB('Retagging candidates...');
+    toast('info','Candidates Retagged',retagCount+' active candidate(s) assigned to '+newRec);
+  }
+}
+renderAVacs();renderVac();fillPosDrop();renderRec();loadDash();
 toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);
 showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
 async function toggleVacAct(idx){VD[idx]['Active']=VD[idx]['Active']==='N'?'Y':'N';if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];if(!vh.includes('Active'))vh.push('Active');WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}await saveWB(false);renderAVacs();renderVac();fillPosDrop();toast('info','Vacancy Updated',VD[idx]['Designation']+' is now '+(VD[idx]['Active']==='N'?'Inactive':'Active'));}
