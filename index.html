@@ -359,10 +359,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
       <span class="nav-label">New Candidate</span>
     </div>
-    <div class="nav-item" onclick="goPanel(\'upd\')" title="Update Record">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
-      <span class="nav-label">Update Record</span>
-    </div>
     <div class="nav-item" onclick="goPanel('ep')" title="Edit Profile">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
       <span class="nav-label">Edit Profile</span>
@@ -1047,7 +1043,8 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Role / Designation <span class="req">*</span></label><input type="text" id="avRole" placeholder="e.g. Operations Executive"></div>
 <div class="field"><label>Department <span class="req">*</span></label><select id="avDept"><option value="">— Select —</option></select></div>
 <div class="field"><label>Location</label><select id="avLoc"><option value="">— Select —</option></select></div>
-<div class="field"><label>Monthly Budget ₹</label><input type="number" id="avBudget"></div>
+<div class="field"><label>Budget Min ₹/month</label><input type="number" id="avBudgetMin" placeholder="e.g. 40000"></div>
+<div class="field"><label>Budget Max ₹/month</label><input type="number" id="avBudgetMax" placeholder="e.g. 60000"></div>
 <div class="field"><label>Experience Required</label><input type="text" id="avExp" placeholder="e.g. 2-4 years"></div>
 <div class="field"><label>Recruiter Assigned</label><select id="avRec"><option value="">— Select —</option></select></div>
 <div class="field"><label>Hiring Manager</label><input type="text" id="avHiringMgr" placeholder="Name of hiring manager"></div>
@@ -1681,12 +1678,28 @@ const jp=hfMD.filter(r=>r[C.status]==='Joining in Progress'&&r[C.doj]);
 const jpe=document.getElementById('jp-list');
 if(jpe)jpe.innerHTML=jp.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Expected DOJ</th><th>Follow-up (Day Before)</th><th></th></tr></thead><tbody>'+jp.map(r=>{const db=addDays(r[C.doj],-1);const urg=db<=td;return'<tr style="'+(urg?'background:rgba(233,152,43,.06)':'')+'"><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="mono">'+fmtD(r[C.doj])+'</td><td><span class="badge '+(urg?'b-wip':'b-progress')+'">'+fmtD(db)+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>';}).join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No active joinings tracked</div>';}
 function goRecFiltered(scope, status){
-  goPanel('rec');
-  const sc=document.getElementById('rScope');if(sc)sc.value=scope;
-  const st=document.getElementById('rStat');if(st)st.value=status;
-  const srch=document.getElementById('rSrch');if(srch)srch.value='';
-  const cli=document.getElementById('rCli');if(cli)cli.value='';
-  renderRec();
+  // Open filtered results in modal — does NOT modify All Records filters
+  const statusLabel=status||'All';
+  const filtered=MD.filter(r=>{
+    const inScope=scope==='all'||!TERMINAL.has(r[C.status]);
+    return inScope&&(!status||r[C.status]===status);
+  }).slice(0,200);
+  if(!filtered.length){toast('info','No records','No candidates found for: '+statusLabel);return;}
+  const rows=filtered.map(r=>'<tr><td class="mono" style="font-size:10px;white-space:nowrap">'+r[C.code]+'</td><td style="font-size:11px"><strong>'+r[C.name]+'</strong></td><td style="font-size:11px">'+r[C.position]+'</td><td style="font-size:11px">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td style="font-size:11px">'+r[C.recruiter]+'</td></tr>').join('');
+  const body='<div style="max-height:380px;overflow-y:auto"><table style="width:100%"><thead><tr><th style="padding:5px 8px;font-size:10px;color:var(--w60);white-space:nowrap">Code</th><th style="padding:5px 8px;font-size:10px;color:var(--w60)">Name</th><th style="padding:5px 8px;font-size:10px;color:var(--w60)">Position</th><th style="padding:5px 8px;font-size:10px;color:var(--w60)">Client</th><th style="padding:5px 8px;font-size:10px;color:var(--w60)">Status</th><th style="padding:5px 8px;font-size:10px;color:var(--w60)">Recruiter</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  showModal('📋 '+statusLabel+' ('+filtered.length+' candidates)',
+    (filtered.length===200?'Showing first 200 records.':''),
+    body,
+    '<button class="btn btn-ghost btn-sm" onclick="dlFilteredRecords('+JSON.stringify(scope)+','+JSON.stringify(status||'')+')">⬇ Download</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+}
+function dlFilteredRecords(scope, status){
+  const filtered=MD.filter(r=>{const inScope=scope==='all'||!TERMINAL.has(r[C.status]);return inScope&&(!status||r[C.status]===status);});
+  const cols=[C.code,C.name,C.contact,C.email,C.client,C.position,C.dept,C.status,C.recruiter,C.followupDate];
+  const labels=['Code','Name','Contact','Email','Client','Position','Dept','Status','Recruiter','Follow-up'];
+  const ws2=XLSX.utils.aoa_to_sheet([labels,...filtered.map(r=>cols.map(k=>r[k]||''))]);
+  const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws2,'Candidates');
+  XLSX.writeFile(wb2,'THP_'+(status||'All')+'_'+today()+'.xlsx');
+  toast('ok','Downloaded',filtered.length+' records');
 }
 // Handler for data-code buttons in All Records table
 function openBtn(el, type){
@@ -1801,7 +1814,9 @@ document.getElementById('uRol').textContent=(r[C.position]||'—')+' · '+(r[C.c
 document.getElementById('uCd').textContent=r[C.code];
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
 sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
-['uFU','uRem','uCmt','uIvD','uDecD','uDOJ','uOffS','uOffD'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+// Pre-fill existing values (including dates) so user sees current state
+sv('uFU',r[C.followupDate]||'');sv('uIvD',r[C.interviewDate]||'');sv('uDecD',r[C.decisionDate]||'');sv('uDOJ',r[C.doj]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');
+['uRem','uCmt'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 fillDrops(); // Refresh all form dropdowns from current admin config
 onStatCh();updStatDrop();}
 function onStatCh(){
@@ -1823,11 +1838,8 @@ r[C.status]=stat;if(dm)r[C.dm]=dm;if(fu)r[C.followupDate]=fu;
 const rmk=gv('uRem');if(rmk)r[C.remark]=r[C.remark]?r[C.remark]+' | '+rmk:rmk;
 const cmt=gv('uCmt');if(cmt)r[C.otherComments]=r[C.otherComments]?r[C.otherComments]+' | '+cmt:cmt;
 const ivr=gv('uIvr');if(ivr)r[C.interviewerName]=ivr;
-const ivd=gv('uIvD');if(ivd)r[C.interviewDate]=ivd;
-const dd=gv('uDecD');if(dd)r[C.decisionDate]=dd;
-const doj=gv('uDOJ');if(doj)r[C.doj]=doj;
-const os=gv('uOffS');if(os)r[C.offeredSalary]=os;
-const od=gv('uOffD');if(od)r[C.offerDate]=od;
+// Always save date/offer fields — allows clearing by leaving blank
+r[C.interviewDate]=gv('uIvD')||'';r[C.decisionDate]=gv('uDecD')||'';r[C.doj]=gv('uDOJ')||'';r[C.offeredSalary]=gv('uOffS')||'';r[C.offerDate]=gv('uOffD')||'';
 const fd=gv('uFinalDesig');if(fd)r['Final Designation Offered']=fd;
 const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}}
@@ -1840,7 +1852,7 @@ toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar
   document.getElementById('uForm').classList.add('hidden');
   document.getElementById('uCode').value='';eIdx=-1;
   showModal('✅ Record Updated','<strong>'+updName+'</strong> moved to <strong>'+stat+'</strong>. What would you like to do?','',
-    '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
+    '<button class="btn btn-t btn-sm" onclick="closeModal();qUpd(\''+updCode+'\')">Stay on Record</button>&nbsp;'+
     '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
     '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'home\')">Dashboard</button>');
   }
@@ -2006,7 +2018,7 @@ function viewVacModal(idx){
     ['Department',v['Department']||'—'],['Location',v['Location']||'—'],
     ['Priority',v['Priority']||'—'],['# Positions',v['Positions Count']||'1'],
     ['Status',v['Current Status']||'—'],['Active',v['Active']==='N'?'No':'Yes'],
-    ['Monthly Budget','₹'+(v['Monthly Budget']||'—')],['Experience Required',v['Experience']||'—'],
+    ['Budget Range','₹'+(v['Budget Min']||'—')+' – ₹'+(v['Budget Max']||'—')],['Monthly Budget',v['Monthly Budget']||'—'],['Experience Required',v['Experience']||'—'],
     ['Recruiter Assigned',v['Recruiter']||'—'],['Hiring Manager',v['Hiring Manager']||'—'],
     ['Manager Name',v['Manager Name']||'—'],['Date of Vacancy',fmtD(v['Date of Vacancy'])],
     ['Target Fill Date',fmtD(v['Target Fill Date'])],['Remarks',v['Remarks']||'—'],
@@ -2083,7 +2095,7 @@ function onAvJDSel(){
   if(!isNaN(i)&&repoData.jds[i]){if(lnk)lnk.value=repoData.jds[i].title;}
   else{if(lnk)lnk.value='';}
 }
-function openAddVac(){vacEIdx=-1;['avRole','avBudget','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';const jdsel=document.getElementById('avJDSel');if(jdsel)jdsel.selectedIndex=0;document.getElementById('avForm').classList.remove('hidden');fillDrops();populateAvJDSel();}
+function openAddVac(){vacEIdx=-1;['avRole','avBudgetMin','avBudgetMax','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';const jdsel=document.getElementById('avJDSel');if(jdsel)jdsel.selectedIndex=0;document.getElementById('avForm').classList.remove('hidden');fillDrops();populateAvJDSel();}
 function renderAVacs(){
   refreshAllFilters();
   const fCli=document.getElementById('avf-cli')&&document.getElementById('avf-cli').value||'';
@@ -2102,12 +2114,12 @@ function renderAVacs(){
   });
   if(!vis.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies yet.')+'</td></tr>';return;}
   tb.innerHTML=vis.map(v=>{const i=VD.indexOf(v);const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
-function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudget','Monthly Budget'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';document.getElementById('avForm').classList.remove('hidden');fillDrops();populateAvJDSel(v['JD Link']||'');}
+function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudgetMin','Budget Min'],['avBudgetMax','Budget Max'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';document.getElementById('avForm').classList.remove('hidden');fillDrops();populateAvJDSel(v['JD Link']||'');}
 async function saveVac(){
 const cli=gv('avCli'),role=gv('avRole'),dept=gv('avDept');
 if(!cli||!role||!dept){showAlert('avAlert','err','Client, Role and Department required.');return;}
 const isNew=vacEIdx===-1;
-const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudget'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y'};
+const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudgetMin')?gv('avBudgetMin')+' - '+gv('avBudgetMax'):gv('avBudgetMax')||'','Budget Min':gv('avBudgetMin'),'Budget Max':gv('avBudgetMax'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y'};
 if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{const m=String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);return m?parseInt(m[1]):0;}));vd['Vacancy code']='VC-'+yr+'-'+String(mx+1).padStart(4,'0');vd['Sr. No.']=VD.length+1;VD.push(vd);}else{Object.assign(VD[vacEIdx],vd);}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];if(!vh.includes('Active'))vh.push('Active');WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
 await saveWB('Saving vacancy...');document.getElementById('avForm').classList.add('hidden');renderAVacs();renderVac();fillPosDrop();toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
@@ -2300,6 +2312,13 @@ function renderDash() {
 
   const dates = getDashDates();
   const data  = filterData(dates);
+  window._lastDashData = data;
+  window._lastDashFilters = {
+    period: gv('df-period')||'All Time',
+    client: (document.getElementById('df-client')&&document.getElementById('df-client').value)||'',
+    dept: (document.getElementById('df-dept')&&document.getElementById('df-dept').value)||'',
+    recruiter: (document.getElementById('df-recruiter')&&document.getElementById('df-recruiter').value)||''
+  };
 
   renderKPIs(data);
   renderFunnel(data);
@@ -2570,8 +2589,8 @@ function renderRejectionChart(data) {
     data: {
       labels: clients,
       datasets: [
-        { label: 'Rejected by Consultant', data: rejCons, backgroundColor: 'rgba(155,114,212,0.7)', borderRadius: 3 },
-        { label: 'Rejected by Client',     data: rejCli,  backgroundColor: 'rgba(224,82,82,0.7)',   borderRadius: 3 },
+        { label: 'Rejected by Consultant', data: rejCons, backgroundColor: 'rgba(233,152,43,0.75)', borderRadius: 3 },
+        { label: 'Rejected by Client',     data: rejCli,  backgroundColor: 'rgba(180,90,20,0.8)',   borderRadius: 3 },
       ]
     },
     options: {
@@ -3492,13 +3511,50 @@ function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 function dlChart(canvasId, name) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) { toast('warn','Chart not ready','Please load data first'); return; }
-  // Option: show modal to choose PNG or data CSV
   showModal('⬇ Download — '+name.replace(/_/g,' '),
-    'Choose what to download:',
+    'Choose format:',
     '',
-    '<button class="btn btn-t" onclick="closeModal();dlChartPNG(\''+canvasId+'\',\''+name+'\')">🖼 Download as Image (PNG)</button>' +
-    '<button class="btn btn-ghost" style="margin-top:6px;width:100%" onclick="closeModal()">Cancel</button>'
+    '<button class="btn btn-t" style="width:100%;margin-bottom:6px" onclick="closeModal();dlChartPNG(''+canvasId+'',''+name+'')">🖼 Image (PNG)</button>'+
+    '<button class="btn btn-ghost" style="width:100%;margin-bottom:6px" onclick="closeModal();dlChartData(''+name+'')">📊 Data (Excel)</button>'+
+    '<button class="btn btn-ghost" style="width:100%" onclick="closeModal()">Cancel</button>'
   );
+}
+function dlChartData(name){
+  const df=window._lastDashData||MD;
+  const filters=window._lastDashFilters||{};
+  const fLabel=[filters.period||'',filters.client||'',filters.dept||'',filters.recruiter||''].filter(Boolean).join(' · ')||'All Data';
+  let rows=[];
+  rows.push(['Talent+ Hire Pulse — '+name.replace(/_/g,' ')]);
+  rows.push(['Generated: '+new Date().toLocaleString(),'Filter: '+fLabel,'Records: '+df.length]);
+  rows.push([]);
+  if(name.includes('Rejection')){
+    const cls=[...new Set(df.map(r=>r[C.client]).filter(Boolean))].sort();
+    rows.push(['Client','Rejected by Consultant','Rejected by Client','Total']);
+    cls.forEach(cl=>{const rc=df.filter(r=>r[C.client]===cl&&r[C.status]==='Rejected by Consultant').length;const rk=df.filter(r=>r[C.client]===cl&&r[C.status]==='Rejected by Client').length;if(rc||rk)rows.push([cl,rc,rk,rc+rk]);});
+  } else if(name.includes('Recruiter')){
+    const recs=[...new Set(df.map(r=>r[C.recruiter]).filter(Boolean))].sort();
+    rows.push(['Recruiter','Sourced','Active','Joined']);
+    recs.forEach(rec=>{rows.push([rec,df.filter(r=>r[C.recruiter]===rec).length,df.filter(r=>r[C.recruiter]===rec&&ACTIVE_STATUSES.has(r[C.status])).length,df.filter(r=>r[C.recruiter]===rec&&r[C.status]==='Joined').length]);});
+  } else if(name.includes('Client')){
+    const cls=[...new Set(df.map(r=>r[C.client]).filter(Boolean))].sort();
+    rows.push(['Client','Total','Active','Joined']);
+    cls.forEach(cl=>{rows.push([cl,df.filter(r=>r[C.client]===cl).length,df.filter(r=>r[C.client]===cl&&ACTIVE_STATUSES.has(r[C.status])).length,df.filter(r=>r[C.client]===cl&&r[C.status]==='Joined').length]);});
+  } else if(name.includes('Source')){
+    rows.push(['Source','Sourced','Joined','Conversion %']);
+    const srcs=[...new Set(df.map(r=>r[C.source]).filter(Boolean))].sort();
+    srcs.forEach(src=>{const tot=df.filter(r=>r[C.source]===src).length;const j=df.filter(r=>r[C.source]===src&&r[C.status]==='Joined').length;rows.push([src,tot,j,tot?Math.round(j/tot*100)+'%':'0%']);});
+  } else if(name.includes('Dept')){
+    rows.push(['Department','Active','Joined']);
+    const depts=[...new Set(df.map(r=>r[C.dept]).filter(Boolean))].sort();
+    depts.forEach(d=>{rows.push([d,df.filter(r=>r[C.dept]===d&&ACTIVE_STATUSES.has(r[C.status])).length,df.filter(r=>r[C.dept]===d&&r[C.status]==='Joined').length]);});
+  } else {
+    rows.push(['Status','Count']);
+    const statuses=[...new Set(df.map(r=>r[C.status]).filter(Boolean))].sort();
+    statuses.forEach(s=>rows.push([s,df.filter(r=>r[C.status]===s).length]));
+  }
+  const ws2=XLSX.utils.aoa_to_sheet(rows);const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws2,name.substring(0,31));
+  XLSX.writeFile(wb2,'THP_'+name+'_'+today()+'.xlsx');
+  toast('ok','Data Downloaded',name.replace(/_/g,' ')+' exported as Excel');
 }
 function dlChartPNG(canvasId, name) {
   const canvas = document.getElementById(canvasId);
