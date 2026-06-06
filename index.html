@@ -3511,12 +3511,17 @@ function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 function dlChart(canvasId, name) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) { toast('warn','Chart not ready','Please load data first'); return; }
-  showModal('⬇ Download — '+name.replace(/_/g,' '),
+  // Store for modal buttons to access without inline string quoting
+  window._dlCid = canvasId;
+  window._dlNm  = name;
+  showModal('\u2b07 Download \u2014 '+name.replace(/_/g,' '),
     'Choose format:',
-    '',
-    '<button class="btn btn-t" style="width:100%;margin-bottom:6px" onclick="closeModal();dlChartPNG(''+canvasId+'',''+name+'')">🖼 Image (PNG)</button>'+
-    '<button class="btn btn-ghost" style="width:100%;margin-bottom:6px" onclick="closeModal();dlChartData(''+name+'')">📊 Data (Excel)</button>'+
-    '<button class="btn btn-ghost" style="width:100%" onclick="closeModal()">Cancel</button>'
+    '<div style="display:flex;flex-direction:column;gap:8px;padding:8px 0">'+
+    '<button class="btn btn-t" style="width:100%" onclick="closeModal();dlChartPNG(window._dlCid,window._dlNm)">\ud83d\uddbc\ufe0f Image (PNG)</button>'+
+    '<button class="btn btn-ghost" style="width:100%" onclick="closeModal();dlChartData(window._dlNm)">\ud83d\udcca Data (Excel)</button>'+
+    '<button class="btn btn-ghost" style="width:100%" onclick="closeModal()">Cancel</button>'+
+    '</div>',
+    ''
   );
 }
 function dlChartData(name){
