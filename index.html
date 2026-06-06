@@ -944,11 +944,23 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- MY EARNINGS -->
 <div id="ip-calc">
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 16px">
-    <div class="field" style="margin:0"><label>Recruiter</label><select id="inc-rec"><option value="">Me (Logged In)</option></select></div>
-    <div class="field" style="margin:0"><label>Period</label><select id="inc-period" onchange="calcIncentives()"><option value="month">This Month</option><option value="q">This Quarter</option><option value="fy">This FY</option><option value="policy">Policy Period</option></select></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 180px 1fr;gap:10px;margin:12px 0 8px">
+    <div class="field" style="margin:0"><label>Recruiter</label><select id="inc-rec" onchange="calcIncentives()"><option value="">Me (Logged In)</option></select></div>
+    <div class="field" style="margin:0"><label>Period</label><select id="inc-period" onchange="onIncPeriodChange()">
+      <option value="month">This Month</option>
+      <option value="q">This Quarter</option>
+      <option value="custom">Custom Date Range</option>
+      <option value="fy">This FY</option>
+      <option value="policy">Policy Period</option>
+    </select></div>
     <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="inc-my-salary" placeholder="e.g. 30000" min="0" oninput="calcIncentives()" onchange="calcIncentives()"></div>
     <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="calcIncentives()">Calculate</button></div>
+  </div>
+  <!-- Custom range row — shown only when Custom is selected -->
+  <div id="inc-custom-range" class="hidden" style="display:grid;grid-template-columns:180px 180px 1fr;gap:10px;margin-bottom:12px;align-items:end">
+    <div class="field" style="margin:0"><label>From Date</label><input type="date" id="inc-from-date" onchange="calcIncentives()"></div>
+    <div class="field" style="margin:0"><label>To Date</label><input type="date" id="inc-to-date" onchange="calcIncentives()"></div>
+    <div style="font-size:10px;color:var(--w60);padding-bottom:4px">Multi-month ranges show a month-by-month breakdown. Incentive for each month is calculated independently against your monthly salary.</div>
   </div>
   <div id="inc-results"></div>
 </div>
@@ -1028,10 +1040,19 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- PROJECTIONS -->
 <div id="ip-proj" class="hidden">
-  <div style="padding:10px 0;color:var(--w60);font-size:12px;margin-bottom:12px">Projection based on current open vacancies using active incentive policy fee slabs.</div>
-  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">
-    <div class="field" style="margin:0"><label>Recruiter Filter</label><select id="proj-rec"><option value="">All Recruiters</option></select></div>
-    <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="genProjections()">🔄 Calculate</button></div>
+  <div style="padding:10px 0;color:var(--w60);font-size:12px;margin-bottom:12px">Project earnings from open vacancies. Filter by phase to see ramp-up targets or revenue incentive projections.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 160px 1fr;gap:10px;margin-bottom:14px;align-items:end">
+    <div class="field" style="margin:0"><label>Recruiter Filter</label><select id="proj-rec" onchange="genProjections()"><option value="">All Recruiters</option></select></div>
+    <div class="field" style="margin:0"><label>Phase</label>
+      <select id="proj-phase" onchange="genProjections()">
+        <option value="all">All Recruiters</option>
+        <option value="ramp">Ramp-Up Only (Months 1–3)</option>
+        <option value="revenue">Revenue Only (Month 4+)</option>
+      </select>
+    </div>
+    <div class="field" style="margin:0"><label>Monthly Salary ₹ <span style="font-size:9px;color:var(--w60)">(for incentive calc)</span></label><input type="number" id="proj-salary" placeholder="e.g. 30000" min="0" oninput="genProjections()"></div>
+    <div class="field" style="margin:0"><label>Current Firm Revenue ₹ <span style="font-size:9px;color:var(--w60)">(this month so far)</span></label><input type="number" id="proj-current-rev" placeholder="0" min="0" oninput="genProjections()"></div>
+    <div style="align-self:flex-end"><button class="btn btn-t btn-sm" onclick="genProjections()">🔄 Calculate</button></div>
   </div>
   <div id="inc-proj-list"></div>
 </div>
@@ -1265,7 +1286,7 @@ const FLOW={'WIP':['WIP','Active','Not Contactable','Not Interested','Dropped','
 
 let M={
 clients:['Atmann','DMC Bazaar','GIFTS','One Above','VSAR Tech'].map(n=>({name:n,active:true})),
-recruiters:['Ayesha','Nilam','Shilpa','Siddhi','Sonali','Sujata','Tia','Upasana'].map(n=>({name:n,active:true})),
+recruiters:['Ayesha','Nilam','Shilpa','Siddhi','Sonali','Sujata','Tia','Upasana'].map(n=>({name:n,active:true,doj:''})),
 departments:['Finance','HR','Legal','Marketing','Operations','Product','Sales','Technology','Talent Acquisition'].map(n=>({name:n,active:true})),
 sources:['Portal','Internal Referral','Social Platform','Direct','Consultant','Campus','External Referral','Client Career Portal','Rehire'].map(n=>({name:n,active:true})),
 cities:['Ahmedabad','Aurangabad','Bangalore','Bhopal','Chennai','Coimbatore','Delhi','Faridabad','Ghaziabad','Gurgaon','Hyderabad','Indore','Jaipur','Jodhpur','Kochi','Kolkata','Lucknow','Ludhiana','Mumbai','Mysore','Nagpur','Nashik','Navi Mumbai','Noida','Patna','Pune','Raipur','Rajkot','Surat','Thane','Thiruvananthapuram','Vadodara','Varanasi','Visakhapatnam'].map(n=>({name:n,active:true})),
@@ -2215,21 +2236,28 @@ function setRecruiterDOJ(idx, doj){
 
 // Returns which incentive phase a recruiter is in as of calcDate
 // Phase: 'ramp' (months 1-3) or 'revenue' (month 4+) or 'unknown' (no DOJ set)
-function getRecruiterPhase(recruiterName, calcDate){
-  const cd = calcDate || today();
-  const rec = M.recruiters && M.recruiters.find(r=>r.name===recruiterName);
+// Returns the recruiter's employment phase as of a given date.
+// asOfDate should be the DATE the candidate was placed (their DOJ) — not today.
+// Phase is determined purely by how many calendar months have elapsed since the recruiter's company DOJ.
+// 0 full months elapsed → Month 1 (ramp)
+// 1 full month elapsed  → Month 2 (ramp)
+// 2 full months elapsed → Month 3 (ramp)
+// 3+ full months elapsed → Revenue (Section B)
+function getRecruiterPhase(recruiterName, asOfDate){
+  const cd  = asOfDate || today();
+  const rec = M.recruiters && M.recruiters.find(r => r.name === recruiterName);
   if(!rec || !rec.doj) return {phase:'unknown', month:null, doj:null};
-  const start = new Date(rec.doj);
-  const asOf  = new Date(cd);
-  if(isNaN(start.getTime())) return {phase:'unknown', month:null, doj:rec.doj};
-  // Calculate full months elapsed since DOJ
-  const diffMs   = asOf - start;
-  const diffDays = Math.floor(diffMs / 86400000);
-  const months   = Math.floor(diffDays / 30.44); // approximate months
-  if(months < 1)  return {phase:'ramp', month:1, doj:rec.doj, monthsElapsed:months};
-  if(months < 2)  return {phase:'ramp', month:2, doj:rec.doj, monthsElapsed:months};
-  if(months < 3)  return {phase:'ramp', month:3, doj:rec.doj, monthsElapsed:months};
-  return {phase:'revenue', month:months+1, doj:rec.doj, monthsElapsed:months};
+  const dojDate = new Date(rec.doj + 'T00:00:00');
+  const asOfD   = new Date(cd + 'T00:00:00');
+  if(isNaN(dojDate.getTime())) return {phase:'unknown', month:null, doj:rec.doj};
+  // Exact calendar months: e.g. DOJ=March 1, asOf=May 31 → 2 full months → Month 3 (ramp)
+  let monthsElapsed = (asOfD.getFullYear() - dojDate.getFullYear()) * 12
+                    + (asOfD.getMonth() - dojDate.getMonth());
+  // If we haven't yet reached the same day-of-month as DOJ, subtract one month
+  if(asOfD.getDate() < dojDate.getDate()) monthsElapsed--;
+  monthsElapsed = Math.max(0, monthsElapsed);
+  if(monthsElapsed < 3) return {phase:'ramp', month:monthsElapsed + 1, doj:rec.doj, monthsElapsed};
+  return {phase:'revenue', month:monthsElapsed + 1, doj:rec.doj, monthsElapsed};
 }
 function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx].active;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('info','Master Updated',M[key][idx].name+' is now '+(M[key][idx].active?'active':'inactive'));}}
 function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});el.value='';renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();}
@@ -3530,8 +3558,50 @@ function getPeriodDates(periodCode){
   } else if(periodCode === 'policy'){
     const p = getActivePolicyPeriod();
     return p ? {from: p.from, to: p.to > td ? td : p.to} : {from: '2000-01-01', to: td};
+  } else if(periodCode === 'custom'){
+    const f = document.getElementById('inc-from-date')?.value || td.slice(0,8)+'01';
+    const t = document.getElementById('inc-to-date')?.value  || td;
+    return {from: f, to: t};
   }
   return {from: '2000-01-01', to: td};
+}
+
+// Show/hide custom date range inputs
+function onIncPeriodChange(){
+  const v = gv('inc-period');
+  const cr = document.getElementById('inc-custom-range');
+  if(cr) cr.classList.toggle('hidden', v !== 'custom');
+  // Default custom dates to current month if not set
+  if(v === 'custom'){
+    const td = today();
+    const f = document.getElementById('inc-from-date');
+    const t = document.getElementById('inc-to-date');
+    if(f && !f.value) f.value = td.slice(0,8)+'01';
+    if(t && !t.value) t.value = td;
+  }
+  calcIncentives();
+}
+
+// Split a from–to range into an array of calendar months
+// Returns: [{from:'2026-03-01', to:'2026-03-31', label:'Mar 2026'}, ...]
+function getMonthsInRange(from, to){
+  const months = [];
+  let cur = new Date(from+'T00:00:00');
+  const end = new Date(to+'T00:00:00');
+  while(cur <= end){
+    const y = cur.getFullYear();
+    const m = cur.getMonth(); // 0-based
+    const mFrom = y+'-'+String(m+1).padStart(2,'0')+'-01';
+    const lastDay = new Date(y, m+1, 0).getDate();
+    const mTo   = y+'-'+String(m+1).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0');
+    months.push({
+      from: mFrom > from ? mFrom : from,
+      to:   mTo   < to   ? mTo   : to,
+      label: cur.toLocaleString('en-IN',{month:'short',year:'numeric'})
+    });
+    cur = new Date(y, m+1, 1); // first of next month
+  }
+  return months;
 }
 
 // ── Tab switching ──────────────────────────────────────
@@ -3711,126 +3781,238 @@ function renderPolicyBadge(){
 
 // ── My Earnings ────────────────────────────────────────
 function calcIncentives(){
-  const period = gv('inc-period') || 'month';
-  const recSel = gv('inc-rec') || ((acct&&acct.name) ? acct.name.split(' ')[0] : '');
+  const period        = gv('inc-period') || 'month';
+  const recSel        = gv('inc-rec') || ((acct&&acct.name) ? acct.name.split(' ')[0] : '');
   const monthlySalary = parseFloat(document.getElementById('inc-my-salary')?.value) || 0;
-  const {from, to} = getPeriodDates(period);
+  const {from, to}    = getPeriodDates(period);
   renderPolicyBadge();
 
-  // Detect recruiter phase using their company DOJ
-  const phase = recSel ? getRecruiterPhase(recSel, to) : {phase:'unknown'};
-
-  const joined = MD.filter(r =>
-    r[C.status]==='Joined' && r[C.doj] >= from && r[C.doj] <= to &&
-    (!recSel || r[C.recruiter]===recSel)
-  );
-
-  let totalFirmRevenue = 0;
-  const tm = today().slice(0,7);
-  let thisMonthFirm = 0;
-  const rows = joined.map(r => {
-    const exp = parseExp(r[C.expYrs]);
-    const ctc = (parseFloat(r[C.offeredSalary])||0) * 12;
-    const fee = calcFirmFee(exp, ctc, r[C.client], r[C.doj]);
-    totalFirmRevenue += fee;
-    if(r[C.doj] && r[C.doj].slice(0,7) === tm) thisMonthFirm += fee;
-    return {name:r[C.name],client:r[C.client],pos:r[C.position],exp,doj:r[C.doj],ctc,fee};
-  });
-
-  // Pipeline potential (firm fees)
-  const pipe = MD.filter(r =>
-    ['Selected','Offered','Joining in Progress'].includes(r[C.status]) &&
-    (!recSel || r[C.recruiter]===recSel)
-  );
+  // Pipeline potential
+  const pipe = MD.filter(r => ['Selected','Offered','Joining in Progress'].includes(r[C.status]) && (!recSel||r[C.recruiter]===recSel));
   let pot = 0;
-  pipe.forEach(r => {
-    const exp = parseExp(r[C.expYrs]);
-    const ctc = (parseFloat(r[C.expectedSalary])||0)*12;
-    pot += calcFirmFee(exp, ctc, r[C.client]);
-  });
+  pipe.forEach(r => { pot += calcFirmFee(parseExp(r[C.expYrs]), (parseFloat(r[C.expectedSalary])||0)*12, r[C.client]); });
 
-  // YTD firm revenue
+  // YTD and this-month firm revenue (for KPI cards)
   const ymtd = today().slice(0,4)+'-04-01';
-  const ytdJoined = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=ymtd&&(!recSel||r[C.recruiter]===recSel));
-  let ytdFirm = 0;
-  ytdJoined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0)*12;ytdFirm+=calcFirmFee(e,c,r[C.client],r[C.doj]);});
+  const tm   = today().slice(0,7);
+  const ytdJ = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=ymtd&&(!recSel||r[C.recruiter]===recSel));
+  let ytdFirm=0; ytdJ.forEach(r=>{ytdFirm+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);});
+  const tmJ  = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]&&r[C.doj].slice(0,7)===tm&&(!recSel||r[C.recruiter]===recSel));
+  let tmFirm=0; tmJ.forEach(r=>{tmFirm+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);});
 
-  const setEl = (id,v) => { const el=document.getElementById(id); if(el)el.textContent=v; };
-  setEl('inc-earned',   '₹'+Math.round(thisMonthFirm).toLocaleString('en-IN'));
-  setEl('inc-ytd',      '₹'+Math.round(ytdFirm).toLocaleString('en-IN'));
-  setEl('inc-potential','₹'+Math.round(pot).toLocaleString('en-IN'));
-  setEl('inc-closed',   joined.length);
+  const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setEl('inc-earned',   '\u20b9'+Math.round(tmFirm).toLocaleString('en-IN'));
+  setEl('inc-ytd',      '\u20b9'+Math.round(ytdFirm).toLocaleString('en-IN'));
+  setEl('inc-potential','\u20b9'+Math.round(pot).toLocaleString('en-IN'));
 
   const el = document.getElementById('inc-results');
   if(!el) return;
 
-  // Phase badge
-  let phaseHTML = '';
-  if(phase.phase === 'ramp'){
-    const p = getActivePolicyPeriod();
-    const ramp = p?.rampUp || {};
-    const monthCfg = (ramp.months||[]).find(m=>m.month===phase.month) || {};
-    const incCfg   = (ramp.incentives||[]).find(m=>m.monthsMet===phase.month) || {};
-    phaseHTML = `
-      <div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:12px 16px;margin-bottom:12px">
-        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">🚀 Section A — Ramp-Up Period · Month ${phase.month} of 3</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:11px">
-          <div><span style="color:var(--w60)">Company Joining Date</span><br><strong>${fmtD(phase.doj)}</strong></div>
-          <div><span style="color:var(--w60)">Current Month</span><br><strong>Month ${phase.month}</strong></div>
-          <div><span style="color:var(--w60)">Max Incentive (all 3 months)</span><br><strong>₹5,000</strong></div>
-        </div>
-        <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,160,0,.2);font-size:11px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div>📞 Min daily calls this month: <strong>${monthCfg.minDailyCalls||'—'}</strong></div>
-          <div>🗓 Min interviews this month: <strong>${monthCfg.minInterviews||'—'}</strong></div>
-        </div>
-        <div style="margin-top:6px;font-size:10px;color:var(--w60)">Revenue incentive (Section B) becomes applicable from Month 4. Placements made now contribute to firm revenue tracking but incentive follows ramp-up structure.</div>
-      </div>`;
-  } else if(phase.phase === 'revenue'){
-    phaseHTML = `
-      <div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:8px 14px;margin-bottom:12px;font-size:11px">
-        <span style="color:var(--teal);font-weight:600">💰 Section B — Revenue Incentive Plan</span>
-        &nbsp;·&nbsp; Month ${phase.month} with company &nbsp;·&nbsp; Joined ${fmtD(phase.doj)}
-      </div>`;
-  } else if(recSel){
-    phaseHTML = `
-      <div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--gold)">
-        ⚠ No company joining date set for <strong>${recSel}</strong>. Set it in Admin → Config → Recruiters to enable phase-aware incentive calculation.
-      </div>`;
-  }
+  const p = getActivePolicyPeriod();
 
-  // Revenue incentive calculation (Section B — only shown if in revenue phase or phase unknown with salary entered)
-  const showRevInc = phase.phase === 'revenue' || phase.phase === 'unknown';
-  const inc = showRevInc && monthlySalary > 0 ? calcRecIncentive(totalFirmRevenue, monthlySalary) : null;
-  const incHTML = showRevInc ? (inc ? `
-    <div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:14px 18px;margin-top:14px">
-      <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--teal)">📊 Incentive Calculation (Section B)</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;font-size:11px;margin-bottom:10px">
-        <div><span style="color:var(--w60)">Monthly Salary</span><br><strong>₹${monthlySalary.toLocaleString('en-IN')}</strong></div>
-        <div><span style="color:var(--w60)">Total Firm Revenue</span><br><strong>₹${Math.round(totalFirmRevenue).toLocaleString('en-IN')}</strong></div>
-        <div><span style="color:var(--w60)">Revenue Multiple</span><br><strong>${inc.multiple}×</strong></div>
-        <div><span style="color:var(--w60)">Applicable Slab</span><br><strong>${inc.slab}</strong></div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(52,186,198,.2)">
-        <span style="font-size:13px;font-weight:600">Your Incentive Earned</span>
-        <span style="font-size:22px;font-weight:700;color:var(--teal)">₹${inc.incentive.toLocaleString('en-IN')}</span>
-      </div>
-      ${inc.rate===0?'<div style="font-size:10px;color:var(--gold);margin-top:6px">⚠ Revenue does not yet exceed your monthly salary. Incentive is payable only above 1× salary.</div>':''}
-    </div>` : `<div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:10px 14px;margin-top:14px;font-size:11px;color:var(--gold)">💡 Enter your monthly salary above to calculate your Section B incentive.</div>`)
-    : '';
+  // ── Get all joined candidates in period ───────────────
+  const allJoined = MD.filter(r =>
+    r[C.status]==='Joined' && r[C.doj] >= from && r[C.doj] <= to &&
+    (!recSel || r[C.recruiter]===recSel)
+  );
+  setEl('inc-closed', allJoined.length);
 
-  if(!rows.length){
-    el.innerHTML = phaseHTML + '<div style="text-align:center;padding:24px;color:var(--w60)">No joined candidates for this period.</div>';
+  // ── Per-candidate phase classification ────────────────
+  // Section A vs B is determined by the DATE THE CANDIDATE WAS PLACED
+  // (their r[C.doj]) relative to the RECRUITER'S company DOJ.
+  // This is independent of when the calculation is being run.
+  const secA = [], secB = [], secUnknown = [];
+  let dojMissing = false;
+
+  allJoined.forEach(r => {
+    const exp  = parseExp(r[C.expYrs]);
+    const ctc  = (parseFloat(r[C.offeredSalary])||0)*12;
+    const fee  = calcFirmFee(exp, ctc, r[C.client], r[C.doj]);
+    const row  = {name:r[C.name], client:r[C.client], pos:r[C.position], exp, placedOn:r[C.doj], ctc, fee, raw:r};
+    if(recSel){
+      const ph = getRecruiterPhase(recSel, r[C.doj]);
+      row.phase = ph;
+      if(ph.phase === 'ramp')    secA.push(row);
+      else if(ph.phase === 'revenue') secB.push(row);
+      else { dojMissing = true; secUnknown.push(row); } // DOJ not set — cannot classify
+    } else {
+      row.phase = {phase:'unknown'};
+      secUnknown.push(row);
+    }
+  });
+
+  if(!allJoined.length){
+    const curPhase = recSel ? getRecruiterPhase(recSel, to) : {phase:'unknown'};
+    el.innerHTML = buildPhaseBanner(curPhase, p) +
+      '<div style="text-align:center;padding:24px;color:var(--w60)">No joined candidates for this period.</div>';
     return;
   }
 
-  el.innerHTML = phaseHTML +
-    '<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Position</th><th>Exp (yrs)</th><th>DOJ</th><th>CTC ₹ PA</th><th>Firm Fee</th></tr></thead><tbody>'+
-    rows.map(r=>'<tr><td><strong>'+r.name+'</strong></td><td class="m">'+r.client+'</td><td class="m">'+r.pos+'</td><td class="m">'+r.exp.toFixed(1)+'</td><td class="mono">'+fmtD(r.doj)+'</td><td class="m">₹'+r.ctc.toLocaleString('en-IN')+'</td><td class="m" style="font-weight:600">₹'+Math.round(r.fee).toLocaleString('en-IN')+'</td></tr>').join('')+
-    '<tr style="background:rgba(80,80,80,.06)"><td colspan="6" style="padding:8px 11px;font-weight:700">Total Firm Revenue for Period</td><td style="padding:8px 11px;font-weight:700">₹'+Math.round(totalFirmRevenue).toLocaleString('en-IN')+'</td></tr>'+
-    '</tbody></table></div>'+incHTML;
+  // If DOJ not set, block incentive calculation entirely — show hard warning
+  if(dojMissing && secUnknown.length === allJoined.length){
+    // ALL candidates unclassifiable — recruiter DOJ missing
+    el.innerHTML = `
+      <div style="background:rgba(255,80,80,.08);border:2px solid rgba(255,80,80,.35);border-radius:var(--rs);padding:16px 20px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:#ff6b6b;margin-bottom:8px">⚠ Cannot Calculate Incentive — Recruiter DOJ Not Set</div>
+        <div style="font-size:11px;margin-bottom:10px">
+          The incentive policy has <strong>two distinct sections</strong> based on how long the recruiter has been employed:
+          <ul style="margin:8px 0 8px 16px;line-height:1.8">
+            <li><strong>Section A (Months 1–3):</strong> Ramp-up incentive — max ₹5,000 based on call &amp; interview thresholds</li>
+            <li><strong>Section B (Month 4+):</strong> Revenue incentive — percentage of realised revenue vs salary</li>
+          </ul>
+          To classify candidates correctly, the system needs to know when <strong>${recSel||'this recruiter'}</strong> joined the company.
+        </div>
+        <div style="background:rgba(255,80,80,.1);border-radius:6px;padding:10px 14px;font-size:11px">
+          👉 Go to <strong>Admin → Config → Recruiters</strong>, find <strong>${recSel||'the recruiter'}</strong>, and set their company joining date.
+        </div>
+      </div>
+      <div style="opacity:.5">
+        <div class="sl2" style="margin-bottom:6px">${allJoined.length} hire${allJoined.length>1?'s':''} in period (unclassified — incentive calculation blocked)</div>
+        <div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Placed On</th><th>Firm Fee</th></tr></thead><tbody>
+        ${allJoined.map(r=>{
+          const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);
+          return '<tr><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.client]+'</td><td class="mono">'+fmtD(r[C.doj])+'</td><td class="m">₹'+Math.round(fee).toLocaleString('en-IN')+'</td></tr>';
+        }).join('')}
+        </tbody></table></div>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+
+  // Partial DOJ warning (some classified, some not)
+  if(dojMissing && secUnknown.length > 0){
+    html += `<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.3);border-radius:var(--rs);padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--gold)">
+      ⚠ ${secUnknown.length} candidate(s) could not be classified — recruiter DOJ is not set. Set it in Admin → Config → Recruiters.
+    </div>`;
+  }
+
+  // ── Section A: Ramp-Up Hires ──────────────────────────
+  if(secA.length){
+    const ramp = p?.rampUp || {};
+    // Group ramp hires by their employment month (1, 2, or 3)
+    const byMonth = {};
+    secA.forEach(r => { const m=r.phase.month||1; if(!byMonth[m])byMonth[m]=[]; byMonth[m].push(r); });
+    const monthsQualified = Object.keys(byMonth).length;
+    const incTier = (ramp.incentives||[{monthsMet:1,amount:1000},{monthsMet:2,amount:2500},{monthsMet:3,amount:5000}])
+                    .slice().reverse().find(t => t.monthsMet <= monthsQualified);
+
+    html += '<div style="background:rgba(255,160,0,.07);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:14px 18px;margin-bottom:16px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:10px">\ud83d\ude80 Section A \u2014 Ramp-Up Hires (Placed during Months 1\u20133)</div>';
+    html += '<div style="font-size:11px;color:var(--w60);margin-bottom:12px">These candidates were placed while the recruiter was in their first 3 months of employment. Section A applies regardless of when this calculation is being run. Max incentive \u20b95,000 over the 3-month ramp-up period (paid after Month 3).</div>';
+
+    // Table of ramp hires grouped by employment month
+    Object.keys(byMonth).sort().forEach(empMonth => {
+      const monthCfg = (ramp.months||[]).find(m=>m.month===parseInt(empMonth))||{};
+      html += '<div class="sl2" style="margin:0 0 6px">Employment Month '+empMonth+' &nbsp;<span style="font-weight:400;color:var(--w60);font-size:10px">Min calls: '+(monthCfg.minDailyCalls||'\u2014')+'/day &nbsp;\u00b7&nbsp; Min interviews: '+(monthCfg.minInterviews||'\u2014')+'</span></div>';
+      html += '<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Position</th><th>Exp</th><th>Placed On</th><th>CTC \u20b9 PA</th><th>Firm Fee</th></tr></thead><tbody>';
+      byMonth[empMonth].forEach(r => {
+        html += '<tr><td><strong>'+r.name+'</strong></td><td class="m">'+r.client+'</td><td class="m">'+r.pos+'</td><td class="m">'+r.exp.toFixed(1)+' yrs</td><td class="mono">'+fmtD(r.placedOn)+'</td><td class="m">\u20b9'+r.ctc.toLocaleString('en-IN')+'</td><td class="m">\u20b9'+Math.round(r.fee).toLocaleString('en-IN')+'</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+
+    // Ramp-up incentive summary
+    html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,160,0,.2);display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:11px">';
+    html += '<div><span style="color:var(--w60)">Employment months covered</span><br><strong>'+monthsQualified+' of 3</strong></div>';
+    html += '<div><span style="color:var(--w60)">Firm revenue generated</span><br><strong>\u20b9'+Math.round(secA.reduce((s,r)=>s+r.fee,0)).toLocaleString('en-IN')+'</strong></div>';
+    html += '<div style="background:rgba(255,160,0,.08);border-radius:6px;padding:8px"><span style="color:var(--w60)">Qualifying incentive tier</span><br><strong style="color:var(--gold)">'+(incTier ? '\u20b9'+incTier.amount.toLocaleString('en-IN')+' (if '+incTier.monthsMet+' month'+(incTier.monthsMet>1?'s':'')+' thresholds met)' : '\u2014')+'</strong></div>';
+    html += '</div>';
+    html += '<div style="font-size:10px;color:var(--w60);margin-top:8px">Actual ramp-up payout depends on call and interview thresholds being met each month. Revenue incentive (Section B) applies from Month 4 onwards.</div>';
+    html += '</div>';
+  }
+
+  // ── Section B: Revenue Hires ──────────────────────────
+  if(secB.length){
+    // Group Section B candidates by calendar month for per-month incentive calculation
+    const byCalMonth = {};
+    secB.forEach(r => {
+      const mk = r.placedOn.slice(0,7); // YYYY-MM
+      if(!byCalMonth[mk]) byCalMonth[mk] = [];
+      byCalMonth[mk].push(r);
+    });
+
+    const sortedMonths = Object.keys(byCalMonth).sort();
+    const multiMonthB  = sortedMonths.length > 1;
+
+    html += '<div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:14px 18px;margin-bottom:16px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:10px">\ud83d\udcb0 Section B \u2014 Revenue Hires (Month 4+)</div>';
+
+    if(multiMonthB && monthlySalary > 0){
+      // Multi-month summary table for Section B
+      const grandTotalFirm = secB.reduce((s,r)=>s+r.fee, 0);
+      const grandTotalInc  = sortedMonths.reduce((s,mk)=>{
+        const monthFirm = byCalMonth[mk].reduce((a,r)=>a+r.fee,0);
+        return s + (calcRecIncentive(monthFirm, monthlySalary).incentive||0);
+      }, 0);
+      html += '<div class="sl2" style="margin-bottom:8px">Month-by-Month Incentive (Section B is calculated monthly against salary)</div>';
+      html += '<div class="tw"><table><thead><tr><th>Month</th><th>Hires</th><th>Firm Revenue</th><th>Revenue Multiple</th><th>Rate</th><th>Incentive Earned</th></tr></thead><tbody>';
+      sortedMonths.forEach(mk => {
+        const mLabel = new Date(mk+'-01').toLocaleString('en-IN',{month:'short',year:'numeric'});
+        const mFirm  = byCalMonth[mk].reduce((s,r)=>s+r.fee, 0);
+        const inc    = calcRecIncentive(mFirm, monthlySalary);
+        html += '<tr><td class="mono" style="font-size:11px">'+mLabel+'</td><td class="m">'+byCalMonth[mk].length+'</td><td class="m" style="font-weight:600">\u20b9'+Math.round(mFirm).toLocaleString('en-IN')+'</td><td class="m">'+inc.multiple+'\u00d7</td><td class="m">'+inc.rate+'%</td><td style="color:var(--teal);font-weight:600">\u20b9'+inc.incentive.toLocaleString('en-IN')+'</td></tr>';
+      });
+      html += '<tr style="background:rgba(52,186,198,.08)"><td colspan="2" style="font-weight:700;padding:8px 11px">Total</td><td style="font-weight:700;padding:8px 11px">\u20b9'+Math.round(grandTotalFirm).toLocaleString('en-IN')+'</td><td colspan="2"></td><td style="color:var(--teal);font-weight:700;padding:8px 11px">\u20b9'+Math.round(grandTotalInc).toLocaleString('en-IN')+'</td></tr>';
+      html += '</tbody></table></div>';
+    }
+
+    // Per-month candidate breakdown
+    sortedMonths.forEach(mk => {
+      const mLabel = new Date(mk+'-01').toLocaleString('en-IN',{month:'short',year:'numeric'});
+      const mFirm  = byCalMonth[mk].reduce((s,r)=>s+r.fee, 0);
+      const inc    = monthlySalary > 0 ? calcRecIncentive(mFirm, monthlySalary) : null;
+      if(multiMonthB) html += '<div class="sl2" style="margin:14px 0 6px">'+mLabel+' \u2014 '+byCalMonth[mk].length+' hire'+(byCalMonth[mk].length>1?'s':'')+'</div>';
+      html += '<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Position</th><th>Exp</th><th>Placed On</th><th>CTC \u20b9 PA</th><th>Firm Fee</th></tr></thead><tbody>';
+      byCalMonth[mk].forEach(r => {
+        html += '<tr><td><strong>'+r.name+'</strong></td><td class="m">'+r.client+'</td><td class="m">'+r.pos+'</td><td class="m">'+r.exp.toFixed(1)+' yrs</td><td class="mono">'+fmtD(r.placedOn)+'</td><td class="m">\u20b9'+r.ctc.toLocaleString('en-IN')+'</td><td class="m" style="font-weight:600">\u20b9'+Math.round(r.fee).toLocaleString('en-IN')+'</td></tr>';
+      });
+      html += '<tr style="background:rgba(80,80,80,.06)"><td colspan="6" style="padding:8px 11px;font-weight:700">Firm Revenue \u2014 '+mLabel+'</td><td style="padding:8px 11px;font-weight:700">\u20b9'+Math.round(mFirm).toLocaleString('en-IN')+'</td></tr>';
+      html += '</tbody></table></div>';
+      if(!multiMonthB){
+        if(inc){
+          html += '<div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:14px 18px;margin-top:12px">';
+          html += '<div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--teal)">\ud83d\udcca Incentive Calculation \u2014 '+mLabel+' (Section B)</div>';
+          html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;font-size:11px;margin-bottom:10px">';
+          html += '<div><span style="color:var(--w60)">Monthly Salary</span><br><strong>\u20b9'+monthlySalary.toLocaleString('en-IN')+'</strong></div>';
+          html += '<div><span style="color:var(--w60)">Firm Revenue</span><br><strong>\u20b9'+Math.round(mFirm).toLocaleString('en-IN')+'</strong></div>';
+          html += '<div><span style="color:var(--w60)">Revenue Multiple</span><br><strong>'+inc.multiple+'\u00d7</strong></div>';
+          html += '<div><span style="color:var(--w60)">Applicable Slab</span><br><strong>'+inc.slab+'</strong></div>';
+          html += '</div><div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(52,186,198,.2)">';
+          html += '<span style="font-size:13px;font-weight:600">Incentive Earned</span><span style="font-size:22px;font-weight:700;color:var(--teal)">\u20b9'+inc.incentive.toLocaleString('en-IN')+'</span></div>';
+          if(inc.rate===0) html += '<div style="font-size:10px;color:var(--gold);margin-top:6px">\u26a0 Revenue below 1\u00d7 salary threshold \u2014 no incentive payable.</div>';
+          html += '</div>';
+        } else {
+          html += '<div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:10px 14px;margin-top:12px;font-size:11px;color:var(--gold)">\ud83d\udca1 Enter your monthly salary above to calculate your incentive.</div>';
+        }
+      }
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
 }
 
-// ── Team Earnings ──────────────────────────────────────
+function buildPhaseBanner(phase, p){
+  if(phase.phase==='ramp'){
+    const ramp=p?.rampUp||{};
+    const mc=(ramp.months||[]).find(m=>m.month===phase.month)||{};
+    return '<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:12px 16px;margin-bottom:12px">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">\ud83d\ude80 Section A \u2014 Ramp-Up Month '+phase.month+' of 3 &nbsp;<span style="font-weight:400;font-size:10px">(Joined '+fmtD(phase.doj)+')</span></div>'
+      +'<div style="font-size:11px;display:flex;gap:20px"><span>\ud83d\udcde Min daily calls: <strong>'+(mc.minDailyCalls||'\u2014')+'</strong></span><span>\ud83d\udcc5 Min interviews: <strong>'+(mc.minInterviews||'\u2014')+'</strong></span><span>Max: <strong>\u20b95,000</strong> over 3 months</span></div></div>';
+  }
+  if(phase.phase==='revenue'){
+    return '<div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:8px 14px;margin-bottom:12px;font-size:11px">'
+      +'<span style="color:var(--teal);font-weight:600">\ud83d\udcb0 Section B \u2014 Revenue Incentive Plan</span> &nbsp;\u00b7&nbsp; Month '+phase.month+' with company &nbsp;\u00b7&nbsp; Joined '+fmtD(phase.doj)+'</div>';
+  }
+  if(phase.phase==='unknown'&&phase.doj===null){
+    return '<div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--gold)">\u26a0 No company DOJ set \u2014 set it in Admin \u2192 Config \u2192 Recruiters.</div>';
+  }
+  return '';
+}
+
+
+// ── Team Earnings ────────────────────────────────────── ──────────────────────────────────────
 function calcTeamEarnings(){
   const period = gv('inc-team-period') || 'month';
   const {from, to} = getPeriodDates(period);
@@ -4003,63 +4185,125 @@ function renderPolicyView(){
 
 // ── Projections ────────────────────────────────────────
 function genProjections(){
-  const recFilter = gv('proj-rec') || '';
+  const recFilter   = gv('proj-rec') || '';
+  const phaseFilter = gv('proj-phase') || 'all';
+  const monthlySalary   = parseFloat(document.getElementById('proj-salary')?.value) || 0;
+  const currentRevenue  = parseFloat(document.getElementById('proj-current-rev')?.value) || 0;
   const el = document.getElementById('inc-proj-list');
   if(!el) return;
 
-  // Populate recruiter dropdown
+  // Populate recruiter dropdown once
   const projRec = document.getElementById('proj-rec');
   if(projRec && projRec.options.length <= 1){
     mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;projRec.appendChild(o);});
   }
+  // Populate phase-filtered recruiter dropdown based on selection
+  // (filter 'proj-phase' is separate)
 
   const open = VD.filter(v => v['Current Status']==='Open' && v['Active']!=='N');
-  if(!open.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No open vacancies to project.</div>';return;}
   const p = getActivePolicyPeriod();
   if(!p){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No active policy configured.</div>';return;}
 
-  // Show slab reference
-  const slabRef = '<div style="margin-bottom:14px;background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:10px 14px"><div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Active Policy: '+p.title+' (Rev #'+p.revision+')</div><div style="display:flex;gap:16px;flex-wrap:wrap">'+
-    p.slabs.map(s=>'<span style="font-size:10px;color:var(--w60)">'+
-      (s.expFrom===0?'0':'&#62;'+s.expFrom)+'–'+(s.expTo>=999?''+s.expFrom+'+ yrs':'≤'+s.expTo+' yrs')+
-      ': <strong style="color:var(--ow)">'+(s.model==='fixed'?'₹'+s.amount.toLocaleString('en-IN'):s.rate+'%')+'</strong></span>').join('')+
-    '</div></div>';
+  // Apply phase filter to recruiters
+  let filteredVacs = open.filter(v => !recFilter || v['Recruiter']===recFilter);
+  if(phaseFilter !== 'all'){
+    filteredVacs = filteredVacs.filter(v => {
+      if(!v['Recruiter']) return phaseFilter === 'revenue'; // no DOJ = treat as revenue
+      const ph = getRecruiterPhase(v['Recruiter'], today());
+      if(phaseFilter === 'ramp')    return ph.phase === 'ramp';
+      if(phaseFilter === 'revenue') return ph.phase === 'revenue' || ph.phase === 'unknown';
+      return true;
+    });
+  }
+
+  // Policy header
+  const slabRef = `<div style="margin-bottom:14px;background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:10px 14px">
+    <div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Active Policy: ${p.title} (Rev #${p.revision})</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+    ${p.slabs.map(s=>'<span style="font-size:10px;color:var(--w60)">'+(s.expFrom===0?'0':'&gt;'+s.expFrom)+'–'+(s.expTo>=999?s.expFrom+'+ yrs':'≤'+s.expTo+' yrs')+': <strong style="color:var(--ow)">'+(s.model==='fixed'?'₹'+s.amount.toLocaleString('en-IN'):s.rate+'%')+'</strong></span>').join('')}
+    </div></div>`;
+
+  // Phase summary banner
+  let phaseBanner = '';
+  if(phaseFilter === 'ramp'){
+    const ramp = p.rampUp || {};
+    phaseBanner = `<div style="background:rgba(255,160,0,.07);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:12px 16px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">🚀 Ramp-Up Phase Projection (Section A)</div>
+      <div style="font-size:11px;color:var(--w60)">Showing vacancies assigned to recruiters in months 1–3. Revenue generated counts toward firm tracking but recruiter incentive follows Section A structure (max ₹5,000 over 3 months based on call/interview thresholds).</div>
+      <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px">
+        ${(ramp.incentives||[]).map(t=>`<div style="background:rgba(255,160,0,.06);border-radius:4px;padding:6px 8px"><span style="color:var(--w60)">${t.monthsMet} month${t.monthsMet>1?'s':''} qualifying</span><br><strong>₹${t.amount.toLocaleString('en-IN')}</strong></div>`).join('')}
+      </div>
+    </div>`;
+  } else if(phaseFilter === 'revenue' && monthlySalary > 0){
+    const defaultSlabs=[{multipleFrom:0,multipleTo:1,rate:0},{multipleFrom:1,multipleTo:2,rate:10},{multipleFrom:2,multipleTo:3,rate:15},{multipleFrom:3,multipleTo:4,rate:20},{multipleFrom:4,multipleTo:999,rate:25}];
+    const iSlabs = p.incentiveSlabs || defaultSlabs;
+    const ladderHTML = iSlabs.map(s=>`<span style="padding:3px 9px;border-radius:10px;font-size:10px;background:rgba(52,186,198,.08);color:var(--w60)">${s.rate===0?'< 1×: Nil':s.multipleFrom+'×'+(s.multipleTo>=999?'+':' – '+s.multipleTo+'×')+': '+s.rate+'%'}</span>`).join(' ');
+    phaseBanner = `<div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:12px 16px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:6px">💰 Revenue Phase Projection (Section B)</div>
+      <div style="font-size:11px;margin-bottom:8px">Salary: <strong>₹${monthlySalary.toLocaleString('en-IN')}/month</strong> &nbsp;·&nbsp; Current revenue this month: <strong>₹${currentRevenue.toLocaleString('en-IN')}</strong></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${ladderHTML}</div>
+    </div>`;
+  }
+
+  if(!filteredVacs.length){
+    el.innerHTML = slabRef + phaseBanner + `<div style="text-align:center;padding:20px;color:var(--w60)">No open vacancies match the selected filter.</div>`;
+    return;
+  }
 
   // Per vacancy projections
-  const vacRows = open
-    .filter(v => !recFilter || v['Recruiter']===recFilter)
-    .map(v => {
-      const budgetMin = parseFloat(v['Budget Min']||0);
-      const budgetMax = parseFloat(v['Budget Max']||0);
-      const midBudget = budgetMin && budgetMax ? (budgetMin+budgetMax)/2 : budgetMin||budgetMax||0;
-      const annualMid = midBudget * 12;
-      const exp = parseExp(v['Experience'] || '2');  // default 2 years if unknown
-      const feeMin = budgetMin ? calcFirmFee(exp, budgetMin*12, v['Company']) : 0;
-      const feeMax = budgetMax ? calcFirmFee(exp, budgetMax*12, v['Company']) : 0;
-      const feeMid = calcFirmFee(exp, annualMid, v['Company']);
-      const recMin = calcRecShare(feeMin, v['Company']);
-      const recMax = calcRecShare(feeMax, v['Company']);
-      const recMid = calcRecShare(feeMid, v['Company']);
-      const positions = parseInt(v['Positions Count']||1);
-      return {v, exp, feeMid, recMid, feeMin, feeMax, recMin, recMax, positions};
-    });
+  const vacRows = filteredVacs.map(v => {
+    const budgetMin = parseFloat(v['Budget Min']||0);
+    const budgetMax = parseFloat(v['Budget Max']||0);
+    const midBudget = budgetMin && budgetMax ? (budgetMin+budgetMax)/2 : budgetMin||budgetMax||0;
+    const annualMid = midBudget * 12;
+    const exp = parseExp(v['Experience'] || '2');
+    const feeMin = budgetMin ? calcFirmFee(exp, budgetMin*12, v['Company']) : 0;
+    const feeMax = budgetMax ? calcFirmFee(exp, budgetMax*12, v['Company']) : 0;
+    const feeMid = calcFirmFee(exp, annualMid, v['Company']);
+    const positions = parseInt(v['Positions Count']||1);
+    const recPhase = v['Recruiter'] ? getRecruiterPhase(v['Recruiter'], today()) : {phase:'unknown'};
+    return {v, exp, feeMid, feeMin, feeMax, positions, recPhase};
+  });
 
-  const totFirmMid = vacRows.reduce((s,r)=>s+r.feeMid*r.positions,0);
-  const totRecMid  = vacRows.reduce((s,r)=>s+r.recMid*r.positions,0);
+  const totFirmMid = vacRows.reduce((s,r)=>s+r.feeMid*r.positions, 0);
+  const projRevTotal = currentRevenue + totFirmMid;
 
-  el.innerHTML = slabRef +
-    '<div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Recruiter</th><th>Exp (approx)</th><th>Positions</th><th>Firm Fee Range</th><th>Rec Share Range</th></tr></thead><tbody>'+
+  // Incentive projection for revenue phase
+  let incProjection = '';
+  if((phaseFilter === 'revenue' || phaseFilter === 'all') && monthlySalary > 0){
+    const incCurrent = calcRecIncentive(currentRevenue, monthlySalary);
+    const incWithAll = calcRecIncentive(projRevTotal, monthlySalary);
+    incProjection = `<div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:14px 18px;margin-top:14px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--teal)">📊 Incentive Projection (if all ${vacRows.length} vacancies close at mid-range)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:11px">
+        <div><span style="color:var(--w60)">Current Revenue</span><br><strong>₹${currentRevenue.toLocaleString('en-IN')}</strong><br><span style="color:var(--w60);font-size:10px">${incCurrent.rate}% → ₹${incCurrent.incentive.toLocaleString('en-IN')}</span></div>
+        <div><span style="color:var(--w60)">+ Projected (all vacancies)</span><br><strong>₹${Math.round(totFirmMid).toLocaleString('en-IN')}</strong></div>
+        <div style="background:rgba(52,186,198,.08);border-radius:6px;padding:8px"><span style="color:var(--w60)">Total Revenue</span><br><strong>₹${Math.round(projRevTotal).toLocaleString('en-IN')}</strong><br><span style="color:var(--teal);font-size:10px;font-weight:600">${incWithAll.multiple}× → ${incWithAll.rate}% → ₹${incWithAll.incentive.toLocaleString('en-IN')}</span></div>
+      </div>
+      ${incWithAll.rate > incCurrent.rate ? `<div style="margin-top:8px;font-size:10px;color:var(--teal)">✓ Closing these vacancies moves you from ${incCurrent.rate}% to ${incWithAll.rate}% slab.</div>` : ''}
+    </div>`;
+  }
+
+  const phBadge = rec => {
+    const ph = rec ? getRecruiterPhase(rec, today()) : {phase:'unknown'};
+    if(ph.phase==='ramp') return `<span style="background:rgba(255,160,0,.15);color:var(--gold);font-size:9px;padding:1px 6px;border-radius:10px;font-weight:600">Ramp M${ph.month}</span>`;
+    if(ph.phase==='revenue') return `<span style="background:rgba(52,186,198,.12);color:var(--teal);font-size:9px;padding:1px 6px;border-radius:10px;font-weight:600">Revenue</span>`;
+    return `<span style="color:var(--w60);font-size:9px">—</span>`;
+  };
+
+  el.innerHTML = slabRef + phaseBanner +
+    '<div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Recruiter</th><th>Phase</th><th>Exp</th><th>Pos</th><th>Firm Fee Range</th></tr></thead><tbody>'+
     vacRows.map(r=>`<tr>
       <td><strong>${r.v['Designation']}</strong></td>
       <td class="m">${r.v['Company']}</td>
       <td class="m">${r.v['Recruiter']||'—'}</td>
+      <td>${phBadge(r.v['Recruiter'])}</td>
       <td class="m">${r.exp.toFixed(1)} yrs</td>
       <td class="m">${r.positions}</td>
-      <td class="m">${r.feeMin&&r.feeMax ? '₹'+Math.round(r.feeMin).toLocaleString('en-IN')+' – ₹'+Math.round(r.feeMax).toLocaleString('en-IN') : r.feeMid ? '₹'+Math.round(r.feeMid).toLocaleString('en-IN') : '—'}</td>
-      <td style="color:var(--gold);font-weight:600">${r.recMin&&r.recMax ? '₹'+Math.round(r.recMin).toLocaleString('en-IN')+' – ₹'+Math.round(r.recMax).toLocaleString('en-IN') : r.recMid ? '₹'+Math.round(r.recMid).toLocaleString('en-IN') : '—'}</td>
+      <td class="m" style="font-weight:600">${r.feeMin&&r.feeMax ? '₹'+Math.round(r.feeMin).toLocaleString('en-IN')+' – ₹'+Math.round(r.feeMax).toLocaleString('en-IN') : r.feeMid ? '₹'+Math.round(r.feeMid).toLocaleString('en-IN') : '—'}</td>
     </tr>`).join('')+
-    `<tr style="background:rgba(233,152,43,.08)"><td colspan="5" style="font-weight:700;padding:8px 11px">If ALL ${vacRows.length} vacancies close (mid-range)</td><td style="font-weight:700;padding:8px 11px">₹${Math.round(totFirmMid).toLocaleString('en-IN')}</td><td style="color:var(--gold);font-weight:700;padding:8px 11px">₹${Math.round(totRecMid).toLocaleString('en-IN')}</td></tr>`+
-    '</tbody></table></div>';
+    `<tr style="background:rgba(233,152,43,.08)"><td colspan="5" style="font-weight:700;padding:8px 11px">Total if ALL ${vacRows.length} vacancies close (mid-range)</td><td></td><td style="font-weight:700;padding:8px 11px">₹${Math.round(totFirmMid).toLocaleString('en-IN')}</td></tr>`+
+    '</tbody></table></div>' + incProjection;
 }
 
 // ── Billing Config (Admin) ─────────────────────────────
