@@ -3939,33 +3939,27 @@ function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthNum){
 }
 
 // Render the full Section A activity dashboard
-function renderSectionAView(el, recSel, p){
+// Build Section A HTML — accepts optional empMonthNums filter (e.g. [1,2] to show only months 1&2)
+function buildSectionAHTML(recSel, p, empMonthNums){
   const rec = M.recruiters && M.recruiters.find(r => r.name === recSel);
   if(!rec || !rec.doj){
-    el.innerHTML = '<div style="background:rgba(255,80,80,.08);border:2px solid rgba(255,80,80,.3);border-radius:var(--rs);padding:16px 20px">'
+    return '<div style="background:rgba(255,80,80,.08);border:2px solid rgba(255,80,80,.3);border-radius:var(--rs);padding:16px 20px">'
       +'<strong style="color:#ff6b6b">\u26a0 Recruiter DOJ not set</strong><br><div style="font-size:11px;margin-top:6px">Set it in Admin \u2192 Config \u2192 Recruiters to calculate Section A incentive.</div></div>';
-    return;
   }
-
   const ramp = p?.rampUp || {};
   const incTiers = ramp.incentives || [{monthsMet:1,amount:1000},{monthsMet:2,amount:2500},{monthsMet:3,amount:5000}];
-
-  const empMonths = getRampEmploymentMonths(recSel);
-  if(!empMonths.length){ el.innerHTML='<div style="color:var(--w60);padding:20px;text-align:center">Could not compute employment months.</div>'; return; }
-
+  const allEmpMonths = getRampEmploymentMonths(recSel);
+  const empMonths = empMonthNums ? allEmpMonths.filter(em => empMonthNums.includes(em.empMonth)) : allEmpMonths;
+  if(!empMonths.length) return '<div style="color:var(--w60);padding:20px;text-align:center">Could not compute employment months.</div>';
   const results = empMonths.map(em => calcSectionAForMonth(recSel, em.from, em.to, em.empMonth));
   const qualifyingCount = results.filter(r => r.qualified).length;
+  // For incentive tier — always evaluate against the full 3-month scale (max payable at month 3)
   const incTier = incTiers.slice().reverse().find(t => t.monthsMet <= qualifyingCount);
-
   let html = '';
-
-  // Header banner
-  html += `<div style="background:rgba(255,160,0,.07);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:14px 18px;margin-bottom:16px">
-    <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:4px">\ud83d\ude80 Section A \u2014 Ramp-Up Incentive Calculator</div>
-    <div style="font-size:11px;color:var(--w60)">Activity-based incentive for ${recSel}\u2019s first 3 months of employment (${fmtD(rec.doj)} onwards). Calculated from profiles sourced and interviews conducted \u2014 no placement required.</div>
+  html += `<div style="background:rgba(255,160,0,.07);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:12px 16px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:3px">\ud83d\ude80 Section A \u2014 Ramp-Up Activity (Months 1\u20133 of employment)</div>
+    <div style="font-size:11px;color:var(--w60)">${recSel}\u2019s ramp-up period from ${fmtD(rec.doj)}. Activity-based \u2014 no placement required. Calls = profiles sourced/day. Interviews derived from ATS status.</div>
   </div>`;
-
-  // Per employment month
   results.forEach(res => {
     const callColor  = res.callsMet      ? 'var(--teal)' : '#ff6b6b';
     const intvColor  = res.interviewsMet ? 'var(--teal)' : '#ff6b6b';
@@ -3974,86 +3968,134 @@ function renderSectionAView(el, recSel, p){
     const qualBadge  = res.qualified
       ? '<span style="background:var(--teal);color:#000;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">QUALIFIES</span>'
       : '<span style="background:rgba(255,80,80,.2);color:#ff6b6b;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">DOES NOT QUALIFY</span>';
-
-    html += `<div style="border:1px solid ${qualBorder};border-radius:var(--rs);margin-bottom:14px;overflow:hidden">
-      <div style="background:${qualBg};padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+    html += `<div style="border:1px solid ${qualBorder};border-radius:var(--rs);margin-bottom:12px;overflow:hidden">
+      <div style="background:${qualBg};padding:9px 14px;display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:12px;font-weight:700">Employment Month ${res.empMonthNum} &nbsp;<span style="font-weight:400;color:var(--w60);font-size:10px">${fmtD(res.monthFrom)} \u2013 ${fmtD(res.monthTo)}</span></div>
         ${qualBadge}
       </div>
-      <div style="padding:14px 16px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <!-- Calls column -->
+      <div style="padding:12px 14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div>
-            <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Daily Calls (Profiles Sourced)</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;margin-bottom:8px">
-              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
-                <div style="color:var(--w60);font-size:10px">Total profiles sourced</div>
-                <div style="font-size:18px;font-weight:700">${res.totalProfiles}</div>
-              </div>
-              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
-                <div style="color:var(--w60);font-size:10px">Days sourced / Month days</div>
-                <div style="font-size:18px;font-weight:700">${res.activeDays}<span style="font-size:11px;color:var(--w60)">/${res.calDays}</span></div>
-              </div>
-              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
-                <div style="color:var(--w60);font-size:10px">Daily average</div>
-                <div style="font-size:18px;font-weight:700;color:${callColor}">${res.dailyAvg}</div>
-              </div>
-              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
-                <div style="color:var(--w60);font-size:10px">Threshold</div>
-                <div style="font-size:18px;font-weight:700">${res.monthCfg.minDailyCalls}<span style="font-size:10px;color:${callColor};margin-left:4px">${res.callsMet ? '\u2714 Met' : '\u2718 Not met'}</span></div>
-              </div>
+            <div style="font-size:10px;font-weight:600;margin-bottom:7px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Daily Calls (Profiles Sourced)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Total</div><div style="font-size:16px;font-weight:700">${res.totalProfiles}</div></div>
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Days active</div><div style="font-size:16px;font-weight:700">${res.activeDays}</div></div>
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Daily avg</div><div style="font-size:16px;font-weight:700;color:${callColor}">${res.dailyAvg}</div></div>
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Need \u2265</div><div style="font-size:16px;font-weight:700">${res.monthCfg.minDailyCalls}<span style="font-size:9px;color:${callColor};margin-left:2px">${res.callsMet?'\u2714':'\u2718'}</span></div></div>
             </div>
-            ${Object.keys(res.byDay).length ? `<div style="font-size:9px;color:var(--w60);margin-top:4px">
-              Active sourcing days: ${Object.entries(res.byDay).sort().map(([d,n])=>`<span style="margin-right:6px">${fmtD(d)}: ${n}</span>`).join('')}
-            </div>` : '<div style="font-size:10px;color:var(--w60)">No profiles sourced in this period.</div>'}
+            ${Object.keys(res.byDay).length?`<div style="font-size:9px;color:var(--w60)">${Object.entries(res.byDay).sort().map(([d,n])=>`<span style="margin-right:5px">${fmtD(d)}:${n}</span>`).join('')}</div>`:'<div style="font-size:10px;color:var(--w60)">No profiles sourced in this month.</div>'}
           </div>
-          <!-- Interviews column -->
           <div>
-            <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Interviews Attended</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;margin-bottom:8px">
-              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
-                <div style="color:var(--w60);font-size:10px">Interviews counted</div>
-                <div style="font-size:18px;font-weight:700;color:${intvColor}">${res.interviewCount}</div>
-              </div>
-              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
-                <div style="color:var(--w60);font-size:10px">Threshold</div>
-                <div style="font-size:18px;font-weight:700">${res.monthCfg.minInterviews}<span style="font-size:10px;color:${intvColor};margin-left:4px">${res.interviewsMet ? '\u2714 Met' : '\u2718 Not met'}</span></div>
-              </div>
+            <div style="font-size:10px;font-weight:600;margin-bottom:7px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Interviews Attended</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Count</div><div style="font-size:20px;font-weight:700;color:${intvColor}">${res.interviewCount}</div></div>
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Need \u2265</div><div style="font-size:20px;font-weight:700">${res.monthCfg.minInterviews}<span style="font-size:9px;color:${intvColor};margin-left:2px">${res.interviewsMet?'\u2714':'\u2718'}</span></div></div>
             </div>
-            <div style="font-size:9px;color:var(--w60)">Basis: ${res.interviewMethod}. Counted: Selected, Offered, Joined, Rejected by Client, Interview Scheduled/In Progress. Rejected by Consultant + Anne = counted.</div>
-            ${res.interviews.length ? `<div style="margin-top:6px;font-size:10px;max-height:80px;overflow-y:auto">
-              ${res.interviews.map(r=>`<span style="display:inline-block;margin:1px 4px 1px 0;background:rgba(52,186,198,.1);border-radius:3px;padding:1px 5px">${r[C.name]||r[C.code]} (${r[C.status]})</span>`).join('')}
-            </div>` : ''}
+            <div style="font-size:9px;color:var(--w60);margin-bottom:4px">Basis: ${res.interviewMethod}</div>
+            ${res.interviews.length?`<div style="font-size:9px;max-height:60px;overflow-y:auto">${res.interviews.map(r=>`<span style="display:inline-block;margin:1px 3px 1px 0;background:rgba(52,186,198,.1);border-radius:3px;padding:1px 4px">${r[C.name]||r[C.code]} (${r[C.status]})</span>`).join('')}</div>`:''}
           </div>
         </div>
       </div>
     </div>`;
   });
-
-  // Incentive summary
-  html += `<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:14px 18px">
-    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">Section A Incentive Summary</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:11px;margin-bottom:12px">
-      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:6px;padding:8px 10px;text-align:center">
-        <div style="color:var(--w60);font-size:10px">Month ${r.empMonthNum}</div>
-        <div style="font-size:14px;font-weight:700;color:${r.qualified?'var(--teal)':'#ff6b6b'}">${r.qualified ? '\u2714 Qualifies' : '\u2718 Fails'}</div>
-      </div>`).join('')}
-      <div style="background:rgba(255,160,0,.1);border-radius:6px;padding:8px 10px;text-align:center">
-        <div style="color:var(--w60);font-size:10px">Qualifying months</div>
-        <div style="font-size:14px;font-weight:700">${qualifyingCount} of 3</div>
-      </div>
+  html += `<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px">
+    <div style="font-size:11px;font-weight:700;color:var(--gold);margin-bottom:8px">Section A Incentive Summary</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;margin-bottom:8px">
+      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:5px;padding:5px 10px;text-align:center"><div style="font-size:9px;color:var(--w60)">Month ${r.empMonthNum}</div><div style="font-weight:700;color:${r.qualified?'var(--teal)':'#ff6b6b'}">${r.qualified?'\u2714':'\u2718'}</div></div>`).join('')}
+      <div style="background:rgba(255,160,0,.1);border-radius:5px;padding:5px 10px"><div style="font-size:9px;color:var(--w60)">Qualifying</div><div style="font-weight:700">${qualifyingCount}/3 months</div></div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(255,160,0,.2)">
-      <div>
-        <div style="font-size:13px;font-weight:600">Ramp-Up Incentive Earned</div>
-        <div style="font-size:10px;color:var(--w60);margin-top:2px">Paid after successful completion of Month 3. Requires BOTH call and interview thresholds met in each qualifying month.</div>
-      </div>
-      <div style="font-size:26px;font-weight:700;color:var(--gold)">\u20b9${incTier ? incTier.amount.toLocaleString('en-IN') : '0'}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,160,0,.2)">
+      <div><div style="font-size:12px;font-weight:600">Ramp-Up Incentive</div><div style="font-size:10px;color:var(--w60)">Paid after Month 3. Requires BOTH thresholds met per qualifying month.</div></div>
+      <div style="font-size:24px;font-weight:700;color:var(--gold)">\u20b9${incTier?incTier.amount.toLocaleString('en-IN'):'0'}</div>
     </div>
-    ${qualifyingCount === 0 ? '<div style="font-size:10px;color:#ff6b6b;margin-top:6px">\u26a0 No months qualify yet. Both daily call threshold AND interview threshold must be met in the same month.</div>' : ''}
   </div>`;
+  return html;
+}
 
-  el.innerHTML = html;
+// Wrapper — renders Section A for ALL 3 months directly into el
+function renderSectionAView(el, recSel, p){
+  el.innerHTML = buildSectionAHTML(recSel, p, null);
+}
+
+
+function _updateKPICards(recSel){
+  const pipe2 = MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&(!recSel||r[C.recruiter]===recSel));
+  let pot2=0; pipe2.forEach(r=>{pot2+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||0)*12,r[C.client]);});
+  const ymtd=today().slice(0,4)+'-04-01'; const tm=today().slice(0,7);
+  const ytdJ=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=ymtd&&(!recSel||r[C.recruiter]===recSel));
+  let ytd=0; ytdJ.forEach(r=>{ytd+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);});
+  const tmJ=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]&&r[C.doj].slice(0,7)===tm&&(!recSel||r[C.recruiter]===recSel));
+  let tmf=0; tmJ.forEach(r=>{tmf+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);});
+  const se=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  se('inc-earned','\u20b9'+Math.round(tmf).toLocaleString('en-IN'));
+  se('inc-ytd','\u20b9'+Math.round(ytd).toLocaleString('en-IN'));
+  se('inc-potential','\u20b9'+Math.round(pot2).toLocaleString('en-IN'));
+}
+
+function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
+  let html = '<div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:12px 16px;margin-bottom:12px">';
+  html += '<div style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:3px">\ud83d\udcb0 Section B \u2014 Revenue Incentive (Month 4+)</div>';
+  html += `<div style="font-size:11px;color:var(--w60)">Candidates who joined clients during ${fmtD(from)} \u2013 ${fmtD(to)}. Incentive calculated monthly: total firm revenue \u00f7 salary = rate applied to total revenue.</div></div>`;
+  if(!joined.length){
+    html += '<div style="text-align:center;padding:16px;color:var(--w60)">No candidates joined in the revenue period.</div>';
+    return html;
+  }
+  // Group by calendar month
+  const byCalMonth = {};
+  joined.forEach(r => {
+    const mk = r[C.doj].slice(0,7);
+    if(!byCalMonth[mk]) byCalMonth[mk]=[];
+    byCalMonth[mk].push(r);
+  });
+  const sortedMks = Object.keys(byCalMonth).sort();
+  const multi = sortedMks.length > 1;
+  if(multi && monthlySalary > 0){
+    const grandFirm = joined.reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]),0);
+    const grandInc  = sortedMks.reduce((s,mk)=>{
+      const mf=byCalMonth[mk].reduce((a,r)=>a+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]),0);
+      return s+(calcRecIncentive(mf,monthlySalary).incentive||0);
+    },0);
+    html += '<div class="tw"><table><thead><tr><th>Month</th><th>Hires</th><th>Firm Revenue</th><th>Multiple</th><th>Rate</th><th>Incentive</th></tr></thead><tbody>';
+    sortedMks.forEach(mk=>{
+      const ml=new Date(mk+'-01').toLocaleString('en-IN',{month:'short',year:'numeric'});
+      const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]),0);
+      const inc=calcRecIncentive(mf,monthlySalary);
+      html+=`<tr><td class="mono" style="font-size:11px">${ml}</td><td class="m">${byCalMonth[mk].length}</td><td class="m" style="font-weight:600">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td><td class="m">${inc.multiple}\u00d7</td><td class="m">${inc.rate}%</td><td style="color:var(--teal);font-weight:600">\u20b9${inc.incentive.toLocaleString('en-IN')}</td></tr>`;
+    });
+    html+=`<tr style="background:rgba(52,186,198,.08)"><td colspan="2" style="font-weight:700;padding:8px 11px">Total</td><td style="font-weight:700;padding:8px 11px">\u20b9${Math.round(grandFirm).toLocaleString('en-IN')}</td><td colspan="2"></td><td style="color:var(--teal);font-weight:700;padding:8px 11px">\u20b9${Math.round(grandInc).toLocaleString('en-IN')}</td></tr>`;
+    html += '</tbody></table></div>';
+  }
+  sortedMks.forEach(mk=>{
+    const ml=new Date(mk+'-01').toLocaleString('en-IN',{month:'short',year:'numeric'});
+    const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]),0);
+    const inc=monthlySalary>0?calcRecIncentive(mf,monthlySalary):null;
+    if(multi) html+=`<div class="sl2" style="margin:12px 0 6px">${ml} \u2014 ${byCalMonth[mk].length} hire${byCalMonth[mk].length>1?'s':''}</div>`;
+    html+='<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Pos</th><th>Exp</th><th>Joined</th><th>CTC \u20b9 PA</th><th>Firm Fee</th></tr></thead><tbody>';
+    byCalMonth[mk].forEach(r=>{
+      const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);
+      html+=`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.client]}</td><td class="m">${r[C.position]}</td><td class="m">${parseExp(r[C.expYrs]).toFixed(1)} yrs</td><td class="mono">${fmtD(r[C.doj])}</td><td class="m">\u20b9${((parseFloat(r[C.offeredSalary])||0)*12).toLocaleString('en-IN')}</td><td class="m" style="font-weight:600">\u20b9${Math.round(fee).toLocaleString('en-IN')}</td></tr>`;
+    });
+    html+=`<tr style="background:rgba(80,80,80,.06)"><td colspan="6" style="padding:7px 11px;font-weight:700">Firm Revenue \u2014 ${ml}</td><td style="padding:7px 11px;font-weight:700">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td></tr></tbody></table></div>`;
+    if(!multi && inc){
+      html+=`<div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:12px 16px;margin-top:10px">
+        <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:var(--teal)">Incentive Calculation \u2014 ${ml} (Section B)</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:11px;margin-bottom:8px">
+          <div><span style="color:var(--w60)">Monthly Salary</span><br><strong>\u20b9${monthlySalary.toLocaleString('en-IN')}</strong></div>
+          <div><span style="color:var(--w60)">Firm Revenue</span><br><strong>\u20b9${Math.round(mf).toLocaleString('en-IN')}</strong></div>
+          <div><span style="color:var(--w60)">Multiple</span><br><strong>${inc.multiple}\u00d7</strong></div>
+          <div><span style="color:var(--w60)">Slab</span><br><strong>${inc.slab}</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(52,186,198,.2)">
+          <span style="font-size:13px;font-weight:600">Incentive Earned</span>
+          <span style="font-size:22px;font-weight:700;color:var(--teal)">\u20b9${inc.incentive.toLocaleString('en-IN')}</span>
+        </div>
+        ${inc.rate===0?'<div style="font-size:10px;color:var(--gold);margin-top:5px">\u26a0 Revenue below 1\u00d7 salary \u2014 no incentive payable.</div>':''}
+      </div>`;
+    } else if(!multi && !inc && monthlySalary===0){
+      html+=`<div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:9px 13px;margin-top:10px;font-size:11px;color:var(--gold)">\ud83d\udca1 Enter your monthly salary above to calculate Section B incentive.</div>`;
+    }
+  });
+  return html;
 }
 
 
@@ -4066,39 +4108,59 @@ function calcIncentives(){
 
   const el = document.getElementById('inc-results');
   if(!el) return;
-
-  // ── Section A: activity-based view (ramp period) ──────
-  // Section A has nothing to do with joined candidates.
-  // It is calculated from: profiles sourced per day (call proxy)
-  // + interviews conducted, both derived from ATS data.
-  if(period === 'ramp_period'){
-    const p = getActivePolicyPeriod();
-    renderSectionAView(el, recSel, p);
-    // Still update KPI cards with pipeline/YTD data
-    const pipe2 = MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&(!recSel||r[C.recruiter]===recSel));
-    let pot2=0; pipe2.forEach(r=>{pot2+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||0)*12,r[C.client]);});
-    const setEl2=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    setEl2('inc-potential','\u20b9'+Math.round(pot2).toLocaleString('en-IN'));
-    setEl2('inc-closed', '—');
-    return;
-  }
-  let pot = 0;
-  pipe.forEach(r => { pot += calcFirmFee(parseExp(r[C.expYrs]), (parseFloat(r[C.expectedSalary])||0)*12, r[C.client]); });
-
-  // YTD and this-month firm revenue (for KPI cards)
-  const ymtd = today().slice(0,4)+'-04-01';
-  const tm   = today().slice(0,7);
-  const ytdJ = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=ymtd&&(!recSel||r[C.recruiter]===recSel));
-  let ytdFirm=0; ytdJ.forEach(r=>{ytdFirm+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);});
-  const tmJ  = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]&&r[C.doj].slice(0,7)===tm&&(!recSel||r[C.recruiter]===recSel));
-  let tmFirm=0; tmJ.forEach(r=>{tmFirm+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);});
-
-  const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  setEl('inc-earned',   '\u20b9'+Math.round(tmFirm).toLocaleString('en-IN'));
-  setEl('inc-ytd',      '\u20b9'+Math.round(ytdFirm).toLocaleString('en-IN'));
-  setEl('inc-potential','\u20b9'+Math.round(pot).toLocaleString('en-IN'));
-
   const p = getActivePolicyPeriod();
+
+  // ── Section A: dedicated ramp-up view ─────────────────
+  if(period === 'ramp_period'){
+    renderSectionAView(el, recSel, p);
+    _updateKPICards(recSel); return;
+  }
+
+  // ── Smart split: when recruiter has a DOJ, auto-divide ─
+  // the selected period into Section A (months 1–3) and
+  // Section B (months 4+) portions and render both.
+  const rec = recSel ? (M.recruiters && M.recruiters.find(r=>r.name===recSel)) : null;
+  if(rec && rec.doj && period !== 'revenue_period'){
+    const doj = new Date(rec.doj+'T00:00:00');
+    const revStartD = new Date(doj.getFullYear(), doj.getMonth()+3, doj.getDate());
+    const fmtd = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const rampEndStr  = fmtd(new Date(revStartD.getTime()-86400000));
+    const revStartStr = fmtd(revStartD);
+
+    const rampFrom = from > rec.doj ? from : rec.doj;
+    const rampTo   = to < rampEndStr ? to : rampEndStr;
+    const hasRamp  = rampFrom <= rampTo;
+
+    const revFrom    = from > revStartStr ? from : revStartStr;
+    const hasRevenue = to >= revStartStr;
+
+    let html = '';
+
+    if(hasRamp){
+      const empMonths = getRampEmploymentMonths(recSel);
+      const covered   = empMonths.filter(em => em.from <= rampTo && em.to >= rampFrom);
+      if(covered.length) html += buildSectionAHTML(recSel, p, covered.map(em=>em.empMonth));
+    }
+
+    if(hasRevenue){
+      const revJoined = MD.filter(r =>
+        r[C.status]==='Joined' && r[C.doj] >= revFrom && r[C.doj] <= to &&
+        (!recSel || r[C.recruiter]===recSel)
+      );
+      html += _buildSectionBHTML(revJoined, monthlySalary, revFrom, to, rec.doj);
+    }
+
+    if(!html) html = '<div style="text-align:center;padding:24px;color:var(--w60)">No data for this period. Check that the date range overlaps with the recruiter\'s employment dates.</div>';
+    el.innerHTML = html;
+    _updateKPICards(recSel); return;
+  }
+
+  // ── Fallback: revenue_period or no recruiter DOJ set ──
+  // Use joined-candidates logic for Section B only.
+  _updateKPICards(recSel);
+
+  // YTD and this-month firm revenue (for KPI cards) already done above
+  const setEl=(id,v)=>{const el2=document.getElementById(id);if(el2)el2.textContent=v;};
 
   // ── Get all joined candidates in period ───────────────
   const allJoined = MD.filter(r =>
