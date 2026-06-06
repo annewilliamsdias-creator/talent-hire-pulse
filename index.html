@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 
@@ -2097,7 +2098,16 @@ function onAvJDSel(){
 }
 function openAddVac(){vacEIdx=-1;['avRole','avBudgetMin','avBudgetMax','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';const jdsel=document.getElementById('avJDSel');if(jdsel)jdsel.selectedIndex=0;document.getElementById('avForm').classList.remove('hidden');fillDrops();populateAvJDSel();}
 function renderAVacs(){
-  refreshAllFilters();
+  // Populate admin vacancy filter dropdowns (rebuild only if empty)
+  ['avf-cli','avf-rec','avf-dept'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.options.length<=1){
+      const key=id==='avf-cli'?'clients':id==='avf-rec'?'recruiters':'departments';
+      const vals=[...new Set([...mA(key),...VD.map(v=>id==='avf-cli'?v['Company']:id==='avf-rec'?v['Recruiter']:v['Department'])].filter(Boolean))].sort();
+      const cur=el.value;
+      el.innerHTML='<option value="">All '+(key.charAt(0).toUpperCase()+key.slice(1))+'</option>'+vals.map(v=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'</option>').join('');
+    }
+  });
   const fCli=document.getElementById('avf-cli')&&document.getElementById('avf-cli').value||'';
   const fRec=document.getElementById('avf-rec')&&document.getElementById('avf-rec').value||'';
   const fDept=document.getElementById('avf-dept')&&document.getElementById('avf-dept').value||'';
@@ -2122,7 +2132,15 @@ const isNew=vacEIdx===-1;
 const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudgetMin')?gv('avBudgetMin')+' - '+gv('avBudgetMax'):gv('avBudgetMax')||'','Budget Min':gv('avBudgetMin'),'Budget Max':gv('avBudgetMax'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y'};
 if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{const m=String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);return m?parseInt(m[1]):0;}));vd['Vacancy code']='VC-'+yr+'-'+String(mx+1).padStart(4,'0');vd['Sr. No.']=VD.length+1;VD.push(vd);}else{Object.assign(VD[vacEIdx],vd);}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];if(!vh.includes('Active'))vh.push('Active');WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
-await saveWB('Saving vacancy...');document.getElementById('avForm').classList.add('hidden');renderAVacs();renderVac();fillPosDrop();toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
+await saveWB('Saving vacancy...');
+document.getElementById('avForm').classList.add('hidden');
+// NOTE: Vacancy changes do NOT update candidate records. Candidate recruiter
+// is stored on the candidate record itself (C.recruiter) and is independent
+// of the vacancy recruiter field. Changing vacancy recruiter only affects
+// future candidate assignments, not existing ones.
+renderAVacs();renderVac();fillPosDrop();
+toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);
+showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
 async function toggleVacAct(idx){VD[idx]['Active']=VD[idx]['Active']==='N'?'Y':'N';if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];if(!vh.includes('Active'))vh.push('Active');WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}await saveWB(false);renderAVacs();renderVac();fillPosDrop();toast('info','Vacancy Updated',VD[idx]['Designation']+' is now '+(VD[idx]['Active']==='N'?'Inactive':'Active'));}
 // USERS
 function openAddUser(){document.getElementById('uEI').value='-1';['uUN','uUE'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const ut=document.getElementById('uUT');if(ut)ut.value='internal';const us=document.getElementById('uUS');if(us)us.value='Active';onUType();document.getElementById('uForm2').classList.remove('hidden');}
@@ -2213,6 +2231,8 @@ const PALETTE = Object.values(CHART_COLORS);
 // Chart.js global defaults
 function initChartDefaults() {
   if (typeof Chart === 'undefined') return;
+  // Register datalabels plugin (used for PNG downloads)
+  if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
   Chart.defaults.color = 'rgba(251,251,250,0.6)';
   Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
   Chart.defaults.font.family = "'DM Sans', sans-serif";
@@ -2225,6 +2245,10 @@ function initChartDefaults() {
   Chart.defaults.plugins.tooltip.borderColor = 'rgba(52,186,198,0.3)';
   Chart.defaults.plugins.tooltip.borderWidth = 1;
   Chart.defaults.plugins.tooltip.padding = 10;
+  // Datalabels OFF by default - enabled per chart when needed
+  if (typeof ChartDataLabels !== 'undefined') {
+    Chart.defaults.plugins.datalabels = { display: false };
+  }
 }
 
 // ── DATE FILTERING ────────────────────────────────────────
@@ -3564,12 +3588,33 @@ function dlChartData(name){
 function dlChartPNG(canvasId, name) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
+  const chartObj = CHARTS[canvasId];
+  // Temporarily enable datalabels for the PNG if plugin is available
+  if (chartObj && typeof ChartDataLabels !== 'undefined') {
+    chartObj.options.plugins.datalabels = {
+      display: true,
+      color: '#FBFBFA',
+      font: { size: 10, weight: 'bold', family: "'DM Sans', sans-serif" },
+      anchor: 'end',
+      align: 'end',
+      offset: 2,
+      formatter: (val) => val > 0 ? val : '',
+      clamp: true,
+      clip: false
+    };
+    chartObj.update('none'); // Re-render synchronously with labels
+  }
   const url = canvas.toDataURL('image/png');
   const a = document.createElement('a');
   a.href = url;
   a.download = 'THP_'+name+'_'+today()+'.png';
   a.click();
-  toast('ok','Chart Downloaded', name.replace(/_/g,' ')+' saved as PNG');
+  // Restore — hide labels again
+  if (chartObj && typeof ChartDataLabels !== 'undefined') {
+    chartObj.options.plugins.datalabels = { display: false };
+    chartObj.update('none');
+  }
+  toast('ok','Chart Downloaded', name.replace(/_/g,' ')+' saved as PNG with data values');
 }
 
 </script>
