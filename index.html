@@ -1564,11 +1564,34 @@ const ROLES={'Super Admin':{admin:true,users:true,masters:true,bulk:true,changel
 function loadUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i+1;break;}}appUsers=[];if(ui>0){for(let i=ui;i<all.length;i++){const r=all[i];if(!r[0]&&!r[1])break;if(r[1])appUsers.push({name:String(r[0]||'').trim(),email:String(r[1]||'').trim().toLowerCase(),type:String(r[2]||'internal').trim(),role:String(r[3]||'Recruiter').trim(),client:String(r[4]||'').trim(),active:String(r[5]||'Y').trim().toUpperCase()==='Y'});}}}catch(e){console.warn('users',e);}
 // Also load masters
 loadMastersCfg();}
-function loadMastersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i+1;break;}}if(mi<0)return;// Masters block exists - merge into M (adds new items, updates active flag)
-for(let i=mi;i<all.length;i++){const r=all[i];if(!r[0]&&!r[1])break;const key=String(r[0]||'').trim();const nm=String(r[1]||'').trim();const act=String(r[2]||'Y').trim().toUpperCase()!=='N';if(!key||!nm)continue;if(!M[key])M[key]=[];const ex=M[key].find(x=>x.name.toLowerCase()===nm.toLowerCase());if(ex){ex.active=act;}else{M[key].push({name:nm,active:act});}}}catch(e){console.warn('masters cfg',e);}}
-async function saveMastersCfg(){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];// Remove old masters block
-let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}// Build new masters block
-const block=[['Masters'],['key','name','active']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N'])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false);toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);toast('err','Save Failed',e.message);}}
+function loadMastersCfg(){
+  if(!WB||!WB.Sheets['Config'])return;
+  try{
+    const ws=WB.Sheets['Config'];
+    const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    let mi=-1;
+    for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i+1;break;}}
+    if(mi<0){
+      // No masters in Config yet — bootstrap defaults to SharePoint so admin can manage from day one
+      setTimeout(()=>saveMastersCfg(true),4000);
+      return;
+    }
+    // Masters exist in SharePoint — REPLACE M entirely (admin console is single source of truth)
+    const loaded={};
+    for(let i=mi;i<all.length;i++){
+      const r=all[i];
+      if(!r[0]&&!r[1])break;
+      const key=String(r[0]||'').trim();
+      const nm=String(r[1]||'').trim();
+      const act=String(r[2]||'Y').trim().toUpperCase()!=='N';
+      if(!key||!nm)continue;
+      if(!loaded[key])loaded[key]=[];
+      loaded[key].push({name:nm,active:act});
+    }
+    Object.keys(loaded).forEach(k=>{M[k]=loaded[k];});
+  }catch(e){console.warn('masters cfg',e);}
+}
+async function saveMastersCfg(silent=false){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}const block=[['Masters'],['key','name','active']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N'])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false);if(!silent)toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);if(!silent)toast('err','Save Failed',e.message);}}
 function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}const nb=document.getElementById('navBulk');const na=document.getElementById('navAdm');const ni=document.getElementById('navIncentive');const niv=document.getElementById('navInvoice');if(nb)nb.style.display=rd.bulk?'':'none';if(na)na.style.display=rd.admin?'':'none';if(ni)ni.style.display='';if(niv)niv.style.display=rd.admin?'':'none';}
 async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i;break;}}const block=[['Users'],['Name','Email','Type','Role','Client','Active'],...appUsers.map(u=>[u.name,u.email,u.type||'internal',u.role,u.client||'',u.active?'Y':'N'])];if(ui>=0){let ei=ui+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(ui,ei-ui,...block);}else{all.push([],...block);}WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);await saveWB('Saving users...');}catch(e){toast('err','Save Failed',e.message);}}
 
@@ -1600,6 +1623,8 @@ function goPanel(name){
   if(p)p.classList.add('active');
   const nav=[...document.querySelectorAll('.nav-item')].find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'"));
   if(nav)nav.classList.add('active');
+  // Always refresh dropdowns from current M when entering any panel with forms
+  if(['new','upd','bulk','repos','incentive','rec','vac'].includes(name))fillDrops();
   if(name==='adm')initAdmin();
   if(name==='home'){loadDash();}
   if(name==='analytics'){setTimeout(renderDash,200);}
@@ -1769,6 +1794,7 @@ document.getElementById('uCd').textContent=r[C.code];
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
 sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 ['uFU','uRem','uCmt','uIvD','uDecD','uDOJ','uOffS','uOffD'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+fillDrops(); // Refresh all form dropdowns from current admin config
 onStatCh();updStatDrop();}
 function onStatCh(){
 const stat=document.getElementById('uS').value;
