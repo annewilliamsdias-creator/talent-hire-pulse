@@ -921,62 +921,65 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 
 <!-- INCENTIVES -->
+<!-- INCENTIVES -->
 <div class="panel" id="p-incentive">
 <div class="sg3" style="margin-bottom:16px">
   <div class="stat blue"><div class="sn" id="inc-earned">₹0</div><div class="sl">Earned This Month</div></div>
-  <div class="stat gold"><div class="sn" id="inc-potential">₹0</div><div class="sl">Potential Pipeline</div></div>
-  <div class="stat teal"><div class="sn" id="inc-closed">0</div><div class="sl">Vacancies Closed</div></div>
+  <div class="stat gold"><div class="sn" id="inc-ytd">₹0</div><div class="sl">YTD Earned</div></div>
+  <div class="stat teal"><div class="sn" id="inc-potential">₹0</div><div class="sl">Potential Pipeline</div></div>
+  <div class="stat purple"><div class="sn" id="inc-closed">0</div><div class="sl">Vacancies Closed</div></div>
 </div>
 <div class="card">
 <div class="card-hdr">
-  <div class="card-title"><span class="ac">🏆</span> Incentive Calculator</div>
-  <button class="btn btn-ghost btn-sm" onclick="switchIncTab('matrix')">Configure Matrix</button>
+  <div class="card-title"><span class="ac">🏆</span> Incentive Module</div>
+  <span id="inc-policy-badge" style="font-size:10px;padding:3px 8px;background:rgba(52,186,198,.15);color:var(--teal);border-radius:10px;font-weight:600">Policy loading...</span>
 </div>
 <div class="atabs">
   <div class="atab on" id="it-calc" onclick="switchIncTab('calc')">🧮 My Earnings</div>
-  <div class="atab" id="it-matrix" onclick="switchIncTab('matrix')">⚙ Billing Matrix</div>
-  <div class="atab" id="it-scenarios" onclick="switchIncTab('scenarios')">💡 Scenarios</div>
+  <div class="atab" id="it-team" onclick="switchIncTab('team')">👥 Team Earnings</div>
+  <div class="atab" id="it-policy" onclick="switchIncTab('policy')">📋 Policy</div>
+  <div class="atab" id="it-proj" onclick="switchIncTab('proj')">💡 Projections</div>
 </div>
 
 <!-- MY EARNINGS -->
 <div id="ip-calc">
-  <div class="sl2" style="margin-top:12px">Filter by Recruiter & Period</div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 16px">
     <div class="field" style="margin:0"><label>Recruiter</label><select id="inc-rec"><option value="">Me (Logged In)</option></select></div>
-    <div class="field" style="margin:0"><label>Period</label><select id="inc-period" onchange="calcIncentives()"><option value="month">This Month</option><option value="q">This Quarter</option><option value="fy">This FY</option></select></div>
+    <div class="field" style="margin:0"><label>Period</label><select id="inc-period" onchange="calcIncentives()"><option value="month">This Month</option><option value="q">This Quarter</option><option value="fy">This FY</option><option value="policy">Policy Period</option></select></div>
     <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="calcIncentives()">Calculate</button></div>
   </div>
   <div id="inc-results"></div>
 </div>
 
-<!-- BILLING MATRIX -->
-<div id="ip-matrix" class="hidden">
-  <div style="padding:10px 0;color:var(--w60);font-size:12px;margin-bottom:12px">Define the billing/incentive structure for each client. Different clients can have different fee models.</div>
-  <div id="inc-matrix-list"></div>
-  <div style="margin-top:14px">
-    <div class="sl2">Add / Edit Rate Card</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
-      <div class="field" style="margin:0"><label>Client</label><select id="im-client"><option value="">All Clients</option></select></div>
-      <div class="field" style="margin:0"><label>Fee Model</label><select id="im-model"><option value="pct">% of CTC</option><option value="fixed">Fixed per Hire</option><option value="slab">Salary Slab</option></select></div>
-      <div class="field" style="margin:0"><label>Rate / %</label><input type="number" id="im-rate" placeholder="e.g. 8.33 or 50000" step="0.01"></div>
-      <div class="field" style="margin:0"><label>Recruiter Share %</label><input type="number" id="im-share" placeholder="e.g. 20" min="0" max="100" step="1"></div>
-      <div class="field" style="margin:0"><label>Applicable From</label><input type="date" id="im-from"></div>
-      <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="saveMatrix()">Save Rate Card</button></div>
-    </div>
+<!-- TEAM EARNINGS -->
+<div id="ip-team" class="hidden">
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0 16px">
+    <div class="field" style="margin:0"><label>Period</label><select id="inc-team-period" onchange="calcTeamEarnings()"><option value="month">This Month</option><option value="q">This Quarter</option><option value="fy">This FY</option><option value="policy">Policy Period</option></select></div>
+    <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-ghost btn-sm" onclick="dlTeamEarnings()">⬇ Download</button></div>
   </div>
+  <div id="inc-team-results"></div>
 </div>
 
-<!-- SCENARIOS -->
-<div id="ip-scenarios" class="hidden">
-  <div style="padding:10px 0;color:var(--w60);font-size:12px;margin-bottom:12px">See what you could earn by closing different combinations of open vacancies.</div>
-  <div id="inc-scenarios-list"></div>
-  <button class="btn btn-t btn-sm" onclick="genScenarios()" style="margin-top:12px">🔄 Generate Scenarios</button>
+<!-- POLICY -->
+<div id="ip-policy" class="hidden">
+  <div id="inc-policy-current"></div>
+  <div class="sl2" style="margin:16px 0 8px">Revision History</div>
+  <div id="inc-policy-history"></div>
+</div>
+
+<!-- PROJECTIONS -->
+<div id="ip-proj" class="hidden">
+  <div style="padding:10px 0;color:var(--w60);font-size:12px;margin-bottom:12px">Projection based on current open vacancies using active incentive policy fee slabs.</div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">
+    <div class="field" style="margin:0"><label>Recruiter Filter</label><select id="proj-rec"><option value="">All Recruiters</option></select></div>
+    <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="genProjections()">🔄 Calculate</button></div>
+  </div>
+  <div id="inc-proj-list"></div>
 </div>
 
 </div>
 </div>
 
-<!-- INVOICING -->
 <div class="panel" id="p-invoice">
 <div class="sg" style="margin-bottom:16px">
   <div class="stat blue"><div class="sn" id="inv-total">₹0</div><div class="sl">Total Invoiced</div></div>
@@ -1026,8 +1029,45 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="atab" id="at-changelog" onclick="switchATab('changelog')">📋 Change Log</div>
 <div class="atab" id="at-config" onclick="switchATab('config')">⚙ Config</div>
 <div class="atab" id="at-vacancies" onclick="switchATab('vacancies')">📌 Vacancies</div>
+<div class="atab" id="at-billing" onclick="switchATab('billing')">💰 Billing Config</div>
 <div class="atab" id="at-dashconfig" onclick="switchATab('dashconfig')">📊 Dashboard</div>
 <div class="atab" id="at-users" onclick="switchATab('users')">👥 Users</div>
+</div>
+<!-- BILLING CONFIG -->
+<div id="ap-billing" class="hidden">
+<div class="card">
+<div class="card-hdr"><div class="card-title"><span class="ac">💰</span> Incentive Policy &amp; Billing Configuration</div><button class="btn btn-t btn-sm" onclick="saveBillingConfig()">💾 Save All Changes</button></div>
+
+<div class="sl2" style="margin-bottom:10px">Active Policy Period</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+  <div class="field" style="margin:0"><label>Policy Title</label><input type="text" id="bp-title" placeholder="e.g. FY 2026-27"></div>
+  <div class="field" style="margin:0"><label>Applicable From</label><input type="date" id="bp-from" value="2026-03-01"></div>
+  <div class="field" style="margin:0"><label>Applicable To</label><input type="date" id="bp-to" value="2027-03-31"></div>
+  <div class="field" style="margin:0"><label>Revision #</label><input type="number" id="bp-rev" value="1" min="1"></div>
+  <div class="field" style="margin:0"><label>Revision Date</label><input type="date" id="bp-revdate"></div>
+  <div class="field" style="margin:0;grid-column:span 2"><label>Revision Notes</label><input type="text" id="bp-notes" placeholder="e.g. Initial policy / Amendment 1 — revised senior rates"></div>
+  <div class="field" style="margin:0"><label>Recruiter Share %</label><input type="number" id="bp-recshare" value="20" min="0" max="100" step="1" title="% of firm recruitment fee credited to recruiter"></div>
+</div>
+
+<div class="sl2" style="margin-bottom:10px">Standard Fee Slabs <span style="font-size:10px;color:var(--w60);font-weight:400">(by candidate experience)</span></div>
+<div style="margin-bottom:14px">
+<div class="tw"><table id="bp-slabs-table"><thead><tr><th>Experience From (yrs)</th><th>Experience To (yrs)</th><th>Fee Type</th><th>Rate / Amount</th><th></th></tr></thead><tbody id="bp-slabs-body"></tbody></table></div>
+<button class="btn btn-ghost btn-sm" onclick="addSlabRow()" style="margin-top:8px">+ Add Slab</button>
+</div>
+
+<div class="sl2" style="margin-bottom:10px">Client-Specific Overrides <span style="font-size:10px;color:var(--w60);font-weight:400">(leave blank to use standard slabs)</span></div>
+<div id="bp-overrides-list"></div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 14px">
+  <div class="field" style="margin:0"><label>Client</label><select id="bp-ov-client"><option value="">— Select —</option></select></div>
+  <div class="field" style="margin:0"><label>Fee Type</label><select id="bp-ov-model"><option value="pct">% of Fixed Pay</option><option value="fixed">Flat ₹ per hire</option></select></div>
+  <div class="field" style="margin:0"><label>Rate / Amount</label><input type="number" id="bp-ov-rate" placeholder="e.g. 10 or 75000" step="0.01"></div>
+  <div class="field" style="margin:0"><label>Recruiter Share %</label><input type="number" id="bp-ov-recshare" placeholder="e.g. 25" min="0" max="100"></div>
+  <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="addClientOverride()">Add Override</button></div>
+</div>
+
+<div class="sl2" style="margin-bottom:10px">Revision History</div>
+<div id="bp-revision-history"></div>
+</div>
 </div>
 <!-- BACKUP -->
 <div id="ap-backup"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">💾</span> Backup Manager</div><button class="btn btn-t btn-sm" onclick="doBackup()">Create Backup Now</button></div><div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">Backups saved to <span style="color:var(--teal);font-family:monospace">/Talent+ Hire-Pulse/Backups/</span> on SharePoint</div><div id="bkList"></div></div></div>
@@ -1551,7 +1591,7 @@ else{
     setTimeout(()=>{try{const rows=[['type','data'],...repoData.jds.map(d=>['jd',JSON.stringify(d)]),...repoData.scripts.map(d=>['script',JSON.stringify(d)]),...repoData.help.map(d=>['help',JSON.stringify(d)])];WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');saveWB(false).then(()=>console.log('Repo migrated to SharePoint'));}catch(e){console.warn('Repo migrate failed',e);}},3000);
   }
 }
-loadUsersCfg();resolveRole();fillDrops();}
+loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();}
 async function saveWB(msg){
 if(!WB)return;showLoad(msg||'Saving...');
 try{rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});
@@ -1638,7 +1678,9 @@ function goPanel(name){
   if(name==='incentive'){
     const incRec=document.getElementById('inc-rec');
     if(incRec){incRec.innerHTML='<option value="">Me (Logged In)</option>';mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;incRec.appendChild(o);});}
-    calcIncentives();
+    const projRec=document.getElementById('proj-rec');
+    if(projRec){projRec.innerHTML='<option value="">All Recruiters</option>';mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;projRec.appendChild(o);});}
+    renderPolicyBadge();calcIncentives();
   }
   if(name==='invoice'){renderInvoices();updateInvStats();}
 }
@@ -2070,7 +2112,7 @@ async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.le
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','dashconfig','users'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='users'){loadUsersCfg();renderUsers();}}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
 function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:10px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:#ff6b6b;padding:12px">Error: '+e.message+'</div>';}}
@@ -3254,93 +3296,475 @@ async function downloadValidationReport() {
 }
 
 // ══════════════════════════════════════════════════════
-// INCENTIVES (Item 19)
 // ══════════════════════════════════════════════════════
-let billingMatrix = [];
-let invoices = [];
+// INCENTIVE MODULE — Policy, Billing Config, Earnings, Projections
+// ══════════════════════════════════════════════════════
 
+// ── Data model ────────────────────────────────────────
+let incPolicy = {
+  periods: [{
+    id: 'P001', title: 'FY 2026-27', from: '2026-03-01', to: '2027-03-31',
+    revision: 1, revisionDate: '2026-03-01', revisionNotes: 'Initial policy',
+    active: true, recruiterShare: 20,
+    slabs: [
+      { expFrom: 0, expTo: 1,   model: 'fixed', amount: 5000  },
+      { expFrom: 1, expTo: 8,   model: 'pct',   rate: 7       },
+      { expFrom: 8, expTo: 20,  model: 'pct',   rate: 8.33    },
+      { expFrom: 20, expTo: 999,model: 'pct',   rate: 11      }
+    ]
+  }],
+  clientOverrides: []
+};
+
+// ── Fee calculation engine ─────────────────────────────
+function getActivePolicyPeriod(onDate){
+  const d = onDate || today();
+  return incPolicy.periods.find(p => p.active && p.from <= d && p.to >= d)
+      || incPolicy.periods.find(p => p.active)
+      || incPolicy.periods[0];
+}
+
+function calcFirmFee(expYears, annualFixedPay, client, onDate){
+  const period = getActivePolicyPeriod(onDate);
+  if(!period) return 0;
+  const ov = incPolicy.clientOverrides.find(o => o.client === client);
+  if(ov){
+    if(ov.model === 'fixed') return ov.amount || 0;
+    if(ov.model === 'pct')   return annualFixedPay * ((ov.rate || 0) / 100);
+  }
+  const exp = parseFloat(expYears) || 0;
+  const slab = period.slabs.find(s => exp >= s.expFrom && exp < s.expTo)
+             || period.slabs[period.slabs.length - 1];
+  if(!slab) return 0;
+  if(slab.model === 'fixed') return slab.amount || 5000;
+  if(slab.model === 'pct')   return annualFixedPay * ((slab.rate || 0) / 100);
+  return 0;
+}
+
+function calcRecShare(firmFee, client, onDate){
+  const period = getActivePolicyPeriod(onDate);
+  const ov = incPolicy.clientOverrides.find(o => o.client === client);
+  const share = ov && ov.recruiterShare != null ? ov.recruiterShare
+              : period ? period.recruiterShare : 20;
+  return firmFee * (share / 100);
+}
+
+function parseExp(expStr){
+  // Parse experience string like "3 Years", "5.5", "10+ Years" → number
+  if(!expStr) return 0;
+  const m = String(expStr).match(/[\d.]+/);
+  return m ? parseFloat(m[0]) : 0;
+}
+
+// ── Period date range helpers ──────────────────────────
+function getPeriodDates(periodCode){
+  const now = new Date(); const td = today();
+  if(periodCode === 'month'){
+    return {from: td.slice(0,8)+'01', to: td};
+  } else if(periodCode === 'q'){
+    const m = now.getMonth();
+    const qStart = m>=9?9:m>=6?6:m>=3?3:0;
+    return {from: now.getFullYear()+'-'+String(qStart+1).padStart(2,'0')+'-01', to: td};
+  } else if(periodCode === 'fy'){
+    const yr = now.getMonth()>=3?now.getFullYear():now.getFullYear()-1;
+    return {from: yr+'-04-01', to: td};
+  } else if(periodCode === 'policy'){
+    const p = getActivePolicyPeriod();
+    return p ? {from: p.from, to: p.to > td ? td : p.to} : {from: '2000-01-01', to: td};
+  }
+  return {from: '2000-01-01', to: td};
+}
+
+// ── Tab switching ──────────────────────────────────────
 function switchIncTab(tab){
-  ['calc','matrix','scenarios'].forEach(t=>{
+  ['calc','team','policy','proj'].forEach(t=>{
     const el=document.getElementById('ip-'+t);const at=document.getElementById('it-'+t);
     if(el)el.classList.toggle('hidden',t!==tab);
     if(at)at.classList.toggle('on',t===tab);
   });
+  renderPolicyBadge();
   if(tab==='calc')calcIncentives();
-  if(tab==='matrix')renderMatrixList();
-  if(tab==='scenarios')genScenarios();
+  if(tab==='team')calcTeamEarnings();
+  if(tab==='policy')renderPolicyView();
+  if(tab==='proj')genProjections();
 }
 
+function renderPolicyBadge(){
+  const p = getActivePolicyPeriod();
+  const el = document.getElementById('inc-policy-badge');
+  if(!el) return;
+  if(p){ el.textContent = p.title+' · Rev '+p.revision+' · '+fmtD(p.from)+' – '+fmtD(p.to); }
+  else { el.textContent = 'No active policy'; }
+}
+
+// ── My Earnings ────────────────────────────────────────
 function calcIncentives(){
-  const period=gv('inc-period');
-  const recSel=gv('inc-rec')||((acct&&acct.name)?acct.name.split(' ')[0]:'');
-  const now=new Date(); const td=today(); const tm=td.slice(0,7);
-  let fromDate='', toDate=td;
-  if(period==='month'){fromDate=td.slice(0,8)+'01';}
-  else if(period==='q'){const m=now.getMonth();const qStart=m>=9?9:m>=6?6:m>=3?3:0;fromDate=now.getFullYear()+'-'+String(qStart+1).padStart(2,'0')+'-01';}
-  else if(period==='fy'){const yr=now.getMonth()>=3?now.getFullYear():now.getFullYear()-1;fromDate=yr+'-04-01';}
-  // Joined candidates in period
-  const joined=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=fromDate&&r[C.doj]<=toDate&&(recSel?r[C.recruiter]===recSel:true));
-  let earned=0;
-  const rows=joined.map(r=>{
-    const mat=billingMatrix.find(m=>m.client===r[C.client])||billingMatrix.find(m=>!m.client)||{model:'pct',rate:8.33,share:20};
-    const ctc=(parseFloat(r[C.offeredSalary])||0)*12;
-    let fee=0;
-    if(mat.model==='pct')fee=ctc*(parseFloat(mat.rate)||8.33)/100;
-    else if(mat.model==='fixed')fee=parseFloat(mat.rate)||50000;
-    const recShare=fee*(parseFloat(mat.share)||20)/100;
-    earned+=recShare;
-    return{name:r[C.name],client:r[C.client],pos:r[C.position],doj:r[C.doj],ctc,fee,recShare};
+  const period = gv('inc-period') || 'month';
+  const recSel = gv('inc-rec') || ((acct&&acct.name) ? acct.name.split(' ')[0] : '');
+  const {from, to} = getPeriodDates(period);
+  renderPolicyBadge();
+
+  const joined = MD.filter(r =>
+    r[C.status]==='Joined' && r[C.doj] >= from && r[C.doj] <= to &&
+    (!recSel || r[C.recruiter]===recSel)
+  );
+
+  let earned = 0, thisMonth = 0;
+  const tm = today().slice(0,7);
+  const rows = joined.map(r => {
+    const exp = parseExp(r[C.expYrs]);
+    const ctc = (parseFloat(r[C.offeredSalary])||0) * 12;
+    const fee = calcFirmFee(exp, ctc, r[C.client], r[C.doj]);
+    const share = calcRecShare(fee, r[C.client], r[C.doj]);
+    earned += share;
+    if(r[C.doj] && r[C.doj].slice(0,7) === tm) thisMonth += share;
+    return {name:r[C.name],client:r[C.client],pos:r[C.position],exp,doj:r[C.doj],ctc,fee,share};
   });
-  const el=document.getElementById('inc-results');
-  if(!el)return;
-  document.getElementById('inc-earned').textContent='₹'+Math.round(earned).toLocaleString('en-IN');
-  // Potential from pipeline
-  const pipe=MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&(recSel?r[C.recruiter]===recSel:true));
-  let pot=0;pipe.forEach(r=>{const mat=billingMatrix.find(m=>m.client===r[C.client])||{model:'pct',rate:8.33,share:20};const ctc=(parseFloat(r[C.expectedSalary])||0)*12;const fee=ctc*(parseFloat(mat.rate)||8.33)/100;pot+=fee*(parseFloat(mat.share)||20)/100;});
-  document.getElementById('inc-potential').textContent='₹'+Math.round(pot).toLocaleString('en-IN');
-  document.getElementById('inc-closed').textContent=joined.length;
-  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">No joined candidates for this period. Configure the Billing Matrix for accurate calculations.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Position</th><th>DOJ</th><th>CTC ₹ PA</th><th>Firm Fee</th><th>Your Share</th></tr></thead><tbody>'+rows.map(r=>'<tr><td><strong>'+r.name+'</strong></td><td class="m">'+r.client+'</td><td class="m">'+r.pos+'</td><td class="mono">'+fmtD(r.doj)+'</td><td class="m">₹'+r.ctc.toLocaleString('en-IN')+'</td><td class="m">₹'+Math.round(r.fee).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:600">₹'+Math.round(r.recShare).toLocaleString('en-IN')+'</td></tr>').join('')+'</tbody><tfoot><tr style="background:rgba(52,186,198,.08)"><td colspan="6" style="padding:8px 11px;font-weight:700">Total Earned</td><td style="padding:8px 11px;color:var(--teal);font-weight:700">₹'+Math.round(earned).toLocaleString('en-IN')+'</td></tr></tfoot></table></div>';
+
+  // Pipeline potential
+  const pipe = MD.filter(r =>
+    ['Selected','Offered','Joining in Progress'].includes(r[C.status]) &&
+    (!recSel || r[C.recruiter]===recSel)
+  );
+  let pot = 0;
+  pipe.forEach(r => {
+    const exp = parseExp(r[C.expYrs]);
+    const ctc = (parseFloat(r[C.expectedSalary])||0)*12;
+    const fee = calcFirmFee(exp, ctc, r[C.client]);
+    pot += calcRecShare(fee, r[C.client]);
+  });
+
+  // Update KPI cards
+  const ymtd = today().slice(0,4)+'-04-01';
+  const ytdJoined = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=ymtd&&(!recSel||r[C.recruiter]===recSel));
+  let ytd = 0;
+  ytdJoined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0)*12;ytd+=calcRecShare(calcFirmFee(e,c,r[C.client],r[C.doj]),r[C.client],r[C.doj]);});
+
+  const setEl = (id,v) => { const el=document.getElementById(id); if(el)el.textContent=v; };
+  setEl('inc-earned',  '₹'+Math.round(thisMonth).toLocaleString('en-IN'));
+  setEl('inc-ytd',     '₹'+Math.round(ytd).toLocaleString('en-IN'));
+  setEl('inc-potential','₹'+Math.round(pot).toLocaleString('en-IN'));
+  setEl('inc-closed',  joined.length);
+
+  const el = document.getElementById('inc-results');
+  if(!el) return;
+  if(!rows.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">No joined candidates for this period.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Position</th><th>Exp (yrs)</th><th>DOJ</th><th>CTC ₹ PA</th><th>Firm Fee</th><th>Your Share</th></tr></thead><tbody>'+
+    rows.map(r=>'<tr><td><strong>'+r.name+'</strong></td><td class="m">'+r.client+'</td><td class="m">'+r.pos+'</td><td class="m">'+r.exp.toFixed(1)+'</td><td class="mono">'+fmtD(r.doj)+'</td><td class="m">₹'+r.ctc.toLocaleString('en-IN')+'</td><td class="m">₹'+Math.round(r.fee).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:600">₹'+Math.round(r.share).toLocaleString('en-IN')+'</td></tr>').join('')+
+    '<tr style="background:rgba(52,186,198,.08)"><td colspan="7" style="padding:8px 11px;font-weight:700">Total for Period</td><td style="padding:8px 11px;color:var(--teal);font-weight:700">₹'+Math.round(earned).toLocaleString('en-IN')+'</td></tr>'+
+    '</tbody></table></div>';
 }
 
-function saveMatrix(){
-  const cli=gv('im-client'),model=gv('im-model'),rate=gv('im-rate'),share=gv('im-share');
-  if(!rate){toast('warn','Required','Rate is required.');return;}
-  const existing=billingMatrix.findIndex(m=>m.client===cli);
-  const entry={client:cli,model,rate:parseFloat(rate),share:parseFloat(share)||20,from:gv('im-from')};
-  if(existing>=0)billingMatrix[existing]=entry;else billingMatrix.push(entry);
-  saveIncentiveData();renderMatrixList();toast('ok','Matrix Saved','Rate card updated for '+(cli||'All Clients'));
-}
-function renderMatrixList(){
-  const cl=document.getElementById('im-client');
-  if(cl){cl.innerHTML='<option value="">All Clients</option>';mA('clients').forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;cl.appendChild(o);});}
-  const el=document.getElementById('inc-matrix-list');if(!el)return;
-  if(!billingMatrix.length){el.innerHTML='<div style="padding:12px;background:var(--gdim);border:1px solid rgba(233,152,43,.15);border-radius:var(--rs);font-size:12px;color:var(--gold);margin-bottom:10px">⚠ No billing matrix configured. Default: 8.33% of CTC, 20% recruiter share. Add rate cards below.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Model</th><th>Rate</th><th>Rec Share %</th><th>From</th><th></th></tr></thead><tbody>'+billingMatrix.map((m,i)=>'<tr><td>'+(m.client||'All Clients')+'</td><td class="m">'+m.model+'</td><td class="m">'+(m.model==='pct'?m.rate+'%':'₹'+m.rate.toLocaleString('en-IN'))+'</td><td class="m">'+m.share+'%</td><td class="mono">'+fmtD(m.from)+'</td><td><button class="btn btn-ghost btn-sm" onclick="delMatrix('+i+')" style="color:#ff6b6b">✕</button></td></tr>').join('')+'</tbody></table></div>';
-}
-function delMatrix(i){billingMatrix.splice(i,1);saveIncentiveData();renderMatrixList();}
+// ── Team Earnings ──────────────────────────────────────
+function calcTeamEarnings(){
+  const period = gv('inc-team-period') || 'month';
+  const {from, to} = getPeriodDates(period);
+  const recruiters = [...new Set(MD.map(r=>r[C.recruiter]).filter(Boolean))].sort();
+  const el = document.getElementById('inc-team-results');
+  if(!el) return;
+  if(!recruiters.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No recruiter data available.</div>';return;}
 
-function genScenarios(){
-  const el=document.getElementById('inc-scenarios-list');if(!el)return;
-  const open=VD.filter(v=>v['Current Status']==='Open'&&v['Active']!=='N');
-  if(!open.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No open vacancies to model scenarios for.</div>';return;}
-  const scenes=[];
-  // Single close
-  open.slice(0,8).forEach(v=>{
-    const mat=billingMatrix.find(m=>m.client===v['Company'])||{model:'pct',rate:8.33,share:20};
-    const ctc=parseFloat(v['Monthly Budget']||0)*12;
-    const fee=mat.model==='pct'?ctc*(mat.rate/100):mat.rate;
-    const rec=fee*(mat.share/100);
-    scenes.push({label:'Close: '+v['Designation']+' @ '+v['Company'],cnt:1,fee,rec});
-  });
-  // Close all
-  let totFee=0,totRec=0;
-  open.forEach(v=>{const mat=billingMatrix.find(m=>m.client===v['Company'])||{model:'pct',rate:8.33,share:20};const ctc=parseFloat(v['Monthly Budget']||0)*12;const f=mat.model==='pct'?ctc*(mat.rate/100):mat.rate;totFee+=f;totRec+=f*(mat.share/100);});
-  scenes.push({label:'Close ALL '+open.length+' open vacancies',cnt:open.length,fee:totFee,rec:totRec,bold:true});
-  el.innerHTML='<div style="font-size:11px;color:var(--w60);margin-bottom:10px">Estimates based on monthly budget × 12. Actual CTC may differ.</div>'+'<div class="tw"><table><thead><tr><th>Scenario</th><th>Firm Revenue</th><th>Your Incentive</th></tr></thead><tbody>'+scenes.map(s=>'<tr style="'+(s.bold?'background:rgba(52,186,198,.08)':'')+'"><td style="'+(s.bold?'font-weight:700':'')+'">'+s.label+'</td><td class="m">₹'+Math.round(s.fee).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:'+(s.bold?'700':'500')+'">₹'+Math.round(s.rec).toLocaleString('en-IN')+'</td></tr>').join('')+'</tbody></table></div>';
+  const teamRows = recruiters.map(rec => {
+    const joined = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=from&&r[C.doj]<=to&&r[C.recruiter]===rec);
+    let firmTotal = 0, recTotal = 0;
+    joined.forEach(r=>{
+      const exp=parseExp(r[C.expYrs]);const ctc=(parseFloat(r[C.offeredSalary])||0)*12;
+      const fee=calcFirmFee(exp,ctc,r[C.client],r[C.doj]);firmTotal+=fee;recTotal+=calcRecShare(fee,r[C.client],r[C.doj]);
+    });
+    const pipe = MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&r[C.recruiter]===rec).length;
+    return {rec, cnt: joined.length, firmTotal, recTotal, pipe};
+  }).sort((a,b)=>b.recTotal-a.recTotal);
+
+  const totFirm = teamRows.reduce((s,r)=>s+r.firmTotal,0);
+  const totRec  = teamRows.reduce((s,r)=>s+r.recTotal,0);
+  const totCnt  = teamRows.reduce((s,r)=>s+r.cnt,0);
+
+  el.innerHTML = '<div class="tw"><table><thead><tr><th>Recruiter</th><th>Hires</th><th>Pipeline</th><th>Firm Revenue</th><th>Recruiter Earnings</th></tr></thead><tbody>'+
+    teamRows.map(r=>'<tr><td><strong>'+r.rec+'</strong></td><td class="m">'+r.cnt+'</td><td class="m">'+r.pipe+'</td><td class="m">₹'+Math.round(r.firmTotal).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:600">₹'+Math.round(r.recTotal).toLocaleString('en-IN')+'</td></tr>').join('')+
+    '<tr style="background:rgba(52,186,198,.08)"><td style="font-weight:700">Total</td><td style="font-weight:700">'+totCnt+'</td><td></td><td style="font-weight:700">₹'+Math.round(totFirm).toLocaleString('en-IN')+'</td><td style="color:var(--teal);font-weight:700">₹'+Math.round(totRec).toLocaleString('en-IN')+'</td></tr>'+
+    '</tbody></table></div>';
 }
-function saveIncentiveData(){try{localStorage.setItem('thp_inc',JSON.stringify({matrix:billingMatrix}));}catch(e){}}
-function loadIncentiveData(){try{const d=localStorage.getItem('thp_inc');if(d){const p=JSON.parse(d);if(p.matrix)billingMatrix=p.matrix;}}catch(e){}}
+
+function dlTeamEarnings(){
+  const period = gv('inc-team-period') || 'month';
+  const {from, to} = getPeriodDates(period);
+  const recruiters = [...new Set(MD.map(r=>r[C.recruiter]).filter(Boolean))].sort();
+  const p = getActivePolicyPeriod();
+  const rows = [
+    ['Talent+ Hire Pulse — Team Earnings Report'],
+    ['Policy: '+(p?p.title:'N/A'), 'Period: '+fmtD(from)+' to '+fmtD(to), 'Generated: '+new Date().toLocaleString()],
+    [],
+    ['Recruiter','Hires in Period','Active Pipeline','Firm Revenue ₹','Recruiter Earnings ₹']
+  ];
+  recruiters.forEach(rec=>{
+    const joined=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=from&&r[C.doj]<=to&&r[C.recruiter]===rec);
+    let firm=0,share=0;
+    joined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0)*12;const f=calcFirmFee(e,c,r[C.client],r[C.doj]);firm+=f;share+=calcRecShare(f,r[C.client],r[C.doj]);});
+    const pipe=MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&r[C.recruiter]===rec).length;
+    rows.push([rec,joined.length,pipe,Math.round(firm),Math.round(share)]);
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(rows);const wb2=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2,ws2,'Team Earnings');
+  XLSX.writeFile(wb2,'THP_Team_Earnings_'+today()+'.xlsx');
+  toast('ok','Downloaded','Team earnings exported');
+}
+
+// ── Policy View ────────────────────────────────────────
+function renderPolicyView(){
+  const p = getActivePolicyPeriod();
+  const el = document.getElementById('inc-policy-current');
+  if(!el) return;
+
+  const slabRows = p ? p.slabs.map(s=>`
+    <tr><td class="m">${s.expFrom === 0 ? '0' : 'More than '+s.expFrom} – ${s.expTo >= 999 ? 'Above '+s.expFrom : 'up to '+s.expTo} years</td>
+    <td class="m">${s.model==='fixed' ? 'Flat ₹'+s.amount.toLocaleString('en-IN')+' per hire' : s.rate+'% of Fixed Pay'}</td></tr>`).join('') : '';
+
+  const ovRows = incPolicy.clientOverrides.length ? incPolicy.clientOverrides.map(o=>
+    `<tr><td class="m">${o.client}</td><td class="m">${o.model==='fixed'?'Flat ₹'+(o.amount||o.rate).toLocaleString('en-IN'):o.rate+'% of Fixed Pay'}</td><td class="m">${o.recruiterShare||'-'}%</td></tr>`
+  ).join('') : '<tr><td colspan="3" style="text-align:center;padding:10px;color:var(--w60)">No client overrides — standard slabs apply to all</td></tr>';
+
+  el.innerHTML = p ? `
+    <div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:14px 18px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-size:15px;font-weight:700">${p.title}</div>
+        <span style="background:var(--teal);color:#000;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700">ACTIVE</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px;margin-bottom:12px">
+        <div><span style="color:var(--w60)">Applicable Period</span><br><strong>${fmtD(p.from)} – ${fmtD(p.to)}</strong></div>
+        <div><span style="color:var(--w60)">Revision</span><br><strong>#${p.revision} · ${fmtD(p.revisionDate)}</strong></div>
+        <div><span style="color:var(--w60)">Recruiter Share</span><br><strong>${p.recruiterShare}% of firm fee</strong></div>
+        <div><span style="color:var(--w60)">Notes</span><br><strong>${p.revisionNotes||'—'}</strong></div>
+      </div>
+      <div class="sl2" style="margin-bottom:8px">Standard Fee Slabs</div>
+      <div class="tw"><table><thead><tr><th>Candidate Experience</th><th>Recruitment Fee</th></tr></thead><tbody>${slabRows}</tbody></table></div>
+      ${incPolicy.clientOverrides.length ? `<div class="sl2" style="margin:12px 0 8px">Client-Specific Overrides</div><div class="tw"><table><thead><tr><th>Client</th><th>Fee Structure</th><th>Rec Share %</th></tr></thead><tbody>${ovRows}</tbody></table></div>` : ''}
+    </div>` : '<div style="text-align:center;padding:20px;color:var(--w60)">No active policy. Configure in Admin → Billing Config.</div>';
+
+  const histEl = document.getElementById('inc-policy-history');
+  if(histEl){
+    const archived = incPolicy.periods.filter(p2=>!p2.active);
+    histEl.innerHTML = archived.length ?
+      '<div class="tw"><table><thead><tr><th>Title</th><th>Period</th><th>Revision</th><th>Notes</th></tr></thead><tbody>'+
+        archived.map(p2=>`<tr><td>${p2.title}</td><td class="mono">${fmtD(p2.from)} – ${fmtD(p2.to)}</td><td class="m">#${p2.revision} · ${fmtD(p2.revisionDate)}</td><td class="m">${p2.revisionNotes||'—'}</td></tr>`).join('')+
+      '</tbody></table></div>' :
+      '<div style="color:var(--w60);font-size:11px;padding:8px 0">No previous revisions.</div>';
+  }
+}
+
+// ── Projections ────────────────────────────────────────
+function genProjections(){
+  const recFilter = gv('proj-rec') || '';
+  const el = document.getElementById('inc-proj-list');
+  if(!el) return;
+
+  // Populate recruiter dropdown
+  const projRec = document.getElementById('proj-rec');
+  if(projRec && projRec.options.length <= 1){
+    mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;projRec.appendChild(o);});
+  }
+
+  const open = VD.filter(v => v['Current Status']==='Open' && v['Active']!=='N');
+  if(!open.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No open vacancies to project.</div>';return;}
+  const p = getActivePolicyPeriod();
+  if(!p){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No active policy configured.</div>';return;}
+
+  // Show slab reference
+  const slabRef = '<div style="margin-bottom:14px;background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:10px 14px"><div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Active Policy: '+p.title+' (Rev #'+p.revision+')</div><div style="display:flex;gap:16px;flex-wrap:wrap">'+
+    p.slabs.map(s=>'<span style="font-size:10px;color:var(--w60)">'+
+      (s.expFrom===0?'0':'&#62;'+s.expFrom)+'–'+(s.expTo>=999?''+s.expFrom+'+ yrs':'≤'+s.expTo+' yrs')+
+      ': <strong style="color:var(--ow)">'+(s.model==='fixed'?'₹'+s.amount.toLocaleString('en-IN'):s.rate+'%')+'</strong></span>').join('')+
+    '</div></div>';
+
+  // Per vacancy projections
+  const vacRows = open
+    .filter(v => !recFilter || v['Recruiter']===recFilter)
+    .map(v => {
+      const budgetMin = parseFloat(v['Budget Min']||0);
+      const budgetMax = parseFloat(v['Budget Max']||0);
+      const midBudget = budgetMin && budgetMax ? (budgetMin+budgetMax)/2 : budgetMin||budgetMax||0;
+      const annualMid = midBudget * 12;
+      const exp = parseExp(v['Experience'] || '2');  // default 2 years if unknown
+      const feeMin = budgetMin ? calcFirmFee(exp, budgetMin*12, v['Company']) : 0;
+      const feeMax = budgetMax ? calcFirmFee(exp, budgetMax*12, v['Company']) : 0;
+      const feeMid = calcFirmFee(exp, annualMid, v['Company']);
+      const recMin = calcRecShare(feeMin, v['Company']);
+      const recMax = calcRecShare(feeMax, v['Company']);
+      const recMid = calcRecShare(feeMid, v['Company']);
+      const positions = parseInt(v['Positions Count']||1);
+      return {v, exp, feeMid, recMid, feeMin, feeMax, recMin, recMax, positions};
+    });
+
+  const totFirmMid = vacRows.reduce((s,r)=>s+r.feeMid*r.positions,0);
+  const totRecMid  = vacRows.reduce((s,r)=>s+r.recMid*r.positions,0);
+
+  el.innerHTML = slabRef +
+    '<div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Recruiter</th><th>Exp (approx)</th><th>Positions</th><th>Firm Fee Range</th><th>Rec Share Range</th></tr></thead><tbody>'+
+    vacRows.map(r=>`<tr>
+      <td><strong>${r.v['Designation']}</strong></td>
+      <td class="m">${r.v['Company']}</td>
+      <td class="m">${r.v['Recruiter']||'—'}</td>
+      <td class="m">${r.exp.toFixed(1)} yrs</td>
+      <td class="m">${r.positions}</td>
+      <td class="m">${r.feeMin&&r.feeMax ? '₹'+Math.round(r.feeMin).toLocaleString('en-IN')+' – ₹'+Math.round(r.feeMax).toLocaleString('en-IN') : r.feeMid ? '₹'+Math.round(r.feeMid).toLocaleString('en-IN') : '—'}</td>
+      <td style="color:var(--gold);font-weight:600">${r.recMin&&r.recMax ? '₹'+Math.round(r.recMin).toLocaleString('en-IN')+' – ₹'+Math.round(r.recMax).toLocaleString('en-IN') : r.recMid ? '₹'+Math.round(r.recMid).toLocaleString('en-IN') : '—'}</td>
+    </tr>`).join('')+
+    `<tr style="background:rgba(233,152,43,.08)"><td colspan="5" style="font-weight:700;padding:8px 11px">If ALL ${vacRows.length} vacancies close (mid-range)</td><td style="font-weight:700;padding:8px 11px">₹${Math.round(totFirmMid).toLocaleString('en-IN')}</td><td style="color:var(--gold);font-weight:700;padding:8px 11px">₹${Math.round(totRecMid).toLocaleString('en-IN')}</td></tr>`+
+    '</tbody></table></div>';
+}
+
+// ── Billing Config (Admin) ─────────────────────────────
+function loadBillingConfigUI(){
+  const p = getActivePolicyPeriod();
+  if(!p) return;
+  sv('bp-title', p.title);
+  sv('bp-from',  p.from);
+  sv('bp-to',    p.to);
+  sv('bp-rev',   p.revision);
+  sv('bp-revdate', p.revisionDate||today());
+  sv('bp-notes', p.revisionNotes||'');
+  sv('bp-recshare', p.recruiterShare||20);
+  renderSlabTable(p.slabs);
+  renderClientOverridesList();
+  renderRevisionHistory();
+  // Populate client override dropdown
+  const cl = document.getElementById('bp-ov-client');
+  if(cl){cl.innerHTML='<option value="">— Select —</option>';mA('clients').forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;cl.appendChild(o);});}
+}
+
+function renderSlabTable(slabs){
+  const tbody = document.getElementById('bp-slabs-body');
+  if(!tbody) return;
+  tbody.innerHTML = slabs.map((s,i)=>`
+    <tr>
+      <td><input type="number" value="${s.expFrom}" step="0.5" min="0" style="width:80px" data-slab="${i}" data-field="expFrom" onchange="updateSlab(this)"></td>
+      <td><input type="number" value="${s.expTo>=999?'':s.expTo}" step="0.5" min="0" placeholder="∞" style="width:80px" data-slab="${i}" data-field="expTo" onchange="updateSlab(this)"></td>
+      <td><select data-slab="${i}" data-field="model" onchange="updateSlab(this)">
+        <option value="pct" ${s.model==='pct'?'selected':''}>% of Fixed Pay</option>
+        <option value="fixed" ${s.model==='fixed'?'selected':''}>Flat ₹ per hire</option>
+      </select></td>
+      <td><input type="number" value="${s.model==='pct'?s.rate:s.amount}" step="0.01" placeholder="e.g. 8.33 or 5000" style="width:100px" data-slab="${i}" data-field="rateOrAmount" onchange="updateSlab(this)"></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="removeSlabRow(${i})" style="color:#ff6b6b">✕</button></td>
+    </tr>`).join('');
+}
+
+function updateSlab(el){
+  const p = getActivePolicyPeriod();if(!p)return;
+  const i = parseInt(el.getAttribute('data-slab'));
+  const field = el.getAttribute('data-field');
+  const val = field==='model' ? el.value : parseFloat(el.value)||0;
+  if(field==='expFrom') p.slabs[i].expFrom = val;
+  else if(field==='expTo') p.slabs[i].expTo = val||999;
+  else if(field==='model') p.slabs[i].model = val;
+  else if(field==='rateOrAmount'){
+    if(p.slabs[i].model==='pct') p.slabs[i].rate = val;
+    else p.slabs[i].amount = val;
+  }
+}
+
+function addSlabRow(){
+  const p = getActivePolicyPeriod();if(!p)return;
+  p.slabs.push({expFrom:0,expTo:999,model:'pct',rate:8.33});
+  renderSlabTable(p.slabs);
+}
+
+function removeSlabRow(i){
+  const p = getActivePolicyPeriod();if(!p)return;
+  p.slabs.splice(i,1);
+  renderSlabTable(p.slabs);
+}
+
+function addClientOverride(){
+  const cli = gv('bp-ov-client');
+  const model = gv('bp-ov-model');
+  const rate = parseFloat(gv('bp-ov-rate'))||0;
+  const share = parseFloat(gv('bp-ov-recshare'))||20;
+  if(!cli||!rate){toast('warn','Required','Select client and enter rate');return;}
+  const existing = incPolicy.clientOverrides.findIndex(o=>o.client===cli);
+  const entry = {client:cli, model, rate, amount:rate, recruiterShare:share};
+  if(existing>=0) incPolicy.clientOverrides[existing]=entry;
+  else incPolicy.clientOverrides.push(entry);
+  renderClientOverridesList();
+  toast('ok','Override Added',cli+' billing override saved');
+}
+
+function renderClientOverridesList(){
+  const el = document.getElementById('bp-overrides-list');if(!el)return;
+  if(!incPolicy.clientOverrides.length){el.innerHTML='<div style="color:var(--w60);font-size:11px;padding:6px 0">No client overrides. All clients use standard slabs.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Fee Model</th><th>Rate / Amount</th><th>Rec Share %</th><th></th></tr></thead><tbody>'+
+    incPolicy.clientOverrides.map((o,i)=>`<tr><td>${o.client}</td><td class="m">${o.model==='pct'?'% of Fixed Pay':'Flat ₹'}</td><td class="m">${o.model==='pct'?o.rate+'%':'₹'+Math.round(o.rate).toLocaleString('en-IN')}</td><td class="m">${o.recruiterShare}%</td><td><button class="btn btn-ghost btn-sm" onclick="removeClientOverride(${i})" style="color:#ff6b6b">✕</button></td></tr>`).join('')+
+    '</tbody></table></div>';
+}
+
+function removeClientOverride(i){incPolicy.clientOverrides.splice(i,1);renderClientOverridesList();}
+
+function renderRevisionHistory(){
+  const el = document.getElementById('bp-revision-history');if(!el)return;
+  const all = [...incPolicy.periods].reverse();
+  if(!all.length){el.innerHTML='<div style="color:var(--w60);font-size:11px">No revisions yet.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Title</th><th>Period</th><th>Rev #</th><th>Rev Date</th><th>Notes</th><th>Status</th></tr></thead><tbody>'+
+    all.map(p=>`<tr><td><strong>${p.title}</strong></td><td class="mono">${fmtD(p.from)} – ${fmtD(p.to)}</td><td class="m">#${p.revision}</td><td class="mono">${fmtD(p.revisionDate||p.from)}</td><td class="m">${p.revisionNotes||'—'}</td><td><span class="badge ${p.active?'b-active':'b-inactive'}">${p.active?'Active':'Archived'}</span></td></tr>`).join('')+
+    '</tbody></table></div>';
+}
+
+async function saveBillingConfig(){
+  const p = getActivePolicyPeriod();if(!p){toast('err','Error','No active period found');return;}
+  p.title = gv('bp-title')||p.title;
+  p.from = gv('bp-from')||p.from;
+  p.to = gv('bp-to')||p.to;
+  p.revision = parseInt(gv('bp-rev'))||p.revision;
+  p.revisionDate = gv('bp-revdate')||today();
+  p.revisionNotes = gv('bp-notes')||'';
+  p.recruiterShare = parseFloat(gv('bp-recshare'))||20;
+  await saveIncPolicyToSP();
+  renderRevisionHistory();
+  toast('ok','Billing Config Saved','Policy updated and synced to SharePoint');
+}
+
+async function saveIncPolicyToSP(){
+  saveIncentiveData(); // localStorage backup
+  if(!WB) return;
+  try {
+    const data = JSON.stringify(incPolicy);
+    let ws = WB.Sheets['Config'];
+    let all = ws ? XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) : [];
+    // Remove old IncentivePolicy block
+    let si = -1;
+    for(let i=0;i<all.length;i++){if(String(all[i][0]).trim()==='IncentivePolicy'){si=i;break;}}
+    if(si>=0){let ei=si+1;while(ei<all.length&&all[ei][0])ei++;all.splice(si,ei-si);}
+    all.push([],['IncentivePolicy',data]);
+    WB.Sheets['Config'] = XLSX.utils.aoa_to_sheet(all);
+    if(!WB.SheetNames.includes('Config')) WB.SheetNames.push('Config');
+    await saveWB(false);
+  } catch(e) { console.warn('saveIncPolicyToSP',e); }
+}
+
+function loadIncPolicyFromSP(){
+  if(!WB||!WB.Sheets['Config']) return;
+  try {
+    const ws = WB.Sheets['Config'];
+    const all = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    for(let i=0;i<all.length;i++){
+      if(String(all[i][0]).trim()==='IncentivePolicy' && all[i][1]){
+        const loaded = JSON.parse(all[i][1]);
+        if(loaded && loaded.periods) incPolicy = loaded;
+        return;
+      }
+    }
+  } catch(e){ console.warn('loadIncPolicyFromSP',e); }
+}
+
+function saveIncentiveData(){
+  try{localStorage.setItem('thp_inc',JSON.stringify(incPolicy));}catch(e){}
+}
+function loadIncentiveData(){
+  try{
+    const d=localStorage.getItem('thp_inc');
+    if(d){const p=JSON.parse(d);if(p&&p.periods)incPolicy=p;}
+  }catch(e){}
+}
 
 // ══════════════════════════════════════════════════════
 // INVOICING (Item 20)
