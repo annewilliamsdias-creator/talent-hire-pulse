@@ -1059,10 +1059,18 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Status</label><select id="avStat"><option value="Open">Open</option><option>On Hold</option><option>Closed</option><option>Cancelled</option></select></div>
 <div class="field"><label>Active</label><select id="avAct"><option value="Y">Active — visible in dropdowns</option><option value="N">Inactive — hidden</option></select></div>
 <div class="field s3"><label>Remarks</label><input type="text" id="avRemarks" placeholder="Any notes about this vacancy"></div>
-<div class="field s2"><label>JD Upload <span class="fhint">(link or filename)</span></label><input type="text" id="avJDLink" placeholder="SharePoint link or filename"></div>
-<div class="field" style="align-self:flex-end"><button class="btn btn-ghost btn-sm" onclick="document.getElementById('avJDFile').click()">📎 Browse JD</button><input type="file" id="avJDFile" accept=".pdf,.doc,.docx" style="display:none" onchange="handleJDUpload(event)"></div>
+<div class="field s2"><label>JD from Repository</label><select id="avJDSel" onchange="onAvJDSel()"><option value="">— Select JD from Repository —</option></select></div>
+<div class="field s2"><label>JD Name <span class="fhint">(auto-filled)</span></label><input type="text" id="avJDLink" placeholder="Auto-filled from selection" readonly style="opacity:.7"></div>
 </div>
 <div class="btn-row"><button class="btn btn-t" onclick="saveVac()">✓ Save</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('avForm').classList.add('hidden')">Cancel</button></div>
+</div>
+<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+  <select id="avf-cli" onchange="renderAVacs()" style="flex:1;min-width:120px;max-width:155px;font-size:11px"><option value="">All Clients</option></select>
+  <select id="avf-rec" onchange="renderAVacs()" style="flex:1;min-width:120px;max-width:155px;font-size:11px"><option value="">All Recruiters</option></select>
+  <select id="avf-dept" onchange="renderAVacs()" style="flex:1;min-width:120px;max-width:155px;font-size:11px"><option value="">All Departments</option></select>
+  <input type="text" id="avf-role" oninput="renderAVacs()" placeholder="Search role..." style="flex:1;min-width:120px;max-width:155px;font-size:11px">
+  <select id="avf-stat" onchange="renderAVacs()" style="flex:1;min-width:110px;max-width:145px;font-size:11px"><option value="">All Statuses</option><option>Open</option><option>On Hold</option><option>Closed</option><option>Cancelled</option></select>
+  <button class="btn btn-ghost btn-sm" onclick="['avf-cli','avf-rec','avf-dept','avf-stat'].forEach(function(id){var e=document.getElementById(id);if(e)e.selectedIndex=0;});var r=document.getElementById('avf-role');if(r)r.value='';renderAVacs()">✕ Clear</button>
 </div>
 <div class="tw"><table><thead><tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Status</th><th>Active</th><th>Actions</th></tr></thead><tbody id="avBody"></tbody></table></div>
 </div></div>
@@ -1915,17 +1923,23 @@ function buildDrop(elId, values, label){
   el.innerHTML='<option value="">'+label+'</option>'+sorted.map(v=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'</option>').join('');
 }
 function refreshAllFilters(){
-  // Home filters - from candidate records
-  buildDrop('hf-rec',MD.map(r=>r[C.recruiter]),'All Recruiters');
-  buildDrop('hf-cli',MD.map(r=>r[C.client]),'All Clients');
-  // All Records filters - from candidate records
-  buildDrop('rRec',MD.map(r=>r[C.recruiter]),'All Recruiters');
-  buildDrop('rCli',MD.map(r=>r[C.client]),'All Clients');
-  // Vacancy filters - from vacancy records
-  buildDrop('vf-rec',VD.map(v=>v['Recruiter']),'All Recruiters');
-  buildDrop('vf-cli',VD.map(v=>v['Company']),'All Clients');
-  buildDrop('vf-dept',VD.map(v=>v['Department']),'All Departments');
-  buildDrop('vf-loc',VD.map(v=>v['Location']),'All Locations');
+  // Recruiters: always from ACTIVE master list - admin controls who appears/disappears
+  const aRec=mA('recruiters');
+  buildDrop('hf-rec',aRec,'All Recruiters');
+  buildDrop('rRec',  aRec,'All Recruiters');
+  // Clients: union of master + actual records (preserve historical values)
+  const aCli=[...new Set([...mA('clients'),...MD.map(r=>r[C.client])].filter(Boolean))].sort();
+  buildDrop('hf-cli',aCli,'All Clients');
+  buildDrop('rCli',  aCli,'All Clients');
+  // Vacancy filters: union of master + VD actual values
+  buildDrop('vf-rec', [...new Set([...mA('recruiters'),...VD.map(v=>v['Recruiter'])].filter(Boolean))].sort(),'All Recruiters');
+  buildDrop('vf-cli', [...new Set([...mA('clients'),...VD.map(v=>v['Company'])].filter(Boolean))].sort(),'All Clients');
+  buildDrop('vf-dept',[...new Set([...mA('departments'),...VD.map(v=>v['Department'])].filter(Boolean))].sort(),'All Departments');
+  buildDrop('vf-loc', [...new Set([...mA('cities'),...VD.map(v=>v['Location'])].filter(Boolean))].sort(),'All Locations');
+  // Admin vacancy table filters
+  buildDrop('avf-cli', [...new Set([...mA('clients'),...VD.map(v=>v['Company'])].filter(Boolean))].sort(),'All Clients');
+  buildDrop('avf-rec', [...new Set([...mA('recruiters'),...VD.map(v=>v['Recruiter'])].filter(Boolean))].sort(),'All Recruiters');
+  buildDrop('avf-dept',[...new Set([...mA('departments'),...VD.map(v=>v['Department'])].filter(Boolean))].sort(),'All Departments');
 }
 let _rSortCol=null,_rSortDir='asc',_vSortCol=null,_vSortDir='asc';
 function sortRec(col,key){
@@ -2058,9 +2072,37 @@ function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx
 function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});el.value='';renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
 // VACANCIES ADMIN
-function openAddVac(){vacEIdx=-1;['avRole','avBudget','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
-function renderAVacs(){const tb=document.getElementById('avBody');if(!tb)return;if(!VD.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--w60)">No vacancies yet.</td></tr>';return;}tb.innerHTML=VD.map((v,i)=>{const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
-function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudget','Monthly Budget'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';document.getElementById('avForm').classList.remove('hidden');fillDrops();}
+function populateAvJDSel(cur){
+  const sel=document.getElementById('avJDSel');if(!sel)return;
+  if(!repoData.jds||!repoData.jds.length){sel.innerHTML='<option value="">— No JDs in Repository yet —</option>';return;}
+  sel.innerHTML='<option value="">— Select JD from Repository —</option>'+repoData.jds.map((j,i)=>'<option value="'+i+'"'+(cur&&cur===j.title?' selected':'')+'>'+j.title+(j.client?' ('+j.client+')':'')+'</option>').join('');
+}
+function onAvJDSel(){
+  const sel=document.getElementById('avJDSel');if(!sel)return;
+  const i=parseInt(sel.value);const lnk=document.getElementById('avJDLink');
+  if(!isNaN(i)&&repoData.jds[i]){if(lnk)lnk.value=repoData.jds[i].title;}
+  else{if(lnk)lnk.value='';}
+}
+function openAddVac(){vacEIdx=-1;['avRole','avBudget','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';const jdsel=document.getElementById('avJDSel');if(jdsel)jdsel.selectedIndex=0;document.getElementById('avForm').classList.remove('hidden');fillDrops();populateAvJDSel();}
+function renderAVacs(){
+  refreshAllFilters();
+  const fCli=document.getElementById('avf-cli')&&document.getElementById('avf-cli').value||'';
+  const fRec=document.getElementById('avf-rec')&&document.getElementById('avf-rec').value||'';
+  const fDept=document.getElementById('avf-dept')&&document.getElementById('avf-dept').value||'';
+  const fRole=(document.getElementById('avf-role')&&document.getElementById('avf-role').value||'').toLowerCase();
+  const fStat=document.getElementById('avf-stat')&&document.getElementById('avf-stat').value||'';
+  const tb=document.getElementById('avBody');if(!tb)return;
+  const vis=VD.filter(v=>{
+    if(fCli&&(v['Company']||'')!==fCli)return false;
+    if(fRec&&(v['Recruiter']||'')!==fRec)return false;
+    if(fDept&&(v['Department']||'')!==fDept)return false;
+    if(fRole&&!(v['Designation']||'').toLowerCase().includes(fRole))return false;
+    if(fStat&&(v['Current Status']||'Open')!==fStat)return false;
+    return true;
+  });
+  if(!vis.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies yet.')+'</td></tr>';return;}
+  tb.innerHTML=vis.map(v=>{const i=VD.indexOf(v);const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
+function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudget','Monthly Budget'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';document.getElementById('avForm').classList.remove('hidden');fillDrops();populateAvJDSel(v['JD Link']||'');}
 async function saveVac(){
 const cli=gv('avCli'),role=gv('avRole'),dept=gv('avDept');
 if(!cli||!role||!dept){showAlert('avAlert','err','Client, Role and Department required.');return;}
