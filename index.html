@@ -3844,6 +3844,219 @@ function renderPolicyBadge(){
 }
 
 // ── My Earnings ────────────────────────────────────────
+// ── Section A helpers ──────────────────────────────────
+// Returns the 3 exact employment-month date ranges from recruiter DOJ
+function getRampEmploymentMonths(recruiterName){
+  const rec = M.recruiters && M.recruiters.find(r => r.name === recruiterName);
+  if(!rec || !rec.doj) return [];
+  const doj = new Date(rec.doj + 'T00:00:00');
+  const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return [0,1,2].map(m => {
+    const mStart = new Date(doj.getFullYear(), doj.getMonth()+m, doj.getDate());
+    const mEnd   = new Date(doj.getFullYear(), doj.getMonth()+m+1, doj.getDate());
+    const mLast  = new Date(mEnd.getTime() - 86400000); // day before next employment-month start
+    return { from: fmt(mStart), to: fmt(mLast), empMonth: m+1,
+             label: mStart.toLocaleString('en-IN',{month:'long',year:'numeric'}) };
+  });
+}
+
+// Section A activity calculation for one employment month
+// Returns call stats and interview count derived from ATS data
+function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthNum){
+  const p = getActivePolicyPeriod();
+  const ramp = p?.rampUp || {};
+  const monthCfg = (ramp.months||[
+    {month:1,minDailyCalls:30,minInterviews:5},
+    {month:2,minDailyCalls:35,minInterviews:8},
+    {month:3,minDailyCalls:40,minInterviews:15}
+  ]).find(m=>m.month===empMonthNum) || {minDailyCalls:30,minInterviews:5};
+
+  // Excluded sources (Section 3 of policy)
+  const excludedSrc = ['Internal Referral','Candidate Client Portal','Rehire'];
+  const policyStart = '2026-03-01';
+
+  // All eligible profiles sourced in this month by this recruiter
+  const sourced = MD.filter(r =>
+    r[C.recruiter] === recruiterName &&
+    r[C.sourcingDate] >= monthFrom && r[C.sourcingDate] <= monthTo &&
+    r[C.sourcingDate] >= policyStart &&
+    !excludedSrc.includes(r[C.source])
+  );
+
+  // Daily call count: profiles sourced per day (proxy for meaningful calls)
+  const byDay = {};
+  sourced.forEach(r => {
+    const d = r[C.sourcingDate];
+    if(d){ byDay[d] = (byDay[d]||0) + 1; }
+  });
+  const activeDays   = Object.keys(byDay).length;
+  const start = new Date(monthFrom+'T00:00:00');
+  const end   = new Date(monthTo  +'T00:00:00');
+  const calDays = Math.round((end-start)/86400000) + 1;
+  const dailyAvg = activeDays > 0 ? Math.round((sourced.length / calDays)*10)/10 : 0;
+
+  // Interview count — derive from ATS status / interview date
+  // 1. Most accurate: interviewDate falls in this month (candidate actually went for interview)
+  const byIntDate = MD.filter(r =>
+    r[C.recruiter] === recruiterName &&
+    r[C.interviewDate] && r[C.interviewDate] >= monthFrom && r[C.interviewDate] <= monthTo &&
+    !excludedSrc.includes(r[C.source]) && r[C.sourcingDate] >= policyStart
+  );
+
+  // 2. Fallback: derive from status of profiles sourced in this month
+  //    - "Rejected by Consultant" + interviewer/DM is Anne → interview was scheduled
+  //    - "Rejected by Client" → interview was conducted (client rejected after interview)
+  //    - "Selected","Offered","Joining in Progress","Joined" → interview conducted
+  //    - "Interview Scheduled","Interview" → interview at minimum scheduled (count it)
+  //    - Explicitly NOT counting: No Show (candidate didn't attend)
+  const interviewedByStatus = sourced.filter(r => {
+    const st = r[C.status] || '';
+    if(['Selected','Offered','Joining in Progress','Joined','Rejected by Client'].includes(st)) return true;
+    if(['Interview Scheduled','Interview'].includes(st)) return true;
+    if(st === 'Rejected by Consultant'){
+      const dm = (r[C.dm]||'').toLowerCase();
+      const iv = (r[C.interviewerName]||'').toLowerCase();
+      if(dm.includes('anne') || iv.includes('anne')) return true;
+    }
+    return false;
+  });
+
+  // Use whichever gives more data (interviewDate records are more precise)
+  const interviews = byIntDate.length > 0 ? byIntDate : interviewedByStatus;
+  const interviewCount = interviews.length;
+  const interviewMethod = byIntDate.length > 0 ? 'Interview date' : 'Derived from status';
+
+  const callsMet      = dailyAvg >= monthCfg.minDailyCalls;
+  const interviewsMet = interviewCount >= monthCfg.minInterviews;
+  const qualified     = callsMet && interviewsMet;
+
+  return {
+    empMonthNum, monthFrom, monthTo, monthCfg,
+    totalProfiles: sourced.length, activeDays, calDays, dailyAvg, byDay,
+    interviewCount, interviewMethod, interviews, sourced,
+    callsMet, interviewsMet, qualified
+  };
+}
+
+// Render the full Section A activity dashboard
+function renderSectionAView(el, recSel, p){
+  const rec = M.recruiters && M.recruiters.find(r => r.name === recSel);
+  if(!rec || !rec.doj){
+    el.innerHTML = '<div style="background:rgba(255,80,80,.08);border:2px solid rgba(255,80,80,.3);border-radius:var(--rs);padding:16px 20px">'
+      +'<strong style="color:#ff6b6b">\u26a0 Recruiter DOJ not set</strong><br><div style="font-size:11px;margin-top:6px">Set it in Admin \u2192 Config \u2192 Recruiters to calculate Section A incentive.</div></div>';
+    return;
+  }
+
+  const ramp = p?.rampUp || {};
+  const incTiers = ramp.incentives || [{monthsMet:1,amount:1000},{monthsMet:2,amount:2500},{monthsMet:3,amount:5000}];
+
+  const empMonths = getRampEmploymentMonths(recSel);
+  if(!empMonths.length){ el.innerHTML='<div style="color:var(--w60);padding:20px;text-align:center">Could not compute employment months.</div>'; return; }
+
+  const results = empMonths.map(em => calcSectionAForMonth(recSel, em.from, em.to, em.empMonth));
+  const qualifyingCount = results.filter(r => r.qualified).length;
+  const incTier = incTiers.slice().reverse().find(t => t.monthsMet <= qualifyingCount);
+
+  let html = '';
+
+  // Header banner
+  html += `<div style="background:rgba(255,160,0,.07);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:14px 18px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:4px">\ud83d\ude80 Section A \u2014 Ramp-Up Incentive Calculator</div>
+    <div style="font-size:11px;color:var(--w60)">Activity-based incentive for ${recSel}\u2019s first 3 months of employment (${fmtD(rec.doj)} onwards). Calculated from profiles sourced and interviews conducted \u2014 no placement required.</div>
+  </div>`;
+
+  // Per employment month
+  results.forEach(res => {
+    const callColor  = res.callsMet      ? 'var(--teal)' : '#ff6b6b';
+    const intvColor  = res.interviewsMet ? 'var(--teal)' : '#ff6b6b';
+    const qualBg     = res.qualified ? 'rgba(52,186,198,.06)' : 'rgba(255,80,80,.04)';
+    const qualBorder = res.qualified ? 'rgba(52,186,198,.2)' : 'rgba(255,80,80,.15)';
+    const qualBadge  = res.qualified
+      ? '<span style="background:var(--teal);color:#000;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">QUALIFIES</span>'
+      : '<span style="background:rgba(255,80,80,.2);color:#ff6b6b;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">DOES NOT QUALIFY</span>';
+
+    html += `<div style="border:1px solid ${qualBorder};border-radius:var(--rs);margin-bottom:14px;overflow:hidden">
+      <div style="background:${qualBg};padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:12px;font-weight:700">Employment Month ${res.empMonthNum} &nbsp;<span style="font-weight:400;color:var(--w60);font-size:10px">${fmtD(res.monthFrom)} \u2013 ${fmtD(res.monthTo)}</span></div>
+        ${qualBadge}
+      </div>
+      <div style="padding:14px 16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <!-- Calls column -->
+          <div>
+            <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Daily Calls (Profiles Sourced)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;margin-bottom:8px">
+              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
+                <div style="color:var(--w60);font-size:10px">Total profiles sourced</div>
+                <div style="font-size:18px;font-weight:700">${res.totalProfiles}</div>
+              </div>
+              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
+                <div style="color:var(--w60);font-size:10px">Days sourced / Month days</div>
+                <div style="font-size:18px;font-weight:700">${res.activeDays}<span style="font-size:11px;color:var(--w60)">/${res.calDays}</span></div>
+              </div>
+              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
+                <div style="color:var(--w60);font-size:10px">Daily average</div>
+                <div style="font-size:18px;font-weight:700;color:${callColor}">${res.dailyAvg}</div>
+              </div>
+              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
+                <div style="color:var(--w60);font-size:10px">Threshold</div>
+                <div style="font-size:18px;font-weight:700">${res.monthCfg.minDailyCalls}<span style="font-size:10px;color:${callColor};margin-left:4px">${res.callsMet ? '\u2714 Met' : '\u2718 Not met'}</span></div>
+              </div>
+            </div>
+            ${Object.keys(res.byDay).length ? `<div style="font-size:9px;color:var(--w60);margin-top:4px">
+              Active sourcing days: ${Object.entries(res.byDay).sort().map(([d,n])=>`<span style="margin-right:6px">${fmtD(d)}: ${n}</span>`).join('')}
+            </div>` : '<div style="font-size:10px;color:var(--w60)">No profiles sourced in this period.</div>'}
+          </div>
+          <!-- Interviews column -->
+          <div>
+            <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Interviews Attended</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;margin-bottom:8px">
+              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
+                <div style="color:var(--w60);font-size:10px">Interviews counted</div>
+                <div style="font-size:18px;font-weight:700;color:${intvColor}">${res.interviewCount}</div>
+              </div>
+              <div style="background:var(--w06);border-radius:6px;padding:8px 10px">
+                <div style="color:var(--w60);font-size:10px">Threshold</div>
+                <div style="font-size:18px;font-weight:700">${res.monthCfg.minInterviews}<span style="font-size:10px;color:${intvColor};margin-left:4px">${res.interviewsMet ? '\u2714 Met' : '\u2718 Not met'}</span></div>
+              </div>
+            </div>
+            <div style="font-size:9px;color:var(--w60)">Basis: ${res.interviewMethod}. Counted: Selected, Offered, Joined, Rejected by Client, Interview Scheduled/In Progress. Rejected by Consultant + Anne = counted.</div>
+            ${res.interviews.length ? `<div style="margin-top:6px;font-size:10px;max-height:80px;overflow-y:auto">
+              ${res.interviews.map(r=>`<span style="display:inline-block;margin:1px 4px 1px 0;background:rgba(52,186,198,.1);border-radius:3px;padding:1px 5px">${r[C.name]||r[C.code]} (${r[C.status]})</span>`).join('')}
+            </div>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  // Incentive summary
+  html += `<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:14px 18px">
+    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">Section A Incentive Summary</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:11px;margin-bottom:12px">
+      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:6px;padding:8px 10px;text-align:center">
+        <div style="color:var(--w60);font-size:10px">Month ${r.empMonthNum}</div>
+        <div style="font-size:14px;font-weight:700;color:${r.qualified?'var(--teal)':'#ff6b6b'}">${r.qualified ? '\u2714 Qualifies' : '\u2718 Fails'}</div>
+      </div>`).join('')}
+      <div style="background:rgba(255,160,0,.1);border-radius:6px;padding:8px 10px;text-align:center">
+        <div style="color:var(--w60);font-size:10px">Qualifying months</div>
+        <div style="font-size:14px;font-weight:700">${qualifyingCount} of 3</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(255,160,0,.2)">
+      <div>
+        <div style="font-size:13px;font-weight:600">Ramp-Up Incentive Earned</div>
+        <div style="font-size:10px;color:var(--w60);margin-top:2px">Paid after successful completion of Month 3. Requires BOTH call and interview thresholds met in each qualifying month.</div>
+      </div>
+      <div style="font-size:26px;font-weight:700;color:var(--gold)">\u20b9${incTier ? incTier.amount.toLocaleString('en-IN') : '0'}</div>
+    </div>
+    ${qualifyingCount === 0 ? '<div style="font-size:10px;color:#ff6b6b;margin-top:6px">\u26a0 No months qualify yet. Both daily call threshold AND interview threshold must be met in the same month.</div>' : ''}
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+
 function calcIncentives(){
   const period        = gv('inc-period') || 'month';
   const recSel        = gv('inc-rec') || ((acct&&acct.name) ? acct.name.split(' ')[0] : '');
@@ -3851,8 +4064,24 @@ function calcIncentives(){
   const {from, to}    = getPeriodDates(period);
   renderPolicyBadge();
 
-  // Pipeline potential
-  const pipe = MD.filter(r => ['Selected','Offered','Joining in Progress'].includes(r[C.status]) && (!recSel||r[C.recruiter]===recSel));
+  const el = document.getElementById('inc-results');
+  if(!el) return;
+
+  // ── Section A: activity-based view (ramp period) ──────
+  // Section A has nothing to do with joined candidates.
+  // It is calculated from: profiles sourced per day (call proxy)
+  // + interviews conducted, both derived from ATS data.
+  if(period === 'ramp_period'){
+    const p = getActivePolicyPeriod();
+    renderSectionAView(el, recSel, p);
+    // Still update KPI cards with pipeline/YTD data
+    const pipe2 = MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&(!recSel||r[C.recruiter]===recSel));
+    let pot2=0; pipe2.forEach(r=>{pot2+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||0)*12,r[C.client]);});
+    const setEl2=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    setEl2('inc-potential','\u20b9'+Math.round(pot2).toLocaleString('en-IN'));
+    setEl2('inc-closed', '—');
+    return;
+  }
   let pot = 0;
   pipe.forEach(r => { pot += calcFirmFee(parseExp(r[C.expYrs]), (parseFloat(r[C.expectedSalary])||0)*12, r[C.client]); });
 
@@ -3868,9 +4097,6 @@ function calcIncentives(){
   setEl('inc-earned',   '\u20b9'+Math.round(tmFirm).toLocaleString('en-IN'));
   setEl('inc-ytd',      '\u20b9'+Math.round(ytdFirm).toLocaleString('en-IN'));
   setEl('inc-potential','\u20b9'+Math.round(pot).toLocaleString('en-IN'));
-
-  const el = document.getElementById('inc-results');
-  if(!el) return;
 
   const p = getActivePolicyPeriod();
 
