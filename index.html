@@ -3095,23 +3095,75 @@ async function exportDashPDF(){
   if(typeof window.jspdf === 'undefined'){
     toast('warn','Loading','PDF library loading — please try again in a moment.');return;
   }
-  toast('info','Generating','Building PDF report...');
+  toast('info','Generating','Preparing charts for PDF...');
+  // Small delay so toast renders
+  await new Promise(r=>setTimeout(r,80));
+
   const {jsPDF: JSPDF} = window.jspdf;
   const doc = new JSPDF({orientation:'portrait', unit:'mm', format:'a4'});
   const dates = getDashDates();
   const data  = filterData(dates);
   const W = 210, M = 12;
 
-  // ── Colour helpers ──
-  const NAVY  = [10,22,40];
-  const TEAL  = [52,186,198];
-  const GOLD  = [233,152,43];
-  const WHITE = [255,255,255];
-  const LGREY = [245,247,250];
-  const DGREY = [60,70,85];
-  const MID   = [130,145,165];
+  // ── Colours ──
+  const NAVY=[10,22,40], TEAL=[52,186,198], GOLD=[233,152,43];
+  const WHITE=[255,255,255], LGREY=[245,247,250], DGREY=[50,62,80];
 
-  // ── Header band (keep dark navy as requested) ──
+  // ── Step 1: switch all charts to light theme for PDF capture ──
+  const origColor    = Chart.defaults.color;
+  const origGridClr  = Chart.defaults.scale?.grid?.color;
+  Chart.defaults.color = '#334155';
+  if(Chart.defaults.scale) Chart.defaults.scale.grid = {...(Chart.defaults.scale.grid||{}), color:'rgba(0,0,0,.08)'};
+
+  // Enable datalabels + light text on every chart, capture image, restore
+  const CHARTS_PDF = [
+    {id:'ch-funnel',    label:'Pipeline Funnel'},
+    {id:'ch-status',    label:'Status Distribution'},
+    {id:'ch-client',    label:'Client-wise Active Pipeline'},
+    {id:'ch-source',    label:'Source Effectiveness'},
+    {id:'ch-recruiter', label:'Recruiter Performance'},
+    {id:'ch-trend',     label:'Weekly Activity Trend'},
+    {id:'ch-reject',    label:'Rejection Analysis'},
+    {id:'ch-dept',      label:'Department-wise Status'},
+  ];
+
+  // Capture all chart images with datalabels + dark text
+  const chartImages = {};
+  for(const ch of CHARTS_PDF){
+    const canvas = document.getElementById(ch.id);
+    const chartObj = CHARTS[ch.id];
+    if(!canvas||!chartObj) continue;
+    // Enable datalabels with dark text for PDF
+    if(typeof ChartDataLabels !== 'undefined'){
+      chartObj.options.plugins.datalabels = {
+        display: true,
+        color: '#1e293b',
+        font: {size:9, weight:'bold'},
+        anchor:'end', align:'end', offset:2,
+        formatter:(v)=>v>0?v:'', clamp:true, clip:false
+      };
+    }
+    chartObj.update('none');
+    // Composite: white bg + chart on new canvas
+    const tmp = document.createElement('canvas');
+    tmp.width = canvas.width; tmp.height = canvas.height;
+    const ctx = tmp.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,tmp.width,tmp.height);
+    ctx.drawImage(canvas,0,0);
+    chartImages[ch.id] = tmp.toDataURL('image/png',0.92);
+    // Restore datalabels off
+    if(typeof ChartDataLabels !== 'undefined'){
+      chartObj.options.plugins.datalabels = {display:false};
+    }
+    chartObj.update('none');
+  }
+  // Restore global chart theme
+  Chart.defaults.color = origColor;
+  if(Chart.defaults.scale && origGridClr !== undefined) Chart.defaults.scale.grid.color = origGridClr;
+  Object.values(CHARTS).forEach(ch=>ch&&ch.update&&ch.update('none'));
+
+  // ── Header band (dark navy as before) ──
   doc.setFillColor(...NAVY);
   doc.rect(0,0,W,26,'F');
   doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(...WHITE);
@@ -3119,99 +3171,87 @@ async function exportDashPDF(){
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...TEAL);
   doc.text('TALENT INSIGHTS', M, 17);
   const now=new Date();
-  const dateStr=now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
   doc.setFontSize(8);doc.setTextColor(200,220,235);
-  doc.text(dateStr, W-M, 11, {align:'right'});
+  doc.text(now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}), W-M, 11, {align:'right'});
   doc.text('WithAWill HR Consultancy Services LLP', W-M, 17, {align:'right'});
 
   // ── Filter band ──
   doc.setFillColor(25,38,62);
   doc.rect(0,26,W,10,'F');
-  const periodTxt  = document.getElementById('df-period')?.options[document.getElementById('df-period').selectedIndex]?.text||'All Time';
-  const clientTxt  = document.getElementById('df-client')?.value  || 'All Clients';
-  const deptTxt    = document.getElementById('df-dept')?.value    || 'All Depts';
-  const recTxt     = document.getElementById('df-recruiter')?.value || 'All Recruiters';
-  const srcTxt     = document.getElementById('df-source')?.value  || 'All Sources';
+  const ftext=[
+    document.getElementById('df-period')?.options[document.getElementById('df-period').selectedIndex]?.text||'All Time',
+    document.getElementById('df-client')?.value||'All Clients',
+    document.getElementById('df-dept')?.value||'All Depts',
+    document.getElementById('df-recruiter')?.value||'All Recruiters',
+    document.getElementById('df-source')?.value||'All Sources',
+  ].join('  ·  ');
   doc.setFontSize(7);doc.setTextColor(180,200,220);
-  doc.text([periodTxt, clientTxt, deptTxt, recTxt, srcTxt].join('  ·  '), M, 32, {maxWidth:W-M*2});
+  doc.text(ftext, M, 32, {maxWidth:W-M*2});
 
   let y = 40;
 
-  // ── KPI boxes (5 boxes, white bg, coloured numbers) ──
+  // ── KPI row (5 boxes) ──
   const active  = data.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;
   const joined  = data.filter(r=>r[C.status]==='Joined').length;
   const offered = data.filter(r=>r[C.status]==='Offered').length;
   const rejected= data.filter(r=>['Rejected by Consultant','Rejected by Client'].includes(r[C.status])).length;
   const kpis=[
-    {label:'Total Candidates', val:data.length,  col:TEAL},
-    {label:'Active Pipeline',  val:active,        col:[93,213,223]},
-    {label:'Joined',           val:joined,        col:[34,197,94]},
-    {label:'Offered',          val:offered,       col:[...GOLD]},
-    {label:'Rejected',         val:rejected,      col:[239,68,68]},
+    {label:'Total',  val:data.length, col:TEAL},
+    {label:'Active', val:active,      col:[34,197,94]},
+    {label:'Joined', val:joined,      col:[...GOLD]},
+    {label:'Offered',val:offered,     col:[100,140,220]},
+    {label:'Rejected',val:rejected,   col:[239,68,68]},
   ];
   const kW=(W-M*2)/5;
   kpis.forEach((k,i)=>{
     const x=M+i*kW;
-    doc.setFillColor(...WHITE);
-    doc.setDrawColor(220,228,240);
+    doc.setFillColor(...WHITE);doc.setDrawColor(210,220,235);
     doc.roundedRect(x+0.5,y,kW-1,16,2,2,'FD');
-    doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(...k.col);
+    doc.setFontSize(15);doc.setFont('helvetica','bold');doc.setTextColor(...k.col);
     doc.text(String(k.val),x+kW/2,y+10,{align:'center'});
     doc.setFontSize(6);doc.setFont('helvetica','normal');doc.setTextColor(...DGREY);
     doc.text(k.label.toUpperCase(),x+kW/2,y+14.5,{align:'center'});
   });
   y += 22;
 
-  // ── Chart sections — capture from canvas ──
-  const CHARTS_PDF = [
-    {id:'ch-funnel',    label:'⬇  Pipeline Funnel'},
-    {id:'ch-status',    label:'◉  Status Distribution'},
-    {id:'ch-client',    label:'🏢  Client-wise Active Pipeline'},
-    {id:'ch-source',    label:'📡  Source Effectiveness'},
-    {id:'ch-recruiter', label:'👤  Recruiter Performance'},
-    {id:'ch-trend',     label:'📈  Weekly Activity Trend'},
-    {id:'ch-reject',    label:'✗  Rejection Analysis'},
-    {id:'ch-dept',      label:'🏗  Department-wise Status'},
-  ];
+  // ── Charts — 2 per row ──
+  const chartW = (W-M*2-4)/2;   // two charts per row with 4mm gap
+  const chartH = 52;             // fixed height per chart
 
-  for(const ch of CHARTS_PDF){
-    const canvas=document.getElementById(ch.id);
-    if(!canvas)continue;
-    // Chart image
-    let imgData=null;
-    try{imgData=canvas.toDataURL('image/png',0.95);}catch(e){continue;}
-    if(!imgData||imgData==='data:,')continue;
+  for(let i=0;i<CHARTS_PDF.length;i+=2){
+    if(y + chartH + 10 > 280){ doc.addPage(); y=14; }
 
-    const natW=canvas.width, natH=canvas.height;
-    const scale=natW&&natH?(natH/natW):0.5;
-    const chartW=W-M*2;
-    const chartH=Math.min(chartW*scale, 65);
+    const pairs = [CHARTS_PDF[i], CHARTS_PDF[i+1]].filter(Boolean);
+    pairs.forEach((ch,col)=>{
+      const x = M + col*(chartW+4);
+      // Chart header band — teal
+      doc.setFillColor(...TEAL);
+      doc.rect(x,y,chartW,7,'F');
+      doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(...WHITE);
+      doc.text(ch.label, x+3, y+5);
 
-    if(y + chartH + 14 > 280){
-      doc.addPage();
-      y=14;
-    }
-
-    // Chart header band — teal background, white text
-    doc.setFillColor(...TEAL);
-    doc.rect(M,y,chartW,8,'F');
-    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...WHITE);
-    doc.text(ch.label.replace(/[^\x00-\x7F]/g,'').trim()||ch.id.replace('ch-',''), M+3, y+5.5);
-    y+=8;
-
-    // Chart image
-    doc.addImage(imgData,'PNG',M,y,chartW,chartH);
-    y += chartH + 6;
+      // Chart image
+      const img = chartImages[ch.id];
+      if(img){
+        doc.addImage(img,'PNG',x,y+7,chartW,chartH);
+      } else {
+        doc.setFillColor(...LGREY);
+        doc.rect(x,y+7,chartW,chartH,'F');
+        doc.setFontSize(8);doc.setTextColor(150,160,175);
+        doc.text('Chart not available',x+chartW/2,y+7+chartH/2,{align:'center'});
+      }
+    });
+    y += chartH + 10;
   }
 
   // ── Footer on all pages ──
   const totalPages=doc.internal.getNumberOfPages();
   for(let i=1;i<=totalPages;i++){
     doc.setPage(i);
-    doc.setFillColor(235,240,248);
+    doc.setFillColor(230,235,245);
     doc.rect(0,287,W,10,'F');
     doc.setFontSize(7);doc.setTextColor(...DGREY);
-    doc.text('Talent+ Hire Pulse  ·  WithAWill HR Consultancy Services LLP  ·  Confidential',M,292);
+    doc.text('Talent+ Hire Pulse  ·  WithAWill HR Consultancy Services LLP  ·  Confidential', M, 292);
     doc.text('Page '+i+' of '+totalPages, W-M, 292, {align:'right'});
   }
 
