@@ -3091,174 +3091,133 @@ function exportDashReport() {
 }
 
 // ── DASHBOARD PDF EXPORT ──────────────────────────────────
-function exportDashPDF(){
-  if(typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined'){
-    toast('warn','PDF Library','PDF library loading — please try again in a moment.');return;
+async function exportDashPDF(){
+  if(typeof window.jspdf === 'undefined'){
+    toast('warn','Loading','PDF library loading — please try again in a moment.');return;
   }
-  const {jsPDF: JSPDF} = window.jspdf || {jsPDF};
+  toast('info','Generating','Building PDF report...');
+  const {jsPDF: JSPDF} = window.jspdf;
   const doc = new JSPDF({orientation:'portrait', unit:'mm', format:'a4'});
   const dates = getDashDates();
   const data  = filterData(dates);
-  const W = 210, M = 14; // A4 width, margin
+  const W = 210, M = 12;
 
-  // Helper functions
-  const hex2rgb = hex => {const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return [r,g,b];};
-  const navy = hex2rgb('#0A1628');
-  const teal = hex2rgb('#34BAC6');
-  const gold = hex2rgb('#E9982B');
+  // ── Colour helpers ──
+  const NAVY  = [10,22,40];
+  const TEAL  = [52,186,198];
+  const GOLD  = [233,152,43];
+  const WHITE = [255,255,255];
+  const LGREY = [245,247,250];
+  const DGREY = [60,70,85];
+  const MID   = [130,145,165];
 
-  // ── Header band ──
-  doc.setFillColor(...navy);
-  doc.rect(0, 0, W, 28, 'F');
+  // ── Header band (keep dark navy as requested) ──
+  doc.setFillColor(...NAVY);
+  doc.rect(0,0,W,26,'F');
+  doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(...WHITE);
+  doc.text('Talent+ Hire Pulse', M, 11);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...TEAL);
+  doc.text('TALENT INSIGHTS', M, 17);
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+  doc.setFontSize(8);doc.setTextColor(200,220,235);
+  doc.text(dateStr, W-M, 11, {align:'right'});
+  doc.text('WithAWill HR Consultancy Services LLP', W-M, 17, {align:'right'});
 
-  // Logo placeholder (trophy emoji rendered as text)
-  doc.setFontSize(18);
-  doc.setTextColor(255,255,255);
-  doc.text('Talent+ Hire Pulse', M, 12);
-
-  doc.setFontSize(9);
-  doc.setTextColor(...teal);
-  doc.text('TALENT INSIGHTS', M, 18);
-
-  // Date top right
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
-  doc.setFontSize(9);
-  doc.setTextColor(180,180,200);
-  doc.text(dateStr, W - M, 12, {align:'right'});
-  doc.text('WithAWill HR Consultancy Services LLP', W - M, 18, {align:'right'});
-
-  // ── Filter summary band ──
-  doc.setFillColor(25, 35, 60);
-  doc.rect(0, 28, W, 14, 'F');
-  const periodTxt  = document.getElementById('df-period')?.options[document.getElementById('df-period').selectedIndex]?.text || 'All Time';
+  // ── Filter band ──
+  doc.setFillColor(25,38,62);
+  doc.rect(0,26,W,10,'F');
+  const periodTxt  = document.getElementById('df-period')?.options[document.getElementById('df-period').selectedIndex]?.text||'All Time';
   const clientTxt  = document.getElementById('df-client')?.value  || 'All Clients';
-  const deptTxt    = document.getElementById('df-dept')?.value    || 'All Departments';
+  const deptTxt    = document.getElementById('df-dept')?.value    || 'All Depts';
   const recTxt     = document.getElementById('df-recruiter')?.value || 'All Recruiters';
   const srcTxt     = document.getElementById('df-source')?.value  || 'All Sources';
-  doc.setFontSize(8);
-  doc.setTextColor(200, 210, 230);
-  const filterLine = [
-    'Period: '+periodTxt,
-    'Client: '+clientTxt,
-    'Dept: '+deptTxt,
-    'Recruiter: '+recTxt,
-    'Source: '+srcTxt,
-  ].join('   ·   ');
-  doc.text(filterLine, M, 37, {maxWidth: W - M*2});
+  doc.setFontSize(7);doc.setTextColor(180,200,220);
+  doc.text([periodTxt, clientTxt, deptTxt, recTxt, srcTxt].join('  ·  '), M, 32, {maxWidth:W-M*2});
 
-  let y = 50;
+  let y = 40;
 
-  // ── KPI Summary ──
+  // ── KPI boxes (5 boxes, white bg, coloured numbers) ──
   const active  = data.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;
   const joined  = data.filter(r=>r[C.status]==='Joined').length;
   const offered = data.filter(r=>r[C.status]==='Offered').length;
   const rejected= data.filter(r=>['Rejected by Consultant','Rejected by Client'].includes(r[C.status])).length;
-  const kpis = [
-    {label:'Total',   val:data.length,     color:teal},
-    {label:'Active',  val:active,           color:[93,213,223]},
-    {label:'Joined',  val:joined,           color:[34,197,94]},
-    {label:'Offered', val:offered,          color:[...gold]},
-    {label:'Rejected',val:rejected,         color:[239,68,68]},
+  const kpis=[
+    {label:'Total Candidates', val:data.length,  col:TEAL},
+    {label:'Active Pipeline',  val:active,        col:[93,213,223]},
+    {label:'Joined',           val:joined,        col:[34,197,94]},
+    {label:'Offered',          val:offered,       col:[...GOLD]},
+    {label:'Rejected',         val:rejected,      col:[239,68,68]},
   ];
-  const kW = (W - M*2) / kpis.length;
+  const kW=(W-M*2)/5;
   kpis.forEach((k,i)=>{
-    const x = M + i*kW;
-    doc.setFillColor(20,28,50);
-    doc.roundedRect(x+1, y, kW-2, 20, 2, 2, 'F');
-    doc.setFontSize(18);
-    doc.setFont('helvetica','bold');
-    doc.setTextColor(...k.color);
-    doc.text(String(k.val), x+kW/2, y+13, {align:'center'});
-    doc.setFontSize(7);
-    doc.setFont('helvetica','normal');
-    doc.setTextColor(150,160,180);
-    doc.text(k.label.toUpperCase(), x+kW/2, y+19, {align:'center'});
+    const x=M+i*kW;
+    doc.setFillColor(...WHITE);
+    doc.setDrawColor(220,228,240);
+    doc.roundedRect(x+0.5,y,kW-1,16,2,2,'FD');
+    doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(...k.col);
+    doc.text(String(k.val),x+kW/2,y+10,{align:'center'});
+    doc.setFontSize(6);doc.setFont('helvetica','normal');doc.setTextColor(...DGREY);
+    doc.text(k.label.toUpperCase(),x+kW/2,y+14.5,{align:'center'});
   });
-  y += 28;
+  y += 22;
 
-  // ── By Client table ──
-  const clients = [...new Set(data.map(r=>r[C.client]).filter(Boolean))].sort();
-  if(clients.length){
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...teal);
-    doc.text('BY CLIENT', M, y);y+=5;
-    doc.setFillColor(...navy);doc.rect(M,y,W-M*2,6,'F');
-    doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(200,220,240);
-    ['Client','Total','Active','Joined','Rejected'].forEach((h,i)=>{
-      doc.text(h,[M+2,M+50,M+68,M+83,M+98][i],y+4);
-    });y+=6;
-    clients.slice(0,12).forEach((cl,ri)=>{
-      if(y>265){doc.addPage();y=20;}
-      const tot=data.filter(r=>r[C.client]===cl).length;
-      const act=data.filter(r=>r[C.client]===cl&&ACTIVE_STATUSES.has(r[C.status])).length;
-      const joi=data.filter(r=>r[C.client]===cl&&r[C.status]==='Joined').length;
-      const rej=data.filter(r=>r[C.client]===cl&&['Rejected by Consultant','Rejected by Client'].includes(r[C.status])).length;
-      if(ri%2===0){doc.setFillColor(18,26,48);doc.rect(M,y,W-M*2,5,'F');}
-      doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(200,210,230);
-      doc.text(cl.slice(0,28),M+2,y+3.5);
-      [tot,act,joi,rej].forEach((v,i)=>doc.text(String(v),[M+52,M+70,M+85,M+100][i],y+3.5));
-      y+=5;
-    });y+=6;
+  // ── Chart sections — capture from canvas ──
+  const CHARTS_PDF = [
+    {id:'ch-funnel',    label:'⬇  Pipeline Funnel'},
+    {id:'ch-status',    label:'◉  Status Distribution'},
+    {id:'ch-client',    label:'🏢  Client-wise Active Pipeline'},
+    {id:'ch-source',    label:'📡  Source Effectiveness'},
+    {id:'ch-recruiter', label:'👤  Recruiter Performance'},
+    {id:'ch-trend',     label:'📈  Weekly Activity Trend'},
+    {id:'ch-reject',    label:'✗  Rejection Analysis'},
+    {id:'ch-dept',      label:'🏗  Department-wise Status'},
+  ];
+
+  for(const ch of CHARTS_PDF){
+    const canvas=document.getElementById(ch.id);
+    if(!canvas)continue;
+    // Chart image
+    let imgData=null;
+    try{imgData=canvas.toDataURL('image/png',0.95);}catch(e){continue;}
+    if(!imgData||imgData==='data:,')continue;
+
+    const natW=canvas.width, natH=canvas.height;
+    const scale=natW&&natH?(natH/natW):0.5;
+    const chartW=W-M*2;
+    const chartH=Math.min(chartW*scale, 65);
+
+    if(y + chartH + 14 > 280){
+      doc.addPage();
+      y=14;
+    }
+
+    // Chart header band — teal background, white text
+    doc.setFillColor(...TEAL);
+    doc.rect(M,y,chartW,8,'F');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...WHITE);
+    doc.text(ch.label.replace(/[^\x00-\x7F]/g,'').trim()||ch.id.replace('ch-',''), M+3, y+5.5);
+    y+=8;
+
+    // Chart image
+    doc.addImage(imgData,'PNG',M,y,chartW,chartH);
+    y += chartH + 6;
   }
 
-  // ── By Recruiter table ──
-  const recs = [...new Set(data.map(r=>r[C.recruiter]).filter(Boolean))].sort();
-  if(recs.length && y < 240){
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...teal);
-    doc.text('BY RECRUITER', M, y);y+=5;
-    doc.setFillColor(...navy);doc.rect(M,y,W-M*2,6,'F');
-    doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(200,220,240);
-    ['Recruiter','Total','Active','Joined'].forEach((h,i)=>doc.text(h,[M+2,M+70,M+88,M+103][i],y+4));
-    y+=6;
-    recs.forEach((rec,ri)=>{
-      if(y>265){doc.addPage();y=20;}
-      const tot=data.filter(r=>r[C.recruiter]===rec).length;
-      const act=data.filter(r=>r[C.recruiter]===rec&&ACTIVE_STATUSES.has(r[C.status])).length;
-      const joi=data.filter(r=>r[C.recruiter]===rec&&r[C.status]==='Joined').length;
-      if(ri%2===0){doc.setFillColor(18,26,48);doc.rect(M,y,W-M*2,5,'F');}
-      doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(200,210,230);
-      doc.text(rec.slice(0,35),M+2,y+3.5);
-      [tot,act,joi].forEach((v,i)=>doc.text(String(v),[M+72,M+90,M+105][i],y+3.5));
-      y+=5;
-    });y+=6;
-  }
-
-  // ── By Source table ──
-  const srcs = [...new Set(data.map(r=>r[C.source]).filter(Boolean))].sort();
-  if(srcs.length && y < 240){
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...teal);
-    doc.text('BY SOURCE', M, y);y+=5;
-    doc.setFillColor(...navy);doc.rect(M,y,W-M*2,6,'F');
-    doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(200,220,240);
-    ['Source','Total','Joined','Conv%'].forEach((h,i)=>doc.text(h,[M+2,M+70,M+88,M+103][i],y+4));
-    y+=6;
-    srcs.forEach((src,ri)=>{
-      if(y>265){doc.addPage();y=20;}
-      const tot=data.filter(r=>r[C.source]===src).length;
-      const joi=data.filter(r=>r[C.source]===src&&r[C.status]==='Joined').length;
-      const pct=tot?Math.round(joi/tot*100)+'%':'0%';
-      if(ri%2===0){doc.setFillColor(18,26,48);doc.rect(M,y,W-M*2,5,'F');}
-      doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(200,210,230);
-      doc.text(src.slice(0,35),M+2,y+3.5);
-      [String(tot),String(joi),pct].forEach((v,i)=>doc.text(v,[M+72,M+90,M+105][i],y+3.5));
-      y+=5;
-    });
-  }
-
-  // ── Footer ──
-  const pages = doc.internal.getNumberOfPages();
-  for(let i=1;i<=pages;i++){
+  // ── Footer on all pages ──
+  const totalPages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=totalPages;i++){
     doc.setPage(i);
-    doc.setFillColor(...navy);doc.rect(0,285,W,12,'F');
-    doc.setFontSize(7);doc.setTextColor(100,120,150);
-    doc.text('Talent+ Hire Pulse  ·  WithAWill HR Consultancy Services LLP  ·  Confidential',M,291);
-    doc.text('Page '+i+' of '+pages, W-M, 291, {align:'right'});
+    doc.setFillColor(235,240,248);
+    doc.rect(0,287,W,10,'F');
+    doc.setFontSize(7);doc.setTextColor(...DGREY);
+    doc.text('Talent+ Hire Pulse  ·  WithAWill HR Consultancy Services LLP  ·  Confidential',M,292);
+    doc.text('Page '+i+' of '+totalPages, W-M, 292, {align:'right'});
   }
 
   doc.save('THP_Dashboard_'+today()+'.pdf');
-  toast('ok','PDF Downloaded','Dashboard report saved as PDF.');
+  toast('ok','PDF Downloaded','Dashboard with charts saved as PDF.');
 }
-
 // Dashboard render triggered from goPanel and initUI directly
 
 
@@ -5173,23 +5132,36 @@ function toggleInvCandPicker(){
 }
 function renderJoinedCandPicker(){
   const el=document.getElementById('inv-joined-list');if(!el)return;
+  // Guard: data not yet loaded
+  if(!MD || !MD.length){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">Data not loaded yet. Please wait for SharePoint sync to complete and try again.</div>';
+    return;
+  }
   const client=(document.getElementById('inv-f-client')||{value:''}).value;
   const month=(document.getElementById('inv-f-month')||{value:''}).value;
   const q=((document.getElementById('inv-f-search')||{value:''}).value||'').toLowerCase();
+  // Filter joined candidates — C.status maps to 'Final Status'
   let list=MD.filter(r=>r[C.status]==='Joined');
+  if(!list.length){
+    const total=MD.length;
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No candidates with status <strong style="color:var(--ow)">Joined</strong> found.<br><span style="font-size:10px">('+total+' total records loaded — check candidate status in All Records)</span></div>';
+    return;
+  }
   if(client) list=list.filter(r=>r[C.client]===client);
   if(month)  list=list.filter(r=>r[C.doj]&&r[C.doj].startsWith(month));
   if(q)      list=list.filter(r=>(r[C.name]||'').toLowerCase().includes(q)||(r[C.position]||'').toLowerCase().includes(q)||(r[C.code]||'').toLowerCase().includes(q));
-  // Check which already have invoices
-  const invoicedCodes=new Set(invoices.map(i=>i.candCode));
-  if(!list.length){el.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--w60)">No joined candidates match the filters.</td></tr>';return;}
-  el.innerHTML='<table><thead><tr><th>Name</th><th>Code</th><th>Client</th><th>Position</th><th>DOJ</th><th>Action</th></tr></thead><tbody>'+
+  const invoicedCodes=new Set((invoices||[]).map(i=>i.candCode));
+  if(!list.length){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No candidates match the selected filters.</div>';
+    return;
+  }
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Name</th><th>Code</th><th>Client</th><th>Position</th><th>DOJ</th><th>Action</th></tr></thead><tbody>'+
     list.map(r=>{
       const hasInv=invoicedCodes.has(r[C.code]);
       return '<tr><td><strong>'+r[C.name]+'</strong></td><td class="mono" style="font-size:10px">'+r[C.code]+'</td><td class="m">'+r[C.client]+'</td><td class="m">'+r[C.position]+'</td><td class="mono">'+fmtD(r[C.doj])+'</td>'+
         '<td><button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 10px" onclick="selectJoinedCandForInvoice(\''+r[C.code]+'\')">🧾 Raise Invoice</button>'+
-        (hasInv?'<span style="font-size:9px;color:var(--gold);margin-left:6px">Has invoice</span>':'')+'</td></tr>';
-    }).join('')+'</tbody></table>';
+        (hasInv?' <span style="font-size:9px;color:var(--gold)">● Has invoice</span>':'')+'</td></tr>';
+    }).join('')+'</tbody></table></div><div style="font-size:10px;color:var(--w60);padding:6px 2px">Showing '+list.length+' joined candidate'+(list.length>1?'s':'')+'</div>';
 }
 function selectJoinedCandForInvoice(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
@@ -6217,14 +6189,18 @@ function switchCRTab(tab){
 }
 function renderCommonRepoAdmin() {
   const fields=['page1','page2','page4','page5'];
-  // Use getCommonRepoPage(k) so coded defaults show when no user edit has been saved
   fields.forEach(k=>{
     const el=document.getElementById('cr-'+k);
-    if(el) el.value = getCommonRepoPage(k); // shows default if user hasn't overridden
+    if(!el) return;
+    // Show saved content if exists, otherwise fall back to coded defaults
+    el.value = (commonRepo[k] && commonRepo[k].trim())
+      ? commonRepo[k]
+      : (IG_COMMON_DEFAULTS[k] || '');
   });
   const ls=document.getElementById('cr-lastsaved');
-  if(ls) ls.textContent = commonRepo.lastSaved || 'Using coded defaults — edit and save to customise';
-  // Default to pages tab
+  if(ls) ls.textContent = commonRepo.lastSaved
+    ? 'Last saved: ' + commonRepo.lastSaved
+    : 'Showing coded defaults — edit and save to customise';
   switchCRTab('pages');
 }
 function renderJDInterviewAdmin(){
