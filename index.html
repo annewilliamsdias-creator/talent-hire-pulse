@@ -689,6 +689,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="flex gap8 mt8">
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showWAMenu()"><svg width="12" height="12" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> WA</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showSched()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
+<button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:var(--teal);border-color:rgba(52,186,198,.3)" onclick="openInterviewGuide()">📋 Interview Guide</button>
 </div>
 </div>
 </div>
@@ -836,14 +837,54 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     <button class="btn btn-t btn-sm" onclick="openAddJD()">+ Add JD</button>
   </div>
   <div id="jd-add-form" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
+    <div class="sl2" style="margin-bottom:10px">📄 JD Details</div>
     <div class="fg3">
       <div class="field"><label>JD Title <span class="req">*</span></label><input type="text" id="jd-title" placeholder="e.g. Operations Executive JD"></div>
       <div class="field"><label>Client</label><select id="jd-client"><option value="">All / Generic</option></select></div>
       <div class="field"><label>Department</label><select id="jd-dept"><option value="">— Select —</option></select></div>
+      <div class="field"><label>Experience Range</label><input type="text" id="jd-exp" placeholder="e.g. 3–6 years"></div>
+      <div class="field"><label>Work Model</label><select id="jd-workmodel"><option value="">— Select —</option><option>Office</option><option>Hybrid</option><option>Remote</option><option>Field</option></select></div>
       <div class="field s2"><label>SharePoint / Drive Link <span class="req">*</span></label><input type="text" id="jd-link" placeholder="Paste SharePoint or Drive link here"></div>
       <div class="field"><label>Tags</label><input type="text" id="jd-tags" placeholder="e.g. operations, mid-level, pune"></div>
     </div>
-    <div class="btn-row"><button class="btn btn-t" onclick="saveJD()">✓ Save JD</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('jd-add-form').classList.add('hidden')">Cancel</button></div>
+    <div class="sl2" style="margin:14px 0 10px">📋 Interview Guide Content <span style="font-size:10px;color:var(--w60);font-weight:400">(used when recruiter opens Interview Guide for this role)</span></div>
+    <div style="display:grid;gap:10px">
+      <div class="field" style="margin:0"><label>Pre-Read for Recruiter <span style="font-size:10px;color:var(--w60)">(key context before the call)</span></label><textarea id="jd-preread" style="min-height:70px" placeholder="e.g. This role is a replacement hire. Client is very particular about notice period under 30 days. Profile must have B2B sales experience, not retail."></textarea></div>
+      <div class="field" style="margin:0"><label>Role Context / Pitch <span style="font-size:10px;color:var(--w60)">(what recruiter says to introduce the role)</span></label><textarea id="jd-rolecontext" style="min-height:70px" placeholder="e.g. The role is with a leading logistics firm based in Pune. It's a senior operations role managing a team of 12, reporting directly to the COO."></textarea></div>
+      <div class="field" style="margin:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label>10 Core Interview Questions</label>
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="aiGenerateJDQuestions()">✨ AI Generate</button>
+        </div>
+        <div id="jd-q-list" style="display:grid;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">1.</span><input type="text" id="jd-q1" placeholder="Question 1" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">2.</span><input type="text" id="jd-q2" placeholder="Question 2" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">3.</span><input type="text" id="jd-q3" placeholder="Question 3" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">4.</span><input type="text" id="jd-q4" placeholder="Question 4" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">5.</span><input type="text" id="jd-q5" placeholder="Question 5" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">6.</span><input type="text" id="jd-q6" placeholder="Question 6" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">7.</span><input type="text" id="jd-q7" placeholder="Question 7" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">8.</span><input type="text" id="jd-q8" placeholder="Question 8" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">9.</span><input type="text" id="jd-q9" placeholder="Question 9" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">10.</span><input type="text" id="jd-q10" placeholder="Question 10" style="flex:1"></div>
+        </div>
+      </div>
+      <div class="field" style="margin:0">
+        <label>5 Additional / Probing Questions <span style="font-size:10px;color:var(--w60)">(optional — use only if needed)</span></label>
+        <div style="display:grid;gap:6px;margin-top:6px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">1.</span><input type="text" id="jd-aq1" placeholder="Additional question 1" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">2.</span><input type="text" id="jd-aq2" placeholder="Additional question 2" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">3.</span><input type="text" id="jd-aq3" placeholder="Additional question 3" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">4.</span><input type="text" id="jd-aq4" placeholder="Additional question 4" style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">5.</span><input type="text" id="jd-aq5" placeholder="Additional question 5" style="flex:1"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field" style="margin:0"><label>✅ Shortlist Indicators</label><textarea id="jd-shortlist" style="min-height:80px" placeholder="e.g. Has managed a team of 10+ &#10;Has worked in FMCG or logistics &#10;Notice period under 30 days &#10;Has handled P&L responsibility"></textarea></div>
+        <div class="field" style="margin:0"><label>🚩 Concern / Red Flag Indicators</label><textarea id="jd-redflag" style="min-height:80px" placeholder="e.g. Only retail sales experience &#10;Notice period over 60 days &#10;Multiple job changes in 2 years &#10;No team handling experience"></textarea></div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:14px"><button class="btn btn-t" onclick="saveJD()">✓ Save JD</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('jd-add-form').classList.add('hidden')">Cancel</button></div>
   </div>
   <div id="jd-list"></div>
 </div>
@@ -1118,6 +1159,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="atab" id="at-billing" onclick="switchATab('billing')">💰 Billing Config</div>
 <div class="atab" id="at-dashconfig" onclick="switchATab('dashconfig')">📊 Dashboard</div>
 <div class="atab" id="at-users" onclick="switchATab('users')">👥 Users</div>
+<div class="atab" id="at-commonrepo" onclick="switchATab('commonrepo')">📋 Interview Repository</div>
 </div>
 <!-- BILLING CONFIG -->
 <div id="ap-billing" class="hidden">
@@ -1220,6 +1262,31 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div style="background:var(--gdim);border:1px solid rgba(233,152,43,.15);border-radius:var(--rs);padding:11px 13px;font-size:11px;color:var(--w60)"><div style="font-size:9px;font-weight:700;color:var(--gold);letter-spacing:1px;margin-bottom:5px">CLIENT ROLES (PHASE 2)</div><strong style="color:var(--ow)">Functional Head</strong> — All records, dashboards, downloads<br><strong style="color:var(--ow)">Manager</strong> — All records<br><strong style="color:var(--ow)">Recruiter</strong> — Own records only</div>
 </div>
 <div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Type</th><th>Role</th><th>Client</th><th>Status</th><th>Actions</th></tr></thead><tbody id="uBody"></tbody></table></div>
+</div></div>
+
+<!-- COMMON INTERVIEW REPOSITORY ADMIN -->
+<div id="ap-commonrepo" class="hidden"><div class="card">
+<div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Common Interview Repository</div><button class="btn btn-t btn-sm" onclick="saveCommonRepo()">💾 Save All Pages</button></div>
+<div style="font-size:11px;color:var(--w60);margin-bottom:16px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs)">These pages are shared across all Interview Guides. They combine dynamically with role-specific JD content when a recruiter opens the Interview Guide. All edits are logged to the Change Log.</div>
+<div style="display:grid;gap:14px" id="commonRepoPages">
+  <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
+    <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px">📖 Page 1 — How to Use This Guide + Guidelines + Evaluation Format</div>
+    <textarea id="cr-page1" style="min-height:180px;font-size:12px;line-height:1.7" placeholder="How to use this guide content..."></textarea>
+  </div>
+  <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
+    <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px">🎙 Page 2 — Opening Script</div>
+    <textarea id="cr-page2" style="min-height:120px;font-size:12px;line-height:1.7" placeholder="Opening script content..."></textarea>
+  </div>
+  <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
+    <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px">❓ Page 4 — Common Closing Questions</div>
+    <textarea id="cr-page4" style="min-height:120px;font-size:12px;line-height:1.7" placeholder="Common closing questions..."></textarea>
+  </div>
+  <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
+    <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px">🙏 Page 5 — Closing Script</div>
+    <textarea id="cr-page5" style="min-height:100px;font-size:12px;line-height:1.7" placeholder="Closing script content..."></textarea>
+  </div>
+</div>
+<div style="margin-top:14px;font-size:11px;color:var(--w60)">Last saved: <span id="cr-lastsaved">—</span></div>
 </div></div>
 
 <!-- VALIDATION RESULTS -->
@@ -2201,7 +2268,7 @@ async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.le
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
 function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:10px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:#ff6b6b;padding:12px">Error: '+e.message+'</div>';}}
@@ -5099,6 +5166,755 @@ function dlChartPNG(canvasId, name) {
     chartObj.update('none');
   }
   toast('ok','Chart Downloaded', name.replace(/_/g,' ')+' saved as PNG with data values');
+}
+
+</script>
+
+<!-- ===== INTERVIEW GUIDE MODAL ===== -->
+<div id="ig-overlay" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="igClickOutside(event)">
+<div id="ig-modal" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:860px;max-width:95vw;max-height:90vh;background:#0f1c2e;border:1px solid rgba(52,186,198,.25);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);transition:all .2s">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--w08);flex-shrink:0">
+    <div style="flex:1">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:var(--teal)">📋 Interview Guide</div>
+      <div id="ig-subtitle" style="font-size:11px;color:var(--w60);margin-top:2px">—</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="ig-page-indicator" style="font-size:11px;color:var(--w60)">Page 1 of 5</span>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="igToggleMax()" title="Maximise">⛶</button>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:#ff6b6b" onclick="closeInterviewGuide()">✕</button>
+    </div>
+  </div>
+  <!-- Page tabs -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--w08);flex-shrink:0;overflow-x:auto">
+    <div class="ig-tab active" data-pg="0" onclick="igGoPage(0)" style="padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;border-bottom:2px solid var(--teal);color:var(--teal);white-space:nowrap">1. Guidelines</div>
+    <div class="ig-tab" data-pg="1" onclick="igGoPage(1)" style="padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--w60);white-space:nowrap">2. Opening</div>
+    <div class="ig-tab" data-pg="2" onclick="igGoPage(2)" style="padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--w60);white-space:nowrap">3. Role Questions</div>
+    <div class="ig-tab" data-pg="3" onclick="igGoPage(3)" style="padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--w60);white-space:nowrap">4. Closing Qs</div>
+    <div class="ig-tab" data-pg="4" onclick="igGoPage(4)" style="padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--w60);white-space:nowrap">5. Closing Script</div>
+    <div class="ig-tab" data-pg="5" onclick="igGoPage(5)" style="padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--w60);white-space:nowrap">📝 Evaluation</div>
+  </div>
+  <!-- Body -->
+  <div id="ig-body" style="flex:1;overflow-y:auto;padding:20px 24px"></div>
+  <!-- Footer nav -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--w08);flex-shrink:0">
+    <button class="btn btn-ghost btn-sm" onclick="igPrev()">← Previous</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="igSaveEval()">💾 Save Notes</button>
+      <button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--teal)" onclick="igAISummary()">✨ AI Summary</button>
+      <button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--gold)" onclick="igExportPDF()">⬇ Export PDF</button>
+    </div>
+    <button class="btn btn-t btn-sm" onclick="igNext()">Next →</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ===== INTERVIEW GUIDE ENGINE =====
+let igCurrentPage = 0;
+let igMaximised = false;
+let igCandIdx = -1;
+let igEvalData = {}; // keyed by candidate code
+
+const IG_COMMON_DEFAULTS = {
+  page1: `This guide is designed to help recruiters conduct a structured first-round interview in 25–30 minutes.
+
+The recruiter should not read the questions mechanically. Use the guide as a conversation flow.
+
+The interview should cover:
+1. Candidate's current experience
+2. Role-specific skills and domain knowledge
+3. Tools, systems, or technical skills relevant to the role
+4. Real examples from past work
+5. Salary, notice period, location, and work model fit
+
+--- BEI GUIDANCE ---
+Some questions ask for real examples. This is called Behavioural Event Interviewing.
+When asking these questions, say:
+"Please answer with one real example. Tell me what happened, what you did, and what was the result."
+If the candidate gives a general answer, ask: "Can you give me one actual example from your work?"
+
+--- RECRUITER GUIDELINES ---
+• Keep the tone polite and professional.
+• First check if it is a good time to speak.
+• Explain the role before asking questions.
+• Do not ask all additional questions unless more depth is needed.
+• Listen carefully and take notes in the ATS.
+• Do not promise selection or salary approval.
+• Do not reject the candidate on call.
+• Close the call professionally.
+
+--- DOS AND DON'TS ---
+✅ Do: Introduce yourself and WithAWill clearly
+✅ Do: Confirm it's a good time before starting
+✅ Do: Take structured notes section by section
+✅ Do: Ask for one real example when relevant
+❌ Don't: Read questions mechanically
+❌ Don't: Promise selection, salary, or next round
+❌ Don't: Reject the candidate on the call
+
+--- EVALUATION FORMAT ---
+Rate each area 1–5:
+• Relevant experience
+• Communication
+• Role knowledge
+• Tools / systems knowledge
+• Example quality
+• Ownership / follow-up
+• Salary fit
+• Notice period fit
+• Location fit
+• Final: Shortlist / Hold / Reject`,
+
+  page2: `Hi [Candidate Name], this is [Recruiter Name] calling from WithAWill.
+
+Is this a good time to speak with you for around 25 to 30 minutes?
+
+We are hiring for the role of [Role Name] with [Client / Company Name]. We came across your profile and found it suitable because of your experience in [mention relevant area].
+
+I will briefly explain the role, understand your experience, ask a few role-related questions, and request some real examples from your past work.
+
+This is a first-round screening discussion. Based on this discussion, I will share my feedback with the client / hiring manager. If your profile is shortlisted, I will coordinate the next round of interview with you.
+
+Shall we begin?`,
+
+  page4: `Ask these questions after the role-specific interview questions:
+
+1. What is your current salary?
+2. What is your expected salary?
+3. What is your notice period?
+4. Is your notice period negotiable?
+5. Are you currently serving notice?
+6. Are you holding any other offer?
+7. Are you comfortable with the work location?
+8. Are you comfortable with the work model — office / hybrid / remote / field travel, as applicable?
+9. Why are you looking for a change?
+10. If shortlisted, when can you attend the next round?`,
+
+  page5: `Thank you, [Candidate Name], for your time.
+
+I will share this interview feedback with the client / hiring manager. If your profile is shortlisted, I will coordinate with you for the next round of discussion.
+
+Please keep your phone reachable and share any pending details, if required.
+
+We will update you once we receive feedback from the client.
+
+Thank you and have a good day.`
+};
+
+let commonRepo = { page1:'', page2:'', page4:'', page5:'', lastSaved:'' };
+
+function getCommonRepo(page) {
+  const k = 'page'+page;
+  return (commonRepo[k] && commonRepo[k].trim()) ? commonRepo[k] : (IG_COMMON_DEFAULTS[k]||'');
+}
+
+function openInterviewGuide() {
+  if(eIdx===-1){toast('warn','No Candidate','Look up a candidate first.');return;}
+  igCandIdx = eIdx;
+  const r = MD[eIdx];
+  const code = r[C.code]||'';
+  const el = document.getElementById('ig-subtitle');
+  if(el) el.textContent = (r[C.name]||'—') + ' · ' + (r[C.position]||'—') + ' · ' + (r[C.client]||'—');
+  // load existing eval if any
+  if(!igEvalData[code]) igEvalData[code] = {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  igCurrentPage = 0;
+  igRenderPage();
+  document.getElementById('ig-overlay').style.display='block';
+}
+
+function closeInterviewGuide() {
+  document.getElementById('ig-overlay').style.display='none';
+}
+
+function igClickOutside(e) {
+  if(e.target===document.getElementById('ig-overlay')) closeInterviewGuide();
+}
+
+function igToggleMax() {
+  igMaximised = !igMaximised;
+  const m = document.getElementById('ig-modal');
+  if(igMaximised) {
+    m.style.cssText = 'position:fixed;inset:0;transform:none;width:100%;max-width:100%;max-height:100%;border-radius:0;background:#0f1c2e;border:none;display:flex;flex-direction:column;box-shadow:none';
+  } else {
+    m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:860px;max-width:95vw;max-height:90vh;background:#0f1c2e;border:1px solid rgba(52,186,198,.25);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);transition:all .2s';
+  }
+}
+
+function igGoPage(pg) {
+  igCurrentPage = pg;
+  igRenderPage();
+  document.querySelectorAll('.ig-tab').forEach(t=>{
+    const isActive = parseInt(t.getAttribute('data-pg'))===pg;
+    t.style.borderBottomColor = isActive ? 'var(--teal)' : 'transparent';
+    t.style.color = isActive ? 'var(--teal)' : 'var(--w60)';
+  });
+  const ind = document.getElementById('ig-page-indicator');
+  if(ind) ind.textContent = 'Page '+(pg+1)+' of 6';
+}
+
+function igNext(){ if(igCurrentPage<5) igGoPage(igCurrentPage+1); }
+function igPrev(){ if(igCurrentPage>0) igGoPage(igCurrentPage-1); }
+
+function igGetJD() {
+  if(igCandIdx<0||igCandIdx>=MD.length) return null;
+  const r = MD[igCandIdx];
+  const pos = (r[C.position]||'').toLowerCase();
+  const cli = (r[C.client]||'').toLowerCase();
+  const vacCode = r[C.vacCode]||'';
+  // match by vacancy code first, then by title+client
+  return repoData.jds.find(j=>
+    (vacCode && j.vacCode && j.vacCode===vacCode) ||
+    (j.title&&j.title.toLowerCase().includes(pos.split(' ')[0])) ||
+    (j.client&&j.client.toLowerCase()===cli)
+  ) || null;
+}
+
+function igRenderPage() {
+  const body = document.getElementById('ig-body');
+  if(!body) return;
+  const r = igCandIdx>=0&&igCandIdx<MD.length ? MD[igCandIdx] : {};
+  const code = r[C.code]||'unknown';
+  const ev = igEvalData[code] || {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  const jd = igGetJD();
+
+  if(igCurrentPage===0) {
+    // Page 1 — Guidelines
+    const content = getCommonRepo(1);
+    body.innerHTML = `<div style="font-size:12px;line-height:1.9;color:var(--ow);white-space:pre-wrap">${escHtml(content)}</div>`;
+
+  } else if(igCurrentPage===1) {
+    // Page 2 — Opening Script
+    const nm = r[C.name]||'[Candidate Name]';
+    const role = r[C.position]||'[Role Name]';
+    const client = r[C.client]||'[Client Name]';
+    const rec = (acct&&acct.name)?acct.name:'[Recruiter Name]';
+    let content = getCommonRepo(2)
+      .replace(/\[Candidate Name\]/g, nm)
+      .replace(/\[Recruiter Name\]/g, rec)
+      .replace(/\[Role Name\]/g, role)
+      .replace(/\[Client \/ Company Name\]/g, client)
+      .replace(/\[Client Name\]/g, client);
+    body.innerHTML = `<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:16px 20px;font-size:13px;line-height:2;color:var(--ow);white-space:pre-wrap">${escHtml(content)}</div>
+    <div style="margin-top:12px;font-size:11px;color:var(--w60);padding:8px 12px;background:var(--gdim);border-radius:var(--rs)">💡 Tip: Read naturally, not word-for-word. First confirm it's a good time before proceeding.</div>`;
+
+  } else if(igCurrentPage===2) {
+    // Page 3 — Role-specific
+    if(!jd) {
+      body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--w60)">
+        <div style="font-size:36px;margin-bottom:12px">📋</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px">No Interview Guide linked to this role</div>
+        <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.7">Go to Repositories → JD Library and add interview questions to the JD for <strong style="color:var(--ow)">${escHtml(r[C.position]||'this role')}</strong>, or you can use the Evaluation tab to add your own notes directly.</div>
+        <button class="btn btn-t btn-sm" style="margin-top:14px" onclick="igGoPage(5)">Go to Evaluation →</button>
+      </div>`;
+      return;
+    }
+    const coreQs = [];
+    for(let i=1;i<=10;i++){if(jd['q'+i]&&jd['q'+i].trim())coreQs.push(jd['q'+i]);}
+    const addQs = [];
+    for(let i=1;i<=5;i++){if(jd['aq'+i]&&jd['aq'+i].trim())addQs.push(jd['aq'+i]);}
+
+    let html = '';
+    if(jd.preread) html += `<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:6px">📖 PRE-READ FOR RECRUITER</div><div style="font-size:12px;line-height:1.8;white-space:pre-wrap">${escHtml(jd.preread)}</div></div>`;
+    if(jd.rolecontext) html += `<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:1px;margin-bottom:6px">🎯 ROLE CONTEXT / PITCH</div><div style="font-size:12px;line-height:1.8;white-space:pre-wrap">${escHtml(jd.rolecontext)}</div></div>`;
+
+    if(coreQs.length) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:10px">CORE INTERVIEW QUESTIONS (${coreQs.length})</div>`;
+      html += coreQs.map((q,i)=>{
+        const key='q'+(i+1); const ticked=ev.ticked&&ev.ticked[key];
+        return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:${ticked?'rgba(52,186,198,.08)':'var(--w06)'};border:1px solid ${ticked?'rgba(52,186,198,.2)':'var(--w08)'};border-radius:var(--rs);margin-bottom:6px">
+          <label style="display:flex;align-items:center;gap:0;cursor:pointer;flex-shrink:0;margin-top:2px"><input type="checkbox" class="ig-q-tick" data-key="${key}" ${ticked?'checked':''} style="width:14px;height:14px;accent-color:var(--teal)" onchange="igTickQ(this,'ticked')"></label>
+          <div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${i+1}. ${escHtml(q)}</div>
+          <input type="text" class="ig-note-q" data-key="${key}" placeholder="Note..." value="${escHtml((ev.notes&&ev.notes[key])||'')}" style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0" onchange="igNoteQ(this,'notes')"></div></div>`;
+      }).join('');
+    }
+
+    if(addQs.length) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:1px;margin:16px 0 10px">ADDITIONAL / PROBING QUESTIONS (use only if needed)</div>`;
+      html += addQs.map((q,i)=>{
+        const key='aq'+(i+1); const ticked=ev.additionalTicked&&ev.additionalTicked[key];
+        return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:${ticked?'rgba(233,152,43,.07)':'var(--w06)'};border:1px solid ${ticked?'rgba(233,152,43,.2)':'var(--w08)'};border-radius:var(--rs);margin-bottom:6px">
+          <label style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;margin-top:2px"><input type="checkbox" class="ig-aq-tick" data-key="${key}" ${ticked?'checked':''} style="width:14px;height:14px;accent-color:var(--gold)" onchange="igTickQ(this,'additionalTicked')"></label>
+          <div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${i+1}. ${escHtml(q)}</div>
+          <input type="text" class="ig-note-aq" data-key="${key}" placeholder="Note..." value="${escHtml((ev.notes&&ev.notes[key])||'')}" style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0" onchange="igNoteQ(this,'notes')"></div></div>`;
+      }).join('');
+    }
+
+    if(jd.shortlist||jd.redflag) {
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">`;
+      if(jd.shortlist) html += `<div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:11px 13px"><div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:6px">✅ SHORTLIST INDICATORS</div><div style="font-size:11px;line-height:1.8;white-space:pre-wrap">${escHtml(jd.shortlist)}</div></div>`;
+      if(jd.redflag) html += `<div style="background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.15);border-radius:var(--rs);padding:11px 13px"><div style="font-size:10px;font-weight:700;color:#ff6b6b;letter-spacing:1px;margin-bottom:6px">🚩 CONCERN INDICATORS</div><div style="font-size:11px;line-height:1.8;white-space:pre-wrap">${escHtml(jd.redflag)}</div></div>`;
+      html += '</div>';
+    }
+    body.innerHTML = html;
+
+  } else if(igCurrentPage===3) {
+    // Page 4 — Common Closing Questions
+    const nm = r[C.name]||'[Candidate Name]';
+    const content = getCommonRepo(4);
+    body.innerHTML = `<div style="font-size:12px;line-height:2;white-space:pre-wrap;color:var(--ow)">${escHtml(content)}</div>
+    <div style="margin-top:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:10px">CAPTURE ANSWERS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${['Current Salary','Expected Salary','Notice Period','Notice Negotiable?','Currently Serving Notice?','Holding Other Offer?','Location Comfort','Work Model Comfort','Reason for Change','Next Round Availability'].map((lbl,i)=>`
+        <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:8px 10px">
+          <div style="font-size:10px;color:var(--w60);margin-bottom:4px">${i+1}. ${lbl}</div>
+          <input type="text" class="ig-cq-input" data-key="cq${i}" placeholder="Enter answer..." value="${escHtml((ev.notes&&ev.notes['cq'+i])||'')}" style="width:100%;background:transparent;border:0;color:var(--ow);font-size:12px;font-weight:500" onchange="igNoteQ(this,'notes')">
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  } else if(igCurrentPage===4) {
+    // Page 5 — Closing Script
+    const nm = r[C.name]||'[Candidate Name]';
+    let content = getCommonRepo(5).replace(/\[Candidate Name\]/g, nm);
+    body.innerHTML = `<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:16px 20px;font-size:13px;line-height:2;color:var(--ow);white-space:pre-wrap">${escHtml(content)}</div>
+    <div style="margin-top:12px;font-size:11px;color:var(--w60);padding:8px 12px;background:rgba(52,186,198,.06);border-radius:var(--rs)">💡 Read naturally. Do not confirm selection, salary, or next round date on the call.</div>`;
+
+  } else if(igCurrentPage===5) {
+    // Page 6 — Evaluation
+    const AREAS = [
+      ['exp','Relevant Experience'],['comm','Communication'],['know','Role Knowledge'],
+      ['tools','Tools / Systems Knowledge'],['examples','Example Quality'],['ownership','Ownership / Follow-up'],
+      ['salfit','Salary Fit'],['noticefit','Notice Period Fit'],['locfit','Location Fit']
+    ];
+    const RECS = ['Shortlist','Hold','Reject'];
+    const ev2 = igEvalData[code]||{};
+
+    body.innerHTML = `
+    <div style="display:grid;gap:12px">
+      <!-- Scores -->
+      <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:12px">EVALUATION SCORES (1–5)</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          ${AREAS.map(([k,lbl])=>`<div><div style="font-size:10px;color:var(--w60);margin-bottom:4px">${lbl}</div>
+          <div style="display:flex;gap:4px">${[1,2,3,4,5].map(n=>`<button onclick="igSetScore('${k}',${n},this)" class="ig-score-btn" data-area="${k}" data-val="${n}" style="width:28px;height:28px;border-radius:50%;border:1px solid ${(ev2.scores&&ev2.scores[k])==n?'var(--teal)':'var(--w12)'};background:${(ev2.scores&&ev2.scores[k])==n?'var(--teal)':'transparent'};color:${(ev2.scores&&ev2.scores[k])==n?'#000':'var(--w60)'};font-size:11px;font-weight:600;cursor:pointer">${n}</button>`).join('')}</div></div>`).join('')}
+        </div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--ow)">Recommendation:</div>
+          ${RECS.map(rec=>`<button onclick="igSetRec('${rec}',this)" class="ig-rec-btn" data-rec="${rec}" style="padding:5px 14px;border-radius:20px;border:1px solid ${(ev2.recommendation===rec)?({'Shortlist':'var(--teal)','Hold':'var(--gold)','Reject':'#ff6b6b'}[rec]||'var(--w12)'):'var(--w12)'};background:${(ev2.recommendation===rec)?({'Shortlist':'var(--tdim)','Hold':'var(--gdim)','Reject':'rgba(255,80,80,.1)'}[rec]||'transparent'):'transparent'};color:${(ev2.recommendation===rec)?({'Shortlist':'var(--teal)','Hold':'var(--gold)','Reject':'#ff6b6b'}[rec]||'var(--ow)'):'var(--w60)'};font-size:11px;font-weight:600;cursor:pointer">${rec}</button>`).join('')}
+        </div>
+      </div>
+      <!-- Notes -->
+      <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:10px">INTERVIEW NOTES</div>
+        <div style="display:grid;gap:8px">
+          <div><label style="font-size:10px;color:var(--w60)">General Notes / Observations</label><textarea id="ig-manual-notes" style="min-height:80px;font-size:12px;margin-top:4px" placeholder="Your interview observations, key points discussed, general impressions..." onchange="igSaveManualNotes(this)">${escHtml(ev2.manualNotes||'')}</textarea></div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <label style="font-size:10px;color:var(--w60)">Otter.ai Meeting Notes</label>
+              <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 9px" onclick="igFetchOtter()">🎙 Link Otter Meeting</button>
+            </div>
+            <textarea id="ig-otter-notes" style="min-height:80px;font-size:11px;color:var(--w60);margin-top:0" placeholder="Paste Otter transcript notes here, or use 'Link Otter Meeting' to pull from your Otter.ai account (paid plan required)." onchange="igSaveOtterNotes(this)">${escHtml(ev2.otterNotes||'')}</textarea>
+          </div>
+        </div>
+      </div>
+      <!-- AI Summary -->
+      <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px">AI-GENERATED SUMMARY</div>
+          <button class="btn btn-t btn-sm" style="font-size:11px" onclick="igAISummary()">✨ Generate / Refresh</button>
+        </div>
+        <textarea id="ig-summary" style="min-height:120px;font-size:12px;line-height:1.8" placeholder="Click 'Generate' to create an AI summary from your notes and scores. You can edit before exporting." onchange="igSaveSummary(this)">${escHtml(ev2.summary||'')}</textarea>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--gold)" onclick="igExportPDF()">⬇ Export PDF</button>
+        </div>
+      </div>
+    </div>`;
+  }
+}
+
+function igTickQ(el,storeKey) {
+  if(igCandIdx<0) return;
+  const r = MD[igCandIdx]; const code=r[C.code]||'unknown';
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  const key=el.getAttribute('data-key');
+  igEvalData[code][storeKey][key]=el.checked;
+  // re-colour the row
+  const row=el.closest('div[style*="display:flex"]');
+  if(row){row.style.background=el.checked?(storeKey==='ticked'?'rgba(52,186,198,.08)':'rgba(233,152,43,.07)'):'var(--w06)';row.style.borderColor=el.checked?(storeKey==='ticked'?'rgba(52,186,198,.2)':'rgba(233,152,43,.2)'):'var(--w08)';}
+}
+
+function igNoteQ(el,storeKey) {
+  if(igCandIdx<0) return;
+  const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  const key=el.getAttribute('data-key');
+  igEvalData[code][storeKey][key]=el.value;
+}
+
+function igSetScore(area,val,el) {
+  if(igCandIdx<0) return;
+  const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  igEvalData[code].scores[area]=val;
+  // update button styles
+  document.querySelectorAll(`.ig-score-btn[data-area="${area}"]`).forEach(b=>{
+    const isActive=parseInt(b.getAttribute('data-val'))===val;
+    b.style.background=isActive?'var(--teal)':'transparent';
+    b.style.borderColor=isActive?'var(--teal)':'var(--w12)';
+    b.style.color=isActive?'#000':'var(--w60)';
+  });
+}
+
+function igSetRec(rec,el) {
+  if(igCandIdx<0) return;
+  const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  igEvalData[code].recommendation=rec;
+  const colors={Shortlist:'var(--teal)',Hold:'var(--gold)',Reject:'#ff6b6b'};
+  const bgs={Shortlist:'var(--tdim)',Hold:'var(--gdim)',Reject:'rgba(255,80,80,.1)'};
+  document.querySelectorAll('.ig-rec-btn').forEach(b=>{
+    const isActive=b.getAttribute('data-rec')===rec;
+    b.style.background=isActive?bgs[rec]:'transparent';
+    b.style.borderColor=isActive?colors[rec]:'var(--w12)';
+    b.style.color=isActive?colors[rec]:'var(--w60)';
+  });
+}
+
+function igSaveManualNotes(el){
+  if(igCandIdx<0) return;
+  const code=MD[igCandIdx][C.code]||'unknown';
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  igEvalData[code].manualNotes=el.value;
+}
+function igSaveOtterNotes(el){
+  if(igCandIdx<0) return;
+  const code=MD[igCandIdx][C.code]||'unknown';
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  igEvalData[code].otterNotes=el.value;
+}
+function igSaveSummary(el){
+  if(igCandIdx<0) return;
+  const code=MD[igCandIdx][C.code]||'unknown';
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  igEvalData[code].summary=el.value;
+}
+
+function igSaveEval() {
+  if(igCandIdx<0) return;
+  const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
+  // collect any live inputs
+  const mn=document.getElementById('ig-manual-notes');if(mn&&igEvalData[code])igEvalData[code].manualNotes=mn.value;
+  const on=document.getElementById('ig-otter-notes');if(on&&igEvalData[code])igEvalData[code].otterNotes=on.value;
+  const sm=document.getElementById('ig-summary');if(sm&&igEvalData[code])igEvalData[code].summary=sm.value;
+  // persist to repoData
+  if(!repoData.evaluations) repoData.evaluations={};
+  repoData.evaluations[code]=igEvalData[code];
+  saveRepoData();
+  writeCL('Interview Eval Saved',code,'Evaluation','','',r[C.name]);
+  toast('ok','Saved','Interview evaluation saved.');
+}
+
+async function igFetchOtter() {
+  toast('info','Otter.ai','Connecting to Otter.ai...');
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        mcp_servers:[{type:'url',url:'https://mcp.otter.ai/mcp',name:'otter-mcp'}],
+        messages:[{role:'user',content:'List my 10 most recent Otter.ai meetings with their titles and dates. Return ONLY a JSON array like [{"id":"...","title":"...","date":"..."}] with no extra text.'}]
+      })
+    });
+    const data = await resp.json();
+    const block = data.content&&data.content.find(b=>b.type==='text');
+    if(!block) throw new Error('No response from Otter');
+    let meetings=[];
+    try { const clean=block.text.replace(/```json|```/g,'').trim(); meetings=JSON.parse(clean); } catch(e){ throw new Error('Could not parse Otter response'); }
+    if(!meetings.length){toast('info','Otter.ai','No meetings found.');return;}
+    // show picker
+    const opts = meetings.map((m,i)=>`<div style="padding:9px 12px;cursor:pointer;border-radius:var(--rs);background:var(--w06);border:1px solid var(--w08);margin-bottom:6px;font-size:12px" onclick="igPickOtterMeeting('${m.id}',this)"><strong>${escHtml(m.title||'Untitled')}</strong><span style="float:right;font-size:10px;color:var(--w60)">${m.date||''}</span></div>`).join('');
+    showModal('🎙 Select Otter Meeting','Choose the meeting to pull notes from:',opts,'<button class="btn btn-t btn-sm" onclick="closeModal()">Cancel</button>');
+  } catch(e) {
+    toast('warn','Otter.ai','Could not connect. You can paste notes manually in the text area below. (Otter MCP requires a paid Otter plan.)');
+  }
+}
+
+async function igPickOtterMeeting(id, el) {
+  closeModal();
+  toast('info','Otter.ai','Fetching transcript...');
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        mcp_servers:[{type:'url',url:'https://mcp.otter.ai/mcp',name:'otter-mcp'}],
+        messages:[{role:'user',content:`Fetch the transcript for Otter meeting ID: ${id}. Return ONLY the plain text transcript content, no formatting or extra commentary.`}]
+      })
+    });
+    const data=await resp.json();
+    const block=data.content&&data.content.find(b=>b.type==='text');
+    const transcript=block?block.text:'No transcript available.';
+    if(igCandIdx>=0){
+      const code=MD[igCandIdx][C.code]||'unknown';
+      if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+      igEvalData[code].otterNotes=transcript;
+      if(igCurrentPage===5){const el2=document.getElementById('ig-otter-notes');if(el2)el2.value=transcript;}
+    }
+    toast('ok','Otter.ai','Transcript loaded. You can edit before generating summary.');
+  } catch(e){
+    toast('err','Otter.ai','Failed to fetch transcript: '+e.message);
+  }
+}
+
+async function igAISummary() {
+  if(igCandIdx<0){toast('warn','No Candidate','Open a candidate first.');return;}
+  const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
+  const ev=igEvalData[code]||{};
+  const jd=igGetJD();
+
+  // collect live textarea values
+  const mn=document.getElementById('ig-manual-notes');if(mn&&ev)ev.manualNotes=mn.value;
+  const on=document.getElementById('ig-otter-notes');if(on&&ev)ev.otterNotes=on.value;
+
+  const notesText=Object.entries(ev.notes||{}).filter(([k,v])=>v).map(([k,v])=>`${k}: ${v}`).join('\n');
+  const scoresText=Object.entries(ev.scores||{}).map(([k,v])=>`${k}: ${v}/5`).join(', ');
+  const tickedCount=Object.values(ev.ticked||{}).filter(Boolean).length;
+  const totalQs=jd?Object.keys(jd).filter(k=>/^q\d+$/.test(k)&&jd[k]).length:0;
+
+  const prompt=`You are an HR recruiter assistant at WithAWill HR Consultancy Services.
+Generate a structured interview summary for the following candidate screening.
+
+CANDIDATE: ${r[C.name]||'—'}
+ROLE: ${r[C.position]||'—'} at ${r[C.client]||'—'}
+DEPARTMENT: ${r[C.dept]||'—'}
+LOCATION: ${r[C.location]||'—'}
+EXPERIENCE: ${r[C.exp]||'—'}
+CURRENT COMPANY: ${r[C.company]||'—'}
+CURRENT SALARY: ${ev.notes&&ev.notes.cq0?ev.notes.cq0:r[C.salary]||'—'}
+EXPECTED SALARY: ${ev.notes&&ev.notes.cq1?ev.notes.cq1:'—'}
+NOTICE PERIOD: ${ev.notes&&ev.notes.cq2?ev.notes.cq2:r[C.notice]||'—'}
+QUESTIONS ASKED: ${tickedCount} of ${totalQs} core questions
+
+SCORES: ${scoresText||'Not scored'}
+RECOMMENDATION: ${ev.recommendation||'Not set'}
+
+RECRUITER NOTES:
+${ev.manualNotes||'None'}
+
+OTTER / CALL NOTES:
+${ev.otterNotes||'None'}
+
+QUESTION NOTES:
+${notesText||'None'}
+
+Write a professional interview summary in 150–200 words using this format:
+Candidate has [X] years of experience in [area]. Currently working with [company] as [designation].
+Relevant experience includes [2–3 points].
+Tools/systems used: [mention tools if noted].
+Strong example shared: [mention if any].
+Strengths: [key positives].
+Concerns: [if any].
+Current: [salary]. Expected: [salary]. Notice: [period].
+Questions asked: ${tickedCount}/${totalQs}.
+Recommendation: ${ev.recommendation||'[Shortlist/Hold/Reject]'} — [one-line reason].
+
+Use simple English. Do not use jargon.`;
+
+  toast('info','AI','Generating summary...');
+  try {
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const summary=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'Could not generate summary.';
+    if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+    igEvalData[code].summary=summary;
+    const el=document.getElementById('ig-summary');
+    if(el){el.value=summary;}else{igGoPage(5);setTimeout(()=>{const el2=document.getElementById('ig-summary');if(el2)el2.value=summary;},100);}
+    igSaveEval();
+    toast('ok','AI Summary','Summary generated. Review and edit before exporting.');
+  } catch(e){
+    toast('err','AI','Summary failed: '+e.message);
+  }
+}
+
+function igExportPDF() {
+  if(igCandIdx<0){toast('warn','No Candidate','Open a candidate first.');return;}
+  const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
+  const ev=igEvalData[code]||{};
+  const jd=igGetJD();
+  const AREA_LABELS={exp:'Relevant Experience',comm:'Communication',know:'Role Knowledge',tools:'Tools / Systems',examples:'Example Quality',ownership:'Ownership',salfit:'Salary Fit',noticefit:'Notice Fit',locfit:'Location Fit'};
+  const recColors={Shortlist:'#34BAC6',Hold:'#E9982B',Reject:'#ff6b6b'};
+
+  const scores=Object.entries(ev.scores||{}).map(([k,v])=>`
+    <tr><td style="padding:6px 10px;border-bottom:1px solid #1a2a3a;font-size:12px">${AREA_LABELS[k]||k}</td>
+    <td style="padding:6px 10px;border-bottom:1px solid #1a2a3a;text-align:center">${'⬛'.repeat(v)}${'⬜'.repeat(5-v)}</td>
+    <td style="padding:6px 10px;border-bottom:1px solid #1a2a3a;text-align:center;font-weight:700;color:#34BAC6">${v}/5</td></tr>`).join('');
+
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Interview Summary — ${r[C.name]||'Candidate'}</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#fff;color:#111;margin:0;padding:0}
+    .header{background:#0A1628;color:#fff;padding:24px 32px;display:flex;justify-content:space-between;align-items:flex-start}
+    .logo{font-size:20px;font-weight:700;color:#34BAC6;letter-spacing:-0.5px}
+    .logo span{color:#E9982B}
+    .meta{font-size:10px;color:rgba(255,255,255,.5);margin-top:3px}
+    .section{padding:18px 32px;border-bottom:1px solid #e8ecf0}
+    .section-title{font-size:10px;font-weight:700;letter-spacing:1.5px;color:#6b7280;text-transform:uppercase;margin-bottom:12px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field{background:#f8fafc;border:1px solid #e8ecf0;border-radius:6px;padding:10px 12px}
+    .field-label{font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+    .field-value{font-size:13px;font-weight:600}
+    table{width:100%;border-collapse:collapse}
+    .rec-badge{display:inline-block;padding:6px 20px;border-radius:20px;font-size:13px;font-weight:700;color:#fff;background:${recColors[ev.recommendation]||'#6b7280'}}
+    .summary-box{background:#f8fafc;border:1px solid #e8ecf0;border-radius:8px;padding:16px;font-size:13px;line-height:1.8;white-space:pre-wrap}
+    .footer{padding:12px 32px;font-size:10px;color:#9ca3af;text-align:center;border-top:1px solid #e8ecf0}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="logo">Talent<span>+</span> Hire Pulse</div><div class="meta">WithAWill HR Consultancy Services LLP · Interview Evaluation</div></div>
+    <div style="text-align:right"><div class="rec-badge">${ev.recommendation||'Pending'}</div><div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:6px">${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Candidate Details</div>
+    <div class="grid2">
+      <div class="field"><div class="field-label">Candidate Name</div><div class="field-value">${r[C.name]||'—'}</div></div>
+      <div class="field"><div class="field-label">Candidate Code</div><div class="field-value" style="font-family:monospace;font-size:11px">${code}</div></div>
+      <div class="field"><div class="field-label">Role</div><div class="field-value">${r[C.position]||'—'}</div></div>
+      <div class="field"><div class="field-label">Client / Company</div><div class="field-value">${r[C.client]||'—'}</div></div>
+      <div class="field"><div class="field-label">Department</div><div class="field-value">${r[C.dept]||'—'}</div></div>
+      <div class="field"><div class="field-label">Location</div><div class="field-value">${r[C.location]||'—'}</div></div>
+      <div class="field"><div class="field-label">Current Salary</div><div class="field-value">${ev.notes&&ev.notes.cq0?ev.notes.cq0:(r[C.salary]||'—')}</div></div>
+      <div class="field"><div class="field-label">Expected Salary</div><div class="field-value">${ev.notes&&ev.notes.cq1||'—'}</div></div>
+      <div class="field"><div class="field-label">Notice Period</div><div class="field-value">${ev.notes&&ev.notes.cq2?ev.notes.cq2:(r[C.notice]||'—')}</div></div>
+      <div class="field"><div class="field-label">Recruiter</div><div class="field-value">${r[C.recruiter]||'—'}</div></div>
+    </div>
+  </div>
+  ${scores?`<div class="section"><div class="section-title">Evaluation Scores</div><table><thead><tr style="background:#f8fafc"><th style="padding:6px 10px;text-align:left;font-size:10px;color:#6b7280;font-weight:600">Area</th><th style="padding:6px 10px;font-size:10px;color:#6b7280;font-weight:600">Score</th><th style="padding:6px 10px;font-size:10px;color:#6b7280;font-weight:600">Rating</th></tr></thead><tbody>${scores}</tbody></table></div>`:''}
+  ${ev.summary?`<div class="section"><div class="section-title">Interview Summary</div><div class="summary-box">${ev.summary}</div></div>`:''}
+  ${ev.manualNotes?`<div class="section"><div class="section-title">Recruiter Notes</div><div class="summary-box">${ev.manualNotes}</div></div>`:''}
+  <div class="footer">Generated by Talent+ Hire Pulse · WithAWill HR Consultancy Services LLP · ${new Date().toLocaleString('en-IN')}</div>
+  </body></html>`;
+
+  const win=window.open('','_blank','width=900,height=700');
+  if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);}
+  else{toast('warn','Popup blocked','Please allow popups for PDF export.');}
+}
+
+// ===== COMMON REPO ADMIN =====
+function loadCommonRepo() {
+  try{const d=localStorage.getItem('thp_commonrepo');if(d)commonRepo=JSON.parse(d);}catch(e){}
+  // also load from WB if available
+}
+function saveCommonRepo() {
+  const fields=['page1','page2','page4','page5'];
+  fields.forEach(k=>{const el=document.getElementById('cr-'+k);if(el)commonRepo[k]=el.value;});
+  commonRepo.lastSaved=new Date().toLocaleString('en-IN');
+  try{localStorage.setItem('thp_commonrepo',JSON.stringify(commonRepo));}catch(e){}
+  if(WB){try{
+    const rows=[['key','content'],
+      ...Object.entries(commonRepo).map(([k,v])=>[k,v])];
+    WB.Sheets['CommonRepo']=XLSX.utils.aoa_to_sheet(rows);
+    if(!WB.SheetNames.includes('CommonRepo'))WB.SheetNames.push('CommonRepo');
+    saveWB(false);
+  }catch(e){console.warn('CommonRepo WB save failed',e);}}
+  writeCL('Common Interview Repo Updated','ADMIN','Config','','','');
+  const el=document.getElementById('cr-lastsaved');if(el)el.textContent=commonRepo.lastSaved;
+  toast('ok','Saved','Common Interview Repository updated.');
+}
+function renderCommonRepoAdmin() {
+  const fields=['page1','page2','page4','page5'];
+  fields.forEach(k=>{const el=document.getElementById('cr-'+k);if(el&&commonRepo[k])el.value=commonRepo[k];});
+  const ls=document.getElementById('cr-lastsaved');if(ls&&commonRepo.lastSaved)ls.textContent=commonRepo.lastSaved;
+}
+
+// ===== EXTENDED JD SAVE =====
+const _origSaveJD = typeof saveJD==='function' ? saveJD : null;
+function saveJD() {
+  const title=gv('jd-title'),link=gv('jd-link');
+  if(!title||!link){toast('warn','Required','Title and link are required.');return;}
+  const qs={};
+  for(let i=1;i<=10;i++){const v=gv('jd-q'+i);if(v&&v.trim())qs['q'+i]=v.trim();}
+  for(let i=1;i<=5;i++){const v=gv('jd-aq'+i);if(v&&v.trim())qs['aq'+i]=v.trim();}
+  repoData.jds.push({
+    id:Date.now(),title,client:gv('jd-client'),dept:gv('jd-dept'),
+    exp:gv('jd-exp'),workmodel:gv('jd-workmodel'),
+    link,tags:gv('jd-tags'),
+    preread:gv('jd-preread'),rolecontext:gv('jd-rolecontext'),
+    shortlist:gv('jd-shortlist'),redflag:gv('jd-redflag'),
+    ...qs,added:today()
+  });
+  document.getElementById('jd-add-form').classList.add('hidden');
+  saveRepoData();renderJDList();toast('ok','JD Added',title);
+}
+
+// ===== AI GENERATE JD QUESTIONS =====
+async function aiGenerateJDQuestions() {
+  const title=gv('jd-title'); const dept=gv('jd-dept'); const exp=gv('jd-exp'); const wm=gv('jd-workmodel');
+  const preread=gv('jd-preread'); const context=gv('jd-rolecontext');
+  if(!title){toast('warn','Title Required','Enter JD Title first.');return;}
+  toast('info','AI','Generating interview questions...');
+  const prompt=`You are an expert HR recruiter. Generate interview questions for this role.
+
+ROLE: ${title}
+DEPARTMENT: ${dept||'—'}
+EXPERIENCE: ${exp||'—'}
+WORK MODEL: ${wm||'—'}
+PRE-READ: ${preread||'Not provided'}
+ROLE CONTEXT: ${context||'Not provided'}
+
+Generate ONLY valid JSON in this exact format, no extra text:
+{
+  "coreQuestions": ["Q1","Q2","Q3","Q4","Q5","Q6","Q7","Q8","Q9","Q10"],
+  "additionalQuestions": ["AQ1","AQ2","AQ3","AQ4","AQ5"],
+  "shortlistIndicators": "bullet list of 4-5 positive signals",
+  "redFlagIndicators": "bullet list of 4-5 concern signals"
+}
+
+Rules:
+- Mix practical and BEI questions
+- Include tools/systems questions if relevant
+- Include team/client handling if applicable
+- Simple English, under 20 words per question
+- Do not include salary/notice/location (those are in common closing questions)`;
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const txt=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
+    const clean=txt.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(clean);
+    if(parsed.coreQuestions){parsed.coreQuestions.slice(0,10).forEach((q,i)=>{const el=document.getElementById('jd-q'+(i+1));if(el)el.value=q;});}
+    if(parsed.additionalQuestions){parsed.additionalQuestions.slice(0,5).forEach((q,i)=>{const el=document.getElementById('jd-aq'+(i+1));if(el)el.value=q;});}
+    if(parsed.shortlistIndicators){const el=document.getElementById('jd-shortlist');if(el)el.value=parsed.shortlistIndicators;}
+    if(parsed.redFlagIndicators){const el=document.getElementById('jd-redflag');if(el)el.value=parsed.redFlagIndicators;}
+    toast('ok','AI Questions','Questions generated. Review and edit before saving.');
+  }catch(e){toast('err','AI','Failed to generate: '+e.message);}
+}
+
+// ===== HOOK INTO switchATab for commonrepo =====
+const _origSwitchATab = typeof switchATab==='function' ? switchATab : null;
+const _extSwitchATab = function(tab) {
+  if(_origSwitchATab) _origSwitchATab(tab);
+  if(tab==='commonrepo') renderCommonRepoAdmin();
+};
+
+// Patch switchATab
+window.addEventListener('DOMContentLoaded',function(){
+  // load common repo on startup
+  loadCommonRepo();
+  // load evaluations
+  try{const d=localStorage.getItem('thp_igevals');if(d)igEvalData=JSON.parse(d);}catch(e){}
+  // also load from WB sharepoint when WB loads — handled in existing SP load logic
+});
+
+// Patch saveRepoData to also persist evaluations
+const _origSaveRepo = saveRepoData;
+function saveRepoData() {
+  _origSaveRepo();
+  try{localStorage.setItem('thp_igevals',JSON.stringify(igEvalData));}catch(e){}
 }
 
 </script>
