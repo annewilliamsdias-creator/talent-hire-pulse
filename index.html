@@ -698,7 +698,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="hidden" id="uForm">
 <div class="cc">
 <div class="cav" id="uAv">—</div>
-<div class="ci"><h3 id="uNm">—</h3><p id="uRol">—</p></div>
+<div class="ci"><h3 id="uNm">—</h3><p id="uRol">—</p><p id="uSubHdr" style="font-size:10px;color:var(--w60);margin-top:3px;display:none"></p></div>
 <div class="cm">
 <span class="ccode" id="uCd">—</span>
 <span id="uStat">—</span>
@@ -839,6 +839,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="card">
 <div class="card-hdr">
   <div class="card-title"><span class="ac">📁</span> Repositories</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span id="repo-sync-status" style="font-size:10px;color:var(--w60)"></span>
+    <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 9px" onclick="forceSyncRepo()" title="Reload latest from SharePoint">🔄 Sync</button>
+  </div>
 </div>
 <div class="atabs" id="repo-tabs">
   <div class="atab on" id="rt-jd" onclick="switchRepoTab(\'jd\')">📄 JD Library</div>
@@ -1917,7 +1921,10 @@ function goPanel(name){
   if(name==='adm')initAdmin();
   if(name==='home'){loadDash();}
   if(name==='analytics'){setTimeout(renderDash,200);}
-  if(name==='repos'){switchRepoTab('jd');}
+  if(name==='repos'){
+    // Silently refresh from SP (rate-limited to 90s) then render
+    refreshRepoFromSP().then(()=>{ switchRepoTab('jd'); }).catch(()=>{ switchRepoTab('jd'); });
+  }
   if(name==='incentive'){
     const incRec=document.getElementById('inc-rec');
     if(incRec){incRec.innerHTML='<option value="">Me (Logged In)</option>';mA('recruiters').forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;incRec.appendChild(o);});}
@@ -1953,12 +1960,38 @@ const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLoc
 // Action queue
 const items=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])).map(r=>{const fd=r[C.followupDate];const u=fd<td?'ov':fd===td?'td':fd<=in3?'up':null;return u?{r,fd,u}:null;}).filter(Boolean).sort((a,b)=>{const o={ov:0,td:1,up:2};return o[a.u]-o[b.u]||a.fd.localeCompare(b.fd);}).slice(0,25);
 const aq=document.getElementById('aq-list');
-if(aq)aq.innerHTML=items.length?items.map(({r,fd,u})=>'<div class="pi '+u+'" onclick="qUpd(\''+r[C.code]+'\')"><div class="pd '+u+'"></div><div style="flex:1"><div class="pn">'+r[C.name]+'</div><div class="pdet">'+(r[C.position]||'—')+' · '+(r[C.client]||'—')+' · '+(r[C.status]||'—')+'</div>'+(r[C.followupNotes]?'<div style="font-size:10px;color:var(--teal);margin-top:1px">'+r[C.followupNotes]+'</div>':'')+'</div><div class="pdate '+u+'">'+fmtD(fd)+'<br><span style="font-size:10px">'+(u==='ov'?'OVERDUE':u==='td'?'TODAY':'UPCOMING')+'</span></div></div>').join(''):'<div style="text-align:center;padding:26px;color:var(--w60)">✅ No pending follow-ups — all clear!</div>';
+if(aq)aq.innerHTML=items.length?items.map(({r,fd,u})=>{
+  const sub=[];
+  if(r[C.contact]) sub.push('📞 '+r[C.contact]);
+  if(r[C.expYrs])  sub.push('⏳ '+r[C.expYrs]+' yrs');
+  if(r[C.company]) sub.push('🏢 '+r[C.company]);
+  if(r[C.designation]) sub.push('🪪 '+r[C.designation]);
+  if(r[C.updatedOn]) sub.push('🕐 '+fmtD(r[C.updatedOn])+(r[C.updatedBy]?' · '+r[C.updatedBy]:''));
+  return '<div class="pi '+u+'" onclick="qUpd(\''+r[C.code]+'\')">'
+    +'<div class="pd '+u+'"></div>'
+    +'<div style="flex:1">'
+      +'<div class="pn">'+r[C.name]+'</div>'
+      +'<div class="pdet">'+(r[C.position]||'—')+' · '+(r[C.client]||'—')+' · '+(r[C.status]||'—')+'</div>'
+      +(sub.length?'<div style="font-size:10px;color:var(--w60);margin-top:2px">'+sub.join('  ·  ')+'</div>':'')
+      +(r[C.followupNotes]?'<div style="font-size:10px;color:var(--teal);margin-top:1px">'+r[C.followupNotes]+'</div>':'')
+    +'</div>'
+    +'<div class="pdate '+u+'">'+fmtD(fd)+'<br><span style="font-size:10px">'+(u==='ov'?'OVERDUE':u==='td'?'TODAY':'UPCOMING')+'</span></div>'
+    +'</div>';
+}).join(''):'<div style="text-align:center;padding:26px;color:var(--w60)">✅ No pending follow-ups — all clear!</div>';
 // Interviews
 const in7=addDays(td,7);
 const ivs=hfMD.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=td&&r[C.interviewDate]<=in7).sort((a,b)=>a[C.interviewDate].localeCompare(b[C.interviewDate])).slice(0,10);
 const iv=document.getElementById('iv-list');
-if(iv)iv.innerHTML=ivs.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Interviewer</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>'+ivs.map(r=>'<tr><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="m">'+(r[C.interviewerName]||'—')+'</td><td class="mono">'+fmtD(r[C.interviewDate])+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No interviews in next 7 days</div>';
+if(iv)iv.innerHTML=ivs.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Interviewer</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>'+ivs.map(r=>{
+  const sub=[];
+  if(r[C.contact]) sub.push('📞 '+r[C.contact]);
+  if(r[C.expYrs])  sub.push('⏳ '+r[C.expYrs]+' yrs');
+  if(r[C.company]) sub.push('🏢 '+r[C.company]);
+  if(r[C.updatedOn]) sub.push('🕐 Last: '+fmtD(r[C.updatedOn]));
+  return '<tr><td><strong>'+r[C.name]+'</strong>'
+    +(sub.length?'<div style="font-size:10px;color:var(--w60);margin-top:2px">'+sub.join(' · ')+'</div>':'')
+    +'</td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="m">'+(r[C.interviewerName]||'—')+'</td><td class="mono">'+fmtD(r[C.interviewDate])+(r._iTime?'<br><span style="font-size:10px;color:var(--teal)">'+r._iTime+'</span>':'')+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>';
+}).join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No interviews in next 7 days</div>';
 // Joining in progress
 const jp=hfMD.filter(r=>r[C.status]==='Joining in Progress'&&r[C.doj]);
 const jpe=document.getElementById('jp-list');
@@ -2097,6 +2130,18 @@ const init=(r[C.name]||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice
 document.getElementById('uAv').textContent=init;
 document.getElementById('uNm').textContent=r[C.name]||'—';
 document.getElementById('uRol').textContent=(r[C.position]||'—')+' · '+(r[C.client]||'—')+' · '+(r[C.recruiter]||'—');
+// Rich sub-header: contact, exp, company, designation, last action
+const uSubHdr=document.getElementById('uSubHdr');
+if(uSubHdr){
+  const parts=[];
+  if(r[C.contact]) parts.push('📞 '+r[C.contact]);
+  if(r[C.expYrs])  parts.push('⏳ '+r[C.expYrs]+' yrs');
+  if(r[C.company]) parts.push('🏢 '+r[C.company]);
+  if(r[C.designation]) parts.push('🪪 '+r[C.designation]);
+  if(r[C.updatedOn]) parts.push('🕐 Last action: '+fmtD(r[C.updatedOn])+(r[C.updatedBy]?' by '+r[C.updatedBy]:''));
+  uSubHdr.textContent=parts.join('  ·  ');
+  uSubHdr.style.display=parts.length?'block':'none';
+}
 document.getElementById('uCd').textContent=r[C.code];
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
 sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
@@ -2196,16 +2241,7 @@ function viewCandModal(code){
   let tableHtml='<div style="max-height:260px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
   if(allRem.length>1){const prev=allRem.slice(0,-1).reverse();tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">📋 Remarks History</div>'+prev.map((rm,i)=>'<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="font-size:9px;color:rgba(251,251,250,.35)">PREV '+(prev.length-i)+'</span><span style="color:var(--w60);margin-left:6px">'+escHtml(rm)+'</span></div>').join('')+'</div>';}
   window._mc=code;
-  showModal('👤 '+r[C.name],
-    '<span style="font-size:12px">'+r[C.position]+' &middot; '+r[C.client]+'</span>'
-    +'<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;font-size:10px;color:var(--w60)">'
-    +(r[C.contact]?'<span>📞 '+r[C.contact]+'</span>':'')
-    +(r[C.expYrs]?'<span>⏳ '+r[C.expYrs]+' yrs</span>':'')
-    +(r[C.company]?'<span>🏢 '+r[C.company]+'</span>':'')
-    +(r[C.designation]?'<span>🪪 '+r[C.designation]+'</span>':'')
-    +(r[C.updatedOn]?'<span>🕐 Last action: '+fmtD(r[C.updatedOn])+(r[C.updatedBy]?' by '+r[C.updatedBy]:'')+'</span>':'')
-    +'</div>',
-    tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  showModal('👤 '+r[C.name], r[C.position]+' · '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
 function dlAllRecords(){
   const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec'),scope=gv('rScope')||'all';
@@ -6411,11 +6447,136 @@ window.addEventListener('DOMContentLoaded',function(){
   // also load from WB sharepoint when WB loads — handled in existing SP load logic
 });
 
-// Patch saveRepoData to also persist evaluations
+// ── REPO SYNC: fetch latest from SP, merge, save back ──────────────────────
+let lastRepoSync = 0;  // ms timestamp of last successful SP repo sync
+
+async function forceSyncRepo() {
+  const status = document.getElementById('repo-sync-status');
+  if(status) status.textContent = '⏳ Syncing...';
+  lastRepoSync = 0; // force refresh regardless of rate limit
+  await refreshRepoFromSP(true);
+  renderJDList();
+  renderScripts();
+  renderHelp();
+  const ts = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  if(status) status.textContent = '✓ Synced ' + ts;
+  toast('ok','Synced','Latest repository data loaded from SharePoint.');
+}
+
+function parseRepoSheet(ws) {
+  const r = {jds:[], scripts:[], help:[]};
+  if(!ws) return r;
+  try {
+    XLSX.utils.sheet_to_json(ws, {header:1, defval:''}).slice(1)
+      .filter(row=>row[0])
+      .forEach(row=>{
+        const t=String(row[0]||'').trim();
+        try {
+          const d=row[1]?JSON.parse(row[1]):{};
+          if(t==='jd') r.jds.push(d);
+          else if(t==='script') r.scripts.push(d);
+          else if(t==='help') r.help.push(d);
+        } catch(e){}
+      });
+  } catch(e){ console.warn('parseRepoSheet',e); }
+  return r;
+}
+
+function mergeRepoWithServer(ourRepo, serverRepo) {
+  // Strategy: our list is authoritative for items we have (user just edited/added them)
+  // Items on server that we DON'T have → added by another user while we were working → KEEP them
+  const merged = {jds:[], scripts:[], help:[]};
+  ['jds','scripts','help'].forEach(type=>{
+    const ourIds = new Set(ourRepo[type].map(x=>String(x.id||'')).filter(Boolean));
+    const serverOnly = (serverRepo[type]||[]).filter(x=>x.id && !ourIds.has(String(x.id)));
+    merged[type] = [...ourRepo[type], ...serverOnly];
+  });
+  return merged;
+}
+
+async function refreshRepoFromSP(force) {
+  // Rate-limit: only re-fetch if > 90s since last sync, unless forced
+  if(!force && Date.now() - lastRepoSync < 90000) return;
+  if(!tok || !fileId) return;
+  try {
+    await refreshToken();
+    const resp = await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+      {headers:{Authorization:'Bearer '+tok}});
+    if(!resp.ok) return;
+    const buf = await resp.arrayBuffer();
+    const freshWB = XLSX.read(buf, {type:'array', cellDates:true});
+    // Update repo data from fresh SP copy
+    if(freshWB.Sheets['Repository']){
+      repoData = parseRepoSheet(freshWB.Sheets['Repository']);
+      try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){}
+    }
+    // Also refresh CommonRepo pages
+    if(freshWB.Sheets['CommonRepo']){
+      try{
+        const crows=XLSX.utils.sheet_to_json(freshWB.Sheets['CommonRepo'],{header:1,defval:''}).slice(1);
+        crows.forEach(r=>{if(r[0]&&r[1]!==undefined)commonRepo[r[0]]=r[1];});
+      }catch(e){}
+    }
+    WB = freshWB;
+    lastRepoSync = Date.now();
+  } catch(e){ console.warn('refreshRepoFromSP',e); }
+}
+
+// Patch saveRepoData: fetch-merge-save to prevent data loss from concurrent edits
 const _origSaveRepo = saveRepoData;
-function saveRepoData() {
-  _origSaveRepo();
+async function saveRepoData() {
+  // 1. Save locally first (immediate resilience)
+  try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){}
   try{localStorage.setItem('thp_igevals',JSON.stringify(igEvalData));}catch(e){}
+
+  if(!WB){
+    toast('warn','Offline','Repository saved to your browser only — SharePoint not available.');
+    return;
+  }
+
+  showLoad('Syncing to SharePoint...');
+  try {
+    // 2. Fetch the CURRENT SP version to prevent overwriting others' JDs
+    if(tok && fileId){
+      try {
+        await refreshToken();
+        const resp = await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+          {headers:{Authorization:'Bearer '+tok}});
+        if(resp.ok){
+          const buf = await resp.arrayBuffer();
+          const freshWB = XLSX.read(buf, {type:'array', cellDates:true});
+          // Merge: our repoData + anything on server that we don't have
+          const serverRepo = parseRepoSheet(freshWB.Sheets['Repository']);
+          repoData = mergeRepoWithServer(repoData, serverRepo);
+          try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){}
+          // Update WB to latest — prevents overwriting others' candidate records too
+          WB = freshWB;
+        }
+      } catch(fe){ console.warn('Pre-save fetch skipped',fe); }
+    }
+
+    // 3. Write merged repo to WB and save to SP
+    const rows=[['type','data'],
+      ...repoData.jds.map(d=>['jd',JSON.stringify(d)]),
+      ...repoData.scripts.map(d=>['script',JSON.stringify(d)]),
+      ...repoData.help.map(d=>['help',JSON.stringify(d)])];
+    WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);
+    if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');
+
+    rebuildDS();
+    const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});
+    await refreshToken();
+    const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+      {method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
+    if(!r.ok) throw new Error('Upload failed: '+r.status);
+
+    lastRepoSync = Date.now();
+    hideLoad();
+    toast('ok','Saved','Repository synced — visible to all users now.');
+  } catch(e){
+    hideLoad();
+    toast('err','Save Failed',e.message+' — changes in your browser only. Please retry.');
+  }
 }
 
 </script>
