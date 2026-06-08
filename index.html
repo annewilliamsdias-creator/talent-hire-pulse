@@ -97,16 +97,16 @@ padding:4px 10px;border-radius:20px}
 .panel{display:none;animation:fadeIn .3s ease}
 .panel.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-/* CARDS — light by default; #p-home and #p-analytics override back to dark below */
+/* CARDS — light by default; only #p-analytics overrides back to dark */
 .card{background:var(--form-bg);border:1px solid var(--form-border);border-radius:var(--r);padding:22px 26px;margin-bottom:16px;color:var(--form-text)}
 .card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
 .card-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;
 display:flex;align-items:center;gap:8px;color:var(--form-text)}
 .card-title .ac{color:var(--db)}
-/* Dark card overrides — dashboard + analytics stay fully dark */
-#p-home .card,#p-analytics .card{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:var(--ow)}
-#p-home .card-title,#p-analytics .card-title{color:var(--ow)}
-#p-home .card-title .ac,#p-analytics .card-title .ac{color:var(--teal)}
+/* Dark card overrides — analytics only */
+#p-analytics .card{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:var(--ow)}
+#p-analytics .card-title{color:var(--ow)}
+#p-analytics .card-title .ac{color:var(--teal)}
 /* STATS */
 .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
 .sg3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
@@ -126,8 +126,8 @@ padding:18px 20px;position:relative;overflow:hidden}
 .sl2{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
 color:var(--db);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
 .sl2::after{content:'';flex:1;height:1px;background:rgba(31,92,147,.2)}
-#p-home .sl2,#p-analytics .sl2{color:var(--teal)}
-#p-home .sl2::after,#p-analytics .sl2::after{background:rgba(52,186,198,.2)}
+#p-analytics .sl2{color:var(--teal)}
+#p-analytics .sl2::after{background:rgba(52,186,198,.2)}
 /* FORMS */
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
@@ -145,14 +145,14 @@ select option{background:#ffffff;color:var(--form-text)}
 textarea{resize:vertical;min-height:65px}
 input[readonly]{opacity:.6;cursor:default}
 .fhint{font-size:10px;color:rgba(26,26,46,.45);margin-top:2px}
-/* Dark overrides for inputs inside dashboard/analytics */
-#p-home label,#p-analytics label{color:var(--w60)}
-#p-home label .req,#p-analytics label .req{color:var(--gold)}
-#p-home input,#p-home select,#p-home textarea,#p-analytics input,#p-analytics select,#p-analytics textarea{background:rgba(255,255,255,.06);border-color:var(--w12);color:var(--ow)}
-#p-home input:focus,#p-home select:focus,#p-home textarea:focus,#p-analytics input:focus,#p-analytics select:focus,#p-analytics textarea:focus{border-color:var(--teal);background:rgba(52,186,198,.06);box-shadow:0 0 0 3px rgba(52,186,198,.12)}
-#p-home input::placeholder,#p-analytics input::placeholder{color:rgba(251,251,250,.25)}
-#p-home select option,#p-analytics select option{background:#000000;color:var(--ow)}
-#p-home .fhint,#p-analytics .fhint{color:rgba(251,251,250,.35)}
+/* Dark overrides for inputs inside analytics only */
+#p-analytics label{color:var(--w60)}
+#p-analytics label .req{color:var(--gold)}
+#p-analytics input,#p-analytics select,#p-analytics textarea{background:rgba(255,255,255,.06);border-color:var(--w12);color:var(--ow)}
+#p-analytics input:focus,#p-analytics select:focus,#p-analytics textarea:focus{border-color:var(--teal);background:rgba(52,186,198,.06);box-shadow:0 0 0 3px rgba(52,186,198,.12)}
+#p-analytics input::placeholder{color:rgba(251,251,250,.25)}
+#p-analytics select option{background:#000000;color:var(--ow)}
+#p-analytics .fhint{color:rgba(251,251,250,.35)}
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rs);
 font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;
@@ -165,10 +165,10 @@ transition:all .15s;letter-spacing:.3px}
 .btn-g:hover{box-shadow:0 4px 16px rgba(233,152,43,.35);transform:translateY(-1px)}
 .btn-ghost{background:transparent;color:rgba(26,26,46,.65);border:1px solid var(--form-border)}
 .btn-ghost:hover{background:rgba(31,92,147,.08);color:var(--form-text)}
-/* Dark ghost buttons in sidebar, topbar, dashboard, modals, toast */
-.sidebar .btn-ghost,.topbar .btn-ghost,#p-home .btn-ghost,#p-analytics .btn-ghost,
+/* Dark ghost buttons in sidebar, topbar, analytics, modals, toast */
+.sidebar .btn-ghost,.topbar .btn-ghost,#p-analytics .btn-ghost,
 #modal .btn-ghost,#toast .btn-ghost,.lbar>.btn-ghost{color:var(--w60);border-color:var(--w12)}
-.sidebar .btn-ghost:hover,.topbar .btn-ghost:hover,#p-home .btn-ghost:hover,
+.sidebar .btn-ghost:hover,.topbar .btn-ghost:hover,
 #p-analytics .btn-ghost:hover,#modal .btn-ghost:hover{background:var(--w10);color:var(--ow)}
 .btn-sm{padding:5px 11px;font-size:11px}
 .btn-lg{padding:11px 24px;font-size:13px}
@@ -234,14 +234,14 @@ tbody tr:hover{background:rgba(31,92,147,.06)}
 tbody td{padding:9px 11px;color:var(--form-text);vertical-align:middle}
 td.m{color:rgba(26,26,46,.55);font-size:11px}
 td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--db)}
-/* Dark table overrides for dashboard/analytics */
-#p-home thead tr,#p-analytics thead tr{background:rgba(31,92,147,.25)}
-#p-home thead th,#p-analytics thead th{color:var(--w60);border-bottom-color:var(--w08)}
-#p-home tbody tr,#p-analytics tbody tr{border-bottom-color:rgba(255,255,255,.04)}
-#p-home tbody tr:hover,#p-analytics tbody tr:hover{background:var(--w06)}
-#p-home tbody td,#p-analytics tbody td{color:var(--ow)}
-#p-home td.m,#p-analytics td.m{color:var(--w60)}
-#p-home td.mono,#p-analytics td.mono{color:var(--teal)}
+/* Dark table overrides for analytics only */
+#p-analytics thead tr{background:rgba(31,92,147,.25)}
+#p-analytics thead th{color:var(--w60);border-bottom-color:var(--w08)}
+#p-analytics tbody tr{border-bottom-color:rgba(255,255,255,.04)}
+#p-analytics tbody tr:hover{background:var(--w06)}
+#p-analytics tbody td{color:var(--ow)}
+#p-analytics td.m{color:var(--w60)}
+#p-analytics td.mono{color:var(--teal)}
 /* CODE BOX */
 .cbox{background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.25);
 border-radius:var(--r);padding:20px 24px;text-align:center;margin-top:16px}
@@ -268,9 +268,7 @@ border:1px solid rgba(31,92,147,.18);border-radius:var(--r);padding:16px 20px;ma
 background:rgba(31,92,147,.05);border:1px solid var(--form-border);border-radius:var(--rs);
 margin-bottom:6px;cursor:pointer;transition:all .18s;color:var(--form-text)}
 .pi:hover{background:rgba(31,92,147,.1);border-color:rgba(31,92,147,.35)}
-/* Dark pending items inside dashboard */
-#p-home .pi{background:var(--w06);border-color:var(--w08);color:var(--ow)}
-#p-home .pi:hover{background:rgba(255,255,255,.06);border-color:rgba(52,186,198,.2)}
+/* pending items inherit light panel colours — no dark override needed for home */
 .pi.ov{border-left:3px solid #ff6b6b}
 .pi.td{border-left:3px solid var(--gold)}
 .pi.up{border-left:3px solid var(--teal)}
@@ -331,6 +329,31 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 /* Hamburger toggle button */
 #mob-ham{display:none;position:fixed;top:12px;left:68px;z-index:201;background:var(--w06);border:1px solid var(--w08);border-radius:6px;width:32px;height:32px;align-items:center;justify-content:center;cursor:pointer;font-size:16px}
 @media(max-width:768px){#mob-ham{display:flex}}
+
+/* =====================================================================
+   LIGHT MODE — all panels except analytics
+   Redefining CSS custom properties here means every element inside these
+   panels that uses var(--ow) or var(--w60) — including inline styles —
+   automatically resolves to dark/readable text. No per-element overrides needed.
+   ===================================================================== */
+#p-home,#p-new,#p-upd,#p-edit,#p-rec,#p-vac,#p-repos,#p-admin,#p-inc,#p-inv,#p-login{
+  --ow:#1a1a2e;
+  --w60:rgba(26,26,46,.58);
+  --w10:rgba(26,26,46,.06);
+  --w06:rgba(26,26,46,.04);
+  --w08:rgba(26,26,46,.07);
+  --w12:rgba(26,26,46,.14);
+  background:#EAECF0;
+  color:#1a1a2e
+}
+/* KPI cards — need white bg in light mode */
+#p-home .kpi{background:#fff;border-color:rgba(26,26,46,.12)}
+/* Stat cards (dashboard summary) — white bg in light mode */
+#p-home .stat{background:#fff;border-color:rgba(26,26,46,.1)}
+#p-home .ss{color:rgba(26,26,46,.3)}
+/* Section header sl2 line in light panels */
+#p-home .sl2{color:var(--db)}
+#p-home .sl2::after{background:rgba(31,92,147,.15)}
 
 </style>
 </head>
