@@ -5679,6 +5679,12 @@ function dlChartPNG(canvasId, name) {
   </div>
   <!-- Body -->
   <div id="ig-body" style="flex:1;overflow-y:auto;padding:20px 24px"></div>
+  <!-- JD footer strip — always visible, vacancy-matched JD with link -->
+  <div id="ig-jd-strip" style="display:none;padding:6px 20px;background:rgba(52,186,198,.06);border-top:1px solid rgba(52,186,198,.12);border-bottom:1px solid rgba(52,186,198,.12);display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <span style="font-size:10px;color:var(--teal);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">📄 JD</span>
+    <span id="ig-jd-title" style="font-size:11px;color:var(--ow);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+    <a id="ig-jd-link" href="#" target="_blank" style="font-size:10px;color:var(--teal);white-space:nowrap;text-decoration:none;padding:2px 8px;border:1px solid rgba(52,186,198,.3);border-radius:6px">View JD ↗</a>
+  </div>
   <!-- Footer nav -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--w08);flex-shrink:0">
     <button class="btn btn-ghost btn-sm" onclick="igPrev()">← Previous</button>
@@ -5799,6 +5805,23 @@ function openInterviewGuide() {
   const code = r[C.code]||'';
   const el = document.getElementById('ig-subtitle');
   if(el) el.textContent = (r[C.name]||'—') + ' · ' + (r[C.position]||'—') + ' · ' + (r[C.client]||'—');
+  // Populate JD footer strip
+  const jd = igGetJD();
+  const strip = document.getElementById('ig-jd-strip');
+  const titleEl = document.getElementById('ig-jd-title');
+  const linkEl = document.getElementById('ig-jd-link');
+  if(strip && titleEl && linkEl){
+    if(jd && jd.link){
+      const vcLabel = r[C.vacCode] ? ' ('+r[C.vacCode]+')' : '';
+      titleEl.textContent = jd.title + vcLabel;
+      linkEl.href = jd.link;
+      strip.style.display = 'flex';
+    } else {
+      titleEl.textContent = 'No JD linked — add via Repositories';
+      linkEl.style.display = 'none';
+      strip.style.display = 'flex';
+    }
+  }
   // load existing eval if any
   if(!igEvalData[code]) igEvalData[code] = {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igCurrentPage = 0;
