@@ -23,8 +23,8 @@
 /* CR-UI-001: semantic colour tokens */
 --ink:#0e0f17;--err:#9f4a47;--ok:#5e7855;
 --errdim:rgba(159,74,71,.12);--okdim:rgba(94,120,85,.12);
---beige:#dddda5;--muted:#5f6470;--page-bg:#e9edf2;
---text-primary:#291b39;--text-strong:#0e0f17;--text-secondary:#1f5c93;--text-muted:#5f6470;
+--beige:#dddda5;--muted:#1f5c93;--page-bg:#e9edf2;
+--text-primary:#291b39;--text-strong:#0e0f17;--text-secondary:#1f5c93;--text-muted:#1f5c93;
 /* Light form variables (CR-UI-001 update from Bug E) */
 --form-bg:#e9edf2;--form-text:#291b39;--form-border:#d6dbe3;
 --form-input-bg:#ffffff;--form-placeholder:rgba(41,27,57,.3);}
@@ -344,7 +344,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
    ===================================================================== */
 #p-home,#p-new,#p-upd,#p-edit,#p-rec,#p-vac,#p-repos,#p-admin,#p-inc,#p-inv,#p-login{
   --ow:#291b39;
-  --w60:#5f6470;
+  --w60:#1f5c93;
   --w10:rgba(41,27,57,.06);
   --w06:rgba(41,27,57,.04);
   --w08:rgba(41,27,57,.07);
@@ -356,7 +356,9 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 #p-home .kpi{background:#fff;border-color:rgba(26,26,46,.12)}
 /* Stat cards (dashboard summary) — white bg in light mode */
 #p-home .stat{background:#fff;border-color:rgba(26,26,46,.1)}
-#p-home .ss{color:rgba(26,26,46,.3)}
+#p-home .ss{color:#1f5c93}
+#p-home .stat.teal .sn{color:#1f5c93}
+#p-home .stat.purple .sn{color:#1f5c93}
 /* Section header sl2 line in light panels */
 #p-home .sl2{color:var(--db)}
 #p-home .sl2::after{background:rgba(31,92,147,.15)}
