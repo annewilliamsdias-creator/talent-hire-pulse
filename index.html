@@ -20,9 +20,14 @@
 --w08:rgba(255,255,255,.08);--w12:rgba(255,255,255,.12);--tdim:rgba(52,186,198,.12);
 --gdim:rgba(233,152,43,.12);--bdim:rgba(31,92,147,.15);--r:12px;--rs:7px;
 --sh:0 8px 32px rgba(0,0,0,.25);
-/* Bug e: light form theme variables — revert target: commit eccc32a */
---form-bg:#EAECF0;--form-text:#1a1a2e;--form-border:#c8cdd6;
---form-input-bg:#ffffff;--form-placeholder:rgba(26,26,46,.3);}
+/* CR-UI-001: semantic colour tokens */
+--ink:#0e0f17;--err:#9f4a47;--ok:#5e7855;
+--errdim:rgba(159,74,71,.12);--okdim:rgba(94,120,85,.12);
+--beige:#dddda5;--muted:#5f6470;--page-bg:#e9edf2;
+--text-primary:#291b39;--text-strong:#0e0f17;--text-secondary:#1f5c93;--text-muted:#5f6470;
+/* Light form variables (CR-UI-001 update from Bug E) */
+--form-bg:#e9edf2;--form-text:#291b39;--form-border:#d6dbe3;
+--form-input-bg:#ffffff;--form-placeholder:rgba(41,27,57,.3);}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:#0A1628;color:var(--ow);min-height:100vh}
 /* LOGIN */
@@ -90,7 +95,7 @@ display:flex;align-items:center;gap:8px}
 padding:4px 10px;border-radius:20px}
 .sp-pill.ok{background:var(--tdim);color:var(--teal)}
 .sp-pill.loading{background:var(--gdim);color:var(--gold)}
-.sp-pill.err{background:rgba(220,50,50,.12);color:#ff6b6b}
+.sp-pill.err{background:var(--errdim);color:var(--err)}
 .sp-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
 .content{padding:24px}
 /* PANELS */
@@ -136,7 +141,7 @@ color:var(--db);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
 label{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:rgba(26,26,46,.65)}
 label .req{color:#c0700a;margin-left:2px}
 input,select,textarea{background:var(--form-input-bg);border:1px solid var(--form-border);
-border-radius:var(--rs);padding:8px 11px;font-size:13px;font-family:'DM Sans',sans-serif;
+border-radius:var(--rs);padding:8px 11px;font-size:14px;font-family:'DM Sans',sans-serif;
 color:var(--form-text);transition:border-color .2s,background .2s;width:100%}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--db);
 background:#fff;box-shadow:0 0 0 3px rgba(31,92,147,.12)}
@@ -155,7 +160,7 @@ input[readonly]{opacity:.6;cursor:default}
 #p-analytics .fhint{color:rgba(251,251,250,.35)}
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rs);
-font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;
+font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;
 transition:all .15s;letter-spacing:.3px}
 .btn-p{background:linear-gradient(135deg,var(--db),#2470b3);color:var(--ow);border:1px solid rgba(52,186,198,.3)}
 .btn-p:hover{box-shadow:0 4px 16px rgba(31,92,147,.4);transform:translateY(-1px)}
@@ -178,9 +183,10 @@ transition:all .15s;letter-spacing:.3px}
 .alert{padding:10px 13px;border-radius:var(--rs);margin-bottom:12px;font-size:13px;
 display:flex;align-items:flex-start;gap:8px;border:1px solid}
 .alert-ok{background:var(--tdim);border-color:rgba(52,186,198,.3);color:var(--teal)}
-.alert-err{background:rgba(220,50,50,.1);border-color:rgba(220,50,50,.3);color:#ff6b6b}
+.alert-err{background:var(--errdim);border-color:rgba(159,74,71,.3);color:var(--err)}
 .alert-warn{background:var(--gdim);border-color:rgba(233,152,43,.3);color:var(--gold)}
 .alert-info{background:var(--bdim);border-color:rgba(31,92,147,.3);color:#5b9fd4}
+/* note: light-panel override → color:var(--db) added in cascade block below */
 /* TOAST */
 #toast{position:fixed;bottom:22px;right:22px;z-index:9999;max-width:320px;
 background:rgba(0,0,0,.97);border:1px solid var(--w12);border-radius:var(--r);
@@ -224,7 +230,7 @@ padding:11px 13px;margin-bottom:14px;font-size:13px}
 .b-inactive{background:var(--w06);color:var(--w60);border:1px solid var(--w08)}
 /* TABLE — light default; dark override for dashboard/analytics */
 .tw{overflow-x:auto;border-radius:var(--r)}
-table{width:100%;border-collapse:collapse;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
 thead tr{background:var(--db)}
 thead th{padding:10px 11px;text-align:left;font-size:10px;font-weight:700;
 letter-spacing:1px;text-transform:uppercase;color:#e8f0f8;white-space:nowrap;
@@ -269,22 +275,22 @@ background:rgba(31,92,147,.05);border:1px solid var(--form-border);border-radius
 margin-bottom:6px;cursor:pointer;transition:all .18s;color:var(--form-text)}
 .pi:hover{background:rgba(31,92,147,.1);border-color:rgba(31,92,147,.35)}
 /* pending items inherit light panel colours — no dark override needed for home */
-.pi.ov{border-left:3px solid #ff6b6b}
+.pi.ov{border-left:3px solid var(--err)}
 .pi.td{border-left:3px solid var(--gold)}
 .pi.up{border-left:3px solid var(--teal)}
 .pd{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.pd.ov{background:#ff6b6b}.pd.td{background:var(--gold)}.pd.up{background:var(--teal)}
+.pd.ov{background:var(--err)}.pd.td{background:var(--gold)}.pd.up{background:var(--teal)}
 .pn{font-size:13px;font-weight:600}
 .pdet{font-size:11px;color:var(--w60);margin-top:1px}
 .pdate{margin-left:auto;font-size:11px;font-family:'DM Mono',monospace;color:var(--w60);text-align:right}
-.pdate.ov{color:#ff6b6b}.pdate.td{color:var(--gold)}
+.pdate.ov{color:var(--err)}.pdate.td{color:var(--gold)}
 /* UPLOAD ZONE */
 .uz{border:2px dashed var(--w12);border-radius:var(--r);padding:32px;text-align:center;
 cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02)}
 .uz:hover{border-color:var(--teal);background:rgba(52,186,198,.04)}
 /* ADMIN TABS */
 .atabs{display:flex;gap:0;border-bottom:1px solid var(--w08);margin-bottom:16px;overflow-x:auto}
-.atab{padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;color:var(--w60);
+.atab{padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--w60);
 border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap}
 .atab.on{color:var(--teal);border-bottom-color:var(--teal)}
 /* MISC */
@@ -337,14 +343,14 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
    automatically resolves to dark/readable text. No per-element overrides needed.
    ===================================================================== */
 #p-home,#p-new,#p-upd,#p-edit,#p-rec,#p-vac,#p-repos,#p-admin,#p-inc,#p-inv,#p-login{
-  --ow:#1a1a2e;
-  --w60:rgba(26,26,46,.58);
-  --w10:rgba(26,26,46,.06);
-  --w06:rgba(26,26,46,.04);
-  --w08:rgba(26,26,46,.07);
-  --w12:rgba(26,26,46,.14);
-  background:#EAECF0;
-  color:#1a1a2e
+  --ow:#291b39;
+  --w60:#5f6470;
+  --w10:rgba(41,27,57,.06);
+  --w06:rgba(41,27,57,.04);
+  --w08:rgba(41,27,57,.07);
+  --w12:rgba(41,27,57,.14);
+  background:#e9edf2;
+  color:#291b39
 }
 /* KPI cards — need white bg in light mode */
 #p-home .kpi{background:#fff;border-color:rgba(26,26,46,.12)}
@@ -354,6 +360,25 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 /* Section header sl2 line in light panels */
 #p-home .sl2{color:var(--db)}
 #p-home .sl2::after{background:rgba(31,92,147,.15)}
+/* CR-UI-001: badge text colour overrides for light panels — dark readable variants */
+#p-home .b-rejected,#p-new .b-rejected,#p-upd .b-rejected,#p-edit .b-rejected,
+#p-rec .b-rejected,#p-vac .b-rejected,#p-repos .b-rejected,#p-admin .b-rejected,
+#p-inc .b-rejected,#p-inv .b-rejected,#p-login .b-rejected{color:#5b2d91;border-color:rgba(91,45,145,.3)}
+#p-home .b-hold,#p-new .b-hold,#p-upd .b-hold,#p-edit .b-hold,
+#p-rec .b-hold,#p-vac .b-hold,#p-repos .b-hold,#p-admin .b-hold,
+#p-inc .b-hold,#p-inv .b-hold,#p-login .b-hold{color:#5b2d91;border-color:rgba(91,45,145,.3)}
+#p-home .b-selected,#p-new .b-selected,#p-upd .b-selected,#p-edit .b-selected,
+#p-rec .b-selected,#p-vac .b-selected,#p-repos .b-selected,#p-admin .b-selected,
+#p-inc .b-selected,#p-inv .b-selected,#p-login .b-selected{color:#1a8a94;border-color:rgba(26,138,148,.3)}
+#p-home .b-offered,#p-new .b-offered,#p-upd .b-offered,#p-edit .b-offered,
+#p-rec .b-offered,#p-vac .b-offered,#p-repos .b-offered,#p-admin .b-offered,
+#p-inc .b-offered,#p-inv .b-offered,#p-login .b-offered{color:var(--db);border-color:rgba(31,92,147,.3)}
+#p-home .b-progress,#p-new .b-progress,#p-upd .b-progress,#p-edit .b-progress,
+#p-rec .b-progress,#p-vac .b-progress,#p-repos .b-progress,#p-admin .b-progress,
+#p-inc .b-progress,#p-inv .b-progress,#p-login .b-progress{color:var(--db);border-color:rgba(31,92,147,.3)}
+#p-home .alert-info,#p-new .alert-info,#p-upd .alert-info,#p-edit .alert-info,
+#p-rec .alert-info,#p-vac .alert-info,#p-repos .alert-info,#p-admin .alert-info,
+#p-inc .alert-info,#p-inv .alert-info,#p-login .alert-info{color:var(--db)}
 
 </style>
 </head>
@@ -2620,7 +2645,7 @@ async function createMeeting(){const r=MD[eIdx];const d=document.getElementById(
 function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)procBulk(f);}
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
 function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim().replace(/[★*]/g,'').trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
-function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
+function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:var(--err)">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:var(--errdim)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:var(--err)">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'var(--err)')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
 async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.vacCode]=obj['Vacancy Code']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
@@ -2635,9 +2660,9 @@ async function doBackup(){showLoad('Creating backup...');try{const ts=new Date()
   if(invoices&&invoices.length){try{const invRows=[['id','candCode','candName','client','amount','gst','total','date','due','status'],...invoices.map(i=>[i.id,i.candCode||'',i.candName||'',i.client||'',i.amount||'',i.gst||'',i.total||'',i.date||'',i.due||'',i.status||''])];WB.Sheets['Invoices']=XLSX.utils.aoa_to_sheet(invRows);if(!WB.SheetNames.includes('Invoices'))WB.SheetNames.push('Invoices');}catch(e){console.warn('inv backup',e);}}
   // Save commonRepo pages to WB before backup (ensure latest content)
   try{const fields=['page1','page2','page4','page5'];const rows=[['key','value'],...fields.map(k=>[k,commonRepo[k]||IG_COMMON_DEFAULTS[k]||''])];WB.Sheets['CommonRepo']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('CommonRepo'))WB.SheetNames.push('CommonRepo');}catch(e){}const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
-function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:10px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:#ff6b6b;padding:12px">Error: '+e.message+'</div>';}}
+function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:10px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:var(--err);padding:12px">Error: '+e.message+'</div>';}}
 // CHANGELOG
-function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
+function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:var(--err)">Error: '+e.message+'</td></tr>';}}
 // CONFIG / MASTERS
 let mgridInited=false;
 function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div id="wa-ed"></div></div>';loadCfg();}
@@ -3990,22 +4015,22 @@ function renderValidationResults(totalRows, errors) {
         <div style="font-size:22px;font-weight:700;color:var(--gold)">${rowsWithErrors}</div>
         <div style="font-size:10px;color:var(--w60)">ROWS WITH ISSUES</div>
       </div>
-      <div style="background:rgba(52,199,122,.1);border:1px solid rgba(52,199,122,.25);border-radius:var(--rs);padding:10px 16px;text-align:center">
-        <div style="font-size:22px;font-weight:700;color:#52c77a">${cleanRows}</div>
+      <div style="background:var(--okdim);border:1px solid rgba(94,120,85,.25);border-radius:var(--rs);padding:10px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--ok)">${cleanRows}</div>
         <div style="font-size:10px;color:var(--w60)">CLEAN ROWS</div>
       </div>
-      ${errCount===0?'<div style="flex:1;background:rgba(52,199,122,.1);border:1px solid rgba(52,199,122,.25);border-radius:var(--rs);padding:12px 16px;color:#52c77a;font-weight:600">✅ All rows passed validation — safe to upload!</div>':'<div style="flex:1;background:rgba(220,50,50,.08);border:1px solid rgba(220,50,50,.2);border-radius:var(--rs);padding:12px 16px;color:#ff6b6b">⚠ Fix errors below, then re-download the error report to correct your file before uploading.</div>'}
+      ${errCount===0?'<div style="flex:1;background:var(--okdim);border:1px solid rgba(94,120,85,.25);border-radius:var(--rs);padding:12px 16px;color:var(--ok);font-weight:600">✅ All rows passed validation — safe to upload!</div>':'<div style="flex:1;background:var(--errdim);border:1px solid rgba(159,74,71,.25);border-radius:var(--rs);padding:12px 16px;color:var(--err)">⚠ Fix errors below, then re-download the error report to correct your file before uploading.</div>'}
     </div>`;
 
   if (errors.length === 0) {
     body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--teal)">✅ No errors found — all rows ready to upload!</td></tr>';
   } else {
     body.innerHTML = errors.map(e =>
-      `<tr style="background:rgba(220,50,50,.06)">
-        <td class="mono" style="color:#ff6b6b">${e.row}</td>
+      `<tr style="background:var(--errdim)">
+        <td class="mono" style="color:var(--err)">${e.row}</td>
         <td><strong>${e.name}</strong></td>
         <td style="color:var(--gold)">${e.field}</td>
-        <td style="color:#ff6b6b;font-family:monospace;font-size:11px">${e.value||'(blank)'}</td>
+        <td style="color:var(--err);font-family:monospace;font-size:11px">${e.value||'(blank)'}</td>
         <td style="font-size:11px">${e.issue}</td>
         <td style="font-size:10px;color:var(--w60)">${e.valid}</td>
       </tr>`
@@ -4231,7 +4256,7 @@ function onIncPeriodChange(){
       if(t) t.value = fmt(rampEnd);
       if(hint) hint.innerHTML = `<span style="color:var(--gold)">🚀 Section A: ${fmtD(rec.doj)} → ${fmtD(fmt(rampEnd))}</span> &nbsp;·&nbsp; Months 1–3 of employment`;
     } else {
-      if(hint) hint.innerHTML = `<span style="color:#ff6b6b">⚠ Set recruiter DOJ in Admin → Config → Recruiters first</span>`;
+      if(hint) hint.innerHTML = `<span style="color:var(--err)">⚠ Set recruiter DOJ in Admin → Config → Recruiters first</span>`;
     }
   } else if(v === 'revenue_period'){
     if(rec && rec.doj){
@@ -4244,7 +4269,7 @@ function onIncPeriodChange(){
       if(t) t.value = today();
       if(hint) hint.innerHTML = `<span style="color:var(--teal)">💰 Section B: ${fmtD(fmt(rev3))} → today</span> &nbsp;·&nbsp; Month 4+ of employment`;
     } else {
-      if(hint) hint.innerHTML = `<span style="color:#ff6b6b">⚠ Set recruiter DOJ in Admin → Config → Recruiters first</span>`;
+      if(hint) hint.innerHTML = `<span style="color:var(--err)">⚠ Set recruiter DOJ in Admin → Config → Recruiters first</span>`;
     }
   } else if(v === 'custom'){
     const td2 = today();
@@ -4555,8 +4580,8 @@ function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthNum){
 function buildSectionAHTML(recSel, p, empMonthNums){
   const rec = M.recruiters && M.recruiters.find(r => r.name === recSel);
   if(!rec || !rec.doj){
-    return '<div style="background:rgba(255,80,80,.08);border:2px solid rgba(255,80,80,.3);border-radius:var(--rs);padding:16px 20px">'
-      +'<strong style="color:#ff6b6b">\u26a0 Recruiter DOJ not set</strong><br><div style="font-size:11px;margin-top:6px">Set it in Admin \u2192 Config \u2192 Recruiters to calculate Section A incentive.</div></div>';
+    return '<div style="background:var(--errdim);border:2px solid rgba(159,74,71,.3);border-radius:var(--rs);padding:16px 20px">'
+      +'<strong style="color:var(--err)">\u26a0 Recruiter DOJ not set</strong><br><div style="font-size:11px;margin-top:6px">Set it in Admin \u2192 Config \u2192 Recruiters to calculate Section A incentive.</div></div>';
   }
   const ramp = p?.rampUp || {};
   const incTiers = ramp.incentives || [{monthsMet:1,amount:1000},{monthsMet:2,amount:2500},{monthsMet:3,amount:5000}];
@@ -4573,13 +4598,13 @@ function buildSectionAHTML(recSel, p, empMonthNums){
     <div style="font-size:11px;color:var(--w60)">${recSel}\u2019s ramp-up period from ${fmtD(rec.doj)}. Activity-based \u2014 no placement required. Calls = profiles sourced/day. Interviews derived from ATS status.</div>
   </div>`;
   results.forEach(res => {
-    const callColor  = res.callsMet      ? 'var(--teal)' : '#ff6b6b';
-    const intvColor  = res.interviewsMet ? 'var(--teal)' : '#ff6b6b';
-    const qualBg     = res.qualified ? 'rgba(52,186,198,.06)' : 'rgba(255,80,80,.04)';
-    const qualBorder = res.qualified ? 'rgba(52,186,198,.2)' : 'rgba(255,80,80,.15)';
+    const callColor  = res.callsMet      ? 'var(--ok)' : 'var(--err)';
+    const intvColor  = res.interviewsMet ? 'var(--ok)' : 'var(--err)';
+    const qualBg     = res.qualified ? 'var(--okdim)' : 'var(--errdim)';
+    const qualBorder = res.qualified ? 'rgba(94,120,85,.3)' : 'rgba(159,74,71,.3)';
     const qualBadge  = res.qualified
-      ? '<span style="background:var(--teal);color:#000;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">QUALIFIES</span>'
-      : '<span style="background:rgba(255,80,80,.2);color:#ff6b6b;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">DOES NOT QUALIFY</span>';
+      ? '<span style="background:var(--okdim);color:var(--ok);border:1px solid rgba(94,120,85,.3);font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700">QUALIFIES</span>'
+      : '<span style="background:var(--errdim);color:var(--err);border:1px solid rgba(159,74,71,.3);font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700">DOES NOT QUALIFY</span>';
     html += `<div style="border:1px solid ${qualBorder};border-radius:var(--rs);margin-bottom:12px;overflow:hidden">
       <div style="background:${qualBg};padding:9px 14px;display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:12px;font-weight:700">Employment Month ${res.empMonthNum} &nbsp;<span style="font-weight:400;color:var(--w60);font-size:10px">${fmtD(res.monthFrom)} \u2013 ${fmtD(res.monthTo)}</span></div>
@@ -4613,7 +4638,7 @@ function buildSectionAHTML(recSel, p, empMonthNums){
   html += `<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px">
     <div style="font-size:11px;font-weight:700;color:var(--gold);margin-bottom:8px">Section A Incentive Summary</div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;margin-bottom:8px">
-      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:5px;padding:5px 10px;text-align:center"><div style="font-size:9px;color:var(--w60)">Month ${r.empMonthNum}</div><div style="font-weight:700;color:${r.qualified?'var(--teal)':'#ff6b6b'}">${r.qualified?'\u2714':'\u2718'}</div></div>`).join('')}
+      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:5px;padding:5px 10px;text-align:center"><div style="font-size:9px;color:var(--w60)">Month ${r.empMonthNum}</div><div style="font-weight:700;color:${r.qualified?'var(--ok)':'var(--err)'}">${r.qualified?'\u2714':'\u2718'}</div></div>`).join('')}
       <div style="background:rgba(255,160,0,.1);border-radius:5px;padding:5px 10px"><div style="font-size:9px;color:var(--w60)">Qualifying</div><div style="font-weight:700">${qualifyingCount}/3 months</div></div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,160,0,.2)">
@@ -4687,7 +4712,7 @@ function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
       const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);
       html+=`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.client]}</td><td class="m">${r[C.position]}</td><td class="m">${parseExp(r[C.expYrs]).toFixed(1)} yrs</td><td class="mono">${fmtD(r[C.doj])}</td><td class="m">\u20b9${((parseFloat(r[C.offeredSalary])||0)*12).toLocaleString('en-IN')}</td><td class="m" style="font-weight:600">\u20b9${Math.round(fee).toLocaleString('en-IN')}</td></tr>`;
     });
-    html+=`<tr style="background:rgba(80,80,80,.06)"><td colspan="6" style="padding:7px 11px;font-weight:700">Firm Revenue \u2014 ${ml}</td><td style="padding:7px 11px;font-weight:700">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td></tr></tbody></table></div>`;
+    html+=`<tr style="background:rgba(41,27,57,.05)"><td colspan="6" style="padding:7px 11px;font-weight:700">Firm Revenue \u2014 ${ml}</td><td style="padding:7px 11px;font-weight:700">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td></tr></tbody></table></div>`;
     if(!multi && inc){
       html+=`<div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:12px 16px;margin-top:10px">
         <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:var(--teal)">Incentive Calculation \u2014 ${ml} (Section B)</div>
@@ -4816,8 +4841,8 @@ function calcIncentives(){
   if(dojMissing && secUnknown.length === allJoined.length){
     // ALL candidates unclassifiable — recruiter DOJ missing
     el.innerHTML = `
-      <div style="background:rgba(255,80,80,.08);border:2px solid rgba(255,80,80,.35);border-radius:var(--rs);padding:16px 20px;margin-bottom:16px">
-        <div style="font-size:13px;font-weight:700;color:#ff6b6b;margin-bottom:8px">⚠ Cannot Calculate Incentive — Recruiter DOJ Not Set</div>
+      <div style="background:var(--errdim);border:2px solid rgba(159,74,71,.35);border-radius:var(--rs);padding:16px 20px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--err);margin-bottom:8px">⚠ Cannot Calculate Incentive — Recruiter DOJ Not Set</div>
         <div style="font-size:11px;margin-bottom:10px">
           The incentive policy has <strong>two distinct sections</strong> based on how long the recruiter has been employed:
           <ul style="margin:8px 0 8px 16px;line-height:1.8">
@@ -4826,11 +4851,11 @@ function calcIncentives(){
           </ul>
           To classify candidates correctly, the system needs to know when <strong>${recSel||'this recruiter'}</strong> joined the company.
         </div>
-        <div style="background:rgba(255,80,80,.1);border-radius:6px;padding:10px 14px;font-size:11px">
+        <div style="background:var(--errdim);border-radius:6px;padding:10px 14px;font-size:11px">
           👉 Go to <strong>Admin → Config → Recruiters</strong>, find <strong>${recSel||'the recruiter'}</strong>, and set their company joining date.
         </div>
       </div>
-      <div style="opacity:.5">
+      <div style="color:var(--muted)">
         <div class="sl2" style="margin-bottom:6px">${allJoined.length} hire${allJoined.length>1?'s':''} in period (unclassified — incentive calculation blocked)</div>
         <div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Placed On</th><th>Firm Fee</th></tr></thead><tbody>
         ${allJoined.map(r=>{
@@ -5077,7 +5102,7 @@ function renderPolicyView(){
   el.innerHTML = `
     <div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div style="font-size:15px;font-weight:700">${p.title} &nbsp;<span style="background:var(--teal);color:#000;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700">ACTIVE</span></div>
+        <div style="font-size:15px;font-weight:700">${p.title} &nbsp;<span style="background:var(--okdim);color:var(--ok);border:1px solid rgba(94,120,85,.3);font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">ACTIVE</span></div>
         <div style="font-size:11px;color:var(--w60);margin-top:4px">Effective: ${fmtD(p.from)} – ${fmtD(p.to)} &nbsp;·&nbsp; Revision #${p.revision} (${fmtD(p.revisionDate)}) &nbsp;·&nbsp; ${p.revisionNotes||''}</div>
       </div>
     </div>
