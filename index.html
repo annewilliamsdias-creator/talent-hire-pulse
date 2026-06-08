@@ -128,7 +128,7 @@ padding:18px 20px;position:relative;overflow:hidden}
 .sl{font-size:12px;font-weight:500;color:var(--w60)}
 .ss{font-size:11px;color:rgba(251,251,250,.3);margin-top:2px}
 /* SECTION LABEL */
-.sl2{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+.sl2{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
 color:var(--db);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
 .sl2::after{content:'';flex:1;height:1px;background:rgba(31,92,147,.2)}
 #p-analytics .sl2{color:var(--teal)}
@@ -138,7 +138,7 @@ color:var(--db);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
 .fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
 .field{display:flex;flex-direction:column;gap:4px}
 .field.s2{grid-column:span 2}.field.s3{grid-column:span 3}
-label{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:rgba(26,26,46,.65)}
+label{font-size:12px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#291b39}
 label .req{color:#c0700a;margin-left:2px}
 input,select,textarea{background:var(--form-input-bg);border:1px solid var(--form-border);
 border-radius:var(--rs);padding:8px 11px;font-size:14px;font-family:'DM Sans',sans-serif;
@@ -149,7 +149,7 @@ input::placeholder{color:var(--form-placeholder)}
 select option{background:#ffffff;color:var(--form-text)}
 textarea{resize:vertical;min-height:65px}
 input[readonly]{opacity:.6;cursor:default}
-.fhint{font-size:10px;color:rgba(26,26,46,.45);margin-top:2px}
+.fhint{font-size:10px;color:#5f6470;margin-top:2px}
 /* Dark overrides for inputs inside analytics only */
 #p-analytics label{color:var(--w60)}
 #p-analytics label .req{color:var(--gold)}
@@ -232,7 +232,7 @@ padding:11px 13px;margin-bottom:14px;font-size:13px}
 .tw{overflow-x:auto;border-radius:var(--r)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead tr{background:var(--db)}
-thead th{padding:10px 11px;text-align:left;font-size:10px;font-weight:700;
+thead th{padding:10px 11px;text-align:left;font-size:12px;font-weight:700;
 letter-spacing:1px;text-transform:uppercase;color:#e8f0f8;white-space:nowrap;
 border-bottom:1px solid rgba(31,92,147,.4)}
 tbody tr{border-bottom:1px solid var(--form-border);transition:background .15s}
@@ -318,7 +318,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 .kpi{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
   border-radius:var(--r);padding:14px 16px;text-align:center}
 .kpi-num{font-family:"Cormorant Garamond",serif;font-size:28px;font-weight:700;line-height:1}
-.kpi-lbl{font-size:10px;color:var(--w60);margin-top:3px;letter-spacing:.5px}
+.kpi-lbl{font-size:11px;color:var(--w60);margin-top:3px;letter-spacing:.5px}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
 .hidden{display:none!important}
@@ -2662,7 +2662,7 @@ async function doBackup(){showLoad('Creating backup...');try{const ts=new Date()
   if(invoices&&invoices.length){try{const invRows=[['id','candCode','candName','client','amount','gst','total','date','due','status'],...invoices.map(i=>[i.id,i.candCode||'',i.candName||'',i.client||'',i.amount||'',i.gst||'',i.total||'',i.date||'',i.due||'',i.status||''])];WB.Sheets['Invoices']=XLSX.utils.aoa_to_sheet(invRows);if(!WB.SheetNames.includes('Invoices'))WB.SheetNames.push('Invoices');}catch(e){console.warn('inv backup',e);}}
   // Save commonRepo pages to WB before backup (ensure latest content)
   try{const fields=['page1','page2','page4','page5'];const rows=[['key','value'],...fields.map(k=>[k,commonRepo[k]||IG_COMMON_DEFAULTS[k]||''])];WB.Sheets['CommonRepo']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('CommonRepo'))WB.SheetNames.push('CommonRepo');}catch(e){}const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
-function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:10px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:var(--err);padding:12px">Error: '+e.message+'</div>';}}
+function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:12px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:12px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:var(--err);padding:12px">Error: '+e.message+'</div>';}}
 // CHANGELOG
 function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:12px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:12px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:12px">'+r[3]+'</span></td><td class="m" style="font-size:12px">'+r[4]+'</td><td class="m" style="font-size:12px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:12px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:var(--err)">Error: '+e.message+'</td></tr>';}}
 // CONFIG / MASTERS
@@ -4640,8 +4640,8 @@ function buildSectionAHTML(recSel, p, empMonthNums){
   html += `<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px">
     <div style="font-size:11px;font-weight:700;color:var(--gold);margin-bottom:8px">Section A Incentive Summary</div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;margin-bottom:8px">
-      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:5px;padding:5px 10px;text-align:center"><div style="font-size:9px;color:var(--w60)">Month ${r.empMonthNum}</div><div style="font-weight:700;color:${r.qualified?'var(--ok)':'var(--err)'}">${r.qualified?'\u2714':'\u2718'}</div></div>`).join('')}
-      <div style="background:rgba(255,160,0,.1);border-radius:5px;padding:5px 10px"><div style="font-size:9px;color:var(--w60)">Qualifying</div><div style="font-weight:700">${qualifyingCount}/3 months</div></div>
+      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:5px;padding:5px 10px;text-align:center"><div style="font-size:11px;color:var(--w60)">Month ${r.empMonthNum}</div><div style="font-weight:700;color:${r.qualified?'var(--ok)':'var(--err)'}">${r.qualified?'\u2714':'\u2718'}</div></div>`).join('')}
+      <div style="background:rgba(255,160,0,.1);border-radius:5px;padding:5px 10px"><div style="font-size:11px;color:var(--w60)">Qualifying</div><div style="font-weight:700">${qualifyingCount}/3 months</div></div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,160,0,.2)">
       <div><div style="font-size:12px;font-weight:600">Ramp-Up Incentive</div><div style="font-size:10px;color:var(--w60)">Paid after Month 3. Requires BOTH thresholds met per qualifying month.</div></div>
@@ -5277,9 +5277,9 @@ function genProjections(){
 
   const phBadge = rec => {
     const ph = rec ? getRecruiterPhase(rec, today()) : {phase:'unknown'};
-    if(ph.phase==='ramp') return `<span style="background:rgba(255,160,0,.15);color:var(--gold);font-size:9px;padding:1px 6px;border-radius:10px;font-weight:600">Ramp M${ph.month}</span>`;
-    if(ph.phase==='revenue') return `<span style="background:rgba(52,186,198,.12);color:var(--teal);font-size:9px;padding:1px 6px;border-radius:10px;font-weight:600">Revenue</span>`;
-    return `<span style="color:var(--w60);font-size:9px">—</span>`;
+    if(ph.phase==='ramp') return `<span style="background:rgba(255,160,0,.15);color:var(--gold);font-size:11px;padding:1px 6px;border-radius:10px;font-weight:600">Ramp M${ph.month}</span>`;
+    if(ph.phase==='revenue') return `<span style="background:rgba(52,186,198,.12);color:var(--teal);font-size:11px;padding:1px 6px;border-radius:10px;font-weight:600">Revenue</span>`;
+    return `<span style="color:var(--w60);font-size:11px">—</span>`;
   };
 
   el.innerHTML = slabRef + phaseBanner +
@@ -5577,7 +5577,7 @@ function createInvoice(){
 function renderInvoices(){
   const tb=document.getElementById('inv-body');if(!tb)return;
   if(!invoices.length){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--w60)">No invoices yet. Create your first invoice above after a candidate joins.</td></tr>';document.getElementById('inv-count').textContent='';return;}
-  const statusCol={'Draft':'var(--w60)','Sent':'var(--gold)','Paid':'var(--teal)','Overdue':'#ff6b6b','Cancelled':'var(--w60)'};
+  const statusCol={'Draft':'var(--w60)','Sent':'var(--gold)','Paid':'var(--teal)','Overdue':'var(--err)','Cancelled':'var(--w60)'};
   tb.innerHTML=invoices.map((inv,i)=>'<tr><td class="mono" style="font-size:10px">'+inv.id+'</td><td><strong>'+inv.candName+'</strong></td><td class="m">'+inv.client+'</td><td class="m">'+inv.position+'</td><td class="m">₹'+Math.round(inv.amount).toLocaleString('en-IN')+'</td><td class="m">'+inv.gst+'%</td><td style="font-weight:600">₹'+Math.round(inv.total).toLocaleString('en-IN')+'</td><td class="mono">'+fmtD(inv.date)+'</td><td class="mono '+(inv.due<today()&&inv.status!=='Paid'?'text-gold':'')+'">'+(inv.due?fmtD(inv.due):'—')+'</td><td><span style="font-size:11px;font-weight:700;color:'+(statusCol[inv.status]||'var(--w60)')+'">'+inv.status+'</span></td><td><div class="flex gap8"><select style="font-size:10px;padding:3px 6px;background:var(--w06);border:1px solid var(--w08);color:var(--ow);border-radius:4px" onchange="setInvStatus('+i+',this.value)"><option>Draft</option><option>Sent</option><option>Paid</option><option>Overdue</option><option>Cancelled</option></select></div></td></tr>').join('');
   document.getElementById('inv-count').textContent=invoices.length+' invoice(s)';
 }
