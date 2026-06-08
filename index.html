@@ -19,7 +19,10 @@
 --w60:rgba(251,251,250,.6);--w10:rgba(251,251,250,.1);--w06:rgba(255,255,255,.06);
 --w08:rgba(255,255,255,.08);--w12:rgba(255,255,255,.12);--tdim:rgba(52,186,198,.12);
 --gdim:rgba(233,152,43,.12);--bdim:rgba(31,92,147,.15);--r:12px;--rs:7px;
---sh:0 8px 32px rgba(0,0,0,.25);}
+--sh:0 8px 32px rgba(0,0,0,.25);
+/* Bug e: light form theme variables — revert target: commit eccc32a */
+--form-bg:#EAECF0;--form-text:#1a1a2e;--form-border:#c8cdd6;
+--form-input-bg:#ffffff;--form-placeholder:rgba(26,26,46,.3);}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:#0A1628;color:var(--ow);min-height:100vh}
 /* LOGIN */
@@ -94,12 +97,16 @@ padding:4px 10px;border-radius:20px}
 .panel{display:none;animation:fadeIn .3s ease}
 .panel.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-/* CARDS */
-.card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:22px 26px;margin-bottom:16px}
+/* CARDS — light by default; #p-home and #p-analytics override back to dark below */
+.card{background:var(--form-bg);border:1px solid var(--form-border);border-radius:var(--r);padding:22px 26px;margin-bottom:16px;color:var(--form-text)}
 .card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
 .card-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;
-display:flex;align-items:center;gap:8px}
-.card-title .ac{color:var(--teal)}
+display:flex;align-items:center;gap:8px;color:var(--form-text)}
+.card-title .ac{color:var(--db)}
+/* Dark card overrides — dashboard + analytics stay fully dark */
+#p-home .card,#p-analytics .card{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:var(--ow)}
+#p-home .card-title,#p-analytics .card-title{color:var(--ow)}
+#p-home .card-title .ac,#p-analytics .card-title .ac{color:var(--teal)}
 /* STATS */
 .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
 .sg3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
@@ -117,25 +124,35 @@ padding:18px 20px;position:relative;overflow:hidden}
 .ss{font-size:11px;color:rgba(251,251,250,.3);margin-top:2px}
 /* SECTION LABEL */
 .sl2{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
-color:var(--teal);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
-.sl2::after{content:'';flex:1;height:1px;background:rgba(52,186,198,.2)}
+color:var(--db);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
+.sl2::after{content:'';flex:1;height:1px;background:rgba(31,92,147,.2)}
+#p-home .sl2,#p-analytics .sl2{color:var(--teal)}
+#p-home .sl2::after,#p-analytics .sl2::after{background:rgba(52,186,198,.2)}
 /* FORMS */
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
 .field{display:flex;flex-direction:column;gap:4px}
 .field.s2{grid-column:span 2}.field.s3{grid-column:span 3}
-label{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--w60)}
-label .req{color:var(--gold);margin-left:2px}
-input,select,textarea{background:rgba(255,255,255,.06);border:1px solid var(--w12);
+label{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:rgba(26,26,46,.65)}
+label .req{color:#c0700a;margin-left:2px}
+input,select,textarea{background:var(--form-input-bg);border:1px solid var(--form-border);
 border-radius:var(--rs);padding:8px 11px;font-size:13px;font-family:'DM Sans',sans-serif;
-color:var(--ow);transition:border-color .2s,background .2s;width:100%}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);
-background:rgba(52,186,198,.06);box-shadow:0 0 0 3px rgba(52,186,198,.12)}
-input::placeholder{color:rgba(251,251,250,.25)}
-select option{background:#000000}
+color:var(--form-text);transition:border-color .2s,background .2s;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--db);
+background:#fff;box-shadow:0 0 0 3px rgba(31,92,147,.12)}
+input::placeholder{color:var(--form-placeholder)}
+select option{background:#ffffff;color:var(--form-text)}
 textarea{resize:vertical;min-height:65px}
 input[readonly]{opacity:.6;cursor:default}
-.fhint{font-size:10px;color:rgba(251,251,250,.35);margin-top:2px}
+.fhint{font-size:10px;color:rgba(26,26,46,.45);margin-top:2px}
+/* Dark overrides for inputs inside dashboard/analytics */
+#p-home label,#p-analytics label{color:var(--w60)}
+#p-home label .req,#p-analytics label .req{color:var(--gold)}
+#p-home input,#p-home select,#p-home textarea,#p-analytics input,#p-analytics select,#p-analytics textarea{background:rgba(255,255,255,.06);border-color:var(--w12);color:var(--ow)}
+#p-home input:focus,#p-home select:focus,#p-home textarea:focus,#p-analytics input:focus,#p-analytics select:focus,#p-analytics textarea:focus{border-color:var(--teal);background:rgba(52,186,198,.06);box-shadow:0 0 0 3px rgba(52,186,198,.12)}
+#p-home input::placeholder,#p-analytics input::placeholder{color:rgba(251,251,250,.25)}
+#p-home select option,#p-analytics select option{background:#000000;color:var(--ow)}
+#p-home .fhint,#p-analytics .fhint{color:rgba(251,251,250,.35)}
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rs);
 font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;
@@ -146,8 +163,13 @@ transition:all .15s;letter-spacing:.3px}
 .btn-t:hover{box-shadow:0 4px 16px rgba(52,186,198,.35);transform:translateY(-1px)}
 .btn-g{background:linear-gradient(135deg,var(--gold),#d4891f);color:var(--ch)}
 .btn-g:hover{box-shadow:0 4px 16px rgba(233,152,43,.35);transform:translateY(-1px)}
-.btn-ghost{background:transparent;color:var(--w60);border:1px solid var(--w12)}
-.btn-ghost:hover{background:var(--w10);color:var(--ow)}
+.btn-ghost{background:transparent;color:rgba(26,26,46,.65);border:1px solid var(--form-border)}
+.btn-ghost:hover{background:rgba(31,92,147,.08);color:var(--form-text)}
+/* Dark ghost buttons in sidebar, topbar, dashboard, modals, toast */
+.sidebar .btn-ghost,.topbar .btn-ghost,#p-home .btn-ghost,#p-analytics .btn-ghost,
+#modal .btn-ghost,#toast .btn-ghost,.lbar>.btn-ghost{color:var(--w60);border-color:var(--w12)}
+.sidebar .btn-ghost:hover,.topbar .btn-ghost:hover,#p-home .btn-ghost:hover,
+#p-analytics .btn-ghost:hover,#modal .btn-ghost:hover{background:var(--w10);color:var(--ow)}
 .btn-sm{padding:5px 11px;font-size:11px}
 .btn-lg{padding:11px 24px;font-size:13px}
 .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
@@ -200,18 +222,26 @@ padding:11px 13px;margin-bottom:14px;font-size:13px}
 .b-progress{background:var(--bdim);color:#5b9fd4;border:1px solid rgba(31,92,147,.25)}
 .b-active{background:var(--tdim);color:var(--teal);border:1px solid rgba(52,186,198,.25)}
 .b-inactive{background:var(--w06);color:var(--w60);border:1px solid var(--w08)}
-/* TABLE */
+/* TABLE — light default; dark override for dashboard/analytics */
 .tw{overflow-x:auto;border-radius:var(--r)}
 table{width:100%;border-collapse:collapse;font-size:12px}
-thead tr{background:rgba(31,92,147,.25)}
+thead tr{background:var(--db)}
 thead th{padding:10px 11px;text-align:left;font-size:10px;font-weight:700;
-letter-spacing:1px;text-transform:uppercase;color:var(--w60);white-space:nowrap;
-border-bottom:1px solid var(--w08)}
-tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s}
-tbody tr:hover{background:var(--w06)}
-tbody td{padding:9px 11px;color:var(--ow);vertical-align:middle}
-td.m{color:var(--w60);font-size:11px}
-td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
+letter-spacing:1px;text-transform:uppercase;color:#e8f0f8;white-space:nowrap;
+border-bottom:1px solid rgba(31,92,147,.4)}
+tbody tr{border-bottom:1px solid var(--form-border);transition:background .15s}
+tbody tr:hover{background:rgba(31,92,147,.06)}
+tbody td{padding:9px 11px;color:var(--form-text);vertical-align:middle}
+td.m{color:rgba(26,26,46,.55);font-size:11px}
+td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--db)}
+/* Dark table overrides for dashboard/analytics */
+#p-home thead tr,#p-analytics thead tr{background:rgba(31,92,147,.25)}
+#p-home thead th,#p-analytics thead th{color:var(--w60);border-bottom-color:var(--w08)}
+#p-home tbody tr,#p-analytics tbody tr{border-bottom-color:rgba(255,255,255,.04)}
+#p-home tbody tr:hover,#p-analytics tbody tr:hover{background:var(--w06)}
+#p-home tbody td,#p-analytics tbody td{color:var(--ow)}
+#p-home td.m,#p-analytics td.m{color:var(--w60)}
+#p-home td.mono,#p-analytics td.mono{color:var(--teal)}
 /* CODE BOX */
 .cbox{background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.25);
 border-radius:var(--r);padding:20px 24px;text-align:center;margin-top:16px}
@@ -230,14 +260,17 @@ font-size:17px;font-weight:700;flex-shrink:0}
 .ccode{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);
 background:var(--tdim);padding:2px 8px;border-radius:20px;border:1px solid rgba(52,186,198,.2)}
 /* LOOKUP BAR */
-.lbar{display:flex;align-items:flex-end;gap:9px;background:var(--w06);
-border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:16px}
+.lbar{display:flex;align-items:flex-end;gap:9px;background:rgba(31,92,147,.06);
+border:1px solid rgba(31,92,147,.18);border-radius:var(--r);padding:16px 20px;margin-bottom:16px}
 .lbar .field{flex:1}
 /* PENDING ITEMS */
 .pi{display:flex;align-items:center;gap:12px;padding:11px 13px;
-background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);
-margin-bottom:6px;cursor:pointer;transition:all .18s}
-.pi:hover{background:rgba(255,255,255,.06);border-color:rgba(52,186,198,.2)}
+background:rgba(31,92,147,.05);border:1px solid var(--form-border);border-radius:var(--rs);
+margin-bottom:6px;cursor:pointer;transition:all .18s;color:var(--form-text)}
+.pi:hover{background:rgba(31,92,147,.1);border-color:rgba(31,92,147,.35)}
+/* Dark pending items inside dashboard */
+#p-home .pi{background:var(--w06);border-color:var(--w08);color:var(--ow)}
+#p-home .pi:hover{background:rgba(255,255,255,.06);border-color:rgba(52,186,198,.2)}
 .pi.ov{border-left:3px solid #ff6b6b}
 .pi.td{border-left:3px solid var(--gold)}
 .pi.up{border-left:3px solid var(--teal)}
@@ -798,14 +831,14 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
 <div class="card-title mb0"><span class="ac">◈</span> All Candidates</div>
 <div class="flex gap8" style="flex-wrap:wrap">
-<select id="rScope" onchange="renderRec()" style="width:110px;background:var(--bdim);border-color:rgba(31,92,147,.3)">
+<select id="rScope" onchange="renderRec(true)" style="width:110px;background:var(--bdim);border-color:rgba(31,92,147,.3)">
   <option value="all">All Records</option>
   <option value="active">Active Only</option>
 </select>
-<input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:180px" oninput="renderRec()">
-<select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
-<select id="rCli" onchange="renderRec()" style="width:120px"><option value="">All Clients</option></select>
-<select id="rRec" onchange="renderRec()" style="width:120px"><option value="">All Recruiters</option></select>
+<input type="text" id="rSrch" placeholder="Name, code, vacancy, role..." style="width:180px" oninput="renderRec(true)">
+<select id="rStat" onchange="renderRec(true)" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
+<select id="rCli" onchange="renderRec(true)" style="width:120px"><option value="">All Clients</option></select>
+<select id="rRec" onchange="renderRec(true)" style="width:120px"><option value="">All Recruiters</option></select>
 <button class="btn btn-ghost btn-sm" id="refreshRecBtn" onclick="refreshAllRecords()" title="Reload latest data">⟳ Refresh</button>
 <button class="btn btn-ghost btn-sm" onclick="dlAllRecords()">⬇ Download</button>
 </div>
@@ -1414,7 +1447,7 @@ const GRAPH='https://graph.microsoft.com/v1.0';
 // ══════════════════════════════════════════════════════
 let WB=null,MD=[],VD=[],HDR=[],VHDR=[];
 let siteId=null,fileId=null,tok=null,acct=null;
-let eIdx=-1,epIdx=-1,vacEIdx=-1,appUsers=[];
+let eIdx=-1,epIdx=-1,vacEIdx=-1,appUsers=[],recPage=0;
 let curRole='Recruiter',curUser=null,bulkRows=[];
 
 const C={code:'Candidate code',sourcingDate:'Profile Sourcing date',screeningDate:'Profile Screening date',
@@ -1835,12 +1868,50 @@ else{
 loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();}
 async function saveWB(msg){
 if(!WB)return;showLoad(msg||'Saving...');
-try{rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});
-await refreshToken();
-const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
-if(!r.ok)throw new Error('Upload failed: '+r.status);
-hideLoad();toast('ok','Saved','Changes written to SharePoint');
+try{
+  await refreshToken();
+  // Issue G fix: fetch-merge-write — re-download latest before saving to prevent last-write-wins overwrite
+  const dlRes=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{headers:{Authorization:'Bearer '+tok}});
+  if(!dlRes.ok)throw new Error('Re-fetch failed: '+dlRes.status);
+  const latestBuf=await dlRes.arrayBuffer();
+  const latestWB=XLSX.read(latestBuf,{type:'array',cellDates:true});
+  // Merge in-memory MD changes into the freshly fetched workbook
+  mergeMDIntoWB(latestWB);
+  // Copy locally-modified non-Data sheets (Change Log, Config, etc.) into latest
+  ['Change Log','Config','Vacancies','Backups Log','CommonRepo','IncentivePolicy','Incentives','Invoices','InvTemplate','Repository'].forEach(sh=>{
+    if(WB.Sheets[sh]){latestWB.Sheets[sh]=WB.Sheets[sh];if(!latestWB.SheetNames.includes(sh))latestWB.SheetNames.push(sh);}
+  });
+  const out=XLSX.write(latestWB,{bookType:'xlsx',type:'array'});
+  const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
+  if(!r.ok)throw new Error('Upload failed: '+r.status);
+  WB=latestWB; // update local reference to merged version
+  hideLoad();toast('ok','Saved','Changes written to SharePoint');
 }catch(e){hideLoad();toast('err','Save Failed',e.message);throw e;}}
+
+function mergeMDIntoWB(targetWB){
+  const ws=targetWB.Sheets['Data'];
+  if(!ws){rebuildDS();return;}
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  let hi=0;
+  for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}
+  const hdr=rows[hi];
+  // Find the code column index in the SP header row
+  const codeKey=HDR[C.code]||'Code';
+  const codeCol=hdr.findIndex(h=>String(h).trim()===codeKey);
+  // Build a map of SP row index by candidate code
+  const rowMap={};
+  for(let i=hi+1;i<rows.length;i++){const code=String(rows[i][codeCol]||'').trim();if(code)rowMap[code]=i;}
+  // Apply each in-memory record: update existing row or append new
+  MD.forEach(obj=>{
+    const code=String(obj[codeKey]||'').trim();
+    const newRow=hdr.map(h=>obj[h]!==undefined?obj[h]:'');
+    if(rowMap[code]!==undefined){rows[rowMap[code]]=newRow;}
+    else{rows.push(newRow);}
+  });
+  targetWB.Sheets['Data']=XLSX.utils.aoa_to_sheet(rows);
+}
+
+// rebuildDS kept for backup creation (operates on local WB only)
 function rebuildDS(){const ws=WB.Sheets['Data'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}const keep=rows.slice(0,hi+1);const data=MD.map(obj=>HDR.map(h=>obj[h]!==undefined?obj[h]:''));WB.Sheets['Data']=XLSX.utils.aoa_to_sheet([...keep,...data]);}
 function writeCL(action,code,field,oldV,newV,nm){try{if(!WB||!WB.Sheets['Change Log'])return;const ws=WB.Sheets['Change Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const role=curRole||'Unknown';rows.push([new Date().toISOString(),acct&&acct.name?acct.name:'Unknown',role,code,action,field,String(oldV||''),String(newV||''),nm]);WB.Sheets['Change Log']=XLSX.utils.aoa_to_sheet(rows);}catch(e){console.warn('CL',e);}}
 
@@ -2169,8 +2240,9 @@ r[C.status]=stat;if(dm)r[C.dm]=dm;if(fu)r[C.followupDate]=fu;
 const rmk=gv('uRem');if(rmk)r[C.remark]=r[C.remark]?r[C.remark]+' | '+rmk:rmk;
 const cmt=gv('uCmt');if(cmt)r[C.otherComments]=r[C.otherComments]?r[C.otherComments]+' | '+cmt:cmt;
 const ivr=gv('uIvr');if(ivr)r[C.interviewerName]=ivr;
-// Always save date/offer fields — allows clearing by leaving blank
-r[C.interviewDate]=gv('uIvD')||'';r[C.decisionDate]=gv('uDecD')||'';r[C.doj]=gv('uDOJ')||'';r[C.offeredSalary]=gv('uOffS')||'';r[C.offerDate]=gv('uOffD')||'';
+// Issue M fix: only write date/offer fields if form has a value OR record already had one (prevents blank overwrite)
+['uIvD','uDecD','uDOJ','uOffD'].forEach(id=>{const key={uIvD:C.interviewDate,uDecD:C.decisionDate,uDOJ:C.doj,uOffD:C.offerDate}[id];const v=gv(id);if(v||r[key])r[key]=v;});
+const offS=gv('uOffS');if(offS||r[C.offeredSalary])r[C.offeredSalary]=offS;
 const fd=gv('uFinalDesig');if(fd)r['Final Designation Offered']=fd;
 const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}}
@@ -2199,7 +2271,8 @@ epIdx=idx;const r=MD[idx];
 document.getElementById('epAlert').innerHTML='';document.getElementById('epForm').classList.remove('hidden');
 document.getElementById('epNm').textContent=r[C.name]||'Edit Profile';document.getElementById('epCd').textContent=r[C.code]||'';
 const flds=[['epNm2',C.name],['epMob',C.contact],['epAlt',C.altContact],['epEm',C.email],['epAEm',C.altEmail],['epLoc',C.location],['epCo',C.company],['epDe',C.designation],['epExp',C.expYrs],['epNot',C.notice],['epReas',C.reason],['epSPM',C.salaryPM],['epSPA',C.salaryPA],['epESPM',C.expectedSalary],['epSBr',C.salaryBracket],['epCli',C.client],['epDept',C.dept],['epPos',C.position],['epRI',C.roleInterested],['epVC',C.vacCode],['epRec',C.recruiter]];
-flds.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=r[key]||'';});
+// Issue M fix: use explicit null/undefined check so falsy-but-valid values (e.g. 0) aren't lost on pre-fill
+flds.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=(r[key]!==undefined&&r[key]!==null)?String(r[key]):'';});
 setTimeout(()=>{const rec=r[C.recruiter]||'';if(rec&&!mA('recruiters').includes(rec)){const myN=acct&&acct.name?acct.name.split(' ')[0]:'';showModal('👤 Recruiter Update Required','<strong>'+rec+'</strong> is no longer active. Please reassign before saving.','','<button class="btn btn-t" onclick="closeModal();sv(\'epRec\',\''+myN+'\')">Assign to Me</button><button class="btn btn-ghost" onclick="closeModal();document.getElementById(\'epRec\').focus()">Select Recruiter</button>');}},100);}
 async function saveEP(){
 if(epIdx===-1)return;const r=MD[epIdx];
@@ -2220,18 +2293,28 @@ await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.le
 // ══════════════════════════════════════════════════════
 // ALL RECORDS
 // ══════════════════════════════════════════════════════
-function renderRec(){
+const REC_PAGE_SIZE=100;
+function renderRec(resetPage){
+if(resetPage)recPage=0;
 const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec');
 const scope=gv('rScope')||'all';
 refreshAllFilters();
 const filtered=MD.filter(r=>{
-  const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch);
+  const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.vacCode]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch);
   const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
   return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf)&&(!rf||r[C.recruiter]===rf);
 });
+const totalPages=Math.max(1,Math.ceil(filtered.length/REC_PAGE_SIZE));
+if(recPage>=totalPages)recPage=totalPages-1;
+const start=recPage*REC_PAGE_SIZE,end=start+REC_PAGE_SIZE;
 const tb=document.getElementById('rBody');if(!tb)return;
-tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
-const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.min(filtered.length,500)+' of '+filtered.length+' records ('+MD.length+' total in database)';}
+tb.innerHTML=filtered.slice(start,end).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
+const rc=document.getElementById('rCount');
+if(rc){
+  const from=filtered.length?start+1:0,to=Math.min(end,filtered.length);
+  const pageInfo=totalPages>1?'<span style="display:inline-flex;align-items:center;gap:6px;margin-left:12px"><button class="btn btn-ghost btn-sm" onclick="recPage--;renderRec()" '+(recPage===0?'disabled':'')+' style="padding:2px 8px">◀</button><span>Page '+(recPage+1)+' of '+totalPages+'</span><button class="btn btn-ghost btn-sm" onclick="recPage++;renderRec()" '+(recPage>=totalPages-1?'disabled':'')+' style="padding:2px 8px">▶</button></span>':'';
+  rc.innerHTML='Showing '+from+'–'+to+' of '+filtered.length+' records ('+MD.length+' total)'+pageInfo;
+}}
 
 function viewCandModal(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
@@ -2369,7 +2452,17 @@ function viewVacModal(idx){
   ];
   const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—'&&x[1]!=='₹—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:42%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
   const pri=v['Priority']||'';const priIcon=pri==='High'?'🔴 ':pri==='Medium'?'🟡 ':'🟢 ';
-  showModal('📌 '+(v['Designation']||'Vacancy'),priIcon+pri+' Priority &middot; '+(v['Company']||'')+' &middot; '+(v['Current Status']||''),tableHtml,'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  // Bug j: View Candidates button — pre-fills vacancy code in All Records search
+  const viewCandBtn=code&&vacCands.length
+    ?'<button class="btn btn-t btn-sm" onclick="closeModal();viewVacCandidates(\''+code+'\')">👥 View Candidates ('+vacCands.length+')</button> '
+    :'';
+  showModal('📌 '+(v['Designation']||'Vacancy'),priIcon+pri+' Priority &middot; '+(v['Company']||'')+' &middot; '+(v['Current Status']||''),tableHtml,viewCandBtn+'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+}
+
+function viewVacCandidates(vacCode){
+  const el=document.getElementById('rSrch');if(el){el.value=vacCode;}
+  goPanel('rec');
+  renderRec(true);
 }
 
 function handleJDUpload(event){
@@ -2383,16 +2476,116 @@ function handleJDUpload(event){
 // WHATSAPP + TEAMS
 // ══════════════════════════════════════════════════════
 function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];
-// Get JD link from mapped vacancy
+// Get JD from vacancy → repoData chain
 const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===r[C.vacCode]);
+const jdTitle=vac&&vac['JD Link']?vac['JD Link']:'';
+const jd=jdTitle?repoData.jds.find(j=>j.title&&j.title.trim()===jdTitle.trim()):null;
 const jdLink=vac&&vac['JD Link']?vac['JD Link']:'';
+// JD button: F1 if stored content available, F2 (SharePoint) fallback, else prompt
+const hasContent=jd&&(jd.preread||jd.rolecontext||jd.q1||jd.q2);
+const jdBtn=hasContent
+  ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="closeModal();generateJDPdf()">📄 Send JD — Generate PDF & WhatsApp</button>'
+  :jdLink
+    ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(233,152,43,.3)" onclick="closeModal();sendJDSharePoint(\''+jdLink.replace(/'/g,"\\'")+'\')" >📄 Send JD — Open SharePoint + WhatsApp</button>'
+    :'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;opacity:.5" onclick="showCustomJD()">📄 Send JD (enter link)</button>';
 const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
-const jdBtn=jdLink?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="closeModal();sendJDWA(\''+jdLink+'\')">📄 Send JD (from Vacancy)</button>':'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;opacity:.5" onclick="showCustomJD()">📄 Send JD (enter link)</button>';
 showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',jdBtn+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+'<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
 
-function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
+// Bug f F1: generate JD PDF in-browser from stored JD content, download it, then open WhatsApp
+function generateJDPdf(){
+  if(eIdx===-1)return;
+  const r=MD[eIdx];
+  const mob=r[C.contact];
+  if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}
+  const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===r[C.vacCode]);
+  const jdTitle=vac&&vac['JD Link']?vac['JD Link'].trim():'';
+  const jd=jdTitle?repoData.jds.find(j=>j.title&&j.title.trim()===jdTitle):null;
+  if(!jd){toast('warn','No JD','No JD content found for this vacancy.');return;}
+  if(typeof window.jspdf==='undefined'){toast('warn','PDF library loading','Please try again in a moment.');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pw=190,lm=10,tm=14;let y=tm;
+  const navy=[31,92,147],teal=[52,186,198],dark=[26,26,46],grey=[100,110,130];
+  // Header band
+  doc.setFillColor(...navy);doc.rect(0,0,210,24,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(255,255,255);
+  doc.text('Job Description',lm,10);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');
+  doc.text(jd.title||'',lm,17);
+  if(jd.client)doc.text(jd.client,210-lm,17,{align:'right'});
+  y=30;
+  // Meta row
+  const meta=[];
+  if(jd.dept)meta.push('Dept: '+jd.dept);
+  if(jd.exp)meta.push('Exp: '+jd.exp);
+  if(jd.workmodel)meta.push('Work: '+jd.workmodel);
+  if(meta.length){doc.setFontSize(9);doc.setTextColor(...grey);doc.text(meta.join('  |  '),lm,y);y+=7;}
+  const addSection=(heading,content,color=navy)=>{
+    if(!content)return;
+    if(y>265){doc.addPage();y=tm;}
+    doc.setFillColor(...color);doc.rect(lm,y,pw,5.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
+    doc.text(heading.toUpperCase(),lm+2,y+3.8);y+=8;
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...dark);
+    const lines=doc.splitTextToSize(content,pw);
+    lines.forEach(l=>{if(y>272){doc.addPage();y=tm;}doc.text(l,lm,y);y+=5;});
+    y+=3;
+  };
+  const addQList=(heading,qs,color=navy)=>{
+    if(!qs.length)return;
+    if(y>265){doc.addPage();y=tm;}
+    doc.setFillColor(...color);doc.rect(lm,y,pw,5.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
+    doc.text(heading.toUpperCase(),lm+2,y+3.8);y+=8;
+    qs.forEach((q,i)=>{
+      if(y>272){doc.addPage();y=tm;}
+      doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...navy);
+      doc.text((i+1)+'. ',lm,y);
+      doc.setFont('helvetica','normal');doc.setTextColor(...dark);
+      const lines=doc.splitTextToSize(q,pw-8);
+      doc.text(lines,lm+6,y);y+=lines.length*5+2;
+    });
+    y+=3;
+  };
+  if(jd.preread)addSection('Pre-Read for Recruiter',jd.preread,teal);
+  if(jd.rolecontext)addSection('Role Context / Pitch',jd.rolecontext,navy);
+  const coreQs=[];for(let i=1;i<=10;i++){if(jd['q'+i]&&jd['q'+i].trim())coreQs.push(jd['q'+i]);}
+  const addQs=[];for(let i=1;i<=5;i++){if(jd['aq'+i]&&jd['aq'+i].trim())addQs.push(jd['aq'+i]);}
+  if(coreQs.length)addQList('Core Interview Questions',coreQs,navy);
+  if(addQs.length)addQList('Additional / Probing Questions',addQs,grey);
+  if(jd.shortlist)addSection('Shortlist Indicators',jd.shortlist,teal);
+  if(jd.redflag)addSection('Concern / Red Flag Indicators',jd.redflag,[180,60,60]);
+  // Footer
+  doc.setFontSize(8);doc.setTextColor(...grey);
+  doc.text('WithAWill HR Consultancy Services  |  Confidential — For Recruiter Use Only',105,290,{align:'center'});
+  // Download
+  const fname=(jd.title||'JD').replace(/[^a-z0-9]/gi,'_')+'_'+r[C.name].replace(/\s+/g,'_')+'.pdf';
+  doc.save(fname);
+  // Open WhatsApp after short delay so download starts first
+  const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
+  const msg='Hi '+r[C.name]+', please find the Job Description for the *'+(r[C.position]||jd.title||'role')+'* role'+(r[C.client]?' with *'+r[C.client]+'*':'')+' attached.\n\nKindly review and let us know your interest and availability.\n\nRegards,\n'+rn+', WithAWill HR';
+  setTimeout(()=>{
+    window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');
+    toast('ok','JD PDF Downloaded','Tap 📎 in WhatsApp to attach the PDF from your Downloads folder.');
+  },800);
+}
 
-function showCustomJD(){if(eIdx===-1)return;const r=MD[eIdx];const lnk=prompt('Enter JD link or SharePoint URL to share:');if(lnk&&lnk.trim())sendJDWA(lnk.trim());}
+// Bug f F2 fallback: open SharePoint JD link + open WhatsApp with instructions
+function sendJDSharePoint(jdLink){
+  if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];
+  if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}
+  window.open(jdLink,'_blank');
+  const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
+  const msg='Hi '+r[C.name]+', please find the Job Description for the *'+(r[C.position]||'role')+'* role'+(r[C.client]?' with *'+r[C.client]+'*':'')+' at the link shared separately.\n\nKindly review and let us know your interest and availability.\n\nRegards,\n'+rn+', WithAWill HR';
+  setTimeout(()=>{
+    window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');
+    toast('info','SharePoint JD Opened','Save as PDF, then attach in WhatsApp via 📎.');
+  },600);
+}
+
+function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
+
+function showCustomJD(){if(eIdx===-1)return;const r=MD[eIdx];const lnk=prompt('Enter JD link or SharePoint URL to share:');if(lnk&&lnk.trim())sendJDSharePoint(lnk.trim());}
 function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}saveWB(false);}
 function showSched(){if(eIdx===-1)return;const r=MD[eIdx];showModal('📅 Schedule Teams Interview','<strong>'+r[C.name]+'</strong> — '+(r[C.position]||'—')+' @ '+(r[C.client]||'—'),'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px"><div class="field"><label>Date</label><input type="date" id="si_d" value="'+(r[C.interviewDate]||'')+'" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Time</label><input type="time" id="si_t" value="10:00" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Duration</label><select id="si_dur" style="background:#000000;border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"><option value="30">30 mins</option><option value="45">45 mins</option><option value="60" selected>60 mins</option><option value="90">90 mins</option></select></div><div class="field"><label>Interviewer Email</label><input type="email" id="si_em" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)" placeholder="client@company.com"></div></div><div style="font-size:11px;color:var(--w60);margin-top:8px">Outlook calendar invites sent to all participants. WhatsApp option after creation.</div>','<button class="btn btn-t" onclick="createMeeting()">Create Teams Meeting</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');}
 async function createMeeting(){const r=MD[eIdx];const d=document.getElementById('si_d')&&document.getElementById('si_d').value;const t=document.getElementById('si_t')&&document.getElementById('si_t').value;const dur=parseInt(document.getElementById('si_dur')&&document.getElementById('si_dur').value)||60;const ie=document.getElementById('si_em')&&document.getElementById('si_em').value;if(!d||!t){toast('err','Missing details','Date and time required.');return;}closeModal();showLoad('Creating Teams meeting...');try{await refreshToken();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});if(ie&&ie.includes('@'))att.push({emailAddress:{address:ie,name:r[C.interviewerName]||'Interviewer'},type:'required'});const body={subject:'Interview — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,isOnlineMeeting:true,onlineMeetingProvider:'teamsForBusiness',body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your interview for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create meeting');}const ev=await resp.json();const link=ev.onlineMeeting&&ev.onlineMeeting.joinUrl?ev.onlineMeeting.joinUrl:'';r[C.interviewDate]=d;r._iTime=t;if(link)r[C.docLink]=link;r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();writeCL('Interview Scheduled',r[C.code],'Interview','',d+' '+t,r[C.name]);await saveWB(false);hideLoad();showModal('✅ Meeting Created','Teams meeting for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">Outlook invites sent to all participants.</span>',link?'<div style="font-size:10px;color:var(--w60);word-break:break-all;margin-top:4px">'+link.substring(0,80)+'...</div>':'','<button class="btn btn-t" onclick="closeModal();sendWA(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="closeModal()">Done</button>');}catch(e){hideLoad();toast('err','Meeting failed',e.message);}}
@@ -5806,7 +5999,8 @@ function openInterviewGuide() {
   const code = r[C.code]||'';
   const el = document.getElementById('ig-subtitle');
   if(el) el.textContent = (r[C.name]||'—') + ' · ' + (r[C.position]||'—') + ' · ' + (r[C.client]||'—');
-  // Populate JD footer strip — uses igCachedJD set just above
+  // Issue H fix: resolve JD FIRST, then use it for footer strip (was set after, causing stale/null display)
+  igCachedJD = igGetJD();
   const jd = igCachedJD;
   const strip = document.getElementById('ig-jd-strip');
   const titleEl = document.getElementById('ig-jd-title');
@@ -5816,9 +6010,10 @@ function openInterviewGuide() {
       const vcLabel = r[C.vacCode] ? ' ('+r[C.vacCode]+')' : '';
       titleEl.textContent = jd.title + vcLabel;
       linkEl.href = jd.link;
+      linkEl.style.display = '';
       strip.style.display = 'flex';
     } else {
-      titleEl.textContent = 'No JD linked — add via Repositories';
+      titleEl.textContent = r[C.vacCode] ? 'No JD linked to vacancy '+r[C.vacCode]+' — tag via Repositories' : 'No vacancy code on this candidate';
       linkEl.style.display = 'none';
       strip.style.display = 'flex';
     }
@@ -5826,7 +6021,6 @@ function openInterviewGuide() {
   // load existing eval if any
   if(!igEvalData[code]) igEvalData[code] = {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igCurrentPage = 0;
-  igCachedJD = igGetJD();  // resolve JD once — won't be affected by async repoData changes
   igRenderPage();
   document.getElementById('ig-overlay').style.display='block';
 }
@@ -5866,29 +6060,19 @@ function igNext(){ if(igCurrentPage<5) igGoPage(igCurrentPage+1); }
 function igPrev(){ if(igCurrentPage>0) igGoPage(igCurrentPage-1); }
 
 function igGetJD() {
+  // Issue H fix: candidate → vacancy record → JD title → repoData.jds (no fuzzy matching)
   if(igCandIdx<0||igCandIdx>=MD.length) return null;
   const r = MD[igCandIdx];
-  const pos = (r[C.position]||'').toLowerCase().trim();
-  const cli = (r[C.client]||'').toLowerCase().trim();
-  const vacCode = r[C.vacCode]||'';
-  if(!pos && !cli && !vacCode) return null;
-  return repoData.jds.find(j=>{
-    // 1. Exact vacancy code match (most precise)
-    if(vacCode && j.vacCode && j.vacCode===vacCode) return true;
-    // 2. JD title matches position (check all significant words, not just first)
-    if(j.title && pos){
-      const jTitle = j.title.toLowerCase();
-      const posWords = pos.split(' ').filter(w=>w.length>2); // skip short words like 'of','at','a'
-      const matches = posWords.filter(w=>jTitle.includes(w));
-      if(posWords.length>0 && matches.length>=Math.ceil(posWords.length*0.6)) return true;
-    }
-    // 3. Client exact match (only if position also overlaps)
-    if(j.client && j.client.toLowerCase()===cli && j.title && pos){
-      const jTitle = j.title.toLowerCase();
-      return pos.split(' ').some(w=>w.length>2&&jTitle.includes(w));
-    }
-    return false;
-  }) || null;
+  const vacCode = (r[C.vacCode]||'').trim();
+  if(!vacCode) return null;
+  // Find the vacancy record matching this candidate's vacancy code
+  const vac = VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===vacCode);
+  if(!vac) return null;
+  // Vacancy stores the linked JD title in 'JD Link' (set via the JD dropdown in vacancy form)
+  const jdTitle = (vac['JD Link']||'').trim();
+  if(!jdTitle) return null;
+  // Match to repoData.jds by exact title
+  return repoData.jds.find(j=>j.title&&j.title.trim()===jdTitle) || null;
 }
 
 function igRenderPage() {
