@@ -5703,6 +5703,7 @@ function dlChartPNG(canvasId, name) {
 let igCurrentPage = 0;
 let igMaximised = false;
 let igCandIdx = -1;
+let igCachedJD = null;  // JD resolved once when guide opens — stable across page navigation
 let igEvalData = {}; // keyed by candidate code
 
 const IG_COMMON_DEFAULTS = {
@@ -5805,8 +5806,8 @@ function openInterviewGuide() {
   const code = r[C.code]||'';
   const el = document.getElementById('ig-subtitle');
   if(el) el.textContent = (r[C.name]||'—') + ' · ' + (r[C.position]||'—') + ' · ' + (r[C.client]||'—');
-  // Populate JD footer strip
-  const jd = igGetJD();
+  // Populate JD footer strip — uses igCachedJD set just above
+  const jd = igCachedJD;
   const strip = document.getElementById('ig-jd-strip');
   const titleEl = document.getElementById('ig-jd-title');
   const linkEl = document.getElementById('ig-jd-link');
@@ -5825,12 +5826,14 @@ function openInterviewGuide() {
   // load existing eval if any
   if(!igEvalData[code]) igEvalData[code] = {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igCurrentPage = 0;
+  igCachedJD = igGetJD();  // resolve JD once — won't be affected by async repoData changes
   igRenderPage();
   document.getElementById('ig-overlay').style.display='block';
 }
 
 function closeInterviewGuide() {
   document.getElementById('ig-overlay').style.display='none';
+  igCachedJD = null;  // clear cache on close
 }
 
 function igClickOutside(e) {
@@ -5865,15 +5868,27 @@ function igPrev(){ if(igCurrentPage>0) igGoPage(igCurrentPage-1); }
 function igGetJD() {
   if(igCandIdx<0||igCandIdx>=MD.length) return null;
   const r = MD[igCandIdx];
-  const pos = (r[C.position]||'').toLowerCase();
-  const cli = (r[C.client]||'').toLowerCase();
+  const pos = (r[C.position]||'').toLowerCase().trim();
+  const cli = (r[C.client]||'').toLowerCase().trim();
   const vacCode = r[C.vacCode]||'';
-  // match by vacancy code first, then by title+client
-  return repoData.jds.find(j=>
-    (vacCode && j.vacCode && j.vacCode===vacCode) ||
-    (j.title&&j.title.toLowerCase().includes(pos.split(' ')[0])) ||
-    (j.client&&j.client.toLowerCase()===cli)
-  ) || null;
+  if(!pos && !cli && !vacCode) return null;
+  return repoData.jds.find(j=>{
+    // 1. Exact vacancy code match (most precise)
+    if(vacCode && j.vacCode && j.vacCode===vacCode) return true;
+    // 2. JD title matches position (check all significant words, not just first)
+    if(j.title && pos){
+      const jTitle = j.title.toLowerCase();
+      const posWords = pos.split(' ').filter(w=>w.length>2); // skip short words like 'of','at','a'
+      const matches = posWords.filter(w=>jTitle.includes(w));
+      if(posWords.length>0 && matches.length>=Math.ceil(posWords.length*0.6)) return true;
+    }
+    // 3. Client exact match (only if position also overlaps)
+    if(j.client && j.client.toLowerCase()===cli && j.title && pos){
+      const jTitle = j.title.toLowerCase();
+      return pos.split(' ').some(w=>w.length>2&&jTitle.includes(w));
+    }
+    return false;
+  }) || null;
 }
 
 function igRenderPage() {
@@ -5882,7 +5897,7 @@ function igRenderPage() {
   const r = igCandIdx>=0&&igCandIdx<MD.length ? MD[igCandIdx] : {};
   const code = r[C.code]||'unknown';
   const ev = igEvalData[code] || {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
-  const jd = igGetJD();
+  const jd = igCachedJD || igGetJD();  // use cached — won't break if repoData changes mid-session
 
   if(igCurrentPage===0) {
     // Page 1 — Guidelines
