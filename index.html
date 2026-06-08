@@ -2196,7 +2196,16 @@ function viewCandModal(code){
   let tableHtml='<div style="max-height:260px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
   if(allRem.length>1){const prev=allRem.slice(0,-1).reverse();tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">📋 Remarks History</div>'+prev.map((rm,i)=>'<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="font-size:9px;color:rgba(251,251,250,.35)">PREV '+(prev.length-i)+'</span><span style="color:var(--w60);margin-left:6px">'+escHtml(rm)+'</span></div>').join('')+'</div>';}
   window._mc=code;
-  showModal('👤 '+r[C.name],r[C.position]+' · '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  showModal('👤 '+r[C.name],
+    '<span style="font-size:12px">'+r[C.position]+' &middot; '+r[C.client]+'</span>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;font-size:10px;color:var(--w60)">'
+    +(r[C.contact]?'<span>📞 '+r[C.contact]+'</span>':'')
+    +(r[C.expYrs]?'<span>⏳ '+r[C.expYrs]+' yrs</span>':'')
+    +(r[C.company]?'<span>🏢 '+r[C.company]+'</span>':'')
+    +(r[C.designation]?'<span>🪪 '+r[C.designation]+'</span>':'')
+    +(r[C.updatedOn]?'<span>🕐 Last action: '+fmtD(r[C.updatedOn])+(r[C.updatedBy]?' by '+r[C.updatedBy]:'')+'</span>':'')
+    +'</div>',
+    tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
 function dlAllRecords(){
   const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec'),scope=gv('rScope')||'all';
@@ -2290,19 +2299,31 @@ const vis=VD.filter(v=>{
 if(!vis.length){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies — add from Admin')+'</td></tr>';return;}
 tb.innerHTML=vis.map(v=>{
   const i=VD.indexOf(v);const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';const pri=v['Priority']||'';const priCol=pri==='High'?'#ff6b6b':pri==='Medium'?'var(--gold)':'var(--teal)';
+  // Count active candidates tagged to this vacancy
+  const vacCandidates = MD.filter(r=>r[C.vacCode]===code && code!=='—');
+  const activeCount   = vacCandidates.filter(r=>!TERMINAL.has(r[C.status])).length;
+  const totalCount    = vacCandidates.length;
+  const candBadge = code!=='—'
+    ? '<span title="'+activeCount+' active / '+totalCount+' total candidates" style="margin-left:6px;padding:1px 7px;border-radius:10px;font-size:9px;font-weight:600;background:'+(activeCount>0?'rgba(52,186,198,.15)':'rgba(128,128,128,.1)')+';color:'+(activeCount>0?'var(--teal)':'var(--w60)')+'">'+activeCount+' active</span>'
+    : '';
   let tatHtml='<td class="m">—</td>';
   const vd=v['Date of Vacancy'],tfd=v['Target Fill Date'];
   if(vd&&tfd){const age=Math.floor((todayMs-new Date(vd).getTime())/86400000);const span=Math.floor((new Date(tfd)-new Date(vd))/86400000);const ico=age<=30?'🟢':age<=60?'🟡':'🔴';const col=age<=30?'var(--teal)':age<=60?'var(--gold)':'#ff6b6b';tatHtml='<td class="m"><span style="color:'+col+';font-size:11px">'+ico+' '+age+'d</span><span style="font-size:9px;color:var(--w60)"> /'+span+'d</span></td>';}
-  return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong>'+(v['Positions Count']&&v['Positions Count']!=='1'?'<span style="font-size:10px;color:var(--teal);margin-left:5px">(×'+v['Positions Count']+')</span>':'')+'</td><td class="m">'+v['Department']+'</td><td class="m">'+(v['Location']||'—')+'</td><td class="m">'+(v['Monthly Budget']?'₹'+v['Monthly Budget']:'—')+'</td><td class="m">'+(v['Recruiter']||'—')+'</td>'+(pri?'<td><span style="font-size:10px;font-weight:700;color:'+priCol+'">'+pri+'</span></td>':'<td class="m">—</td>')+tatHtml+'<td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="viewVacModal('+i+')" style="padding:3px 8px;font-size:10px">View</button></div></td></tr>';
+  return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong>'+(v['Positions Count']&&v['Positions Count']!=='1'?'<span style="font-size:10px;color:var(--teal);margin-left:5px">(×'+v['Positions Count']+')</span>':'')+candBadge+'</td><td class="m">'+v['Department']+'</td><td class="m">'+(v['Location']||'—')+'</td><td class="m">'+(v['Monthly Budget']?'₹'+v['Monthly Budget']:'—')+'</td><td class="m">'+(v['Recruiter']||'—')+'</td>'+(pri?'<td><span style="font-size:10px;font-weight:700;color:'+priCol+'">'+pri+'</span></td>':'<td class="m">—</td>')+tatHtml+'<td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="viewVacModal('+i+')" style="padding:3px 8px;font-size:10px">View</button></div></td></tr>';
 }).join('');}
 
 function viewVacModal(idx){
   const v=VD[idx];if(!v)return;
+  const code=v['Vacancy code']||v['Vacancy Code']||'';
+  const vacCands = MD.filter(r=>r[C.vacCode]===code && code);
+  const activeCount = vacCands.filter(r=>!TERMINAL.has(r[C.status])).length;
+  const joinedCount = vacCands.filter(r=>r[C.status]==='Joined').length;
   const rows=[
     ['Vacancy Code',v['Vacancy code']||v['Vacancy Code']||'—'],
     ['Client',v['Company']||'—'],['Role',v['Designation']||'—'],
     ['Department',v['Department']||'—'],['Location',v['Location']||'—'],
     ['Priority',v['Priority']||'—'],['# Positions',v['Positions Count']||'1'],
+    ['Active Candidates',code ? activeCount+' active · '+joinedCount+' joined · '+vacCands.length+' total' : '—'],
     ['Status',v['Current Status']||'—'],['Active',v['Active']==='N'?'No':'Yes'],
     ['Budget Range','₹'+(v['Budget Min']||'—')+' – ₹'+(v['Budget Max']||'—')],['Monthly Budget',v['Monthly Budget']||'—'],['Experience Required',v['Experience']||'—'],
     ['Recruiter Assigned',v['Recruiter']||'—'],['Hiring Manager',v['Hiring Manager']||'—'],
@@ -2346,9 +2367,9 @@ async function createMeeting(){const r=MD[eIdx];const d=document.getElementById(
 // dlTemplate replaced by ExcelJS version below
 function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)procBulk(f);}
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
-function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
+function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim().replace(/[★*]/g,'').trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
 function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
-async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
+async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.vacCode]=obj['Vacancy Code']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // ADMIN PANEL
@@ -2357,7 +2378,11 @@ let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
 function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
 // BACKUP
-async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
+async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();
+  // Include invoices in backup
+  if(invoices&&invoices.length){try{const invRows=[['id','candCode','candName','client','amount','gst','total','date','due','status'],...invoices.map(i=>[i.id,i.candCode||'',i.candName||'',i.client||'',i.amount||'',i.gst||'',i.total||'',i.date||'',i.due||'',i.status||''])];WB.Sheets['Invoices']=XLSX.utils.aoa_to_sheet(invRows);if(!WB.SheetNames.includes('Invoices'))WB.SheetNames.push('Invoices');}catch(e){console.warn('inv backup',e);}}
+  // Save commonRepo pages to WB before backup (ensure latest content)
+  try{const fields=['page1','page2','page4','page5'];const rows=[['key','value'],...fields.map(k=>[k,commonRepo[k]||IG_COMMON_DEFAULTS[k]||''])];WB.Sheets['CommonRepo']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('CommonRepo'))WB.SheetNames.push('CommonRepo');}catch(e){}const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
 function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:10px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:#ff6b6b;padding:12px">Error: '+e.message+'</div>';}}
 // CHANGELOG
 function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
@@ -3347,8 +3372,8 @@ async function dlTemplate(type) {
   t4.getCell(1).font = { color:XL.red, size:10 };
 
   // Merge title cells
-  ws.mergeCells('A1:T1'); ws.mergeCells('A2:T2');
-  ws.mergeCells('A3:T3'); ws.mergeCells('A4:T4');
+  ws.mergeCells('A1:U1'); ws.mergeCells('A2:U2');
+  ws.mergeCells('A3:U3'); ws.mergeCells('A4:U4');
   ws.getRow(1).height = 22; ws.getRow(3).height = 18;
 
   // ── COLUMN DEFINITIONS ──
@@ -3370,6 +3395,7 @@ async function dlTemplate(type) {
     { key:'client',   label:'Client Name',             req:true,  width:16, type:'list', master:'clients', col:1 },
     { key:'dept',     label:'Department',              req:true,  width:18, type:'list', master:'departments', col:2 },
     { key:'position', label:'Position applied for',   req:true,  width:24, type:'text' },
+    { key:'vacCode',  label:'Vacancy Code',            req:false, width:18, type:'text', note:'Use code from Vacancies list. Required if multiple vacancies for same role.' },
     { key:'status',   label:'Final Status',            req:false, width:22, type:'list', master:'statuses', col:5 },
     { key:'fuDate',   label:'Follow-up Date',          req:false, width:14, type:'text', note:'YYYY-MM-DD' },
     { key:'remark',   label:'Remark',                  req:false, width:24, type:'text' },
@@ -5286,8 +5312,30 @@ function updateInvStats(){
   document.getElementById('inv-paid').textContent=paid;
   document.getElementById('inv-overdue').textContent=ov;
 }
-function saveInvoiceData(){try{localStorage.setItem('thp_inv',JSON.stringify({invoices,invCounter}));}catch(e){}}
-function loadInvoiceData(){try{const d=localStorage.getItem('thp_inv');if(d){const p=JSON.parse(d);if(p.invoices)invoices=p.invoices;if(p.invCounter)invCounter=p.invCounter;}}catch(e){}}
+function saveInvoiceData(){
+  try{localStorage.setItem('thp_inv',JSON.stringify({invoices,invCounter}));}catch(e){}
+  if(WB){try{
+    const rows=[['id','candCode','candName','client','position','amount','gst','total','date','due','terms','status'],
+      ...invoices.map(i=>[i.id||'',i.candCode||'',i.candName||'',i.client||'',i.position||'',i.amount||'',i.gst||'',i.total||'',i.date||'',i.due||'',i.terms||'',i.status||''])];
+    WB.Sheets['Invoices']=XLSX.utils.aoa_to_sheet(rows);
+    if(!WB.SheetNames.includes('Invoices'))WB.SheetNames.push('Invoices');
+    saveWB(false);
+  }catch(e){console.warn('Invoice WB save',e);}}
+}
+function loadInvoiceData(){
+  try{const d=localStorage.getItem('thp_inv');if(d){const p=JSON.parse(d);if(p.invoices)invoices=p.invoices;if(p.invCounter)invCounter=p.invCounter;}}catch(e){}
+  // Load from SharePoint WB if available (overrides localStorage — SP is source of truth)
+  if(WB&&WB.Sheets['Invoices']){try{
+    const rows=XLSX.utils.sheet_to_json(WB.Sheets['Invoices'],{header:1,defval:''});
+    if(rows.length>1){
+      const spInv=rows.slice(1).filter(r=>r[0]).map(r=>({
+        id:r[0],candCode:r[1],candName:r[2],client:r[3],position:r[4],
+        amount:r[5],gst:r[6],total:r[7],date:r[8],due:r[9],terms:r[10],status:r[11]||'Pending'
+      }));
+      if(spInv.length>0){invoices=spInv;}
+    }
+  }catch(e){console.warn('Invoice WB load',e);}}
+}
 
 
 let repoData = { jds:[], scripts:[], help:[] };
@@ -5851,15 +5899,35 @@ function igRenderPage() {
     // Page 4 — Common Closing Questions
     const nm = r[C.name]||'[Candidate Name]';
     const content = getCommonRepo(4);
+    // Auto-populate from candidate profile when answer not yet saved
+    const cqDefaults = [
+      r[C.salaryPM] ? '₹'+r[C.salaryPM]+'/month' : '',
+      r[C.expectedSalary] ? '₹'+r[C.expectedSalary]+'/month' : '',
+      r[C.notice] || '',
+      '', // Notice negotiable - leave for recruiter
+      '', // Serving notice - leave for recruiter
+      '', // Other offer - leave for recruiter
+      r[C.location] || '',
+      '',  // Work model - leave for recruiter
+      r[C.reason] || '',
+      r[C.followupDate] ? 'After '+fmtD(r[C.followupDate]) : ''
+    ];
     body.innerHTML = `<div style="font-size:12px;line-height:2;white-space:pre-wrap;color:var(--ow)">${escHtml(content)}</div>
     <div style="margin-top:16px">
-      <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:10px">CAPTURE ANSWERS</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px">CAPTURE ANSWERS</div>
+        <div style="font-size:10px;color:var(--w60)">🤖 Pre-filled from candidate profile where available</div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        ${['Current Salary','Expected Salary','Notice Period','Notice Negotiable?','Currently Serving Notice?','Holding Other Offer?','Location Comfort','Work Model Comfort','Reason for Change','Next Round Availability'].map((lbl,i)=>`
-        <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:8px 10px">
-          <div style="font-size:10px;color:var(--w60);margin-bottom:4px">${i+1}. ${lbl}</div>
-          <input type="text" class="ig-cq-input" data-key="cq${i}" placeholder="Enter answer..." value="${escHtml((ev.notes&&ev.notes['cq'+i])||'')}" style="width:100%;background:transparent;border:0;color:var(--ow);font-size:12px;font-weight:500" onchange="igNoteQ(this,'notes')">
-        </div>`).join('')}
+        ${['Current Salary','Expected Salary','Notice Period','Notice Negotiable?','Currently Serving Notice?','Holding Other Offer?','Location Comfort','Work Model Comfort','Reason for Change','Next Round Availability'].map((lbl,i)=>{
+          const saved = ev.notes&&ev.notes['cq'+i] ? ev.notes['cq'+i] : '';
+          const prefill = saved || cqDefaults[i] || '';
+          const isAutoFill = !saved && cqDefaults[i];
+          return `<div style="background:var(--w06);border:1px solid ${isAutoFill?'rgba(52,186,198,.25)':' var(--w08)'};border-radius:var(--rs);padding:8px 10px">
+          <div style="font-size:10px;color:var(--w60);margin-bottom:4px">${i+1}. ${lbl}${isAutoFill?'<span style="color:var(--teal);margin-left:4px">↑ profile</span>':''}</div>
+          <input type="text" class="ig-cq-input" data-key="cq${i}" placeholder="Enter answer..." value="${escHtml(prefill)}" style="width:100%;background:transparent;border:0;color:${isAutoFill?'var(--teal)':'var(--ow)'};font-size:12px;font-weight:500" onchange="igNoteQ(this,'notes')">
+        </div>`;
+        }).join('')}
       </div>
     </div>`;
 
