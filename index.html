@@ -301,12 +301,13 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 /* ─────────────────────────────────────────────────────────────
    CR-UI-001 — Hybrid Readability Layer  (June 9 2026)
-   Scoped to light panels only. Dark panels (#p-home, #p-analytics,
+   Scoped to light panels only. Dark panels (#p-analytics,
    .sidebar, .topbar, #loginScreen, #modal, #toast) are untouched.
+   #p-home is LIGHT (same as forms/config/incentives).
 ───────────────────────────────────────────────────────────── */
 
 /* 1 · Re-scope CSS custom properties inside every light panel */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk){
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk){
   --ow:#291b39;
   --w60:rgba(41,27,57,.72);
   --w40:rgba(41,27,57,.55);
@@ -328,19 +329,19 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 2 · Cards, stats, chart-cards — white backgrounds on light page */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .stat,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-card{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .stat,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-card{
   background:#fbfbfa;
   color:#291b39;
   border:1px solid #d6dbe3;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-title{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-title{
   color:#291b39;
 }
 
 /* 3 · Labels */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) label{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) label{
   color:#291b39;
   font-size:max(11px,1em);
   font-weight:700;
@@ -348,92 +349,92 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 4 · Helper / hint / muted text */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .fhint,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .ss,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pdet,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-sub,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .filter-label,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .kpi-lbl,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pdate{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .fhint,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .ss,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pdet,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-sub,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .filter-label,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .kpi-lbl,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pdate{
   color:#5f6470;
   opacity:1;
 }
 
 /* 5 · Inputs / selects / textareas */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) input,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) select,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) textarea{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) input,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) select,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) textarea{
   background:#ffffff;
   color:#291b39;
   border:1px solid #d6dbe3;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) input::placeholder,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) textarea::placeholder{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) input::placeholder,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) textarea::placeholder{
   color:rgba(41,27,57,.38);
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) select option{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) select option{
   background:#ffffff;
   color:#291b39;
 }
 
 /* 6 · Tables */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) table{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) table{
   background:#fbfbfa;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) thead tr{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) thead tr{
   background:#1f5c93;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) thead th{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) thead th{
   color:#fbfbfa;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody td{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody td{
   color:#291b39;
   border-bottom:1px solid #d6dbe3;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody td.m{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody td.m{
   color:#5f6470;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody tr:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody tr:hover{
   background:rgba(31,92,147,.06);
 }
 
 /* 7 · Mono / code values */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .mono,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) code{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .mono,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) code{
   color:#1f5c93;
 }
 
 /* 8 · Section labels .sl2 */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl2{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl2{
   color:#1f5c93;
   font-size:max(11px,1em);
   font-weight:800;
   opacity:1;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl2::after{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl2::after{
   background:rgba(31,92,147,.20);
 }
 
 /* 9 · Action queue cards: .pi, .lbar, .uz */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi{
   background:rgba(31,92,147,.06);
   color:#291b39;
   border-color:#d6dbe3;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi:hover{
   background:rgba(31,92,147,.10);
   border-color:rgba(52,186,198,.35);
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .lbar{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .lbar{
   background:rgba(31,92,147,.06);
   border-color:#d6dbe3;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .uz{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .uz{
   border-color:#d6dbe3;
   color:#5f6470;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .uz:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .uz:hover{
   border-color:var(--teal);
   background:rgba(52,186,198,.06);
 }
@@ -457,81 +458,85 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 13 · .btn-ghost inside light panels */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .btn-ghost{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .btn-ghost{
   color:rgba(41,27,57,.75);
   border-color:#d6dbe3;
   background:transparent;
 }
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .btn-ghost:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .btn-ghost:hover{
   background:rgba(31,92,147,.08);
   color:#291b39;
   border-color:#b0bec5;
 }
 
 /* 14 · .b-grey / .b-inactive badges inside light panels */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-grey,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-inactive{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-grey,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-inactive{
   background:rgba(31,92,147,.08);
   color:#5f6470;
   border-color:#d6dbe3;
 }
 
 /* 15 · Semantic colours — remain consistent in light panels */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-err,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi.ov{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-err,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi.ov{
   border-left-color:#9f4a47;
 }
 
 /* 16 · Card header text */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card-title,
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card-hdr{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card-title,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card-hdr{
   color:#291b39;
 }
 
 /* 17 · Inline note / info strips (tdim, gdim, bdim) */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .ci p{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .ci p{
   color:#5f6470;
 }
 
 /* 18 · Scrollbar styling for light panels */
-:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk)::-webkit-scrollbar-thumb{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk)::-webkit-scrollbar-thumb{
   background:rgba(31,92,147,.25);
 }
 
 /* end CR-UI-001 */
 
 /* ─────────────────────────────────────────────────────────────
-   HOME + ANALYTICS dark polish  (June 9 2026)
+   ANALYTICS dark polish  (June 9 2026)
+   #p-analytics stays dark. #p-home is now LIGHT (see CR-UI-001).
 ───────────────────────────────────────────────────────────── */
 
-/* Home & Analytics — premium dark card treatment */
-#p-home .card, #p-analytics .chart-card {
-  background:rgba(255,255,255,.045);
-  border:1px solid rgba(255,255,255,.09);
+/* Analytics chart-cards */
+#p-analytics .chart-card {
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
   border-radius:var(--r);
 }
-#p-home .card:hover { background:rgba(255,255,255,.06); }
 
-/* Home filters card */
-#p-home .card.mb0 {
-  background:rgba(31,92,147,.18);
-  border:1px solid rgba(52,186,198,.15);
+/* Analytics dark panel — explicit overrides so CR-UI-001 light vars don't bleed in */
+#p-analytics { background:#0A1628; color:var(--ow); }
+#p-analytics label { color:rgba(251,251,250,.6) !important; font-weight:600; font-size:11px; }
+#p-analytics input, #p-analytics select {
+  background:rgba(255,255,255,.07);
+  color:#fbfbfa;
+  border:1px solid rgba(255,255,255,.12);
 }
+#p-analytics select option { background:#0d1f3c; color:#fbfbfa; }
+#p-analytics .btn-ghost { color:rgba(251,251,250,.6); border-color:rgba(255,255,255,.12); background:transparent; }
+#p-analytics .btn-ghost:hover { background:rgba(255,255,255,.08); color:#fbfbfa; }
+#p-analytics .kpi { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); }
+#p-analytics .kpi-lbl { color:rgba(251,251,250,.6); }
+#p-analytics .chart-title { color:#fbfbfa; }
+#p-analytics .chart-sub { color:rgba(251,251,250,.6); }
+#p-analytics .card { background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); color:#fbfbfa; }
 
-/* KPI cards on home */
-#p-home .kpi {
-  background:rgba(255,255,255,.045);
-  border:1px solid rgba(255,255,255,.09);
-}
-#p-home .kpi:hover { background:rgba(255,255,255,.07); }
-
-/* ── Action Queue Accordion ── */
+/* ── Action Queue Accordion — light theme (inside #p-home) ── */
 .aq-summary {
   display:flex;
   align-items:stretch;
   gap:0;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
+  background:#fbfbfa;
+  border:1px solid #d6dbe3;
   border-radius:var(--rs);
   margin-bottom:14px;
   overflow:hidden;
@@ -543,7 +548,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 .aq-sum-sep {
   width:1px;
-  background:rgba(255,255,255,.08);
+  background:#d6dbe3;
 }
 .aq-sum-val {
   font-family:"Cormorant Garamond",serif;
@@ -555,15 +560,16 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   font-size:10px;
   letter-spacing:1.2px;
   text-transform:uppercase;
-  color:var(--w60);
+  color:#5f6470;
   margin-top:4px;
 }
-.aq-sum-item.ov .aq-sum-val { color:#ff6b6b; }
-.aq-sum-item.td .aq-sum-val { color:var(--gold); }
-.aq-sum-item.up .aq-sum-val { color:var(--teal); }
+/* Overdue = muted red, Today = gold, Not Due = teal — all readable on white */
+.aq-sum-item.ov .aq-sum-val { color:#9f4a47; }
+.aq-sum-item.td .aq-sum-val { color:#b76320; }
+.aq-sum-item.up .aq-sum-val { color:#1f5c93; }
 
 /* Accordion sections */
-.aq-section { margin-bottom:8px; border-radius:var(--rs); overflow:hidden; border:1px solid rgba(255,255,255,.08); }
+.aq-section { margin-bottom:8px; border-radius:var(--rs); overflow:hidden; border:1px solid #d6dbe3; }
 .aq-sec-hdr {
   display:flex;
   align-items:center;
@@ -576,12 +582,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   transition:background .15s;
   letter-spacing:.3px;
 }
-.aq-sec-hdr.ov { background:rgba(255,107,107,.12); color:#ff9a9a; border-bottom:1px solid rgba(255,107,107,.15); }
-.aq-sec-hdr.ov:hover { background:rgba(255,107,107,.18); }
-.aq-sec-hdr.td { background:rgba(233,152,43,.14); color:var(--gold); border-bottom:1px solid rgba(233,152,43,.2); }
-.aq-sec-hdr.td:hover { background:rgba(233,152,43,.20); }
-.aq-sec-hdr.up { background:rgba(52,186,198,.10); color:var(--teal); border-bottom:1px solid rgba(52,186,198,.15); }
-.aq-sec-hdr.up:hover { background:rgba(52,186,198,.16); }
+.aq-sec-hdr.ov { background:rgba(159,74,71,.08); color:#9f4a47; border-bottom:1px solid rgba(159,74,71,.15); }
+.aq-sec-hdr.ov:hover { background:rgba(159,74,71,.13); }
+.aq-sec-hdr.td { background:rgba(183,99,32,.08); color:#b76320; border-bottom:1px solid rgba(183,99,32,.15); }
+.aq-sec-hdr.td:hover { background:rgba(183,99,32,.13); }
+.aq-sec-hdr.up { background:rgba(31,92,147,.07); color:#1f5c93; border-bottom:1px solid rgba(31,92,147,.12); }
+.aq-sec-hdr.up:hover { background:rgba(31,92,147,.12); }
 
 .aq-cnt {
   font-family:"DM Mono",monospace;
@@ -590,39 +596,29 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   padding:2px 8px;
   border-radius:10px;
 }
-.aq-cnt.ov { background:rgba(255,107,107,.2); color:#ff9a9a; }
-.aq-cnt.td { background:rgba(233,152,43,.2); color:var(--gold); }
-.aq-cnt.up { background:rgba(52,186,198,.15); color:var(--teal); }
-.aq-chevron { font-size:10px; opacity:.7; }
+.aq-cnt.ov { background:rgba(159,74,71,.12); color:#9f4a47; }
+.aq-cnt.td { background:rgba(183,99,32,.12); color:#b76320; }
+.aq-cnt.up { background:rgba(31,92,147,.10); color:#1f5c93; }
+.aq-chevron { font-size:10px; opacity:.6; }
 
-/* Queue table inside accordion */
-.aq-sec-body { background:rgba(255,255,255,.02); }
+/* Queue table — light theme */
+.aq-sec-body { background:#fbfbfa; }
 .aq-table { width:100%; border-collapse:collapse; }
-.aq-table thead tr { background:rgba(31,92,147,.35); }
-.aq-table thead th { padding:7px 11px; font-size:10px; font-weight:600; color:rgba(251,251,250,.75); letter-spacing:.7px; text-transform:uppercase; white-space:nowrap; }
-.aq-table tbody tr { border-bottom:1px solid rgba(255,255,255,.05); transition:background .12s; }
+.aq-table thead tr { background:#1f5c93; }
+.aq-table thead th { padding:7px 11px; font-size:10px; font-weight:600; color:#fbfbfa; letter-spacing:.7px; text-transform:uppercase; white-space:nowrap; }
+.aq-table tbody tr { border-bottom:1px solid #d6dbe3; transition:background .12s; }
 .aq-table tbody tr:last-child { border-bottom:none; }
-.aq-table tbody tr:hover { background:rgba(52,186,198,.07); }
+.aq-table tbody tr:hover { background:rgba(31,92,147,.06); }
 .aq-table tbody td { padding:9px 11px; vertical-align:middle; }
-.aq-name { font-size:12px; font-weight:600; color:var(--ow); }
-.aq-code { font-family:"DM Mono",monospace; font-size:10px; color:var(--w60); margin-top:1px; }
-.aq-cell { font-size:11px; color:var(--w60); }
+.aq-name { font-size:12px; font-weight:600; color:#291b39; }
+.aq-code { font-family:"DM Mono",monospace; font-size:10px; color:#5f6470; margin-top:1px; }
+.aq-cell { font-size:11px; color:#5f6470; }
 .aq-date { font-family:"DM Mono",monospace; font-size:11px; white-space:nowrap; }
-.aq-date.ov { color:#ff6b6b; }
-.aq-date.td { color:var(--gold); }
-.aq-date.up { color:var(--teal); }
+.aq-date.ov { color:#9f4a47; font-weight:600; }
+.aq-date.td { color:#b76320; font-weight:600; }
+.aq-date.up { color:#1f5c93; }
 .aq-upd-btn { white-space:nowrap; }
-.aq-empty { text-align:center; padding:26px; color:var(--w60); font-size:13px; }
-
-/* Analytics dark panel explicit exclusion (belt-and-suspenders) */
-#p-analytics label { color:var(--w60) !important; font-weight:600; font-size:11px; }
-#p-analytics input, #p-analytics select {
-  background:rgba(255,255,255,.07);
-  color:var(--ow);
-  border:1px solid rgba(255,255,255,.12);
-}
-#p-analytics .btn-ghost { color:var(--w60); border-color:rgba(255,255,255,.12); }
-#p-analytics .btn-ghost:hover { background:rgba(255,255,255,.08); color:var(--ow); }
+.aq-empty { text-align:center; padding:26px; color:#5f6470; font-size:13px; }
 
 </style>
 </head>
