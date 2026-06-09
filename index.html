@@ -299,6 +299,207 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 #mob-ham{display:none;position:fixed;top:12px;left:68px;z-index:201;background:var(--w06);border:1px solid var(--w08);border-radius:6px;width:32px;height:32px;align-items:center;justify-content:center;cursor:pointer;font-size:16px}
 @media(max-width:768px){#mob-ham{display:flex}}
 
+/* ─────────────────────────────────────────────────────────────
+   CR-UI-001 — Hybrid Readability Layer  (June 9 2026)
+   Scoped to light panels only. Dark panels (#p-home, #p-analytics,
+   .sidebar, .topbar, #loginScreen, #modal, #toast) are untouched.
+───────────────────────────────────────────────────────────── */
+
+/* 1 · Re-scope CSS custom properties inside every light panel */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk){
+  --ow:#291b39;
+  --w60:rgba(41,27,57,.72);
+  --w40:rgba(41,27,57,.55);
+  --w10:rgba(31,92,147,.10);
+  --w06:rgba(31,92,147,.06);
+  --w08:rgba(31,92,147,.08);
+  --w12:rgba(31,92,147,.16);
+  --tdim:rgba(52,186,198,.10);
+  --gdim:rgba(233,152,43,.10);
+  --bdim:rgba(31,92,147,.10);
+  --form-bg:#fbfbfa;
+  --form-text:#291b39;
+  --form-strong:#0e0f17;
+  --form-muted:#5f6470;
+  --form-border:#d6dbe3;
+  --form-input-bg:#ffffff;
+  background:#e9edf2;
+  color:#291b39;
+}
+
+/* 2 · Cards, stats, chart-cards — white backgrounds on light page */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .stat,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-card{
+  background:#fbfbfa;
+  color:#291b39;
+  border:1px solid #d6dbe3;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-title{
+  color:#291b39;
+}
+
+/* 3 · Labels */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) label{
+  color:#291b39;
+  font-size:max(11px,1em);
+  font-weight:700;
+  opacity:1;
+}
+
+/* 4 · Helper / hint / muted text */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .fhint,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .ss,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pdet,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-sub,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .filter-label,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .kpi-lbl,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pdate{
+  color:#5f6470;
+  opacity:1;
+}
+
+/* 5 · Inputs / selects / textareas */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) input,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) select,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) textarea{
+  background:#ffffff;
+  color:#291b39;
+  border:1px solid #d6dbe3;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) input::placeholder,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) textarea::placeholder{
+  color:rgba(41,27,57,.38);
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) select option{
+  background:#ffffff;
+  color:#291b39;
+}
+
+/* 6 · Tables */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) table{
+  background:#fbfbfa;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) thead tr{
+  background:#1f5c93;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) thead th{
+  color:#fbfbfa;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody td{
+  color:#291b39;
+  border-bottom:1px solid #d6dbe3;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody td.m{
+  color:#5f6470;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody tr:hover{
+  background:rgba(31,92,147,.06);
+}
+
+/* 7 · Mono / code values */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .mono,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) code{
+  color:#1f5c93;
+}
+
+/* 8 · Section labels .sl2 */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl2{
+  color:#1f5c93;
+  font-size:max(11px,1em);
+  font-weight:800;
+  opacity:1;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl2::after{
+  background:rgba(31,92,147,.20);
+}
+
+/* 9 · Action queue cards: .pi, .lbar, .uz */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi{
+  background:rgba(31,92,147,.06);
+  color:#291b39;
+  border-color:#d6dbe3;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi:hover{
+  background:rgba(31,92,147,.10);
+  border-color:rgba(52,186,198,.35);
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .lbar{
+  background:rgba(31,92,147,.06);
+  border-color:#d6dbe3;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .uz{
+  border-color:#d6dbe3;
+  color:#5f6470;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .uz:hover{
+  border-color:var(--teal);
+  background:rgba(52,186,198,.06);
+}
+
+/* 10 · Admin tabs */
+#p-adm .atabs{border-bottom-color:#d6dbe3;}
+#p-adm .atab{color:#5f6470;border-bottom-color:transparent;}
+#p-adm .atab:hover{color:#291b39;background:rgba(31,92,147,.06);}
+#p-adm .atab.on{color:#1f5c93;border-bottom-color:#34bac6;}
+
+/* 11 · Incentive tabs */
+#p-incentive .atabs{border-bottom-color:#d6dbe3;}
+#p-incentive .atab{color:#5f6470;border-bottom-color:transparent;}
+#p-incentive .atab:hover{color:#291b39;background:rgba(31,92,147,.06);}
+#p-incentive .atab.on{color:#1f5c93;border-bottom-color:#34bac6;}
+
+/* 12 · KPI stat numbers — keep brand accent colours, override container */
+:is(#p-adm,#p-invoice,#p-rec) .kpi{
+  background:rgba(31,92,147,.06);
+  border-color:#d6dbe3;
+}
+
+/* 13 · .btn-ghost inside light panels */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .btn-ghost{
+  color:rgba(41,27,57,.75);
+  border-color:#d6dbe3;
+  background:transparent;
+}
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .btn-ghost:hover{
+  background:rgba(31,92,147,.08);
+  color:#291b39;
+  border-color:#b0bec5;
+}
+
+/* 14 · .b-grey / .b-inactive badges inside light panels */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-grey,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-inactive{
+  background:rgba(31,92,147,.08);
+  color:#5f6470;
+  border-color:#d6dbe3;
+}
+
+/* 15 · Semantic colours — remain consistent in light panels */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-err,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi.ov{
+  border-left-color:#9f4a47;
+}
+
+/* 16 · Card header text */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card-title,
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card-hdr{
+  color:#291b39;
+}
+
+/* 17 · Inline note / info strips (tdim, gdim, bdim) */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .ci p{
+  color:#5f6470;
+}
+
+/* 18 · Scrollbar styling for light panels */
+:is(#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk)::-webkit-scrollbar-thumb{
+  background:rgba(31,92,147,.25);
+}
+
+/* end CR-UI-001 */
+
 </style>
 </head>
 <body>
