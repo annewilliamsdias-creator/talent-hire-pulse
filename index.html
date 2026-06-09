@@ -798,20 +798,23 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
 <div class="card-title mb0"><span class="ac">◈</span> All Candidates</div>
 <div class="flex gap8" style="flex-wrap:wrap">
-<select id="rScope" onchange="renderRec()" style="width:110px;background:var(--bdim);border-color:rgba(31,92,147,.3)">
+<select id="rScope" onchange="renderRec(true)" style="width:110px;background:var(--bdim);border-color:rgba(31,92,147,.3)">
   <option value="all">All Records</option>
   <option value="active">Active Only</option>
 </select>
-<input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:180px" oninput="renderRec()">
-<select id="rStat" onchange="renderRec()" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
-<select id="rCli" onchange="renderRec()" style="width:120px"><option value="">All Clients</option></select>
-<select id="rRec" onchange="renderRec()" style="width:120px"><option value="">All Recruiters</option></select>
+<input type="text" id="rSrch" placeholder="Name, code, role, client..." style="width:180px" oninput="renderRec(true)">
+<select id="rStat" onchange="renderRec(true)" style="width:145px"><option value="">All Statuses</option><option>WIP</option><option>Consultant Interview in Progress</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Selected</option><option>Offered</option><option>Joining in Progress</option><option>Joined</option><option>Rejected by Consultant</option><option>Rejected by Client</option><option>On Hold</option><option>Dropped</option><option>Not Contactable</option><option>Not Interested</option></select>
+<select id="rCli" onchange="renderRec(true)" style="width:120px"><option value="">All Clients</option></select>
+<select id="rRec" onchange="renderRec(true)" style="width:120px"><option value="">All Recruiters</option></select>
 <button class="btn btn-ghost btn-sm" id="refreshRecBtn" onclick="refreshAllRecords()" title="Reload latest data">⟳ Refresh</button>
 <button class="btn btn-ghost btn-sm" onclick="dlAllRecords()">⬇ Download</button>
 </div>
 </div>
 <div class="tw"><table id="recTable"><thead><tr><th onclick="sortRec(0,'code')">Code</th><th onclick="sortRec(1,'name')">Name</th><th onclick="sortRec(2,'position')">Position</th><th onclick="sortRec(3,'client')">Client</th><th onclick="sortRec(4,'status')">Status</th><th onclick="sortRec(5,'followupDate')">Follow-up</th><th onclick="sortRec(6,'recruiter')">Recruiter</th><th onclick="sortRec(7,'sourcingDate')">Sourced</th><th>Actions</th></tr></thead><tbody id="rBody"></tbody></table></div>
-<div style="margin-top:8px;font-size:11px;color:var(--w60)" id="rCount"></div>
+<div style="margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="font-size:11px;color:var(--w60)" id="rCount"></span>
+  <div id="rPagination" style="display:flex;align-items:center;gap:6px"></div>
+</div>
 </div>
 </div>
 
@@ -1416,6 +1419,11 @@ let WB=null,MD=[],VD=[],HDR=[],VHDR=[];
 let siteId=null,fileId=null,tok=null,acct=null;
 let eIdx=-1,epIdx=-1,vacEIdx=-1,appUsers=[];
 let curRole='Recruiter',curUser=null,bulkRows=[];
+// ── Phase A: Data Protection ──────────────────────────
+let _dupCleanupSave=false;   // set true only during admin-initiated cleanup saves
+let _bulkSave=false;         // set true during bulk upload saves
+let _bulkExpectedIncrease=0; // number of valid rows being committed in bulk
+let _lastGoodCount=0;        // loaded from workbook metadata on parseWB
 
 const C={code:'Candidate code',sourcingDate:'Profile Sourcing date',screeningDate:'Profile Screening date',
 source:'Source',sourceDetails:'Source Details',name:'Name',combinedLoc:'Combined Location',
@@ -1805,6 +1813,13 @@ async function loadData(){
     hideLoad();
     initUI();
     console.log('loadData: done, '+MD.length+' records');
+    console.log('%c[THP DIAGNOSTIC]','color:#34bac6;font-weight:bold',{
+      version:'THP v6 — Session 15',
+      folder:CFG.folder,
+      file:CFG.file,
+      candidateCount:MD.length,
+      timestamp:new Date().toISOString()
+    });
   }catch(e){
     setSP('err','↺ Click to retry');
     hideLoad();
@@ -1832,17 +1847,198 @@ else{
     setTimeout(()=>{try{const rows=[['type','data'],...repoData.jds.map(d=>['jd',JSON.stringify(d)]),...repoData.scripts.map(d=>['script',JSON.stringify(d)]),...repoData.help.map(d=>['help',JSON.stringify(d)])];WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');saveWB(false).then(()=>console.log('Repo migrated to SharePoint'));}catch(e){console.warn('Repo migrate failed',e);}},3000);
   }
 }
-loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();}
+loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
+// ── Phase A: Read last good count from metadata ───────
+const storedCount=getMetadata('lastGoodCount');
+if(storedCount!==null&&storedCount!==undefined&&storedCount!==''){
+  _lastGoodCount=parseInt(storedCount)||0;
+} else {
+  // First ever load — seed with current count (no prior good count to compare against)
+  _lastGoodCount=0;
+}
+// Load validation warning (admin only)
+if(_lastGoodCount>0 && MD.length>_lastGoodCount*1.25){
+  const excess=MD.length-_lastGoodCount;
+  console.warn('[THP LOAD WARNING] Candidate count ('+MD.length+') is '+excess+' more than last good count ('+_lastGoodCount+'). Possible data corruption.');
+  // Show warning banner to admin after UI is ready
+  setTimeout(()=>{
+    const rd=ROLES[curRole]||{};
+    if(rd.admin){
+      toast('err','⚠ Load Warning',
+        'Loaded '+MD.length+' records but last good count was '+_lastGoodCount+
+        '. Possible data corruption. Do not save until investigated.');
+    }
+  },2000);
+}
+}
 async function saveWB(msg){
-if(!WB)return;showLoad(msg||'Saving...');
-try{rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});
-await refreshToken();
-const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
-if(!r.ok)throw new Error('Upload failed: '+r.status);
-hideLoad();toast('ok','Saved','Changes written to SharePoint');
-}catch(e){hideLoad();toast('err','Save Failed',e.message);throw e;}}
+if(!WB)return;
+// ── Phase A: Dynamic save guard ───────────────────────
+if(!_dupCleanupSave){
+  const prevCount=_lastGoodCount||0;
+  const newCount=MD.length;
+  const {dups,blanks}=countCodeStats();
+  let blocked=false,blockReason='';
+  if(prevCount>0){
+    const absIncrease=newCount-prevCount;
+    const pctIncrease=newCount/prevCount;
+    if(_bulkSave){
+      // Bulk: allow only up to expected increase + small tolerance
+      if(absIncrease>_bulkExpectedIncrease+5){
+        blocked=true;
+        blockReason='Bulk save blocked — expected +'+ _bulkExpectedIncrease+' but count increased by +'+absIncrease+'. Possible duplication.';
+      }
+    } else {
+      if(absIncrease>500){blocked=true;blockReason='Candidate count increased by '+absIncrease+' (limit: +500 per save).';}
+      else if(pctIncrease>1.25){blocked=true;blockReason='Candidate count increased by '+(((pctIncrease-1)*100).toFixed(1))+'% (limit: 25%).';}
+    }
+  }
+  if(blocked){
+    writeAuditLog('SAVE_BLOCKED',prevCount,newCount,dups,blanks,'BLOCKED',blockReason);
+    hideLoad();
+    toast('err','Save Blocked',
+      'Save blocked — candidate count increased abnormally from '+prevCount+' to '+newCount+
+      '. This may indicate duplicate corruption. Please verify your data and contact Admin.');
+    _bulkSave=false;_bulkExpectedIncrease=0;
+    throw new Error('Save blocked: '+blockReason);
+  }
+}
+showLoad(msg||'Saving...');
+try{
+  rebuildDS();
+  // Auto-backup before every save (silent — does not block on failure)
+  await autoBackupBeforeSave();
+  const {dups,blanks}=countCodeStats();
+  const newCount=MD.length;
+  // Update metadata with new good count
+  saveMetadata({
+    lastGoodCount:newCount,
+    lastGoodSaveAt:new Date().toISOString(),
+    lastGoodSaveBy:acct&&acct.name?acct.name:'Unknown'
+  });
+  const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});
+  await refreshToken();
+  const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+    {method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
+  if(!r.ok)throw new Error('Upload failed: '+r.status);
+  _lastGoodCount=newCount;
+  writeAuditLog(_bulkSave?'BULK_SAVE':'SAVE',_lastGoodCount,newCount,dups,blanks,'ALLOWED','Save successful');
+  _bulkSave=false;_bulkExpectedIncrease=0;
+  if(msg!==false)hideLoad();
+  if(msg!==false)toast('ok','Saved','Changes written to SharePoint');
+}catch(e){
+  _bulkSave=false;_bulkExpectedIncrease=0;
+  hideLoad();if(msg!==false)toast('err','Save Failed',e.message);throw e;
+}}
 function rebuildDS(){const ws=WB.Sheets['Data'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}const keep=rows.slice(0,hi+1);const data=MD.map(obj=>HDR.map(h=>obj[h]!==undefined?obj[h]:''));WB.Sheets['Data']=XLSX.utils.aoa_to_sheet([...keep,...data]);}
 function writeCL(action,code,field,oldV,newV,nm){try{if(!WB||!WB.Sheets['Change Log'])return;const ws=WB.Sheets['Change Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const role=curRole||'Unknown';rows.push([new Date().toISOString(),acct&&acct.name?acct.name:'Unknown',role,code,action,field,String(oldV||''),String(newV||''),nm]);WB.Sheets['Change Log']=XLSX.utils.aoa_to_sheet(rows);}catch(e){console.warn('CL',e);}}
+
+// ══════════════════════════════════════════════════════
+// PHASE A — DATA PROTECTION HELPERS
+// ══════════════════════════════════════════════════════
+
+// Read a key from [THP_META] block in Config sheet
+function getMetadata(key){
+  try{
+    if(!WB||!WB.Sheets['Config'])return null;
+    const all=XLSX.utils.sheet_to_json(WB.Sheets['Config'],{header:1,defval:''});
+    let mi=-1;
+    for(let i=0;i<all.length;i++){if(String(all[i][0]).trim()==='[THP_META]'){mi=i+1;break;}}
+    if(mi<0)return null;
+    for(let i=mi;i<all.length;i++){
+      if(!all[i][0]&&!all[i][1])break;
+      if(String(all[i][0]).trim()===key)return all[i][1]!==undefined?all[i][1]:null;
+    }
+  }catch(e){console.warn('getMetadata',e);}
+  return null;
+}
+
+// Write a key to [THP_META] block in Config sheet
+function saveMetadata(updates){
+  try{
+    if(!WB)return;
+    if(!WB.Sheets['Config'])WB.Sheets['Config']=XLSX.utils.aoa_to_sheet([]);
+    if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');
+    const all=XLSX.utils.sheet_to_json(WB.Sheets['Config'],{header:1,defval:''});
+    let mi=-1;
+    for(let i=0;i<all.length;i++){if(String(all[i][0]).trim()==='[THP_META]'){mi=i;break;}}
+    // Build updated meta block
+    const metaMap={};
+    if(mi>=0){
+      for(let i=mi+1;i<all.length;i++){
+        if(!all[i][0]&&!all[i][1])break;
+        metaMap[String(all[i][0]).trim()]=all[i][1];
+      }
+    }
+    Object.assign(metaMap,updates);
+    const block=[['[THP_META]'],['key','value'],...Object.entries(metaMap).map(([k,v])=>[k,v])];
+    if(mi>=0){
+      let ei=mi+1;
+      while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;
+      all.splice(mi,ei-mi,...block);
+    }else{
+      all.push([],...block);
+    }
+    WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);
+  }catch(e){console.warn('saveMetadata',e);}
+}
+
+// Count duplicate and blank candidate codes in current MD
+function countCodeStats(records){
+  const seen={};let dups=0,blanks=0;
+  (records||MD).forEach(r=>{
+    const c=String(r[C.code]||'').trim();
+    if(!c){blanks++;return;}
+    seen[c]=(seen[c]||0)+1;
+    if(seen[c]===2)dups++;
+  });
+  return{dups,blanks};
+}
+
+// Write one row to Data_Audit_Log sheet
+function writeAuditLog(action,prevCount,newCount,dupCount,blankCount,result,reason){
+  try{
+    if(!WB)return;
+    const HDR_AL=['Timestamp','User','Role','Action','Prev Count','New Count','Delta','Dup Codes','Blank Codes','Result','Reason'];
+    if(!WB.Sheets['Data_Audit_Log']){
+      WB.Sheets['Data_Audit_Log']=XLSX.utils.aoa_to_sheet([HDR_AL]);
+      if(!WB.SheetNames.includes('Data_Audit_Log'))WB.SheetNames.push('Data_Audit_Log');
+    }
+    const ws=WB.Sheets['Data_Audit_Log'];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(rows.length===0)rows.push(HDR_AL);
+    rows.push([
+      new Date().toISOString(),
+      acct&&acct.name?acct.name:'Unknown',
+      curRole||'Unknown',
+      action,
+      prevCount,
+      newCount,
+      newCount-prevCount,
+      dupCount,
+      blankCount,
+      result,
+      reason
+    ]);
+    WB.Sheets['Data_Audit_Log']=XLSX.utils.aoa_to_sheet(rows);
+  }catch(e){console.warn('writeAuditLog',e);}
+}
+
+// Auto-backup before save — filename: Backup_Auto_YYYYMMDD_HHMMSS_BeforeSave.xlsx
+async function autoBackupBeforeSave(){
+  try{
+    const now=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    const ts=now.getFullYear().toString()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds());
+    const bn='Backup_Auto_'+ts+'_BeforeSave.xlsx';
+    const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});
+    await refreshToken();
+    const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',
+      {method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
+    if(!r.ok)console.warn('autoBackup upload failed:',r.status);
+    else console.log('[THP] Auto-backup created:',bn);
+  }catch(e){console.warn('autoBackup error:',e.message);}
+}
 
 // ══════════════════════════════════════════════════════
 // ROLES
@@ -2169,8 +2365,12 @@ r[C.status]=stat;if(dm)r[C.dm]=dm;if(fu)r[C.followupDate]=fu;
 const rmk=gv('uRem');if(rmk)r[C.remark]=r[C.remark]?r[C.remark]+' | '+rmk:rmk;
 const cmt=gv('uCmt');if(cmt)r[C.otherComments]=r[C.otherComments]?r[C.otherComments]+' | '+cmt:cmt;
 const ivr=gv('uIvr');if(ivr)r[C.interviewerName]=ivr;
-// Always save date/offer fields — allows clearing by leaving blank
-r[C.interviewDate]=gv('uIvD')||'';r[C.decisionDate]=gv('uDecD')||'';r[C.doj]=gv('uDOJ')||'';r[C.offeredSalary]=gv('uOffS')||'';r[C.offerDate]=gv('uOffD')||'';
+// Bug M fix: only write date/offer fields if form has a value — prevents accidental wipe
+const _ivd=gv('uIvD');if(_ivd)r[C.interviewDate]=_ivd;
+const _decd=gv('uDecD');if(_decd)r[C.decisionDate]=_decd;
+const _doj=gv('uDOJ');if(_doj)r[C.doj]=_doj;
+const _offs=gv('uOffS');if(_offs)r[C.offeredSalary]=_offs;
+const _offd=gv('uOffD');if(_offd)r[C.offerDate]=_offd;
 const fd=gv('uFinalDesig');if(fd)r['Final Designation Offered']=fd;
 const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}}
@@ -2199,7 +2399,7 @@ epIdx=idx;const r=MD[idx];
 document.getElementById('epAlert').innerHTML='';document.getElementById('epForm').classList.remove('hidden');
 document.getElementById('epNm').textContent=r[C.name]||'Edit Profile';document.getElementById('epCd').textContent=r[C.code]||'';
 const flds=[['epNm2',C.name],['epMob',C.contact],['epAlt',C.altContact],['epEm',C.email],['epAEm',C.altEmail],['epLoc',C.location],['epCo',C.company],['epDe',C.designation],['epExp',C.expYrs],['epNot',C.notice],['epReas',C.reason],['epSPM',C.salaryPM],['epSPA',C.salaryPA],['epESPM',C.expectedSalary],['epSBr',C.salaryBracket],['epCli',C.client],['epDept',C.dept],['epPos',C.position],['epRI',C.roleInterested],['epVC',C.vacCode],['epRec',C.recruiter]];
-flds.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=r[key]||'';});
+flds.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=(r[key]!==undefined&&r[key]!==null)?String(r[key]):'';}); // Bug M fix: safe pre-fill
 setTimeout(()=>{const rec=r[C.recruiter]||'';if(rec&&!mA('recruiters').includes(rec)){const myN=acct&&acct.name?acct.name.split(' ')[0]:'';showModal('👤 Recruiter Update Required','<strong>'+rec+'</strong> is no longer active. Please reassign before saving.','','<button class="btn btn-t" onclick="closeModal();sv(\'epRec\',\''+myN+'\')">Assign to Me</button><button class="btn btn-ghost" onclick="closeModal();document.getElementById(\'epRec\').focus()">Select Recruiter</button>');}},100);}
 async function saveEP(){
 if(epIdx===-1)return;const r=MD[epIdx];
@@ -2218,20 +2418,35 @@ await saveWB('Saving profile...');showAlert('epSaveAlert','ok','✅ '+changes.le
   epIdx=-1;}
 
 // ══════════════════════════════════════════════════════
-// ALL RECORDS
+// ALL RECORDS — Bug I: pagination
 // ══════════════════════════════════════════════════════
-function renderRec(){
+const REC_PAGE_SIZE=100;
+let recPage=0; // 0-based current page
+function renderRec(resetPage){
+if(resetPage)recPage=0;
 const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec');
 const scope=gv('rScope')||'all';
 refreshAllFilters();
 const filtered=MD.filter(r=>{
-  const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch);
+  const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch)||(r[C.vacCode]||'').toLowerCase().includes(srch); // Bug K fix: vacancy code search
   const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
   return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf)&&(!rf||r[C.recruiter]===rf);
 });
+const totalPages=Math.max(1,Math.ceil(filtered.length/REC_PAGE_SIZE));
+if(recPage>=totalPages)recPage=totalPages-1;
+const start=recPage*REC_PAGE_SIZE,end=Math.min(start+REC_PAGE_SIZE,filtered.length);
 const tb=document.getElementById('rBody');if(!tb)return;
-tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
-const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.min(filtered.length,500)+' of '+filtered.length+' records ('+MD.length+' total in database)';}
+tb.innerHTML=filtered.slice(start,end).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
+const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+(start+1)+'–'+end+' of '+filtered.length+' records ('+MD.length+' total)';
+// Render pagination controls
+const pg=document.getElementById('rPagination');
+if(pg){
+  if(totalPages<=1){pg.innerHTML='';return;}
+  pg.innerHTML=
+    '<button class="btn btn-ghost btn-sm" '+(recPage===0?'disabled':'')+' onclick="recPage--;renderRec()">← Prev</button>'+
+    '<span style="font-size:12px;color:var(--w60);padding:0 10px">Page '+(recPage+1)+' of '+totalPages+'</span>'+
+    '<button class="btn btn-ghost btn-sm" '+(recPage>=totalPages-1?'disabled':'')+' onclick="recPage++;renderRec()">Next →</button>';
+}}
 
 function viewCandModal(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
@@ -2369,7 +2584,17 @@ function viewVacModal(idx){
   ];
   const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—'&&x[1]!=='₹—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:42%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
   const pri=v['Priority']||'';const priIcon=pri==='High'?'🔴 ':pri==='Medium'?'🟡 ':'🟢 ';
-  showModal('📌 '+(v['Designation']||'Vacancy'),priIcon+pri+' Priority &middot; '+(v['Company']||'')+' &middot; '+(v['Current Status']||''),tableHtml,'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  // Bug J fix: View Candidates button when vacancy has tagged candidates
+  const vcBtn=code&&vacCands.length?'<button class="btn btn-t btn-sm" onclick="closeModal();viewVacCandidates(\''+code+'\')">👥 View Candidates ('+vacCands.length+')</button>&nbsp;':'';
+  showModal('📌 '+(v['Designation']||'Vacancy'),priIcon+pri+' Priority &middot; '+(v['Company']||'')+' &middot; '+(v['Current Status']||''),tableHtml,vcBtn+'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+}
+
+// Bug J fix: drill down from vacancy to tagged candidates
+function viewVacCandidates(vacCode){
+  const srchEl=document.getElementById('rSrch');
+  if(srchEl)srchEl.value=vacCode;
+  goPanel('rec');
+  renderRec(true);
 }
 
 function handleJDUpload(event){
@@ -2382,12 +2607,98 @@ function handleJDUpload(event){
 // ══════════════════════════════════════════════════════
 // WHATSAPP + TEAMS
 // ══════════════════════════════════════════════════════
+// Bug F fix: generate JD PDF using jsPDF, auto-download, open WhatsApp after 800ms
+function generateJDPdf(){
+  if(eIdx===-1)return;
+  const r=MD[eIdx];
+  if(typeof window.jspdf==='undefined'){toast('err','PDF Error','jsPDF not loaded. Please refresh and try again.');return;}
+  const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===r[C.vacCode]);
+  const jdTitle=vac&&vac['JD Link']?vac['JD Link']:'';
+  const jd=jdTitle?repoData.jds.find(j=>(j.title||'').trim()===jdTitle):null;
+  if(!jd){toast('warn','No JD Content','No JD content found for this vacancy. Use the link option instead.');return;}
+  const {jsPDF:JSPDF}=window.jspdf;
+  const doc=new JSPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const margin=18,pageW=210,contentW=pageW-margin*2;
+  let y=margin;
+  const brand=[52/255,186/255,198/255];
+  // Header bar
+  doc.setFillColor(...brand);doc.rect(0,0,pageW,12,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+  doc.text('WithAWill HR Consultancy Services LLP',margin,8);
+  doc.text('Talent+ Hire Pulse',pageW-margin,8,'right');
+  y=22;
+  // Title
+  doc.setTextColor(41,27,57);doc.setFontSize(16);doc.setFont('helvetica','bold');
+  doc.text(jd.title||'Job Description',margin,y);y+=8;
+  // Meta line
+  doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(31,92,147);
+  const metaLine=[r[C.client]&&('Client: '+r[C.client]),r[C.position]&&('Role: '+r[C.position]),vac&&vac['Location']&&('Location: '+vac['Location'])].filter(Boolean).join('   |   ');
+  if(metaLine){doc.text(metaLine,margin,y);y+=7;}
+  // Divider
+  doc.setDrawColor(...brand);doc.setLineWidth(0.5);doc.line(margin,y,pageW-margin,y);y+=6;
+  // Helper to add section
+  function addSection(title,items){
+    if(!items||!items.length)return;
+    doc.setFontSize(11);doc.setFont('helvetica','bold');doc.setTextColor(41,27,57);
+    doc.text(title,margin,y);y+=5;
+    doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+    items.forEach(item=>{
+      const txt='• '+(item.q||item.text||item||'');
+      const lines=doc.splitTextToSize(txt,contentW);
+      if(y+lines.length*5>280){doc.addPage();y=margin;}
+      doc.text(lines,margin,y);y+=lines.length*5+1;
+    });
+    y+=3;
+  }
+  if(jd.preRead)addSection('Pre-Read / Context',[{text:jd.preRead}]);
+  if(jd.roleContext)addSection('Role Context',[{text:jd.roleContext}]);
+  if(jd.questions&&jd.questions.length)addSection('Core Interview Questions',jd.questions.slice(0,10));
+  if(jd.additionalQuestions&&jd.additionalQuestions.length)addSection('Additional Questions',jd.additionalQuestions.slice(0,5));
+  if(jd.shortlistCriteria)addSection('Shortlist Criteria',[{text:jd.shortlistCriteria}]);
+  if(jd.redFlags)addSection('Red Flags',[{text:jd.redFlags}]);
+  // Footer
+  doc.setFontSize(8);doc.setTextColor(150,150,150);
+  doc.text('Generated by Talent+ Hire Pulse · WithAWill HR · '+new Date().toLocaleDateString('en-IN'),margin,290);
+  const fname='JD_'+(jd.title||'Role').replace(/[^a-zA-Z0-9]/g,'_')+'_'+r[C.name].replace(/[^a-zA-Z0-9]/g,'_')+'.pdf';
+  doc.save(fname);
+  // Open WhatsApp after 800ms with instruction
+  const mob=r[C.contact];
+  if(mob&&/^\d{10}$/.test(mob)){
+    const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
+    const msg='Hi '+r[C.name]+', please find the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'* attached.\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';
+    setTimeout(()=>window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank'),800);
+    toast('ok','PDF Downloaded','Tap 📎 in WhatsApp to attach the PDF from your Downloads folder.');
+  }else{
+    toast('ok','PDF Downloaded',fname+' saved to Downloads.');
+  }
+}
+
+// Bug F: send JD SharePoint link fallback (F2)
+function sendJDSharePoint(jdLink){
+  if(eIdx===-1)return;const r=MD[eIdx];
+  const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}
+  const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
+  const msg='Hi '+r[C.name]+', please find the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*:\n\n'+jdLink+'\n\nRegards,\n'+rn+', WithAWill HR';
+  window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');
+  toast('ok','JD Link Sent','SharePoint JD link sent to '+r[C.name]);
+}
+
 function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];
-// Get JD link from mapped vacancy
-const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===r[C.vacCode]);
+// Get JD from vacancy chain (Bug F: F1 = PDF if content exists, F2 = link fallback)
+const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===r[C.vacCode]);
+const jdTitle=vac&&vac['JD Link']?vac['JD Link']:'';
+const jd=jdTitle?repoData.jds.find(j=>(j.title||'').trim()===jdTitle):null;
+const hasContent=jd&&(jd.questions&&jd.questions.length||jd.preRead||jd.roleContext);
 const jdLink=vac&&vac['JD Link']?vac['JD Link']:'';
 const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
-const jdBtn=jdLink?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="closeModal();sendJDWA(\''+jdLink+'\')">📄 Send JD (from Vacancy)</button>':'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;opacity:.5" onclick="showCustomJD()">📄 Send JD (enter link)</button>';
+let jdBtn='';
+if(hasContent){
+  jdBtn='<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="closeModal();generateJDPdf()">📄 Send JD as PDF (WhatsApp)</button>';
+}else if(jdLink){
+  jdBtn='<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="closeModal();sendJDSharePoint(\''+jdLink+'\')">📄 Send JD Link (WhatsApp)</button>';
+}else{
+  jdBtn='<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;opacity:.5" onclick="showCustomJD()">📄 Send JD (enter link)</button>';
+}
 showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',jdBtn+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+'<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
 
 function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
@@ -2405,7 +2716,9 @@ function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)p
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
 function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim().replace(/[★*]/g,'').trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
 function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
-async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.vacCode]=obj['Vacancy Code']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
+async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=obj['Profile Sourcing date']||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';nr[C.location]=obj['Current Location']||'';nr[C.dept]=obj['Department']||'';nr[C.position]=obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=obj['Client Name']||'';nr[C.vacCode]=obj['Vacancy Code']||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=obj['Follow-up Date']||'';nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=acct&&acct.name?acct.name.split(' ')[0]:'';nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));
+_bulkSave=true;_bulkExpectedIncrease=added.length;
+await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // ADMIN PANEL
@@ -2418,8 +2731,49 @@ async function doBackup(){showLoad('Creating backup...');try{const ts=new Date()
   // Include invoices in backup
   if(invoices&&invoices.length){try{const invRows=[['id','candCode','candName','client','amount','gst','total','date','due','status'],...invoices.map(i=>[i.id,i.candCode||'',i.candName||'',i.client||'',i.amount||'',i.gst||'',i.total||'',i.date||'',i.due||'',i.status||''])];WB.Sheets['Invoices']=XLSX.utils.aoa_to_sheet(invRows);if(!WB.SheetNames.includes('Invoices'))WB.SheetNames.push('Invoices');}catch(e){console.warn('inv backup',e);}}
   // Save commonRepo pages to WB before backup (ensure latest content)
-  try{const fields=['page1','page2','page4','page5'];const rows=[['key','value'],...fields.map(k=>[k,commonRepo[k]||IG_COMMON_DEFAULTS[k]||''])];WB.Sheets['CommonRepo']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('CommonRepo'))WB.SheetNames.push('CommonRepo');}catch(e){}const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(WB.Sheets['Backups Log']){const ws=WB.Sheets['Backups Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});rows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(rows);await saveWB(false);}hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
-function loadBKList(){const el=document.getElementById('bkList');if(!el)return;try{if(!WB||!WB.Sheets['Backups Log']){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse().slice(0,10);document.getElementById('adm-bk-cnt').textContent=rows.length;el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m" style="font-size:10px">'+r[1]+'</td><td class="m">'+r[2]+'</td><td class="m">'+r[3]+'</td></tr>').join('')+'</tbody></table></div>':'<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';}catch(e){el.innerHTML='<div style="color:#ff6b6b;padding:12px">Error: '+e.message+'</div>';}}
+  try{const fields=['page1','page2','page4','page5'];const rows=[['key','value'],...fields.map(k=>[k,commonRepo[k]||IG_COMMON_DEFAULTS[k]||''])];WB.Sheets['CommonRepo']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('CommonRepo'))WB.SheetNames.push('CommonRepo');}catch(e){}const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(!WB.Sheets['Backups Log']){
+    WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet([['Timestamp','File','By','Records','Type']]);
+    if(!WB.SheetNames.includes('Backups Log'))WB.SheetNames.push('Backups Log');
+  }
+  const bws=WB.Sheets['Backups Log'];
+  const brows=XLSX.utils.sheet_to_json(bws,{header:1,defval:''});
+  brows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);
+  WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(brows);
+  await saveWB(false);
+  hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
+function loadBKList(){
+  const el=document.getElementById('bkList');if(!el)return;
+  try{
+    if(!WB||!WB.Sheets['Backups Log']){
+      el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet. Click Create Backup Now.</div>';
+      return;
+    }
+    // Show ALL backups — never auto-truncate or auto-delete
+    const rows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();
+    const cntEl=document.getElementById('adm-bk-cnt');
+    if(cntEl)cntEl.textContent=rows.length;
+    const autoRows=rows.filter(r=>String(r[1]||'').startsWith('Backup_Auto_'));
+    const manRows=rows.filter(r=>!String(r[1]||'').startsWith('Backup_Auto_'));
+    function renderRows(arr){
+      return arr.map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td>'+
+        '<td class="m" style="font-size:10px">'+r[1]+'</td>'+
+        '<td class="m">'+r[2]+'</td>'+
+        '<td class="m">'+r[3]+'</td>'+
+        '<td style="font-size:10px;color:var(--w40)">'+((r[4]||'Manual'))+'</td></tr>').join('');
+    }
+    el.innerHTML=rows.length?
+      '<div style="font-size:11px;color:var(--w60);margin-bottom:8px">'+
+        '<strong style="color:var(--teal)">'+rows.length+'</strong> total backups stored &nbsp;·&nbsp; '+
+        '<span style="color:var(--w40)">'+autoRows.length+' auto</span> &nbsp;·&nbsp; '+
+        '<span style="color:var(--gold)">'+manRows.length+' manual</span> &nbsp;·&nbsp; '+
+        '<span style="color:var(--w40);font-style:italic">Backups are never deleted automatically.</span>'+
+      '</div>'+
+      '<div class="tw"><table><thead><tr><th>Timestamp</th><th>File</th><th>By</th><th>Records</th><th>Type</th></tr></thead><tbody>'+
+      renderRows(rows)+
+      '</tbody></table></div>':
+      '<div style="text-align:center;padding:20px;color:var(--w60)">No backups yet.</div>';
+  }catch(e){el.innerHTML='<div style="color:#ff6b6b;padding:12px">Error: '+e.message+'</div>';}
+}
 // CHANGELOG
 function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
 // CONFIG / MASTERS
@@ -5806,7 +6160,9 @@ function openInterviewGuide() {
   const code = r[C.code]||'';
   const el = document.getElementById('ig-subtitle');
   if(el) el.textContent = (r[C.name]||'—') + ' · ' + (r[C.position]||'—') + ' · ' + (r[C.client]||'—');
-  // Populate JD footer strip — uses igCachedJD set just above
+  // Bug H fix: resolve igCachedJD BEFORE footer strip renders (was set after — footer always saw null)
+  igCachedJD = igGetJD();
+  // Populate JD footer strip
   const jd = igCachedJD;
   const strip = document.getElementById('ig-jd-strip');
   const titleEl = document.getElementById('ig-jd-title');
@@ -5826,7 +6182,6 @@ function openInterviewGuide() {
   // load existing eval if any
   if(!igEvalData[code]) igEvalData[code] = {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igCurrentPage = 0;
-  igCachedJD = igGetJD();  // resolve JD once — won't be affected by async repoData changes
   igRenderPage();
   document.getElementById('ig-overlay').style.display='block';
 }
@@ -5865,30 +6220,25 @@ function igGoPage(pg) {
 function igNext(){ if(igCurrentPage<5) igGoPage(igCurrentPage+1); }
 function igPrev(){ if(igCurrentPage>0) igGoPage(igCurrentPage-1); }
 
+// Bug H fix: 3-step exact lookup — candidate vacCode → VD['JD Link'] → exact repoData.jds title match
 function igGetJD() {
   if(igCandIdx<0||igCandIdx>=MD.length) return null;
   const r = MD[igCandIdx];
-  const pos = (r[C.position]||'').toLowerCase().trim();
-  const cli = (r[C.client]||'').toLowerCase().trim();
-  const vacCode = r[C.vacCode]||'';
-  if(!pos && !cli && !vacCode) return null;
-  return repoData.jds.find(j=>{
-    // 1. Exact vacancy code match (most precise)
-    if(vacCode && j.vacCode && j.vacCode===vacCode) return true;
-    // 2. JD title matches position (check all significant words, not just first)
-    if(j.title && pos){
-      const jTitle = j.title.toLowerCase();
-      const posWords = pos.split(' ').filter(w=>w.length>2); // skip short words like 'of','at','a'
-      const matches = posWords.filter(w=>jTitle.includes(w));
-      if(posWords.length>0 && matches.length>=Math.ceil(posWords.length*0.6)) return true;
+  const vacCode = (r[C.vacCode]||'').trim();
+  // Step 1: Find vacancy in VD by candidate's vacancy code
+  if(vacCode){
+    const vac = VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===vacCode);
+    if(vac){
+      // Step 2: Get JD title from vacancy's JD Link field
+      const jdTitle = (vac['JD Link']||'').trim();
+      if(jdTitle){
+        // Step 3: Exact title match in repoData.jds
+        const jd = repoData.jds.find(j=>(j.title||'').trim()===jdTitle);
+        if(jd) return jd;
+      }
     }
-    // 3. Client exact match (only if position also overlaps)
-    if(j.client && j.client.toLowerCase()===cli && j.title && pos){
-      const jTitle = j.title.toLowerCase();
-      return pos.split(' ').some(w=>w.length>2&&jTitle.includes(w));
-    }
-    return false;
-  }) || null;
+  }
+  return null;
 }
 
 function igRenderPage() {
