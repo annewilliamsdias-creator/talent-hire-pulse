@@ -810,7 +810,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <button class="btn btn-ghost btn-sm" onclick="dlAllRecords()">⬇ Download</button>
 </div>
 </div>
-<div id="dup-warn" style="display:none;margin-bottom:10px;padding:9px 14px;background:rgba(233,152,43,.1);border:1px solid rgba(233,152,43,.3);border-radius:var(--rs);font-size:11px;color:#e9982b;display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="dup-warn-msg">⚠ Duplicate candidate rows detected in Data sheet. Showing deduped view. Admin cleanup required.</span><button class="btn btn-ghost btn-sm" style="font-size:10px;color:#e9982b;border-color:#e9982b;padding:3px 9px;flex-shrink:0" onclick="goPanel('adm');switchATab('dupcleanup')">View Duplicate Report</button></div>
 <div class="tw"><table id="recTable"><thead><tr><th onclick="sortRec(0,'code')">Code</th><th onclick="sortRec(1,'name')">Name</th><th onclick="sortRec(2,'position')">Position</th><th onclick="sortRec(3,'client')">Client</th><th onclick="sortRec(4,'status')">Status</th><th onclick="sortRec(5,'followupDate')">Follow-up</th><th onclick="sortRec(6,'recruiter')">Recruiter</th><th onclick="sortRec(7,'sourcingDate')">Sourced</th><th>Actions</th></tr></thead><tbody id="rBody"></tbody></table></div>
 <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="rCount"></div>
 </div>
@@ -1218,7 +1217,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="atab" id="at-dashconfig" onclick="switchATab('dashconfig')">📊 Dashboard</div>
 <div class="atab" id="at-users" onclick="switchATab('users')">👥 Users</div>
 <div class="atab" id="at-commonrepo" onclick="switchATab('commonrepo')">📋 Interview Repository</div>
-<div class="atab" id="at-dupcleanup" onclick="switchATab('dupcleanup')" style="color:#e9982b">🧹 Duplicate Cleanup</div>
 </div>
 <!-- BILLING CONFIG -->
 <div id="ap-billing" class="hidden">
@@ -1379,27 +1377,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 </div></div>
 
-<!-- DUPLICATE CLEANUP -->
-<div id="ap-dupcleanup" class="hidden">
-  <div class="card">
-    <div class="card-hdr">
-      <div class="card-title"><span class="ac" style="color:#e9982b">🧹</span> Duplicate Candidate Cleanup</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="runDupScan()">🔄 Rescan</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportDupReport()">⬇ Export Report</button>
-        <button class="btn btn-g btn-sm" id="btn-cleanup-selected" onclick="confirmCleanup()" style="display:none">🧹 Cleanup Selected Duplicates</button>
-      </div>
-    </div>
-    <div id="dup-summary-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;padding:14px;background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs)">
-      <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:var(--ow)" id="dup-stat-total">—</div><div style="font-size:10px;color:var(--w60);letter-spacing:1px;text-transform:uppercase">Total Records</div></div>
-      <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:var(--teal)" id="dup-stat-unique">—</div><div style="font-size:10px;color:var(--w60);letter-spacing:1px;text-transform:uppercase">Unique Candidates</div></div>
-      <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#e9982b" id="dup-stat-groups">—</div><div style="font-size:10px;color:var(--w60);letter-spacing:1px;text-transform:uppercase">Duplicate Groups</div></div>
-      <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#ff6b6b" id="dup-stat-rows">—</div><div style="font-size:10px;color:var(--w60);letter-spacing:1px;text-transform:uppercase">Duplicate Rows</div></div>
-    </div>
-    <div id="dup-groups-container"></div>
-  </div>
-</div>
-
 <!-- VALIDATION RESULTS -->
 <div class="card hidden" id="valResultCard">
   <div class="card-hdr">
@@ -1439,8 +1416,6 @@ let WB=null,MD=[],VD=[],HDR=[],VHDR=[];
 let siteId=null,fileId=null,tok=null,acct=null;
 let eIdx=-1,epIdx=-1,vacEIdx=-1,appUsers=[];
 let curRole='Recruiter',curUser=null,bulkRows=[];
-let DUP_SCAN={clean:[],duplicateGroups:[],duplicateCount:0};
-let _dupCleanupSave=false; // set true only during admin-initiated cleanup saves
 
 const C={code:'Candidate code',sourcingDate:'Profile Sourcing date',screeningDate:'Profile Screening date',
 source:'Source',sourceDetails:'Source Details',name:'Name',combinedLoc:'Combined Location',
@@ -1857,17 +1832,9 @@ else{
     setTimeout(()=>{try{const rows=[['type','data'],...repoData.jds.map(d=>['jd',JSON.stringify(d)]),...repoData.scripts.map(d=>['script',JSON.stringify(d)]),...repoData.help.map(d=>['help',JSON.stringify(d)])];WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');saveWB(false).then(()=>console.log('Repo migrated to SharePoint'));}catch(e){console.warn('Repo migrate failed',e);}},3000);
   }
 }
-DUP_SCAN=scanDuplicateCandidates(MD);loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();}
+loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();}
 async function saveWB(msg){
-if(!WB)return;
-// Duplicate guard — block saves if duplicate rows exist, unless this is an admin-initiated cleanup save
-const preScan=scanDuplicateCandidates(MD);
-if(preScan.duplicateGroups.length&&!_dupCleanupSave){
-  const rd=ROLES[curRole]||{};
-  if(!rd.admin){hideLoad();toast('err','Duplicate Records Detected','Duplicate candidate rows exist. Ask Admin to clean duplicates in Admin → Duplicate Cleanup before saving.');throw new Error('Duplicate save blocked — non-admin');}
-  else{hideLoad();toast('err','Duplicate Records Detected','Duplicate candidate rows found. Use Admin → Duplicate Cleanup to remove them first.');throw new Error('Duplicate save blocked — admin must use cleanup');}
-}
-showLoad(msg||'Saving...');
+if(!WB)return;showLoad(msg||'Saving...');
 try{rebuildDS();const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});
 await refreshToken();
 const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
@@ -1938,7 +1905,7 @@ VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv
 // UI INIT
 // ══════════════════════════════════════════════════════
 function initUI(){updateTopbar();refreshAllFilters();loadDash();renderRec();renderVac();initMastersGrid();}
-function updateTopbar(){const base=DUP_SCAN.clean.length?DUP_SCAN.clean:MD;document.getElementById('tbTot').textContent=base.length;const act=base.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
+function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
 function toggleMobNav(){const sb=document.querySelector('.sidebar');const ov=document.getElementById('mob-overlay');if(!sb)return;const open=sb.classList.toggle('mob-open');if(ov)ov.classList.toggle('visible',open);}
 function closeMobNav(){const sb=document.querySelector('.sidebar');const ov=document.getElementById('mob-overlay');if(sb)sb.classList.remove('mob-open');if(ov)ov.classList.remove('visible');}
 function goPanel(name){
@@ -1977,20 +1944,18 @@ const hfRec=(document.getElementById('hf-rec')&&document.getElementById('hf-rec'
 const hfCli=(document.getElementById('hf-cli')&&document.getElementById('hf-cli').value)||'';
 const hfFrom=(document.getElementById('hf-from')&&document.getElementById('hf-from').value)||'';
 const hfTo=(document.getElementById('hf-to')&&document.getElementById('hf-to').value)||'';
-// Use deduplicated set for all dashboard counts and lists — do not mutate MD
-const base=DUP_SCAN.clean.length?DUP_SCAN.clean:MD;
-const hfMD=base.filter(r=>(!hfRec||r[C.recruiter]===hfRec)&&(!hfCli||r[C.client]===hfCli)&&(!hfFrom||!r[C.followupDate]||r[C.followupDate]>=hfFrom)&&(!hfTo||!r[C.followupDate]||r[C.followupDate]<=hfTo));
+const hfMD=MD.filter(r=>(!hfRec||r[C.recruiter]===hfRec)&&(!hfCli||r[C.client]===hfCli)&&(!hfFrom||!r[C.followupDate]||r[C.followupDate]>=hfFrom)&&(!hfTo||!r[C.followupDate]||r[C.followupDate]<=hfTo));
 const td=today(),tm=td.slice(0,7),in3=addDays(td,3);
 const pend=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
 // Update both KPI row and topbar
 const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-sv2('kpi-total', base.length);
-sv2('kpi-active', base.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
-sv2('kpi-joined', base.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length);
+sv2('kpi-total', MD.length);
+sv2('kpi-active', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+sv2('kpi-joined', MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length);
 sv2('ds-pen', pend.length);
 sv2('pendBadge', pend.length);
-sv2('tbTot', base.length);
-sv2('tbAct', base.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+sv2('tbTot', MD.length);
+sv2('tbAct', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
 const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
 // Action queue
 const items=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])).map(r=>{const fd=r[C.followupDate];const u=fd<td?'ov':fd===td?'td':fd<=in3?'up':null;return u?{r,fd,u}:null;}).filter(Boolean).sort((a,b)=>{const o={ov:0,td:1,up:2};return o[a.u]-o[b.u]||a.fd.localeCompare(b.fd);}).slice(0,25);
@@ -2259,25 +2224,14 @@ function renderRec(){
 const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec');
 const scope=gv('rScope')||'all';
 refreshAllFilters();
-// Show/hide duplicate warning banner
-const dw=document.getElementById('dup-warn');
-if(dw){
-  if(DUP_SCAN.duplicateGroups.length){
-    dw.style.display='flex';
-    const msg=document.getElementById('dup-warn-msg');
-    if(msg)msg.textContent='⚠ '+DUP_SCAN.duplicateCount+' duplicate rows detected in Data sheet across '+DUP_SCAN.duplicateGroups.length+' groups. Showing deduped view ('+(DUP_SCAN.clean.length)+' unique candidates). Admin cleanup required.';
-  }else{dw.style.display='none';}
-}
-// Use deduplicated records for display — do not mutate MD
-const base=DUP_SCAN.clean.length?DUP_SCAN.clean:MD;
-const filtered=base.filter(r=>{
+const filtered=MD.filter(r=>{
   const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch);
   const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
   return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf)&&(!rf||r[C.recruiter]===rf);
 });
 const tb=document.getElementById('rBody');if(!tb)return;
 tb.innerHTML=filtered.slice(0,500).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
-const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.min(filtered.length,500)+' of '+filtered.length+' records ('+base.length+' unique, '+MD.length+' total in database)';}
+const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+Math.min(filtered.length,500)+' of '+filtered.length+' records ('+MD.length+' total in database)';}
 
 function viewCandModal(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
@@ -2458,7 +2412,7 @@ async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.le
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo','dupcleanup'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}if(tab==='dupcleanup')renderDupCleanup();}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();
   // Include invoices in backup
@@ -2621,161 +2575,6 @@ function fmtD(s){if(!s||s==='nan'||!String(s).trim())return'';const d=new Date(s
 function bdg(s){s=(s||'').toLowerCase();if(s==='Active')return'b-wip';if(s==='joined')return'b-joined';if(s.includes('reject'))return'b-rejected';if(s==='selected')return'b-selected';if(s.includes('offer'))return'b-offered';if(s==='on hold')return'b-hold';if(s==='dropped'||s==='not contactable'||s==='not interested')return'b-grey';if(s.includes('progress')||s.includes('shortlisted'))return'b-progress';return'b-wip';}
 function genCode(){const yr=new Date().getFullYear();const nums=MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}).filter(n=>n>0);const next=nums.length>0?Math.max(...nums)+1:1269;return'Talent+Hire/'+yr+'/'+String(next).padStart(6,'0');}
 function dupChk(mob,em,excl){const res=[];if(mob&&/^\d{10}$/.test(mob)){const f=MD.find(r=>String(r[C.contact]).trim()===mob&&r[C.code]!==excl);if(f)res.push({type:'Mobile',r:f});}if(em&&em.includes('@')){const f=MD.find(r=>String(r[C.email]).trim().toLowerCase()===em.toLowerCase()&&r[C.code]!==excl);if(f&&!res.find(x=>x.r[C.code]===f[C.code]))res.push({type:'Email',r:f});}return res;}
-
-// ══════════════════════════════════════════════════════
-// DUPLICATE DETECTION — A through J
-// ══════════════════════════════════════════════════════
-
-function normText(v){if(v===null||v===undefined)return '';return String(v).trim().toLowerCase().replace(/\s+/g,' ');}
-function normMobile(v){const s=String(v||'').replace(/\D/g,'');if(s.length>10)return s.slice(-10);if(s.length<7)return '';return s;}
-function normEmail(v){return String(v||'').trim().toLowerCase();}
-function candidateKey(r){
-  const code=String(r[C.code]||'').trim();if(code)return {key:code,reason:'Candidate Code'};
-  const mob=normMobile(r[C.contact]);if(mob)return {key:'mob:'+mob,reason:'Mobile '+mob};
-  const em=normEmail(r[C.email]);if(em&&em.includes('@'))return {key:'em:'+em,reason:'Email '+em};
-  const nm=normText(r[C.name]),mob2=normMobile(r[C.contact]),em2=normEmail(r[C.email]);
-  if(nm&&(mob2||em2))return {key:'nme:'+nm+'|'+mob2+'|'+em2,reason:'Name+Mobile+Email composite'};
-  const co=normText(r[C.company]),de=normText(r[C.designation]);
-  if(nm&&co&&de)return {key:'ncd:'+nm+'|'+co+'|'+de,reason:'Name+Company+Designation fallback'};
-  return {key:'',reason:''};
-}
-
-function scanDuplicateCandidates(records){
-  const groups={};
-  records.forEach((r,i)=>{
-    const {key,reason}=candidateKey(r);
-    if(!key)return;
-    if(!groups[key])groups[key]={reason,records:[]};
-    groups[key].records.push({r,i});
-  });
-  const clean=[];const duplicateGroups=[];let duplicateCount=0;
-  Object.values(groups).forEach(g=>{
-    if(g.records.length===1){clean.push(g.records[0].r);return;}
-    // Pick primary: prefer latest updatedOn, else most non-empty fields, else first occurrence
-    let primary=g.records[0];
-    g.records.forEach(item=>{
-      const aDate=String(item.r[C.updatedOn]||item.r['Last Updated On']||item.r['Modified Date']||'');
-      const bDate=String(primary.r[C.updatedOn]||primary.r['Last Updated On']||primary.r['Modified Date']||'');
-      if(aDate>bDate){primary=item;return;}
-      if(aDate===bDate){const aC=Object.values(item.r).filter(v=>v!==''&&v!==null&&v!==undefined).length;const bC=Object.values(primary.r).filter(v=>v!==''&&v!==null&&v!==undefined).length;if(aC>bC)primary=item;}
-    });
-    clean.push(primary.r);
-    const dups=g.records.filter(item=>item.i!==primary.i);
-    duplicateCount+=dups.length;
-    duplicateGroups.push({groupKey:g.records[0]&&candidateKey(g.records[0].r).key,reason:g.reason,primary:primary.r,duplicates:dups.map(d=>d.r),allRecords:g.records.map(d=>d.r)});
-  });
-  // Include records with no key (no code, mobile, or email) — add to clean as-is
-  records.forEach(r=>{const {key}=candidateKey(r);if(!key)clean.push(r);});
-  return {clean,duplicateGroups,duplicateCount};
-}
-
-function runDupScan(){DUP_SCAN=scanDuplicateCandidates(MD);renderDupCleanup();renderRec();updateTopbar();}
-
-function renderDupCleanup(){
-  const scan=DUP_SCAN;
-  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  s('dup-stat-total',MD.length);
-  s('dup-stat-unique',scan.clean.length);
-  s('dup-stat-groups',scan.duplicateGroups.length);
-  s('dup-stat-rows',scan.duplicateCount);
-  const btn=document.getElementById('btn-cleanup-selected');
-  if(btn)btn.style.display=scan.duplicateGroups.length?'':'none';
-  const con=document.getElementById('dup-groups-container');if(!con)return;
-  if(!scan.duplicateGroups.length){
-    con.innerHTML='<div style="text-align:center;padding:32px;color:var(--w60)">✅ No duplicate candidates detected. All records are unique.</div>';
-    return;
-  }
-  con.innerHTML=scan.duplicateGroups.map((g,gi)=>{
-    const rows=g.allRecords.map((r,ri)=>{
-      const isPrimary=(r===g.primary);
-      const nonEmpty=Object.values(r).filter(v=>v!==''&&v!==null&&v!==undefined).length;
-      return '<tr style="'+(isPrimary?'background:rgba(52,186,198,.06);':'')+'border-bottom:1px solid var(--w08)">'
-        +'<td style="padding:7px 10px;white-space:nowrap"><input type="radio" name="dup-keep-'+gi+'" value="'+ri+'" '+(isPrimary?'checked':'')+' style="accent-color:var(--teal)"></td>'
-        +'<td style="padding:7px 10px"><span class="mono" style="font-size:10px">'+r[C.code]+'</span>'+(isPrimary?'<span style="font-size:9px;color:var(--teal);margin-left:5px;font-weight:700">★ SUGGESTED PRIMARY</span>':'')+'</td>'
-        +'<td style="padding:7px 10px;font-size:12px"><strong>'+r[C.name]+'</strong></td>'
-        +'<td style="padding:7px 10px;font-size:11px;color:var(--w60)">'+r[C.contact]+'</td>'
-        +'<td style="padding:7px 10px;font-size:11px;color:var(--w60)">'+r[C.email]+'</td>'
-        +'<td style="padding:7px 10px"><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td>'
-        +'<td style="padding:7px 10px;font-size:11px;color:var(--w60)">'+r[C.recruiter]+'</td>'
-        +'<td style="padding:7px 10px;font-size:11px;color:var(--w60)">'+fmtD(r[C.updatedOn])+'</td>'
-        +'<td style="padding:7px 10px;font-size:11px;color:var(--w60)">'+nonEmpty+' fields</td>'
-        +'</tr>';
-    }).join('');
-    return '<div data-gi="'+gi+'" style="margin-bottom:16px;border:1px solid rgba(233,152,43,.3);border-radius:var(--rs);overflow:hidden">'
-      +'<div style="padding:8px 12px;background:rgba(233,152,43,.08);font-size:11px;color:#e9982b;font-weight:600">Group '+(gi+1)+' — '+g.reason+' &nbsp;·&nbsp; '+g.allRecords.length+' rows</div>'
-      +'<div class="tw" style="margin:0"><table style="width:100%;font-size:11px"><thead><tr style="background:rgba(0,0,0,.2)">'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">KEEP</th>'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">CODE</th>'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">NAME</th>'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">MOBILE</th>'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">EMAIL</th>'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">STATUS</th>'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">RECRUITER</th>'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">LAST UPDATED</th>'
-      +'<th style="padding:6px 10px;font-size:9px;color:var(--w60);letter-spacing:.8px">FIELDS</th>'
-      +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-  }).join('');
-}
-
-function exportDupReport(){
-  if(!DUP_SCAN.duplicateGroups.length){toast('info','No Duplicates','No duplicate groups to export.');return;}
-  const rows=[['Group','Reason','Record Type','Code','Name','Mobile','Email','Status','Recruiter','Last Updated','Non-empty Fields']];
-  DUP_SCAN.duplicateGroups.forEach((g,gi)=>{
-    g.allRecords.forEach(r=>{
-      const isPrimary=r===g.primary;
-      rows.push([gi+1,g.reason,isPrimary?'PRIMARY':'DUPLICATE',r[C.code],r[C.name],r[C.contact],r[C.email],r[C.status],r[C.recruiter],r[C.updatedOn],Object.values(r).filter(v=>v!==''&&v!==null&&v!==undefined).length]);
-    });
-  });
-  const ws2=XLSX.utils.aoa_to_sheet(rows);
-  const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws2,'Duplicate Report');
-  XLSX.writeFile(wb2,'THP_Duplicate_Report_'+today()+'.xlsx');
-  toast('ok','Report Downloaded',DUP_SCAN.duplicateGroups.length+' groups exported');
-}
-
-function confirmCleanup(){
-  if(!DUP_SCAN.duplicateGroups.length){toast('info','No Duplicates','Nothing to clean up.');return;}
-  // Read selected records from the radio buttons in the UI
-  const selections=[];
-  DUP_SCAN.duplicateGroups.forEach((g,gi)=>{
-    const radios=document.querySelectorAll('input[name="dup-keep-'+gi+'"]');
-    let sel=null;
-    radios.forEach((radio,ri)=>{if(radio.checked)sel=g.allRecords[ri];});
-    if(!sel)sel=g.primary;
-    selections.push({group:g,keep:sel});
-  });
-  const totalToRemove=DUP_SCAN.duplicateCount;
-  showModal('🧹 Confirm Duplicate Cleanup',
-    'This will permanently remove '+totalToRemove+' duplicate candidate row'+(totalToRemove>1?'s':'')+' from the active Data sheet.',
-    '<div style="padding:10px 0;font-size:12px;color:var(--w60);line-height:1.7">A backup will be created first before any rows are removed.<br><br>'
-    +'<strong style="color:var(--ow)">'+DUP_SCAN.duplicateGroups.length+' groups</strong> will be resolved.<br>'
-    +'<strong style="color:#ff6b6b">'+totalToRemove+' rows</strong> will be removed.<br>'
-    +'<strong style="color:var(--teal)">'+(DUP_SCAN.clean.length)+' records</strong> will be retained.</div>',
-    '<button class="btn btn-g" onclick="closeModal();executeDupCleanup('+JSON.stringify(selections.map(s=>s.keep[C.code]))+')" style="background:#e9982b">Confirm — Create Backup &amp; Remove Duplicates</button>'
-    +'&nbsp;<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
-}
-
-async function executeDupCleanup(keepCodes){
-  showLoad('Creating backup before cleanup...');
-  try{
-    await doBackup();
-  }catch(e){hideLoad();toast('err','Backup Failed','Could not create backup. Cleanup aborted.');return;}
-  showLoad('Removing '+DUP_SCAN.duplicateCount+' duplicate rows...');
-  try{
-    // Keep only records whose code is in keepCodes, plus any records that are not in any duplicate group
-    const groupCodes=new Set(DUP_SCAN.duplicateGroups.flatMap(g=>g.allRecords.map(r=>r[C.code])));
-    const keepSet=new Set(keepCodes);
-    const removed=MD.filter(r=>groupCodes.has(r[C.code])&&!keepSet.has(r[C.code])).length;
-    MD=MD.filter(r=>!groupCodes.has(r[C.code])||keepSet.has(r[C.code]));
-    writeCL('Duplicate Cleanup','Multiple','Data','Multiple duplicates','Removed '+removed+' duplicate rows','Admin: '+(acct&&acct.name?acct.name:''));
-    _dupCleanupSave=true;
-    await saveWB('Saving cleaned data to SharePoint...');
-    _dupCleanupSave=false;
-    DUP_SCAN=scanDuplicateCandidates(MD);
-    renderDupCleanup();renderRec();updateTopbar();loadDash();
-    hideLoad();
-    toast('ok','Cleanup Complete','Removed '+removed+' duplicate rows. '+MD.length+' records retained.'+(DUP_SCAN.duplicateGroups.length?' '+DUP_SCAN.duplicateGroups.length+' groups still remain.':' No more duplicates.'));
-  }catch(e){_dupCleanupSave=false;hideLoad();toast('err','Cleanup Failed',e.message);}
-}
 function gv(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 function sv(id,val){const el=document.getElementById(id);if(el)el.value=val!==undefined&&val!==null?val:'';}
 function setStat(s){const el=document.getElementById('loginStatus');if(el)el.textContent=s;}
