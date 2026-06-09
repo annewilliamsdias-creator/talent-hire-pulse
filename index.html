@@ -2608,55 +2608,20 @@ function handleJDUpload(event){
 // WHATSAPP + TEAMS
 // ══════════════════════════════════════════════════════
 // Bug F fix: generate JD PDF using jsPDF, auto-download, open WhatsApp after 800ms
-// Bug F — revised: fetch JD from SharePoint via Graph API, open as PDF in new tab (Safari-safe)
-async function generateJDPdf(){
+// Bug F — simplified: open JD in new tab, user downloads manually
+function viewJDLink(){
   if(eIdx===-1)return;
   const r=MD[eIdx];
   const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===r[C.vacCode]);
-  // VD['JD Link'] = JD title → match repoData.jds → use jd.link as SharePoint URL
   const jdTitle=vac&&vac['JD Link']?vac['JD Link'].trim():'';
   const jdEntry=jdTitle?repoData.jds.find(j=>(j.title||'').trim()===jdTitle):null;
   const jdLink=jdEntry?(jdEntry.link||''):'';
   if(!jdLink){
-    if(!jdTitle)toast('warn','No JD Linked','No JD is linked to this vacancy. Set it via Vacancies → Edit → JD from Repository.');
-    else toast('warn','No JD URL','JD "'+jdTitle+'" has no SharePoint link. Add it via Repositories → JDs → Edit → Link field.');
+    if(!jdTitle)toast('warn','No JD Linked','No JD linked to this vacancy. Set via Vacancies → Edit → JD from Repository.');
+    else toast('warn','No JD URL','JD "'+jdTitle+'" has no link. Add via Repositories → JDs → Edit → Link field.');
     return;
   }
-  showLoad('Fetching JD from SharePoint...');
-  try{
-    // Step 1: open JD in new tab for viewing
-    window.open(jdLink,'_blank');
-    await refreshToken();
-    // Step 2: fetch PDF via Graph API for download
-    const encoded='u!'+btoa(jdLink).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    // Try format=pdf (converts .docx to PDF server-side; returns .pdf as-is)
-    let resp=await fetch(GRAPH+'/shares/'+encoded+'/driveItem/content?format=pdf',
-      {headers:{Authorization:'Bearer '+tok}});
-    // 415 = format not supported for this file type — fetch raw (already PDF or other)
-    if(resp.status===415){
-      resp=await fetch(GRAPH+'/shares/'+encoded+'/driveItem/content',
-        {headers:{Authorization:'Bearer '+tok}});
-    }
-    if(!resp.ok)throw new Error('Could not fetch JD (HTTP '+resp.status+'). Check the SharePoint link in the vacancy.');
-    const blob=await resp.blob();
-    const blobUrl=URL.createObjectURL(blob);
-    // Open in new tab — works on Chrome, Edge, Firefox, Safari macOS, Safari iOS
-    window.open(blobUrl,'_blank');
-    hideLoad();
-    // WhatsApp after 800ms
-    const mob=r[C.contact];
-    if(mob&&/^\d{10}$/.test(mob)){
-      const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
-      const msg='Hi '+r[C.name]+', please find the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'* attached.\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';
-      setTimeout(()=>window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank'),1500);
-      toast('ok','JD Ready','JD opened for review. PDF downloading — attach from Downloads in WhatsApp 📎');
-    }else{
-      toast('ok','JD Opened','JD opened in new tab.');
-    }
-  }catch(e){
-    hideLoad();
-    toast('err','JD Fetch Failed',e.message);
-  }
+  window.open(jdLink,'_blank');
 }
 
 // Bug F: send JD SharePoint link fallback (F2)
@@ -2670,17 +2635,19 @@ function sendJDSharePoint(jdLink){
 }
 
 function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];
-// Get JD link from vacancy — Bug F: fetch from SharePoint if link exists
 const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===r[C.vacCode]);
-const jdLink=vac&&vac['JD Link']?vac['JD Link'].trim():'';
+const jdTitle=vac&&vac['JD Link']?vac['JD Link'].trim():'';
+const jdEntry=jdTitle?repoData.jds.find(j=>(j.title||'').trim()===jdTitle):null;
+const hasJD=!!(jdEntry&&jdEntry.link);
 const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
-let jdBtn='';
-if(jdLink){
-  jdBtn='<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="closeModal();generateJDPdf()">📄 Open JD + Send via WhatsApp</button>';
-}else{
-  jdBtn='<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;opacity:.5" onclick="showCustomJD()">📄 Send JD (enter link)</button>';
-}
-showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',jdBtn+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+'<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
+// Two separate buttons: View JD (manual download) + WhatsApp templates
+const jdSection=hasJD
+  ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="viewJDLink()">📄 View JD — '+jdTitle+'</button>'
+  :'<div style="font-size:11px;color:var(--w40);padding:4px 0 8px">No JD linked to this vacancy</div>';
+showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',
+  jdSection+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',
+  tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+
+  '<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
 
 function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
 
@@ -6018,7 +5985,7 @@ function dlChartPNG(canvasId, name) {
   <div id="ig-jd-strip" style="display:none;padding:6px 20px;background:rgba(52,186,198,.06);border-top:1px solid rgba(52,186,198,.12);border-bottom:1px solid rgba(52,186,198,.12);display:flex;align-items:center;gap:10px;flex-shrink:0">
     <span style="font-size:10px;color:var(--teal);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">📄 JD</span>
     <span id="ig-jd-title" style="font-size:11px;color:var(--ow);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
-    <a id="ig-jd-link" href="#" target="_blank" style="font-size:10px;color:var(--teal);white-space:nowrap;text-decoration:none;padding:2px 8px;border:1px solid rgba(52,186,198,.3);border-radius:6px">View JD ↗</a>
+    <a id="ig-jd-link" href="#" onclick="if(igCachedJD&&igCachedJD.link){window.open(igCachedJD.link,'_blank');}event.stopPropagation();return false;" style="font-size:10px;color:var(--teal);white-space:nowrap;text-decoration:none;padding:2px 8px;border:1px solid rgba(52,186,198,.3);border-radius:6px;cursor:pointer">View JD ↗</a>
   </div>
   <!-- Footer nav -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--w08);flex-shrink:0">
