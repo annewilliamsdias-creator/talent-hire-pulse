@@ -2613,12 +2613,21 @@ async function generateJDPdf(){
   if(eIdx===-1)return;
   const r=MD[eIdx];
   const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===r[C.vacCode]);
-  const jdLink=vac&&vac['JD Link']?vac['JD Link'].trim():'';
-  if(!jdLink){toast('warn','No JD Link','No JD file linked to this vacancy. Add a SharePoint link via Vacancies.');return;}
+  // VD['JD Link'] = JD title → match repoData.jds → use jd.link as SharePoint URL
+  const jdTitle=vac&&vac['JD Link']?vac['JD Link'].trim():'';
+  const jdEntry=jdTitle?repoData.jds.find(j=>(j.title||'').trim()===jdTitle):null;
+  const jdLink=jdEntry?(jdEntry.link||''):'';
+  if(!jdLink){
+    if(!jdTitle)toast('warn','No JD Linked','No JD is linked to this vacancy. Set it via Vacancies → Edit → JD from Repository.');
+    else toast('warn','No JD URL','JD "'+jdTitle+'" has no SharePoint link. Add it via Repositories → JDs → Edit → Link field.');
+    return;
+  }
   showLoad('Fetching JD from SharePoint...');
   try{
+    // Step 1: open JD in new tab for viewing
+    window.open(jdLink,'_blank');
     await refreshToken();
-    // Encode SharePoint sharing URL for Graph API /shares/ endpoint
+    // Step 2: fetch PDF via Graph API for download
     const encoded='u!'+btoa(jdLink).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
     // Try format=pdf (converts .docx to PDF server-side; returns .pdf as-is)
     let resp=await fetch(GRAPH+'/shares/'+encoded+'/driveItem/content?format=pdf',
@@ -2639,8 +2648,8 @@ async function generateJDPdf(){
     if(mob&&/^\d{10}$/.test(mob)){
       const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
       const msg='Hi '+r[C.name]+', please find the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'* attached.\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';
-      setTimeout(()=>window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank'),800);
-      toast('ok','JD Opened','JD opened in new tab — save/print as PDF, then attach in WhatsApp 📎');
+      setTimeout(()=>window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank'),1500);
+      toast('ok','JD Ready','JD opened for review. PDF downloading — attach from Downloads in WhatsApp 📎');
     }else{
       toast('ok','JD Opened','JD opened in new tab.');
     }
