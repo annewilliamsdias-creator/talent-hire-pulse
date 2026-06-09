@@ -500,6 +500,130 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 /* end CR-UI-001 */
 
+/* ─────────────────────────────────────────────────────────────
+   HOME + ANALYTICS dark polish  (June 9 2026)
+───────────────────────────────────────────────────────────── */
+
+/* Home & Analytics — premium dark card treatment */
+#p-home .card, #p-analytics .chart-card {
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:var(--r);
+}
+#p-home .card:hover { background:rgba(255,255,255,.06); }
+
+/* Home filters card */
+#p-home .card.mb0 {
+  background:rgba(31,92,147,.18);
+  border:1px solid rgba(52,186,198,.15);
+}
+
+/* KPI cards on home */
+#p-home .kpi {
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.09);
+}
+#p-home .kpi:hover { background:rgba(255,255,255,.07); }
+
+/* ── Action Queue Accordion ── */
+.aq-summary {
+  display:flex;
+  align-items:stretch;
+  gap:0;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--rs);
+  margin-bottom:14px;
+  overflow:hidden;
+}
+.aq-sum-item {
+  flex:1;
+  text-align:center;
+  padding:12px 8px;
+}
+.aq-sum-sep {
+  width:1px;
+  background:rgba(255,255,255,.08);
+}
+.aq-sum-val {
+  font-family:"Cormorant Garamond",serif;
+  font-size:26px;
+  font-weight:700;
+  line-height:1;
+}
+.aq-sum-lbl {
+  font-size:10px;
+  letter-spacing:1.2px;
+  text-transform:uppercase;
+  color:var(--w60);
+  margin-top:4px;
+}
+.aq-sum-item.ov .aq-sum-val { color:#ff6b6b; }
+.aq-sum-item.td .aq-sum-val { color:var(--gold); }
+.aq-sum-item.up .aq-sum-val { color:var(--teal); }
+
+/* Accordion sections */
+.aq-section { margin-bottom:8px; border-radius:var(--rs); overflow:hidden; border:1px solid rgba(255,255,255,.08); }
+.aq-sec-hdr {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 14px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  user-select:none;
+  transition:background .15s;
+  letter-spacing:.3px;
+}
+.aq-sec-hdr.ov { background:rgba(255,107,107,.12); color:#ff9a9a; border-bottom:1px solid rgba(255,107,107,.15); }
+.aq-sec-hdr.ov:hover { background:rgba(255,107,107,.18); }
+.aq-sec-hdr.td { background:rgba(233,152,43,.14); color:var(--gold); border-bottom:1px solid rgba(233,152,43,.2); }
+.aq-sec-hdr.td:hover { background:rgba(233,152,43,.20); }
+.aq-sec-hdr.up { background:rgba(52,186,198,.10); color:var(--teal); border-bottom:1px solid rgba(52,186,198,.15); }
+.aq-sec-hdr.up:hover { background:rgba(52,186,198,.16); }
+
+.aq-cnt {
+  font-family:"DM Mono",monospace;
+  font-size:11px;
+  font-weight:700;
+  padding:2px 8px;
+  border-radius:10px;
+}
+.aq-cnt.ov { background:rgba(255,107,107,.2); color:#ff9a9a; }
+.aq-cnt.td { background:rgba(233,152,43,.2); color:var(--gold); }
+.aq-cnt.up { background:rgba(52,186,198,.15); color:var(--teal); }
+.aq-chevron { font-size:10px; opacity:.7; }
+
+/* Queue table inside accordion */
+.aq-sec-body { background:rgba(255,255,255,.02); }
+.aq-table { width:100%; border-collapse:collapse; }
+.aq-table thead tr { background:rgba(31,92,147,.35); }
+.aq-table thead th { padding:7px 11px; font-size:10px; font-weight:600; color:rgba(251,251,250,.75); letter-spacing:.7px; text-transform:uppercase; white-space:nowrap; }
+.aq-table tbody tr { border-bottom:1px solid rgba(255,255,255,.05); transition:background .12s; }
+.aq-table tbody tr:last-child { border-bottom:none; }
+.aq-table tbody tr:hover { background:rgba(52,186,198,.07); }
+.aq-table tbody td { padding:9px 11px; vertical-align:middle; }
+.aq-name { font-size:12px; font-weight:600; color:var(--ow); }
+.aq-code { font-family:"DM Mono",monospace; font-size:10px; color:var(--w60); margin-top:1px; }
+.aq-cell { font-size:11px; color:var(--w60); }
+.aq-date { font-family:"DM Mono",monospace; font-size:11px; white-space:nowrap; }
+.aq-date.ov { color:#ff6b6b; }
+.aq-date.td { color:var(--gold); }
+.aq-date.up { color:var(--teal); }
+.aq-upd-btn { white-space:nowrap; }
+.aq-empty { text-align:center; padding:26px; color:var(--w60); font-size:13px; }
+
+/* Analytics dark panel explicit exclusion (belt-and-suspenders) */
+#p-analytics label { color:var(--w60) !important; font-weight:600; font-size:11px; }
+#p-analytics input, #p-analytics select {
+  background:rgba(255,255,255,.07);
+  color:var(--ow);
+  border:1px solid rgba(255,255,255,.12);
+}
+#p-analytics .btn-ghost { color:var(--w60); border-color:rgba(255,255,255,.12); }
+#p-analytics .btn-ghost:hover { background:rgba(255,255,255,.08); color:var(--ow); }
+
 </style>
 </head>
 <body>
@@ -2355,27 +2479,17 @@ sv2('pendBadge', pend.length);
 sv2('tbTot', MD.length);
 sv2('tbAct', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
 const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
-// Action queue
-const items=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])).map(r=>{const fd=r[C.followupDate];const u=fd<td?'ov':fd===td?'td':fd<=in3?'up':null;return u?{r,fd,u}:null;}).filter(Boolean).sort((a,b)=>{const o={ov:0,td:1,up:2};return o[a.u]-o[b.u]||a.fd.localeCompare(b.fd);}).slice(0,25);
+// Action queue — accordion view
+const allAQItems=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])).map(r=>{
+  const fd=r[C.followupDate];
+  const u=fd<td?'ov':fd===td?'td':'up';
+  return {r,fd,u};
+}).sort((a,b)=>{const o={ov:0,td:1,up:2};return o[a.u]-o[b.u]||a.fd.localeCompare(b.fd);});
+const aqBefore=allAQItems.filter(x=>x.u==='ov');
+const aqToday=allAQItems.filter(x=>x.u==='td');
+const aqAfter=allAQItems.filter(x=>x.u==='up');
 const aq=document.getElementById('aq-list');
-if(aq)aq.innerHTML=items.length?items.map(({r,fd,u})=>{
-  const sub=[];
-  if(r[C.contact]) sub.push('📞 '+r[C.contact]);
-  if(r[C.expYrs])  sub.push('⏳ '+r[C.expYrs]+' yrs');
-  if(r[C.company]) sub.push('🏢 '+r[C.company]);
-  if(r[C.designation]) sub.push('🪪 '+r[C.designation]);
-  if(r[C.updatedOn]) sub.push('🕐 '+fmtD(r[C.updatedOn])+(r[C.updatedBy]?' · '+r[C.updatedBy]:''));
-  return '<div class="pi '+u+'" onclick="qUpd(\''+r[C.code]+'\')">'
-    +'<div class="pd '+u+'"></div>'
-    +'<div style="flex:1">'
-      +'<div class="pn">'+r[C.name]+'</div>'
-      +'<div class="pdet">'+(r[C.position]||'—')+' · '+(r[C.client]||'—')+' · '+(r[C.status]||'—')+'</div>'
-      +(sub.length?'<div style="font-size:10px;color:var(--w60);margin-top:2px">'+sub.join('  ·  ')+'</div>':'')
-      +(r[C.followupNotes]?'<div style="font-size:10px;color:var(--teal);margin-top:1px">'+r[C.followupNotes]+'</div>':'')
-    +'</div>'
-    +'<div class="pdate '+u+'">'+fmtD(fd)+'<br><span style="font-size:10px">'+(u==='ov'?'OVERDUE':u==='td'?'TODAY':'UPCOMING')+'</span></div>'
-    +'</div>';
-}).join(''):'<div style="text-align:center;padding:26px;color:var(--w60)">✅ No pending follow-ups — all clear!</div>';
+if(aq)aq.innerHTML=buildAQAccordion(aqBefore,aqToday,aqAfter);
 // Interviews
 const in7=addDays(td,7);
 const ivs=hfMD.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=td&&r[C.interviewDate]<=in7).sort((a,b)=>a[C.interviewDate].localeCompare(b[C.interviewDate])).slice(0,10);
@@ -2426,6 +2540,58 @@ function openBtn(el, type){
   else if(type==='view'){window._mc=code;viewCandModal(code);}
 }
 function qUpd(code){document.getElementById('uCode').value=code;goPanel('upd');doLookup();}
+
+function buildAQAccordion(before,today,after){
+  const total=before.length+today.length+after.length;
+  if(!total)return'<div class="aq-empty">✅ No pending follow-ups — all clear!</div>';
+  function rowHTML(x){
+    const r=x.r,fd=x.fd,u=x.u;
+    return '<tr>'
+      +'<td class="aq-name"><span>'+r[C.name]+'</span><div class="aq-code">'+r[C.code]+'</div></td>'
+      +'<td class="aq-cell">'+(r[C.client]||'—')+'</td>'
+      +'<td class="aq-cell">'+(r[C.position]||'—')+'</td>'
+      +'<td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td>'
+      +'<td class="aq-cell">'+(r[C.recruiter]||'—')+'</td>'
+      +'<td class="aq-date '+u+'">'+fmtD(fd)+'</td>'
+      +'<td><button class="btn btn-ghost btn-sm aq-upd-btn" onclick="event.stopPropagation();qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td>'
+      +'</tr>';
+  }
+  function section(id,label,icon,items,open,cls){
+    if(!items.length)return'';
+    const rows=items.map(rowHTML).join('');
+    return '<div class="aq-section">'
+      +'<div class="aq-sec-hdr '+cls+'" onclick="aqToggle(\''+id+'\')">'
+      +'<span>'+icon+' '+label+'</span>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<span class="aq-cnt '+cls+'">'+items.length+'</span>'
+      +'<span class="aq-chevron" id="aq-chev-'+id+'">'+(open?'▲':'▼')+'</span>'
+      +'</div></div>'
+      +'<div class="aq-sec-body" id="aq-sec-'+id+'" style="'+(open?'':'display:none')+'">'
+      +'<div class="tw"><table class="aq-table"><thead><tr>'
+      +'<th>Candidate</th><th>Client</th><th>Position</th><th>Status</th><th>Recruiter</th><th>Follow-up</th><th></th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+      +'</div></div>';
+  }
+  const sumHTML='<div class="aq-summary">'
+    +'<div class="aq-sum-item ov"><div class="aq-sum-val">'+before.length+'</div><div class="aq-sum-lbl">Overdue</div></div>'
+    +'<div class="aq-sum-sep"></div>'
+    +'<div class="aq-sum-item td"><div class="aq-sum-val">'+today.length+'</div><div class="aq-sum-lbl">Due Today</div></div>'
+    +'<div class="aq-sum-sep"></div>'
+    +'<div class="aq-sum-item up"><div class="aq-sum-val">'+after.length+'</div><div class="aq-sum-lbl">Not Due</div></div>'
+    +'</div>';
+  return sumHTML
+    +section('before','Yesterday & Before','⚠',before,false,'ov')
+    +section('today','Today','📅',today,true,'td')
+    +section('after','Tomorrow & Later','🔜',after,false,'up');
+}
+function aqToggle(id){
+  const body=document.getElementById('aq-sec-'+id);
+  const chev=document.getElementById('aq-chev-'+id);
+  if(!body)return;
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'';
+  if(chev)chev.textContent=open?'▼':'▲';
+}
 
 // ══════════════════════════════════════════════════════
 // SALARY CALC
