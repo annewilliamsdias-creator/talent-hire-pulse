@@ -1286,7 +1286,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Active</label><select id="avAct"><option value="Y">Active — visible in dropdowns</option><option value="N">Inactive — hidden</option></select></div>
 <div class="field s3"><label>Remarks</label><input type="text" id="avRemarks" placeholder="Any notes about this vacancy"></div>
 <div class="field s2"><label>JD from Repository</label><select id="avJDSel" onchange="onAvJDSel()"><option value="">— Select JD from Repository —</option></select></div>
-<div class="field s2"><label>JD Name <span class="fhint">(auto-filled)</span></label><input type="text" id="avJDLink" placeholder="Auto-filled from selection" readonly style="opacity:.7"></div>
+<div class="field s2"><label>JD SharePoint Link <span class="fhint">(auto-filled or paste URL)</span></label><input type="text" id="avJDLink" placeholder="Paste SharePoint URL or auto-fill from dropdown"></div>
 </div>
 <div class="btn-row"><button class="btn btn-t" onclick="saveVac()">✓ Save</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('avForm').classList.add('hidden')">Cancel</button></div>
 </div>
@@ -1472,6 +1472,7 @@ not_contactable:'Hi {N}, this is {R} from WithAWill HR following up on the {P} r
 interview_confirmation:'Hi {N}, your interview for *{P}* with *{C}* is confirmed.\n\nDate: {D}\nTime: {T}\nTeams Link: {L}\n\nPlease join 5 mins early.\n- {R}, WithAWill HR',
 selected:'Hi {N}, great news! You have been selected for *{P}* with *{C}*. We will share next steps shortly. - {R}, WithAWill HR',
 offered:'Hi {N}, an offer has been extended for *{P}* with *{C}*. Please revert with your confirmation. - {R}, WithAWill HR',
+send_jd:'Hi {N}, please find the Job Description for the *{P}* role with *{C}* attached.\n\nKindly review and let us know your interest and availability.\n\n- {R}, WithAWill HR',
 general:'Hi {N}, '};
 function fillWA(tpl,r){
 const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
@@ -2608,20 +2609,23 @@ function handleJDUpload(event){
 // WHATSAPP + TEAMS
 // ══════════════════════════════════════════════════════
 // Bug F fix: generate JD PDF using jsPDF, auto-download, open WhatsApp after 800ms
-// Bug F — simplified: open JD in new tab, user downloads manually
+// Bug F — VD['JD Link'] now stores SP URL directly
 function viewJDLink(){
   if(eIdx===-1)return;
   const r=MD[eIdx];
   const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===r[C.vacCode]);
-  const jdTitle=vac&&vac['JD Link']?vac['JD Link'].trim():'';
-  const jdEntry=jdTitle?repoData.jds.find(j=>(j.title||'').trim()===jdTitle):null;
-  const jdLink=jdEntry?(jdEntry.link||''):'';
-  if(!jdLink){
-    if(!jdTitle)toast('warn','No JD Linked','No JD linked to this vacancy. Set via Vacancies → Edit → JD from Repository.');
-    else toast('warn','No JD URL','JD "'+jdTitle+'" has no link. Add via Repositories → JDs → Edit → Link field.');
-    return;
-  }
+  const jdLink=vac&&vac['JD Link']?vac['JD Link'].trim():'';
+  if(!jdLink){toast('warn','No JD Linked','No JD linked to this vacancy. Set via Vacancies → Edit → JD SharePoint Link.');return;}
   window.open(jdLink,'_blank');
+}
+// Helper: resolve jd entry from VD['JD Link'] URL (used by showWAMenu + igGetJD)
+function resolveJDFromVac(vacCode){
+  const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===vacCode);
+  const jdLink=vac&&vac['JD Link']?vac['JD Link'].trim():'';
+  if(!jdLink)return{jdLink:'',jdEntry:null};
+  // Match repo entry by link URL (primary) or title (legacy fallback)
+  const jdEntry=repoData.jds.find(j=>(j.link||'').trim()===jdLink||(j.title||'').trim()===jdLink)||null;
+  return{jdLink,jdEntry};
 }
 
 // Bug F: send JD SharePoint link fallback (F2)
@@ -2635,12 +2639,11 @@ function sendJDSharePoint(jdLink){
 }
 
 function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];
-const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===r[C.vacCode]);
-const jdTitle=vac&&vac['JD Link']?vac['JD Link'].trim():'';
-const jdEntry=jdTitle?repoData.jds.find(j=>(j.title||'').trim()===jdTitle):null;
-const hasJD=!!(jdEntry&&jdEntry.link);
-const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
-// Two separate buttons: View JD (manual download) + WhatsApp templates
+const {jdLink,jdEntry}=resolveJDFromVac(r[C.vacCode]||'');
+const hasJD=!!jdLink;
+const jdTitle=jdEntry?jdEntry.title:jdLink;
+const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['send_jd','📄 Share JD'],['general','💬 General']];
+// View JD button (opens SP file) + WhatsApp templates including send_jd
 const jdSection=hasJD
   ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="viewJDLink()">📄 View JD — '+jdTitle+'</button>'
   :'<div style="font-size:11px;color:var(--w40);padding:4px 0 8px">No JD linked to this vacancy</div>';
@@ -2789,12 +2792,12 @@ function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById(
 function populateAvJDSel(cur){
   const sel=document.getElementById('avJDSel');if(!sel)return;
   if(!repoData.jds||!repoData.jds.length){sel.innerHTML='<option value="">— No JDs in Repository yet —</option>';return;}
-  sel.innerHTML='<option value="">— Select JD from Repository —</option>'+repoData.jds.map((j,i)=>'<option value="'+i+'"'+(cur&&cur===j.title?' selected':'')+'>'+j.title+(j.client?' ('+j.client+')':'')+'</option>').join('');
+  sel.innerHTML='<option value="">— Select JD from Repository —</option>'+repoData.jds.map((j,i)=>'<option value="'+i+'"'+(cur&&(cur===j.link||cur===j.title)?' selected':'')+'>'+j.title+(j.client?' ('+j.client+')':'')+'</option>').join('');
 }
 function onAvJDSel(){
   const sel=document.getElementById('avJDSel');if(!sel)return;
   const i=parseInt(sel.value);const lnk=document.getElementById('avJDLink');
-  if(!isNaN(i)&&repoData.jds[i]){if(lnk)lnk.value=repoData.jds[i].title;}
+  if(!isNaN(i)&&repoData.jds[i]){if(lnk)lnk.value=repoData.jds[i].link||'';}
   else{if(lnk)lnk.value='';}
 }
 function openAddVac(){vacEIdx=-1;['avRole','avBudgetMin','avBudgetMax','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';const jdsel=document.getElementById('avJDSel');if(jdsel)jdsel.selectedIndex=0;document.getElementById('avForm').classList.remove('hidden');fillDrops();populateAvJDSel();}
@@ -6168,23 +6171,17 @@ function igGoPage(pg) {
 function igNext(){ if(igCurrentPage<5) igGoPage(igCurrentPage+1); }
 function igPrev(){ if(igCurrentPage>0) igGoPage(igCurrentPage-1); }
 
-// Bug H fix: 3-step exact lookup — candidate vacCode → VD['JD Link'] → exact repoData.jds title match
+// Bug H fix: candidate vacCode → VD['JD Link'] (SP URL) → repoData.jds match by URL or title
 function igGetJD() {
   if(igCandIdx<0||igCandIdx>=MD.length) return null;
   const r = MD[igCandIdx];
   const vacCode = (r[C.vacCode]||'').trim();
-  // Step 1: Find vacancy in VD by candidate's vacancy code
   if(vacCode){
-    const vac = VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===vacCode);
-    if(vac){
-      // Step 2: Get JD title from vacancy's JD Link field
-      const jdTitle = (vac['JD Link']||'').trim();
-      if(jdTitle){
-        // Step 3: Exact title match in repoData.jds
-        const jd = repoData.jds.find(j=>(j.title||'').trim()===jdTitle);
-        if(jd) return jd;
-      }
-    }
+    const {jdLink,jdEntry} = resolveJDFromVac(vacCode);
+    // Return repo entry if found (has questions for Page 3 + link for footer)
+    if(jdEntry) return jdEntry;
+    // No repo entry but has SP link — return minimal object for footer strip only
+    if(jdLink) return {title:'JD',link:jdLink,questions:[]};
   }
   return null;
 }
