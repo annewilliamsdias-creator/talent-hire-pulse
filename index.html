@@ -2494,7 +2494,7 @@ sv2('tbTot', MD.length);
 sv2('tbAct', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
 const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
 // Action queue — accordion view
-const allAQItems=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])).map(r=>{
+const allAQItems=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])).map(r=>{
   const fd=r[C.followupDate];
   const u=fd<td?'ov':fd===td?'td':'up';
   return {r,fd,u};
@@ -2762,7 +2762,7 @@ const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 writeCL('Status Update',r[C.code],C.status,oldStat,stat,r[C.name]);
-await saveWB('Updating record...');
+try{await saveWB('Updating record...');}catch(e){showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(stat)+'">'+stat+'</span>';
 toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();
   const updCode=r[C.code];const updName=r[C.name];
@@ -3241,7 +3241,9 @@ const cli=gv('avCli'),role=gv('avRole'),dept=gv('avDept');
 if(!cli||!role||!dept){showAlert('avAlert','err','Client, Role and Department required.');return;}
 const isNew=vacEIdx===-1;
 const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudgetMin')?gv('avBudgetMin')+' - '+gv('avBudgetMax'):gv('avBudgetMax')||'','Budget Min':gv('avBudgetMin'),'Budget Max':gv('avBudgetMax'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y'};
-if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{const m=String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);return m?parseInt(m[1]):0;}));vd['Vacancy code']='VC-'+yr+'-'+String(mx+1).padStart(4,'0');vd['Sr. No.']=VD.length+1;VD.push(vd);}else{Object.assign(VD[vacEIdx],vd);}
+if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{const m=String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);return m?parseInt(m[1]):0;}));vd['Vacancy code']='VC-'+yr+'-'+String(mx+1).padStart(4,'0');vd['Sr. No.']=VD.length+1;VD.push(vd);}else{// Field-level merge: only apply non-blank form values; never clear existing JD Link with blank
+const _ex=VD[vacEIdx];const _patch={};Object.entries(vd).forEach(([k,v])=>{if(k==='JD Link'){if(v)_patch[k]=v;// preserve existing if form blank
+}else if(v!==''&&v!==null&&v!==undefined){_patch[k]=v;}});Object.assign(VD[vacEIdx],_patch);}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];if(!vh.includes('Active'))vh.push('Active');if(!vh.includes('JD Link'))vh.push('JD Link');WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
 await saveWB('Saving vacancy...');
 closeVacFormModal();
