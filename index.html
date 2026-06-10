@@ -1747,7 +1747,7 @@ const GRAPH='https://graph.microsoft.com/v1.0';
 let WB=null,MD=[],VD=[],HDR=[],VHDR=[];
 let siteId=null,fileId=null,tok=null,acct=null;
 let eIdx=-1,epIdx=-1,vacEIdx=-1,appUsers=[];
-let curRole='Recruiter',curUser=null,bulkRows=[];
+let curRole='Recruiter',curUser=null,bulkRows=[],myRecName=null;
 // ── Phase A: Data Protection ──────────────────────────
 let _dupCleanupSave=false;   // set true only during admin-initiated cleanup saves
 let _bulkSave=false;         // set true during bulk upload saves
@@ -2418,7 +2418,7 @@ function loadMastersCfg(){
   }catch(e){console.warn('masters cfg',e);}
 }
 async function saveMastersCfg(silent=false){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}const block=[['Masters'],['key','name','active','extra']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N',k==='recruiters'?(it.doj||''):''])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false);if(!silent)toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);if(!silent)toast('err','Save Failed',e.message);}}
-function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}const nb=document.getElementById('navBulk');const na=document.getElementById('navAdm');const ni=document.getElementById('navIncentive');const niv=document.getElementById('navInvoice');if(nb)nb.style.display=rd.bulk?'':'none';if(na)na.style.display=rd.admin?'':'none';if(ni)ni.style.display='';if(niv)niv.style.display=rd.admin?'':'none';canEditRepo=!!(rd&&rd.admin);}
+function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}const nb=document.getElementById('navBulk');const na=document.getElementById('navAdm');const ni=document.getElementById('navIncentive');const niv=document.getElementById('navInvoice');if(nb)nb.style.display=rd.bulk?'':'none';if(na)na.style.display=rd.admin?'':'none';if(ni)ni.style.display='';if(niv)niv.style.display=rd.admin?'':'none';canEditRepo=!!(rd&&rd.admin);myRecName=(curRole==='Recruiter'&&curUser)?curUser.name:null;}
 async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i;break;}}const block=[['Users'],['Name','Email','Type','Role','Client','Active'],...appUsers.map(u=>[u.name,u.email,u.type||'internal',u.role,u.client||'',u.active?'Y':'N'])];if(ui>=0){let ei=ui+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(ui,ei-ui,...block);}else{all.push([],...block);}WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);await saveWB('Saving users...');}catch(e){toast('err','Save Failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
@@ -2435,13 +2435,13 @@ const sel=document.getElementById('nPos');if(!sel)return;
 const cv=document.getElementById('nCli')?document.getElementById('nCli').value:'';
 const dv=document.getElementById('nDept')?document.getElementById('nDept').value:'';
 const cur=sel.value;sel.innerHTML='<option value="">— Select open vacancy —</option>';
-VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv;const om=['Open','open',''].includes(v['Current Status']||'');const am=v['Active']!=='N';return cm&&dm&&om&&am;}).forEach(v=>{const o=document.createElement('option');const code=v['Vacancy code']||v['Vacancy Code']||'';o.value=v['Designation']||'';o.dataset.code=code;o.dataset.loc=v['Location']||'';o.textContent=(v['Designation']||'—')+' ('+code+') — '+(v['Company']||'—');sel.appendChild(o);});if(cur)sel.value=cur;}
+VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv;const om=['Open','open',''].includes(v['Current Status']||'');const am=v['Active']!=='N';const rm=!myRecName||v['Recruiter']===myRecName;return cm&&dm&&om&&am&&rm;}).forEach(v=>{const o=document.createElement('option');const code=v['Vacancy code']||v['Vacancy Code']||'';o.value=v['Designation']||'';o.dataset.code=code;o.dataset.loc=v['Location']||'';o.textContent=(v['Designation']||'—')+' ('+code+') — '+(v['Company']||'—');sel.appendChild(o);});if(cur)sel.value=cur;}
 
 // ══════════════════════════════════════════════════════
 // UI INIT
 // ══════════════════════════════════════════════════════
 function initUI(){updateTopbar();refreshAllFilters();loadDash();renderRec();renderVac();initMastersGrid();}
-function updateTopbar(){document.getElementById('tbTot').textContent=MD.length;const act=MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
+function updateTopbar(){const myMD=myRecName?MD.filter(r=>r[C.recruiter]===myRecName):MD;document.getElementById('tbTot').textContent=myMD.length;const act=myMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
 function toggleMobNav(){const sb=document.querySelector('.sidebar');const ov=document.getElementById('mob-overlay');if(!sb)return;const open=sb.classList.toggle('mob-open');if(ov)ov.classList.toggle('visible',open);}
 function closeMobNav(){const sb=document.querySelector('.sidebar');const ov=document.getElementById('mob-overlay');if(sb)sb.classList.remove('mob-open');if(ov)ov.classList.remove('visible');}
 function goPanel(name){
@@ -2476,7 +2476,8 @@ function goPanel(name){
 // ══════════════════════════════════════════════════════
 function loadDash(){
 refreshAllFilters();
-const hfRec=(document.getElementById('hf-rec')&&document.getElementById('hf-rec').value)||'';
+if(myRecName){const hfEl=document.getElementById('hf-rec');if(hfEl){hfEl.value=myRecName;hfEl.style.display='none';}}
+const hfRec=myRecName||(document.getElementById('hf-rec')&&document.getElementById('hf-rec').value)||'';
 const hfCli=(document.getElementById('hf-cli')&&document.getElementById('hf-cli').value)||'';
 const hfFrom=(document.getElementById('hf-from')&&document.getElementById('hf-from').value)||'';
 const hfTo=(document.getElementById('hf-to')&&document.getElementById('hf-to').value)||'';
@@ -2485,13 +2486,14 @@ const td=today(),tm=td.slice(0,7),in3=addDays(td,3);
 const pend=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
 // Update both KPI row and topbar
 const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-sv2('kpi-total', MD.length);
-sv2('kpi-active', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
-sv2('kpi-joined', MD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length);
+const scopeMD=myRecName?MD.filter(r=>r[C.recruiter]===myRecName):MD;
+sv2('kpi-total', scopeMD.length);
+sv2('kpi-active', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+sv2('kpi-joined', scopeMD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length);
 sv2('ds-pen', pend.length);
 sv2('pendBadge', pend.length);
-sv2('tbTot', MD.length);
-sv2('tbAct', MD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+sv2('tbTot', scopeMD.length);
+sv2('tbAct', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
 const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
 // Action queue — accordion view
 const allAQItems=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])).map(r=>{
@@ -2649,7 +2651,7 @@ function onPosSel(){
     }
   }
 }
-function clearNew(){['nSD','nScD','nSrcD','nMob','nAlt','nEm','nLocD','nPLoc','nExp','nReas','nCo','nDe','nSPM','nSPA','nSBr','nESPM','nESBr','nSInc','nPosC','nVacC','nRem','nFU','nFUN','nNm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['nRec','nSrc','nLoc','nNot','nCli','nDept','nPos','nStat'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const fr=document.getElementById('nFr');if(fr){fr.checked=false;onFr(false);}document.getElementById('nSD').value=today();document.getElementById('nCodeBox').classList.add('hidden');showAlert('na','','');const rn=acct&&acct.name?acct.name.split(' ')[0]:'';const rs=document.getElementById('nRec');if(rs)for(const o of rs.options){if(o.value.toLowerCase()===rn.toLowerCase()){rs.value=o.value;break;}}}
+function clearNew(){['nSD','nScD','nSrcD','nMob','nAlt','nEm','nLocD','nPLoc','nExp','nReas','nCo','nDe','nSPM','nSPA','nSBr','nESPM','nESBr','nSInc','nPosC','nVacC','nRem','nFU','nFUN','nNm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['nRec','nSrc','nLoc','nNot','nCli','nDept','nPos','nStat'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const fr=document.getElementById('nFr');if(fr){fr.checked=false;onFr(false);}document.getElementById('nSD').value=today();document.getElementById('nCodeBox').classList.add('hidden');showAlert('na','','');const rs=document.getElementById('nRec');if(rs){if(myRecName){for(const o of rs.options){if(o.value===myRecName){rs.value=o.value;break;}}rs.disabled=!!myRecName;}else{const rn=acct&&acct.name?acct.name.split(' ')[0]:'';for(const o of rs.options){if(o.value.toLowerCase()===rn.toLowerCase()){rs.value=o.value;break;}}rs.disabled=false;}}}
 async function submitNew(){
 const nm=gv('nNm'),mob=gv('nMob'),em=gv('nEm'),sd=gv('nSD'),rec=gv('nRec'),cli=gv('nCli'),dept=gv('nDept'),src=gv('nSrc'),loc=gv('nLoc');
 const pos=gv('nPos')||gv('nPosC'),fu=gv('nFU'),stat=gv('nStat')||'Active';
@@ -2743,6 +2745,7 @@ if(cur==='Active'){console.warn('[THP] Legacy status "Active" on record '+r[C.co
 const valid=getValidStatuses(cur);const sel=document.getElementById('uS');if(!sel)return;Array.from(sel.options).forEach(o=>{if(!o.value)return;o.disabled=!valid.includes(o.value);o.style.color=valid.includes(o.value)?'':'rgba(255,255,255,.2)';o.style.opacity=valid.includes(o.value)?'1':'0.3';});}
 async function submitUpd(){
 if(eIdx===-1)return;
+if(myRecName&&(MD[eIdx]||{})[C.recruiter]!==myRecName){showAlert('uUpdAlert','err','You can only update candidates assigned to you.');return;}
 const stat=gv('uS'),dm=gv('uDM'),fu=gv('uFU');
 if(!NO_FOLLOWUP.has(stat)&&!fu){showAlert('uUpdAlert','err','Follow-up date required.');return;}
 if(['On Hold','Offer Revoked'].includes(stat)&&!dm){showAlert('uUpdAlert','err','Decision Maker required for On Hold / Offer Revoked.');return;}
@@ -2813,10 +2816,12 @@ if(resetPage)recPage=0;
 const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec');
 const scope=gv('rScope')||'all';
 refreshAllFilters();
+if(myRecName){const rEl=document.getElementById('rRec');if(rEl)rEl.style.display='none';}
 const filtered=MD.filter(r=>{
   const ms=!srch||(r[C.name]||'').toLowerCase().includes(srch)||(r[C.code]||'').toLowerCase().includes(srch)||(r[C.position]||'').toLowerCase().includes(srch)||(r[C.client]||'').toLowerCase().includes(srch)||(r[C.recruiter]||'').toLowerCase().includes(srch)||(r[C.vacCode]||'').toLowerCase().includes(srch); // Bug K fix: vacancy code search
   const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
-  return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf)&&(!rf||r[C.recruiter]===rf);
+  const recOk=myRecName?r[C.recruiter]===myRecName:(!rf||r[C.recruiter]===rf);
+  return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf)&&recOk;
 });
 const totalPages=Math.max(1,Math.ceil(filtered.length/REC_PAGE_SIZE));
 if(recPage>=totalPages)recPage=totalPages-1;
@@ -2917,7 +2922,8 @@ async function refreshAllRecords(){
 function renderVac(){
 const tb=document.getElementById('vBody');if(!tb)return;
 refreshAllFilters();
-const fRec=document.getElementById('vf-rec')&&document.getElementById('vf-rec').value||'';
+if(myRecName){const vEl=document.getElementById('vf-rec');if(vEl)vEl.style.display='none';}
+const fRec=myRecName||(document.getElementById('vf-rec')&&document.getElementById('vf-rec').value)||'';
 const fCli=document.getElementById('vf-cli')&&document.getElementById('vf-cli').value||'';
 const fDept=document.getElementById('vf-dept')&&document.getElementById('vf-dept').value||'';
 const fLoc=document.getElementById('vf-loc')&&document.getElementById('vf-loc').value||'';
