@@ -2193,7 +2193,7 @@ if(wsv){const vr=XLSX.utils.sheet_to_json(wsv,{header:1,defval:'',raw:false});VH
 for(let i=1;i<vr.length;i++){if(vr[i].every(c=>c===''||c===null))continue;const obj={};VHDR.forEach((h,j)=>{obj[h]=vr[i][j]!==undefined?String(vr[i][j]).trim():'';});VD.push(obj);}}
 // Load repo data from SharePoint workbook (shared across all users)
 const wsr=WB.Sheets['Repository'];
-if(wsr){try{const rrows=XLSX.utils.sheet_to_json(wsr,{header:1,defval:'',raw:false}).slice(1).filter(r=>r[0]);repoData={jds:[],scripts:[],help:[],evaluations:{}};rrows.forEach(r=>{const t=String(r[0]||'').trim();try{const d=r[1]?JSON.parse(r[1]):{};if(t==='jd')repoData.jds.push(d);else if(t==='script')repoData.scripts.push(d);else if(t==='help')repoData.help.push(d);else if(t==='eval'&&d.code){repoData.evaluations[d.code]=d.ev;igEvalData[d.code]=d.ev;}}catch(pe){console.warn('Repo row parse',pe);}});}catch(e){console.warn('Repo parse',e);loadRepoData();}}
+if(wsr){try{const rrows=XLSX.utils.sheet_to_json(wsr,{header:1,defval:'',raw:false}).slice(1).filter(r=>r[0]);repoData={jds:[],scripts:[],help:[]};rrows.forEach(r=>{const t=String(r[0]||'').trim();try{const d=r[1]?JSON.parse(r[1]):{};if(t==='jd')repoData.jds.push(d);else if(t==='script')repoData.scripts.push(d);else if(t==='help')repoData.help.push(d);}catch(pe){console.warn('Repo row parse',pe);}});}catch(e){console.warn('Repo parse',e);loadRepoData();}}
 else{
   // No Repository sheet yet - load from localStorage and push to SharePoint to sync all users
   loadRepoData();
@@ -2205,6 +2205,8 @@ else{
 loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
 // Load AI key from workbook into localStorage (workbook is source of truth)
 (function(){try{const k=getMetadata('ai_key');if(k&&k.trim())localStorage.setItem('thp_ai_key',k.trim());}catch(e){}})();
+// Load evaluations from dedicated Evaluations sheet
+(function(){try{const ws=WB.Sheets['Evaluations'];if(!ws)return;const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(1).filter(r=>r[0]);rows.forEach(r=>{try{const code=String(r[0]);const d=r[3]?JSON.parse(r[3]):{};if(code&&d)igEvalData[code]=d;}catch(e){}});}catch(e){console.warn('Eval load',e);}})();
 // ── Phase A: Read last good count from metadata ───────
 const storedCount=getMetadata('lastGoodCount');
 if(storedCount!==null&&storedCount!==undefined&&storedCount!==''){
@@ -2281,7 +2283,7 @@ try{
   _bulkSave=false;_bulkExpectedIncrease=0;
   // Auto-backup fires after main save — avoids bandwidth competition
   autoBackupBeforeSave();
-  if(msg!==false)hideLoad();
+  hideLoad();
   if(msg!==false)toast('ok','Saved','Changes written to SharePoint');
 }catch(e){
   _bulkSave=false;_bulkExpectedIncrease=0;
@@ -5933,7 +5935,6 @@ async function saveBillingConfig(){
 }
 
 async function saveIncPolicyToSP(){
-  saveIncentiveData(); // localStorage cache
   if(!WB) return;
   try {
     const data = JSON.stringify(incPolicy);
@@ -5978,27 +5979,10 @@ function loadIncPolicyFromSP(){
       }
     }catch(e){console.warn('loadIncPolicyFromSP (Config legacy)',e);}
   }
-  // 3. localStorage fallback
-  try{
-    const d=localStorage.getItem('thp_inc');
-    if(d){const p=JSON.parse(d);if(p&&p.periods){
-      incPolicy=p;
-      // Migrate localStorage → workbook on next save
-      setTimeout(()=>saveIncPolicyToSP(),2000);
-    }}
-  }catch(e){}
 }
 
-function saveIncentiveData(){
-  try{localStorage.setItem('thp_inc',JSON.stringify(incPolicy));}catch(e){}
-}
-function loadIncentiveData(){
-  // Pre-WB bootstrap only — loadIncPolicyFromSP() takes over after parseWB
-  try{
-    const d=localStorage.getItem('thp_inc');
-    if(d){const p=JSON.parse(d);if(p&&p.periods)incPolicy=p;}
-  }catch(e){}
-}
+function saveIncentiveData(){}
+function loadIncentiveData(){}
 
 // ══════════════════════════════════════════════════════
 // INVOICING (Item 20)
@@ -6144,7 +6128,6 @@ function updateInvStats(){
   document.getElementById('inv-overdue').textContent=ov;
 }
 function saveInvoiceData(){
-  try{localStorage.setItem('thp_inv',JSON.stringify({invoices,invCounter}));}catch(e){}
   if(WB){try{
     const rows=[['id','candCode','candName','client','position','amount','gst','total','date','due','terms','status'],
       ...invoices.map(i=>[i.id||'',i.candCode||'',i.candName||'',i.client||'',i.position||'',i.amount||'',i.gst||'',i.total||'',i.date||'',i.due||'',i.terms||'',i.status||''])];
@@ -6154,8 +6137,6 @@ function saveInvoiceData(){
   }catch(e){console.warn('Invoice WB save',e);}}
 }
 function loadInvoiceData(){
-  try{const d=localStorage.getItem('thp_inv');if(d){const p=JSON.parse(d);if(p.invoices)invoices=p.invoices;if(p.invCounter)invCounter=p.invCounter;}}catch(e){}
-  // Load from SharePoint WB if available (overrides localStorage — SP is source of truth)
   if(WB&&WB.Sheets['Invoices']){try{
     const rows=XLSX.utils.sheet_to_json(WB.Sheets['Invoices'],{header:1,defval:''});
     if(rows.length>1){
@@ -6169,7 +6150,7 @@ function loadInvoiceData(){
 }
 
 
-let repoData = { jds:[], scripts:[], help:[], evaluations:{} };
+let repoData = { jds:[], scripts:[], help:[] };
 let invTemplate = {};
 
 function switchRepoTab(tab){
@@ -6191,7 +6172,6 @@ function saveInvTemplate(){
   const fields=['company','gst','address','bank','terms','tnc','footer'];
   fields.forEach(k=>{const el=document.getElementById('it-'+k);if(el)invTemplate[k]=el.value;});
   invTemplate.updated=new Date().toLocaleString('en-IN');
-  try{localStorage.setItem('thp_invtemplate',JSON.stringify(invTemplate));}catch(e){}
   if(WB){try{
     const rows=[['key','value'],...Object.entries(invTemplate)];
     WB.Sheets['InvTemplate']=XLSX.utils.aoa_to_sheet(rows);
@@ -6202,7 +6182,6 @@ function saveInvTemplate(){
   toast('ok','Template Saved','Invoice template updated.');
 }
 function loadInvTemplateData(){
-  try{const d=localStorage.getItem('thp_invtemplate');if(d)invTemplate=JSON.parse(d);}catch(e){}
   if(WB&&WB.Sheets['InvTemplate']){
     try{const rows=XLSX.utils.sheet_to_json(WB.Sheets['InvTemplate'],{header:1,defval:''});
     rows.slice(1).forEach(r=>{if(r[0]&&r[1]!==undefined)invTemplate[r[0]]=r[1];});}catch(e){}
@@ -6349,19 +6328,17 @@ function renderHelp(){
 
 function delRepo(type,idx){if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}if(confirm('Delete this item?')){repoData[type].splice(idx,1);saveRepoData();if(type==='jds')renderJDList();if(type==='scripts')renderScripts();if(type==='help')renderHelp();}}
 function saveRepoData(){
-  try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){}
   if(WB){try{
     const rows=[['type','data'],
       ...repoData.jds.map(d=>['jd',JSON.stringify(d)]),
       ...repoData.scripts.map(d=>['script',JSON.stringify(d)]),
-      ...repoData.help.map(d=>['help',JSON.stringify(d)]),
-      ...Object.entries(repoData.evaluations||{}).map(([code,ev])=>['eval',JSON.stringify({code,ev})])];
+      ...repoData.help.map(d=>['help',JSON.stringify(d)])];
     WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);
     if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');
     saveWB(false);
   }catch(e){console.warn('Repo WB save failed',e);}}
 }
-function loadRepoData(){try{const d=localStorage.getItem('thp_repo');if(d)repoData=JSON.parse(d);}catch(e){console.warn('Repo load failed',e);}}
+function loadRepoData(){}
 function copyText(txt){navigator.clipboard.writeText(txt).then(()=>toast('ok','Copied!','Script copied to clipboard'));}
 function copyScriptContent(idx){if(repoData.scripts&&repoData.scripts[idx])copyText(repoData.scripts[idx].content);}
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -6929,11 +6906,24 @@ function igSaveEval() {
   const mn=document.getElementById('ig-manual-notes');if(mn&&igEvalData[code])igEvalData[code].manualNotes=mn.value;
   const on=document.getElementById('ig-otter-notes');if(on&&igEvalData[code])igEvalData[code].otterNotes=on.value;
   const sm=document.getElementById('ig-summary');if(sm&&igEvalData[code])igEvalData[code].summary=sm.value;
-  // persist to repoData
-  if(!repoData.evaluations) repoData.evaluations={};
-  repoData.evaluations[code]=igEvalData[code];
-  try{localStorage.setItem('thp_igevals',JSON.stringify(igEvalData));}catch(e){}
-  saveRepoData();
+  // persist to dedicated Evaluations sheet in workbook
+  if(WB){try{
+    if(!WB.Sheets['Evaluations']){
+      WB.Sheets['Evaluations']=XLSX.utils.aoa_to_sheet([['candidateCode','recruiterEmail','savedAt','data']]);
+      WB.SheetNames.push('Evaluations');
+    }
+    const ws=WB.Sheets['Evaluations'];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const recruiter=acct&&acct.username?acct.username:'';
+    const ts=new Date().toISOString();
+    const dataJson=JSON.stringify(igEvalData[code]);
+    // update existing row for this candidate+recruiter or append new
+    let found=false;
+    for(let i=1;i<rows.length;i++){if(String(rows[i][0])===String(code)&&String(rows[i][1])===recruiter){rows[i]=[code,recruiter,ts,dataJson];found=true;break;}}
+    if(!found)rows.push([code,recruiter,ts,dataJson]);
+    WB.Sheets['Evaluations']=XLSX.utils.aoa_to_sheet(rows);
+    saveWB(false);
+  }catch(e){console.warn('igSaveEval WB',e);}}
   writeCL('Interview Eval Saved',code,'Evaluation','','',r[C.name]);
   toast('ok','Saved','Interview evaluation saved.');
 }
@@ -7136,14 +7126,15 @@ function igExportPDF() {
 
 // ===== COMMON REPO ADMIN =====
 function loadCommonRepo() {
-  try{const d=localStorage.getItem('thp_commonrepo');if(d)commonRepo=JSON.parse(d);}catch(e){}
-  // also load from WB if available
+  if(WB&&WB.Sheets['CommonRepo']){try{
+    const rows=XLSX.utils.sheet_to_json(WB.Sheets['CommonRepo'],{header:1,defval:''}).slice(1);
+    rows.forEach(r=>{if(r[0]&&r[1]!==undefined)commonRepo[r[0]]=r[1];});
+  }catch(e){console.warn('loadCommonRepo',e);}}
 }
 function saveCommonRepo() {
   const fields=['page1','page2','page4','page5'];
   fields.forEach(k=>{const el=document.getElementById('cr-'+k);if(el)commonRepo[k]=el.value;});
   commonRepo.lastSaved=new Date().toLocaleString('en-IN');
-  try{localStorage.setItem('thp_commonrepo',JSON.stringify(commonRepo));}catch(e){}
   if(WB){try{
     const rows=[['key','content'],
       ...Object.entries(commonRepo).map(([k,v])=>[k,v])];
@@ -7273,10 +7264,7 @@ const _extSwitchATab = function(tab) {
 
 // Patch switchATab
 window.addEventListener('DOMContentLoaded',function(){
-  // load common repo on startup
   loadCommonRepo();
-  // Load evaluations from localStorage as immediate fallback; workbook overlays on load
-  try{const d=localStorage.getItem('thp_igevals');if(d)igEvalData=JSON.parse(d);}catch(e){}
 });
 
 // ── REPO SYNC: fetch latest from SP, merge, save back ──────────────────────
@@ -7296,7 +7284,7 @@ async function forceSyncRepo() {
 }
 
 function parseRepoSheet(ws) {
-  const r = {jds:[], scripts:[], help:[], evaluations:{}};
+  const r = {jds:[], scripts:[], help:[]};
   if(!ws) return r;
   try {
     XLSX.utils.sheet_to_json(ws, {header:1, defval:''}).slice(1)
@@ -7308,7 +7296,6 @@ function parseRepoSheet(ws) {
           if(t==='jd') r.jds.push(d);
           else if(t==='script') r.scripts.push(d);
           else if(t==='help') r.help.push(d);
-          else if(t==='eval'&&d.code){r.evaluations[d.code]=d.ev;}
         } catch(e){}
       });
   } catch(e){ console.warn('parseRepoSheet',e); }
@@ -7341,9 +7328,6 @@ async function refreshRepoFromSP(force) {
     // Update repo data from fresh SP copy
     if(freshWB.Sheets['Repository']){
       repoData = parseRepoSheet(freshWB.Sheets['Repository']);
-      if(repoData.evaluations) Object.assign(igEvalData, repoData.evaluations);
-      try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){}
-      try{localStorage.setItem('thp_igevals',JSON.stringify(igEvalData));}catch(e){}
     }
     // Also refresh CommonRepo pages
     if(freshWB.Sheets['CommonRepo']){
@@ -7360,17 +7344,14 @@ async function refreshRepoFromSP(force) {
 // Patch saveRepoData: fetch-merge-save to prevent data loss from concurrent edits
 const _origSaveRepo = saveRepoData;
 async function saveRepoData() {
-  // 1. Save repo locally first (immediate resilience)
-  try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){}
-
   if(!WB){
-    toast('warn','Offline','Repository saved to your browser only — SharePoint not available.');
+    toast('warn','Offline','Repository not available — SharePoint not connected.');
     return;
   }
 
   showLoad('Syncing to SharePoint...');
   try {
-    // 2. Fetch the CURRENT SP version to prevent overwriting others' JDs
+    // Fetch the CURRENT SP version to prevent overwriting others' JDs
     if(tok && fileId){
       try {
         await refreshToken();
@@ -7379,22 +7360,18 @@ async function saveRepoData() {
         if(resp.ok){
           const buf = await resp.arrayBuffer();
           const freshWB = XLSX.read(buf, {type:'array', cellDates:true});
-          // Merge: our repoData + anything on server that we don't have
           const serverRepo = parseRepoSheet(freshWB.Sheets['Repository']);
           repoData = mergeRepoWithServer(repoData, serverRepo);
-          try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){}
-          // Update WB to latest — prevents overwriting others' candidate records too
           WB = freshWB;
         }
       } catch(fe){ console.warn('Pre-save fetch skipped',fe); }
     }
 
-    // 3. Write merged repo to WB and save to SP
+    // Write merged repo to WB and save to SP
     const rows=[['type','data'],
       ...repoData.jds.map(d=>['jd',JSON.stringify(d)]),
       ...repoData.scripts.map(d=>['script',JSON.stringify(d)]),
-      ...repoData.help.map(d=>['help',JSON.stringify(d)]),
-      ...Object.entries(repoData.evaluations||{}).map(([code,ev])=>['eval',JSON.stringify({code,ev})])];
+      ...repoData.help.map(d=>['help',JSON.stringify(d)])];
     WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);
     if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');
 
