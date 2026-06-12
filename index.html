@@ -2203,6 +2203,8 @@ else{
   }
 }
 loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
+// Load AI key from workbook into localStorage (workbook is source of truth)
+(function(){try{const k=getMetadata('ai_key');if(k&&k.trim())localStorage.setItem('thp_ai_key',k.trim());}catch(e){}})();
 // ── Phase A: Read last good count from metadata ───────
 const storedCount=getMetadata('lastGoodCount');
 if(storedCount!==null&&storedCount!==undefined&&storedCount!==''){
@@ -3221,8 +3223,8 @@ function cancelEditMaster(key){_editingMaster=null;renderMT(key);}
 function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
 function getAIKey(){return localStorage.getItem('thp_ai_key')||'';}
-function saveAIKey(){const v=(document.getElementById('ai-key-input').value||'').trim();if(!v){toast('warn','No key','Paste your Anthropic API key first.');return;}localStorage.setItem('thp_ai_key',v);aiKeyStatus();toast('ok','Key Saved','AI key stored in your browser.');}
-function clearAIKey(){localStorage.removeItem('thp_ai_key');const el=document.getElementById('ai-key-input');if(el)el.value='';aiKeyStatus();toast('ok','Cleared','AI key removed from this browser.');}
+async function saveAIKey(){const v=(document.getElementById('ai-key-input').value||'').trim();if(!v){toast('warn','No key','Paste your Anthropic API key first.');return;}localStorage.setItem('thp_ai_key',v);if(WB){saveMetadata({ai_key:v});await saveWB(false);}aiKeyStatus();toast('ok','Key Saved','AI key stored in browser and workbook.');}
+async function clearAIKey(){localStorage.removeItem('thp_ai_key');const el=document.getElementById('ai-key-input');if(el)el.value='';if(WB){saveMetadata({ai_key:''});await saveWB(false);}aiKeyStatus();toast('ok','Cleared','AI key removed.');}
 function aiKeyStatus(){const k=getAIKey();const inp=document.getElementById('ai-key-input');const el=document.getElementById('ai-key-status');if(!el)return;if(k){if(inp&&!inp.value)inp.value=k;el.style.color='#5e7855';el.textContent='✓ Key is set ('+k.slice(0,16)+'…)';}else{el.style.color='#9f4a47';el.textContent='No key saved — AI Summary will not work until a key is entered.';}}
 function initAIKeyUI(){aiKeyStatus();}
 // VACANCIES ADMIN
