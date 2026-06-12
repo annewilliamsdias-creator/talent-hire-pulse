@@ -1818,7 +1818,7 @@ sources:['Portal','Internal Referral','Social Platform','Direct','Consultant','C
 cities:['Ahmedabad','Aurangabad','Bangalore','Bhopal','Chennai','Coimbatore','Delhi','Faridabad','Ghaziabad','Gurgaon','Hyderabad','Indore','Jaipur','Jodhpur','Kochi','Kolkata','Lucknow','Ludhiana','Mumbai','Mysore','Nagpur','Nashik','Navi Mumbai','Noida','Patna','Pune','Raipur','Rajkot','Surat','Thane','Thiruvananthapuram','Vadodara','Varanasi','Visakhapatnam'].map(n=>({name:n,active:true})),
 noticePeriods:['Immediate','7 days','15 days','30 days','45 days','60 days','90 days','Serving Notice','Not disclosed'].map(n=>({name:n,active:true})),
 expLevels:['Fresher','0-1 yrs','1-3 yrs','3-5 yrs','5-8 yrs','8-12 yrs','12+ yrs'].map(n=>({name:n,active:true})),
-statuses:['Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'].map(n=>({name:n,active:true})),
+statuses:['WIP','Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'].map(n=>({name:n,active:true})),
 vacStatuses:['Open','On Hold','Shortlisted','Selected','Offered','Closed','Cancelled'].map(n=>({name:n,active:true})),
 decisionMakers:['Consultant','Client'].map(n=>({name:n,active:true}))};
 function mA(k){return(M[k]||[]).filter(x=>x.active).map(x=>x.name);}
@@ -2248,8 +2248,6 @@ if(!_dupCleanupSave){
 showLoad(msg||'Saving...');
 try{
   rebuildDS();
-  // Auto-backup before every save (fire-and-forget — does not block main save)
-  autoBackupBeforeSave();
   const {dups,blanks}=countCodeStats();
   const newCount=MD.length;
   // Update metadata with new good count
@@ -2266,6 +2264,8 @@ try{
   _lastGoodCount=newCount;
   writeAuditLog(_bulkSave?'BULK_SAVE':'SAVE',_lastGoodCount,newCount,dups,blanks,'ALLOWED','Save successful');
   _bulkSave=false;_bulkExpectedIncrease=0;
+  // Auto-backup fires after main save — avoids bandwidth competition
+  autoBackupBeforeSave();
   if(msg!==false)hideLoad();
   if(msg!==false)toast('ok','Saved','Changes written to SharePoint');
 }catch(e){
@@ -2731,7 +2731,8 @@ document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status]
 sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 // Pre-fill existing values (including dates) so user sees current state
 sv('uFU',r[C.followupDate]||'');sv('uIvD',r[C.interviewDate]||'');sv('uDecD',r[C.decisionDate]||'');sv('uDOJ',r[C.doj]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');
-['uRem','uCmt'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+const remEl=document.getElementById('uRem');if(remEl)remEl.value=r[C.remark]||'';
+const cmtEl=document.getElementById('uCmt');if(cmtEl)cmtEl.value=r[C.otherComments]||'';
 fillDrops(); // Refresh all form dropdowns from current admin config
 onStatCh();updStatDrop();}
 function onStatCh(){
@@ -2755,8 +2756,8 @@ if(!NO_FOLLOWUP.has(stat)&&!fu){showAlert('uUpdAlert','err','Follow-up date requ
 if(['On Hold','Offer Revoked'].includes(stat)&&!dm){showAlert('uUpdAlert','err','Decision Maker required for On Hold / Offer Revoked.');return;}
 const r=MD[eIdx];const oldStat=r[C.status];
 r[C.status]=stat;if(dm)r[C.dm]=dm;if(NO_FOLLOWUP.has(stat)){r[C.followupDate]='';}else if(fu){r[C.followupDate]=fu;}
-const rmk=gv('uRem');if(rmk)r[C.remark]=r[C.remark]?r[C.remark]+' | '+rmk:rmk;
-const cmt=gv('uCmt');if(cmt)r[C.otherComments]=r[C.otherComments]?r[C.otherComments]+' | '+cmt:cmt;
+const rmk=gv('uRem');r[C.remark]=rmk;
+const cmt=gv('uCmt');r[C.otherComments]=cmt;
 const ivr=gv('uIvr');if(ivr)r[C.interviewerName]=ivr;
 // Bug M fix: only write date/offer fields if form has a value — prevents accidental wipe
 const _ivd=gv('uIvD');if(_ivd)r[C.interviewDate]=_ivd;
@@ -6922,12 +6923,13 @@ async function igFetchOtter() {
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-6',
         max_tokens:1000,
         mcp_servers:[{type:'url',url:'https://mcp.otter.ai/mcp',name:'otter-mcp'}],
         messages:[{role:'user',content:'List my 10 most recent Otter.ai meetings with their titles and dates. Return ONLY a JSON array like [{"id":"...","title":"...","date":"..."}] with no extra text.'}]
       })
     });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data = await resp.json();
     const block = data.content&&data.content.find(b=>b.type==='text');
     if(!block) throw new Error('No response from Otter');
@@ -6950,12 +6952,13 @@ async function igPickOtterMeeting(id, el) {
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-6',
         max_tokens:1000,
         mcp_servers:[{type:'url',url:'https://mcp.otter.ai/mcp',name:'otter-mcp'}],
         messages:[{role:'user',content:`Fetch the transcript for Otter meeting ID: ${id}. Return ONLY the plain text transcript content, no formatting or extra commentary.`}]
       })
     });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const block=data.content&&data.content.find(b=>b.type==='text');
     const transcript=block?block.text:'No transcript available.';
@@ -7030,8 +7033,9 @@ Use simple English. Do not use jargon.`;
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const summary=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'Could not generate summary.';
     if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
@@ -7223,8 +7227,9 @@ Rules:
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const txt=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
     const clean=txt.replace(/```json|```/g,'').trim();
