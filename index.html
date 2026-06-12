@@ -1752,6 +1752,8 @@ let curRole='Recruiter',curUser=null,bulkRows=[],myRecName=null;
 let _dupCleanupSave=false;   // set true only during admin-initiated cleanup saves
 let _bulkSave=false;         // set true during bulk upload saves
 let _bulkExpectedIncrease=0; // number of valid rows being committed in bulk
+let _lastBackupAt=0;         // timestamp of last autoBackupBeforeSave — throttle to 1 per 10 min
+let _editingMaster=null;     // {key, idx} — tracks which master row is in inline edit mode
 let _lastGoodCount=0;        // loaded from workbook metadata on parseWB
 
 const C={code:'Candidate code',sourcingDate:'Profile Sourcing date',screeningDate:'Profile Screening date',
@@ -2246,8 +2248,8 @@ if(!_dupCleanupSave){
 showLoad(msg||'Saving...');
 try{
   rebuildDS();
-  // Auto-backup before every save (silent — does not block on failure)
-  await autoBackupBeforeSave();
+  // Auto-backup before every save (fire-and-forget — does not block main save)
+  autoBackupBeforeSave();
   const {dups,blanks}=countCodeStats();
   const newCount=MD.length;
   // Update metadata with new good count
@@ -2268,7 +2270,7 @@ try{
   if(msg!==false)toast('ok','Saved','Changes written to SharePoint');
 }catch(e){
   _bulkSave=false;_bulkExpectedIncrease=0;
-  hideLoad();if(msg!==false)toast('err','Save Failed',e.message);throw e;
+  hideLoad();toast('err','Save Failed',e.message);throw e;
 }}
 function rebuildDS(){const ws=WB.Sheets['Data'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}const keep=rows.slice(0,hi+1);const data=MD.map(obj=>HDR.map(h=>obj[h]!==undefined?obj[h]:''));WB.Sheets['Data']=XLSX.utils.aoa_to_sheet([...keep,...data]);}
 function writeCL(action,code,field,oldV,newV,nm){try{if(!WB||!WB.Sheets['Change Log'])return;const ws=WB.Sheets['Change Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const role=curRole||'Unknown';rows.push([new Date().toISOString(),acct&&acct.name?acct.name:'Unknown',role,code,action,field,String(oldV||''),String(newV||''),nm]);WB.Sheets['Change Log']=XLSX.utils.aoa_to_sheet(rows);}catch(e){console.warn('CL',e);}}
@@ -2366,8 +2368,9 @@ function writeAuditLog(action,prevCount,newCount,dupCount,blankCount,result,reas
 
 // Auto-backup before save — filename: Backup_Auto_YYYYMMDD_HHMMSS_BeforeSave.xlsx
 async function autoBackupBeforeSave(){
+  const now=new Date();
+  if(now.getTime()-_lastBackupAt < 10*60*1000)return; // throttle: max once per 10 min
   try{
-    const now=new Date();
     const pad=n=>String(n).padStart(2,'0');
     const ts=now.getFullYear().toString()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds());
     const bn='Backup_Auto_'+ts+'_BeforeSave.xlsx';
@@ -2376,6 +2379,7 @@ async function autoBackupBeforeSave(){
     const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',
       {method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
     if(!r.ok)console.warn('autoBackup upload failed:',r.status);
+    else _lastBackupAt=now.getTime();
   }catch(e){console.warn('autoBackup error:',e.message);}
 }
 
@@ -3130,20 +3134,36 @@ function renderMT(key){
   const el=document.getElementById('mt-'+key);
   if(!el)return;
   const items=M[key]||[];
+  const editK=_editingMaster&&_editingMaster.key===key?_editingMaster.idx:-1;
   if(key==='recruiters'){
-    // Special renderer: shows name + Company DOJ + active toggle
-    el.innerHTML=items.map((it,i)=>`
-      <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+    el.innerHTML=items.map((it,i)=>{
+      if(i===editK){
+        return`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+          <input id="medit-inp" type="text" value="${it.name.replace(/"/g,'&quot;')}" style="flex:1;font-size:11px;padding:3px 6px">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:9px;color:var(--w60)">Joined:</span>
+            <input type="date" value="${it.doj||''}" style="font-size:10px;padding:2px 5px;width:120px" onchange="setRecruiterDOJ(${i},this.value)">
+          </div>
+          <button class="btn btn-t btn-sm" style="padding:2px 7px;font-size:10px" onclick="saveMasterEdit('recruiters',${i})">Save</button>
+          <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="cancelEditMaster('recruiters')">Cancel</button>
+        </div>`;
+      }
+      return`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
         <span style="flex:1;font-size:11px;color:${it.active?'var(--ow)':'var(--w60)'}">${it.name}</span>
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:9px;color:var(--w60)">Joined:</span>
           <input type="date" value="${it.doj||''}" style="font-size:10px;padding:2px 5px;width:120px" onchange="setRecruiterDOJ(${i},this.value)" title="Recruiter company joining date — used for ramp-up incentive calculation">
         </div>
         <span class="badge ${it.active?'b-active':'b-inactive'}" style="font-size:9px;padding:1px 6px">${it.active?'Active':'Inactive'}</span>
+        <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="startEditMaster('recruiters',${i})">Edit</button>
         <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="toggleM('recruiters',${i})">${it.active?'Deactivate':'Activate'}</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } else {
-    el.innerHTML=items.map((it,i)=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="flex:1;font-size:11px;color:'+(it.active?'var(--ow)':'var(--w60)')+'">'+it.name+'</span><span class="badge '+(it.active?'b-active':'b-inactive')+'" style="font-size:9px;padding:1px 6px">'+(it.active?'Active':'Inactive')+'</span><button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="toggleM(\''+key+'\','+i+')">'+(it.active?'Inactive':'Activate')+'</button></div>').join('');
+    el.innerHTML=items.map((it,i)=>{
+      if(i===editK)return'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)"><input id="medit-inp" type="text" value="'+it.name.replace(/"/g,'&quot;')+'" style="flex:1;font-size:11px;padding:3px 6px"><button class="btn btn-t btn-sm" style="padding:2px 7px;font-size:10px" onclick="saveMasterEdit(\''+key+'\','+i+')">Save</button><button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="cancelEditMaster(\''+key+'\')">Cancel</button></div>';
+      return'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="flex:1;font-size:11px;color:'+(it.active?'var(--ow)':'var(--w60)')+'">'+it.name+'</span><span class="badge '+(it.active?'b-active':'b-inactive')+'" style="font-size:9px;padding:1px 6px">'+(it.active?'Active':'Inactive')+'</span><button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="startEditMaster(\''+key+'\','+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="toggleM(\''+key+'\','+i+')">'+(it.active?'Inactive':'Activate')+'</button></div>';
+    }).join('');
   }
 }
 
@@ -3182,6 +3202,9 @@ function getRecruiterPhase(recruiterName, asOfDate){
 }
 function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx].active;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('info','Master Updated',M[key][idx].name+' is now '+(M[key][idx].active?'active':'inactive'));}}
 function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});el.value='';renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();}
+function startEditMaster(key,idx){_editingMaster={key,idx};renderMT(key);setTimeout(()=>{const inp=document.getElementById('medit-inp');if(inp){inp.focus();inp.select();}},50);}
+function cancelEditMaster(key){_editingMaster=null;renderMT(key);}
+function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
 // VACANCIES ADMIN
 function populateAvJDSel(cur){
@@ -4383,7 +4406,7 @@ async function validateBulkFile(event) {
       'Client Name':       new Set(mA('clients').map(s=>s.toLowerCase())),
       'Department':        new Set(mA('departments').map(s=>s.toLowerCase())),
       'Notice Period':     new Set(mA('noticePeriods').map(s=>s.toLowerCase())),
-      'Final Status':      new Set(['active','not contactable','not interested','dropped',
+      'Final Status':      new Set(['wip','active','not contactable','not interested','dropped',
         'consultant interview in progress','shortlisted for client i/w','rejected by consultant',
         'client i/w in progress','rejected by client','on hold','selected','offered',
         'offer revoked','offer declined','joining in progress','joined']),
@@ -6897,7 +6920,7 @@ async function igFetchOtter() {
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1000,
@@ -6925,7 +6948,7 @@ async function igPickOtterMeeting(id, el) {
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1000,
@@ -7006,7 +7029,7 @@ Use simple English. Do not use jargon.`;
   try {
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     const data=await resp.json();
@@ -7199,7 +7222,7 @@ Rules:
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     const data=await resp.json();
@@ -7225,9 +7248,7 @@ const _extSwitchATab = function(tab) {
 window.addEventListener('DOMContentLoaded',function(){
   // load common repo on startup
   loadCommonRepo();
-  // load evaluations
-  try{const d=localStorage.getItem('thp_igevals');if(d)igEvalData=JSON.parse(d);}catch(e){}
-  // also load from WB sharepoint when WB loads — handled in existing SP load logic
+  // evaluations loaded from repoData.evaluations on workbook load — no localStorage
 });
 
 // ── REPO SYNC: fetch latest from SP, merge, save back ──────────────────────
@@ -7308,9 +7329,8 @@ async function refreshRepoFromSP(force) {
 // Patch saveRepoData: fetch-merge-save to prevent data loss from concurrent edits
 const _origSaveRepo = saveRepoData;
 async function saveRepoData() {
-  // 1. Save locally first (immediate resilience)
+  // 1. Save repo locally first (immediate resilience)
   try{localStorage.setItem('thp_repo',JSON.stringify(repoData));}catch(e){}
-  try{localStorage.setItem('thp_igevals',JSON.stringify(igEvalData));}catch(e){}
 
   if(!WB){
     toast('warn','Offline','Repository saved to your browser only — SharePoint not available.');
