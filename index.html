@@ -2731,8 +2731,7 @@ document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status]
 sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 // Pre-fill existing values (including dates) so user sees current state
 sv('uFU',r[C.followupDate]||'');sv('uIvD',r[C.interviewDate]||'');sv('uDecD',r[C.decisionDate]||'');sv('uDOJ',r[C.doj]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');
-const remEl=document.getElementById('uRem');if(remEl)remEl.value=r[C.remark]||'';
-const cmtEl=document.getElementById('uCmt');if(cmtEl)cmtEl.value=r[C.otherComments]||'';
+['uRem','uCmt'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 fillDrops(); // Refresh all form dropdowns from current admin config
 onStatCh();updStatDrop();}
 function onStatCh(){
@@ -2756,8 +2755,8 @@ if(!NO_FOLLOWUP.has(stat)&&!fu){showAlert('uUpdAlert','err','Follow-up date requ
 if(['On Hold','Offer Revoked'].includes(stat)&&!dm){showAlert('uUpdAlert','err','Decision Maker required for On Hold / Offer Revoked.');return;}
 const r=MD[eIdx];const oldStat=r[C.status];
 r[C.status]=stat;if(dm)r[C.dm]=dm;if(NO_FOLLOWUP.has(stat)){r[C.followupDate]='';}else if(fu){r[C.followupDate]=fu;}
-const rmk=gv('uRem');r[C.remark]=rmk;
-const cmt=gv('uCmt');r[C.otherComments]=cmt;
+const rmk=gv('uRem');if(rmk)r[C.remark]=r[C.remark]?r[C.remark]+' | '+rmk:rmk;
+const cmt=gv('uCmt');if(cmt)r[C.otherComments]=r[C.otherComments]?r[C.otherComments]+' | '+cmt:cmt;
 const ivr=gv('uIvr');if(ivr)r[C.interviewerName]=ivr;
 // Bug M fix: only write date/offer fields if form has a value — prevents accidental wipe
 const _ivd=gv('uIvD');if(_ivd)r[C.interviewDate]=_ivd;
