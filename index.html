@@ -6923,7 +6923,7 @@ async function igFetchOtter() {
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:1000,
@@ -6952,7 +6952,7 @@ async function igPickOtterMeeting(id, el) {
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:1000,
@@ -7034,7 +7034,7 @@ Use simple English. Do not use jargon.`;
   try {
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
@@ -7228,7 +7228,7 @@ Rules:
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
