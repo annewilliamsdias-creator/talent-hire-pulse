@@ -1591,7 +1591,20 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- CHANGELOG -->
 <div id="ap-changelog" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Change Log</div></div><div class="tw"><table><thead><tr><th>Timestamp</th><th>User</th><th>Code</th><th>Action</th><th>Field</th><th>Old</th><th>New</th></tr></thead><tbody id="clBody"></tbody></table></div></div></div>
 <!-- CONFIG -->
-<div id="ap-config" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">⚙</span> Config &amp; Masters</div><button class="btn btn-t btn-sm" onclick="saveCfg()">✓ Save Templates</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="mgrid"></div></div></div>
+<div id="ap-config" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">⚙</span> Config &amp; Masters</div><button class="btn btn-t btn-sm" onclick="saveCfg()">✓ Save Templates</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="mgrid"></div></div>
+<div class="card" style="margin-top:14px"><div class="card-hdr"><div class="card-title"><span class="ac">🤖</span> AI Settings</div></div>
+<div style="max-width:600px;padding:4px 0">
+  <div style="font-size:13px;color:#291b39;margin-bottom:6px;font-weight:600">Anthropic API Key</div>
+  <div style="font-size:12px;color:#5f6470;margin-bottom:10px">Stored in your browser only — never saved to the file or SharePoint. Must be re-entered after clearing browser data. Only Super Admins should set this.</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <input type="password" id="ai-key-input" placeholder="sk-ant-api03-..." style="flex:1;font-size:13px;font-family:monospace" oninput="aiKeyStatus()">
+    <button class="btn btn-t btn-sm" onclick="saveAIKey()">Save Key</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearAIKey()">Clear</button>
+  </div>
+  <div id="ai-key-status" style="font-size:12px;margin-top:8px;color:#5f6470"></div>
+</div>
+</div>
+</div>
 <!-- VACANCIES ADMIN -->
 <div id="ap-vacancies" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📌</span> Manage Vacancies</div><button class="btn btn-t btn-sm" onclick="openAddVac()">+ Add Vacancy</button></div><div id="avAlert"></div>
 <div id="avForm" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
@@ -3076,7 +3089,7 @@ await saveWB('Saving bulk upload...');hideLoad();bulkRows=[];document.getElement
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();
   // Include invoices in backup
@@ -3207,6 +3220,11 @@ function startEditMaster(key,idx){_editingMaster={key,idx};renderMT(key);setTime
 function cancelEditMaster(key){_editingMaster=null;renderMT(key);}
 function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
+function getAIKey(){return localStorage.getItem('thp_ai_key')||'';}
+function saveAIKey(){const v=(document.getElementById('ai-key-input').value||'').trim();if(!v){toast('warn','No key','Paste your Anthropic API key first.');return;}localStorage.setItem('thp_ai_key',v);aiKeyStatus();toast('ok','Key Saved','AI key stored in your browser.');}
+function clearAIKey(){localStorage.removeItem('thp_ai_key');const el=document.getElementById('ai-key-input');if(el)el.value='';aiKeyStatus();toast('ok','Cleared','AI key removed from this browser.');}
+function aiKeyStatus(){const k=getAIKey();const inp=document.getElementById('ai-key-input');const el=document.getElementById('ai-key-status');if(!el)return;if(k){if(inp&&!inp.value)inp.value=k;el.style.color='#5e7855';el.textContent='✓ Key is set ('+k.slice(0,16)+'…)';}else{el.style.color='#9f4a47';el.textContent='No key saved — AI Summary will not work until a key is entered.';}}
+function initAIKeyUI(){aiKeyStatus();}
 // VACANCIES ADMIN
 function populateAvJDSel(cur){
   const sel=document.getElementById('avJDSel');if(!sel)return;
@@ -6923,7 +6941,7 @@ async function igFetchOtter() {
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:1000,
@@ -6952,7 +6970,7 @@ async function igPickOtterMeeting(id, el) {
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:1000,
@@ -7034,7 +7052,7 @@ Use simple English. Do not use jargon.`;
   try {
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
@@ -7228,7 +7246,7 @@ Rules:
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
