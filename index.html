@@ -781,6 +781,18 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div id="jp-list"></div>
 </div>
 
+<!-- REPORTS -->
+<div class="card" id="rpt-card">
+  <div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Reports</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <div id="rpt-rec-wrap" style="display:none;flex:1;min-width:160px">
+      <select id="rpt-rec-sel" style="width:100%;font-size:11px"><option value="">— Select Recruiter —</option></select>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="triggerActionReport()">⬇ Action Report</button>
+    <button class="btn btn-ghost btn-sm" onclick="triggerEODReport()">⬇ EOD Report</button>
+  </div>
+</div>
+
 <!-- Stat drill-down list -->
 <div class="card hidden" id="statListCard">
   <div class="card-hdr">
@@ -2496,6 +2508,7 @@ function goPanel(name){
 // DASHBOARD
 // ══════════════════════════════════════════════════════
 function loadDash(){
+initRptCard();
 refreshAllFilters();
 if(myRecName){const hfEl=document.getElementById('hf-rec');if(hfEl){hfEl.value=myRecName;hfEl.style.display='none';}}
 const hfRec=myRecName||(document.getElementById('hf-rec')&&document.getElementById('hf-rec').value)||'';
@@ -7389,6 +7402,205 @@ async function saveRepoData() {
     hideLoad();
     toast('err','Save Failed',e.message+' — changes in your browser only. Please retry.');
   }
+}
+
+// === REPORTS (CR-8, 15 Jun 2026) ===
+
+function initRptCard(){
+  const wrap=document.getElementById('rpt-rec-wrap');
+  if(!wrap)return;
+  const isAdmin=(curRole==='Super Admin'||curRole==='Admin');
+  wrap.style.display=isAdmin?'':'none';
+  if(isAdmin){
+    const sel=document.getElementById('rpt-rec-sel');
+    if(sel){
+      const recs=M.recruiters.filter(r=>r.active).map(r=>r.name);
+      sel.innerHTML='<option value="">— Select Recruiter —</option>'+recs.map(n=>'<option value="'+n+'">'+n+'</option>').join('');
+    }
+  }
+}
+
+function _rptRec(){
+  if(curRole==='Recruiter')return myRecName||(curUser&&curUser.name)||'';
+  const sel=document.getElementById('rpt-rec-sel');
+  return sel?sel.value:'';
+}
+
+function triggerActionReport(){
+  const rec=_rptRec();
+  if(!rec){toast('warn','Select Recruiter','Please select a recruiter first.');return;}
+  genActionReport(rec);
+}
+
+function triggerEODReport(){
+  const rec=_rptRec();
+  if(!rec){toast('warn','Select Recruiter','Please select a recruiter first.');return;}
+  showModal('📋 EOD Report — '+rec,
+    'Add any other inputs before downloading.',
+    '<div style="margin-top:8px"><label style="font-size:13px;font-weight:600;color:#1f5c93;display:block;margin-bottom:6px">Any other inputs</label>'+
+    '<textarea id="eod-notes" rows="5" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px;border:1px solid var(--w12);border-radius:var(--rs);background:var(--w06);color:var(--ow);resize:vertical" placeholder="e.g. sourced profiles, follow-up calls made outside app..."></textarea></div>',
+    '<button class="btn btn-t" onclick="genEODReport(\''+rec.replace(/'/g,"\\'")+'\')" >⬇ Download</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
+}
+
+function _tr25(s){const v=String(s||'');return v.length>25?v.slice(0,24)+'…':v;}
+
+function _fDMY(d){
+  if(!d||d==='—')return '—';
+  const p=String(d).slice(0,10).split('-');
+  return p.length<3?String(d):p[2]+'/'+p[1]+'/'+p[0].slice(2);
+}
+
+function _dSince(d){
+  if(!d)return '—';
+  const diff=Math.floor((Date.now()-new Date(String(d).slice(0,10)).getTime())/86400000);
+  return diff>=0?diff+'d':'—';
+}
+
+function _rptCss(){
+  return '@page{size:A4 landscape;margin:12mm}'+
+    'body{font-family:Calibri,sans-serif;font-size:11pt;color:#291b39;margin:0;padding:0}'+
+    '.rh{font-size:14pt;font-weight:bold;margin-bottom:3pt}'+
+    '.rm{font-size:11pt;color:#5f6470;margin-bottom:14pt}'+
+    '.sh{font-size:12pt;font-weight:bold;color:#1f5c93;border-bottom:1pt solid #d6dbe3;padding-bottom:3pt;margin:14pt 0 5pt}'+
+    'table{width:100%;border-collapse:collapse;margin-bottom:10pt;table-layout:fixed}'+
+    'th{font-size:11pt;font-weight:bold;background:#1f5c93;color:#fff;padding:4pt 5pt;text-align:left;overflow:hidden;white-space:nowrap}'+
+    'td{font-size:11pt;padding:3pt 5pt;border-bottom:1pt solid #e8ecf0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}'+
+    'tr:nth-child(even) td{background:#f9f8f5}'+
+    '.nil{font-size:11pt;color:#5f6470;font-style:italic;padding:2pt 0 8pt}'+
+    '.nl{font-size:12pt;font-weight:bold;color:#1f5c93;margin:14pt 0 4pt}'+
+    '.nb{border:1pt solid #d6dbe3;min-height:50pt;padding:6pt;font-size:11pt;white-space:pre-wrap}';
+}
+
+function _rptTbl(headers,rows){
+  if(!rows.length)return '<div class="nil">No records.</div>';
+  const hdr='<tr>'+headers.map(h=>'<th>'+_tr25(h)+'</th>').join('')+'</tr>';
+  const bdy=rows.map(r=>'<tr>'+r.map(c=>'<td title="'+String(c||'').replace(/"/g,'&quot;')+'">'+_tr25(c)+'</td>').join('')+'</tr>').join('');
+  return '<table><thead>'+hdr+'</thead><tbody>'+bdy+'</tbody></table>';
+}
+
+function _dlReport(html,filename){
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+function genActionReport(recName){
+  const td=today();
+  const dateStr=_fDMY(td);
+  const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y');
+  const threeAgo=new Date();threeAgo.setDate(threeAgo.getDate()-3);
+  const threeStr=threeAgo.toISOString().slice(0,10);
+
+  const s1=recMD.filter(r=>r[C.followupDate]&&r[C.followupDate]<td&&!TERMINAL.has(r[C.status]));
+  const s2=recMD.filter(r=>r[C.status]==='WIP'&&!r[C.followupDate]);
+  const s3=recMD.filter(r=>r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress');
+  const s4=recMD.filter(r=>r[C.status]==='Joining in Progress');
+  const s5=recMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])&&(!r[C.updatedOn]||r[C.updatedOn]<threeStr));
+  const s6=VD.filter(v=>v['Active']!=='N'&&v['Recruiter']===recName);
+
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Action Report '+dateStr+'</title>'+
+    '<style>'+_rptCss()+'</style></head><body>'+
+    '<div class="rh">Action Report — Dated '+dateStr+'</div>'+
+    '<div class="rm">Recruiter: '+recName+' &nbsp;|&nbsp; Generated: '+new Date().toLocaleString('en-IN')+'</div>'+
+
+    '<div class="sh">1. Overdue Follow-ups ('+s1.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Status','Follow-up Date','Days Overdue'],
+      s1.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],_fDMY(r[C.followupDate]),_dSince(r[C.followupDate])]))+
+
+    '<div class="sh">2. WIP — No Follow-up Tagged ('+s2.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Last Updated'],
+      s2.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],_fDMY(r[C.updatedOn])]))+
+
+    '<div class="sh">3. Interviews in Progress ('+s3.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Status','Interview Date'],
+      s3.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],_fDMY(r[C.interviewDate])]))+
+
+    '<div class="sh">4. Joining in Progress ('+s4.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Expected DOJ','Days to Join'],
+      s4.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],_fDMY(r[C.doj]),
+        r[C.doj]?Math.ceil((new Date(String(r[C.doj]).slice(0,10)).getTime()-Date.now())/86400000)+'d':'—']))+
+
+    '<div class="sh">5. Not Actioned in 3+ Days ('+s5.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Status','Last Updated','Days Since'],
+      s5.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],_fDMY(r[C.updatedOn]),_dSince(r[C.updatedOn])]))+
+
+    '<div class="sh">6. Open Vacancies — TAT ('+s6.length+')</div>'+
+    _rptTbl(['Vac Code','Role','Client','Open Since','TAT Days','Priority'],
+      s6.map(v=>[v['Vacancy code']||'',v['Designation']||'',v['Company']||'',_fDMY(v['Date of Vacancy']),_dSince(v['Date of Vacancy']),v['Priority']||'—']))+
+
+    '</body></html>';
+
+  _dlReport(html,'Action_Report_'+td.replace(/-/g,'')+'_'+recName.replace(/\s+/g,'_')+'.html');
+  toast('ok','Downloaded','Action Report generated for '+recName+'.');
+}
+
+function genEODReport(recName){
+  const notes=(document.getElementById('eod-notes')||{}).value||'';
+  closeModal();
+  const td=today();
+  const dateStr=_fDMY(td);
+
+  let clRows=[];
+  try{
+    if(WB&&WB.Sheets['Change Log']){
+      const all=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]);
+      clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&String(r[1]).toLowerCase()===recName.toLowerCase());
+    }
+  }catch(e){console.warn('EOD CL',e);}
+
+  const actionedCodes=new Set(clRows.map(r=>String(r[3])));
+  const addedToday=new Set(MD.filter(r=>String(r[C.sourcingDate]||'').slice(0,10)===td).map(r=>r[C.code]));
+  const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&!addedToday.has(r[C.code]));
+
+  const dueToday=recMD.filter(r=>r[C.followupDate]===td||r[C.interviewDate]===td);
+  const dueCodes=new Set(dueToday.map(r=>r[C.code]));
+
+  const s1=dueToday.filter(r=>actionedCodes.has(r[C.code]));
+  const s2=dueToday.filter(r=>!actionedCodes.has(r[C.code]));
+  const s3codes=[...actionedCodes].filter(cd=>!dueCodes.has(cd)&&!addedToday.has(cd));
+
+  const s3map={};
+  clRows.filter(r=>s3codes.includes(String(r[3]))).forEach(r=>{
+    const cd=String(r[3]);
+    if(!s3map[cd])s3map[cd]={code:cd,name:String(r[8]||''),actions:[]};
+    const t=new Date(r[0]).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    s3map[cd].actions.push(String(r[4]||'')+(r[5]?' ('+r[5]+')':'')+' ['+t+']');
+  });
+  const s3=Object.values(s3map);
+
+  function candActs(code){
+    return clRows.filter(r=>String(r[3])===code).map(r=>{
+      const t=new Date(r[0]).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+      return String(r[4]||'')+(r[5]?' — '+r[5]:'')+' ['+t+']';
+    }).join('; ');
+  }
+
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>EOD Report '+dateStr+'</title>'+
+    '<style>'+_rptCss()+'</style></head><body>'+
+    '<div class="rh">EOD Report Dated '+dateStr+'</div>'+
+    '<div class="rm">Recruiter: '+recName+' &nbsp;|&nbsp; Generated: '+new Date().toLocaleString('en-IN')+'</div>'+
+
+    '<div class="sh">1. Today\'s Tasks Completed ('+s1.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Status','Action Summary'],
+      s1.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],candActs(r[C.code])]))+
+
+    '<div class="sh">2. Today\'s Tasks Pending ('+s2.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Status','Follow-up Date','Interview Date'],
+      s2.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],_fDMY(r[C.followupDate]),_fDMY(r[C.interviewDate])]))+
+
+    '<div class="sh">3. New Tasks Completed Today ('+s3.length+')</div>'+
+    _rptTbl(['Code','Name','Action Summary'],
+      s3.map(e=>[e.code,e.name,e.actions.join('; ')]))+
+
+    (notes?'<div class="nl">Any other inputs</div><div class="nb">'+notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>':'')+
+
+    '</body></html>';
+
+  _dlReport(html,'EOD_Report_'+td.replace(/-/g,'')+'_'+recName.replace(/\s+/g,'_')+'.html');
+  toast('ok','Downloaded','EOD Report generated for '+recName+'.');
 }
 
 </script>
