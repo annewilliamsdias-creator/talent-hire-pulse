@@ -1599,6 +1599,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 </div>
 <!-- BACKUP -->
+<div id="ap-vac-fix" class="card" style="border:1px solid #e9982b;margin-bottom:12px"><div class="card-hdr"><div class="card-title"><span class="ac">🔧</span> One-time: Fix Vacancy Active Status</div></div><div style="font-size:12px;color:#5f6470;margin-bottom:10px">Sets Active=N for 7 inactive vacancies, Active=Y for all others. Run once and verify in Vacancies screen. Button can be removed after confirmation.</div><button class="btn btn-sm" style="background:#e9982b;color:#fff;font-weight:600" onclick="fixVacancyActive()">Run Fix Now</button><div id="vac-fix-result" style="margin-top:8px;font-size:12px"></div></div>
 <div id="ap-backup"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">💾</span> Backup Manager</div><button class="btn btn-t btn-sm" onclick="doBackup()">Create Backup Now</button></div><div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">Backups saved to <span style="color:var(--teal);font-family:monospace">/Talent+ Hire-Pulse/Backups/</span> on SharePoint</div><div id="bkList"></div></div></div>
 <!-- CHANGELOG -->
 <div id="ap-changelog" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Change Log</div></div><div class="tw"><table><thead><tr><th>Timestamp</th><th>User</th><th>Code</th><th>Action</th><th>Field</th><th>Old</th><th>New</th></tr></thead><tbody id="clBody"></tbody></table></div></div></div>
@@ -2530,7 +2531,8 @@ sv2('tbTot', scopeMD.length);
 sv2('tbAct', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
 const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
 // Action queue — accordion view
-const allAQItems=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])).map(r=>{
+const _nc7=new Date();_nc7.setDate(_nc7.getDate()-7);const _nc7s=_nc7.toISOString().slice(0,10);
+const allAQItems=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])&&!(r[C.status]==='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<_nc7s))).map(r=>{
   const fd=r[C.followupDate];
   const u=fd<td?'ov':fd===td?'td':'up';
   return {r,fd,u};
@@ -3081,7 +3083,7 @@ showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',
 function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
 
 function showCustomJD(){if(eIdx===-1)return;const r=MD[eIdx];const lnk=prompt('Enter JD link or SharePoint URL to share:');if(lnk&&lnk.trim())sendJDWA(lnk.trim());}
-function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}saveWB(false);
+function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=2){r[C.followupDate]='';toast('warn','2 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}saveWB(false);
 showModal('📱 Message Sent','WhatsApp opened for <strong>'+r[C.name]+'</strong>. What would you like to do next?','',
   '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
   '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
@@ -7404,6 +7406,28 @@ async function saveRepoData() {
   }
 }
 
+// === ONE-TIME: Fix Vacancy Active Status (15 Jun 2026) ===
+async function fixVacancyActive(){
+  const INACTIVE=new Set(['VC-2026-0019','VC-2026-0015','VC-2026-0016','VC-2026-0004','VC-2026-0005','VC-2026-0010','VC-2026-0012']);
+  const res=document.getElementById('vac-fix-result');
+  if(!VD.length){if(res)res.textContent='No vacancy data loaded. Please log in first.';return;}
+  let setN=0,setY=0;
+  VD.forEach(v=>{
+    const vc=(v['Vacancy code']||v['Vacancy Code']||'').trim();
+    if(INACTIVE.has(vc)){v['Active']='N';setN++;}
+    else{v['Active']='Y';setY++;}
+  });
+  if(WB&&WB.Sheets['Vacancies']){
+    const ws=WB.Sheets['Vacancies'];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const vh=rows[0];
+    WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);
+  }
+  await saveWB('Vacancy status corrected');
+  if(res)res.innerHTML='<span style="color:#5e7855;font-weight:600">✓ Done — '+setN+' set Inactive (N), '+setY+' set Active (Y). Verify in Vacancies screen.</span>';
+  writeCL('Vacancy Fix','ALL','Active','mixed','N='+setN+' Y='+setY,'Admin');
+}
+
 // === REPORTS (CR-8, 15 Jun 2026) ===
 
 function initRptCard(){
@@ -7494,12 +7518,13 @@ function genActionReport(recName){
   const threeAgo=new Date();threeAgo.setDate(threeAgo.getDate()-3);
   const threeStr=threeAgo.toISOString().slice(0,10);
 
-  const s1=recMD.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]));
+  const sevenAgo=new Date();sevenAgo.setDate(sevenAgo.getDate()-7);const sevenStr=sevenAgo.toISOString().slice(0,10);
+  const s1=recMD.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])&&!(r[C.status]==='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<sevenStr)));
   const s2=recMD.filter(r=>r[C.status]==='WIP'&&!r[C.followupDate]);
   const s3=recMD.filter(r=>r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress');
   const s4=recMD.filter(r=>r[C.status]==='Joining in Progress');
-  const s5=recMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])&&(!r[C.updatedOn]||r[C.updatedOn]<threeStr));
-  const s6=VD.filter(v=>v['Active']!=='N'&&v['Recruiter']===recName);
+  const s5=recMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])&&r[C.status]!=='On Hold'&&(!r[C.updatedOn]||r[C.updatedOn]<threeStr));
+  const s6=VD.filter(v=>v['Active']==='Y'&&v['Recruiter']===recName);
 
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Action Report '+dateStr+'</title>'+
     '<style>'+_rptCss()+'</style></head><body>'+
@@ -7528,8 +7553,8 @@ function genActionReport(recName){
       s5.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],_fDMY(r[C.updatedOn]),_dSince(r[C.updatedOn])]))+
 
     '<div class="sh">6. Open Vacancies — TAT ('+s6.length+')</div>'+
-    _rptTbl(['Vac Code','Role','Client','Open Since','TAT Days','Priority'],
-      s6.map(v=>[v['Vacancy code']||'',v['Designation']||'',v['Company']||'',_fDMY(v['Date of Vacancy']),_dSince(v['Date of Vacancy']),v['Priority']||'—']))+
+    _rptTbl(['Vac Code','Role','Client','Open Since','TAT Days','Priority','Total Cands','Active Cands','Stale >2d'],
+      s6.map(v=>{const vc=v['Vacancy code']||'';const vcMD=MD.filter(r=>r[C.vacCode]===vc);const twoAgo=new Date();twoAgo.setDate(twoAgo.getDate()-2);const twoStr=twoAgo.toISOString().slice(0,10);const actMD=vcMD.filter(r=>ACTIVE_STATUSES.has(r[C.status]));const staleMD=actMD.filter(r=>!r[C.updatedOn]||r[C.updatedOn]<twoStr);return[vc,v['Designation']||'',v['Company']||'',_fDMY(v['Date of Vacancy']),_dSince(v['Date of Vacancy']),v['Priority']||'—',String(vcMD.length),String(actMD.length),String(staleMD.length)];}))+
 
     '</body></html>';
 
@@ -7555,7 +7580,8 @@ function genEODReport(recName){
   const addedToday=new Set(MD.filter(r=>String(r[C.sourcingDate]||'').slice(0,10)===td).map(r=>r[C.code]));
   const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&!addedToday.has(r[C.code]));
 
-  const dueToday=recMD.filter(r=>(r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]))||r[C.interviewDate]===td);
+  const sevenAgoE=new Date();sevenAgoE.setDate(sevenAgoE.getDate()-7);const sevenStrE=sevenAgoE.toISOString().slice(0,10);
+  const dueToday=recMD.filter(r=>(r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])&&!(r[C.status]==='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<sevenStrE)))||r[C.interviewDate]===td);
   const dueCodes=new Set(dueToday.map(r=>r[C.code]));
 
   const s1=dueToday.filter(r=>actionedCodes.has(r[C.code]));
