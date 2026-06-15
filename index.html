@@ -7494,7 +7494,7 @@ function genActionReport(recName){
   const threeAgo=new Date();threeAgo.setDate(threeAgo.getDate()-3);
   const threeStr=threeAgo.toISOString().slice(0,10);
 
-  const s1=recMD.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status]));
+  const s1=recMD.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]));
   const s2=recMD.filter(r=>r[C.status]==='WIP'&&!r[C.followupDate]);
   const s3=recMD.filter(r=>r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress');
   const s4=recMD.filter(r=>r[C.status]==='Joining in Progress');
@@ -7555,7 +7555,7 @@ function genEODReport(recName){
   const addedToday=new Set(MD.filter(r=>String(r[C.sourcingDate]||'').slice(0,10)===td).map(r=>r[C.code]));
   const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&!addedToday.has(r[C.code]));
 
-  const dueToday=recMD.filter(r=>(r[C.followupDate]&&r[C.followupDate]<=td)||r[C.interviewDate]===td);
+  const dueToday=recMD.filter(r=>(r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]))||r[C.interviewDate]===td);
   const dueCodes=new Set(dueToday.map(r=>r[C.code]));
 
   const s1=dueToday.filter(r=>actionedCodes.has(r[C.code]));
