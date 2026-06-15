@@ -1817,16 +1817,15 @@ const PROCESS_ORDER=[
   'Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client',
   'Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'
 ];
-// getValidStatuses: all previous stages + current + On Hold (always) + next 2 forward
+// getValidStatuses: all previous stages + current + On Hold (always) + next 5 forward
 function getValidStatuses(cur){
   const idx=PROCESS_ORDER.indexOf(cur);
   if(idx===-1) return [...PROCESS_ORDER,'On Hold']; // unknown status — show all
   const valid=new Set();
   // all stages up to and including current
   for(let i=0;i<=idx;i++) valid.add(PROCESS_ORDER[i]);
-  // next 2 forward stages
-  if(idx+1<PROCESS_ORDER.length) valid.add(PROCESS_ORDER[idx+1]);
-  if(idx+2<PROCESS_ORDER.length) valid.add(PROCESS_ORDER[idx+2]);
+  // next 5 forward stages
+  for(let j=1;j<=5;j++){if(idx+j<PROCESS_ORDER.length) valid.add(PROCESS_ORDER[idx+j]);}
   // On Hold always available
   valid.add('On Hold');
   // WIP always available (already in PROCESS_ORDER[0])
@@ -2804,7 +2803,7 @@ const _offs=gv('uOffS');if(_offs)r[C.offeredSalary]=_offs;
 const _offd=gv('uOffD');if(_offd)r[C.offerDate]=_offd;
 const fd=gv('uFinalDesig');if(fd)r['Final Designation Offered']=fd;
 const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
-if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 Attempts Reached','Follow-up cleared for '+r[C.name]);}}
+if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=2){r[C.followupDate]='';toast('warn','2 NC Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 writeCL('Status Update',r[C.code],C.status,oldStat,stat,r[C.name]);
 try{await saveWB('Updating record...');}catch(e){showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
