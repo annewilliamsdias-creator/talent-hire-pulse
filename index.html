@@ -7605,8 +7605,9 @@ function genEODReport(recName){
   }catch(e){console.warn('EOD CL',e);}
 
   const actionedCodes=new Set(clRows.map(r=>String(r[3])));
-  const addedToday=new Set(MD.filter(r=>String(r[C.sourcingDate]||'').slice(0,10)===td).map(r=>r[C.code]));
-  const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&!addedToday.has(r[C.code]));
+  const addedToday=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&String(r[C.sourcingDate]||'').slice(0,10)===td);
+  const addedTodayCodes=new Set(addedToday.map(r=>r[C.code]));
+  const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&!addedTodayCodes.has(r[C.code]));
 
   const sevenAgoE=new Date();sevenAgoE.setDate(sevenAgoE.getDate()-7);const sevenStrE=sevenAgoE.toISOString().slice(0,10);
   const threeAgoE=new Date();threeAgoE.setDate(threeAgoE.getDate()-3);const threeStrE=threeAgoE.toISOString().slice(0,10);
@@ -7619,9 +7620,42 @@ function genEODReport(recName){
   const actionableCands=Object.values(actnMap);const actionableCodes=new Set(Object.keys(actnMap));
   function eReason(r){if(r[C.followupDate]&&r[C.followupDate]<td)return'Overdue FU';if(r[C.followupDate]&&r[C.followupDate]===td)return'Due Today';if(r[C.status]==='WIP')return'WIP — No FU';if(r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress')return'Interview';if(r[C.status]==='Joining in Progress')return'Joining';return'Not Actioned 3d+';}
 
+  // helper: classify a CL action string into a display type
+  function eActType(action){
+    const a=String(action||'').toLowerCase();
+    if(a.includes('whatsapp')||a.includes('wa '))return'WA';
+    if(a.includes('interview')||a.includes('i/w'))return'Interview';
+    if(a.includes('joining'))return'Joining';
+    if(a.includes('sourced')||a.includes('added'))return'Sourcing';
+    return'Follow-up';
+  }
+
+  // per-candidate CL data helpers
+  function candClRows(code){return clRows.filter(r=>String(r[3])===code);}
+  function candActs(code){
+    return candClRows(code).map(r=>{
+      const t=new Date(r[0]).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+      return String(r[4]||'')+(r[5]?' — '+r[5]:'')+' ['+t+']';
+    }).join('; ');
+  }
+  function candActCount(code){return candClRows(code).length;}
+  function candWACount(code){return candClRows(code).filter(r=>eActType(r[4])==='WA').length;}
+  function candFirstAct(code){
+    const rows=candClRows(code);if(!rows.length)return'—';
+    return new Date(rows[0][0]).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+  }
+  function candLastAct(code){
+    const rows=candClRows(code);if(!rows.length)return'—';
+    return new Date(rows[rows.length-1][0]).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+  }
+  function candActTypes(code){
+    const types=[...new Set(candClRows(code).map(r=>eActType(r[4])))];
+    return types.join(', ')||'—';
+  }
+
   const s1=actionableCands.filter(r=>actionedCodes.has(r[C.code]));
   const s2=actionableCands.filter(r=>!actionedCodes.has(r[C.code]));
-  const s3codes=[...actionedCodes].filter(cd=>!actionableCodes.has(cd)&&!addedToday.has(cd));
+  const s3codes=[...actionedCodes].filter(cd=>!actionableCodes.has(cd)&&!addedTodayCodes.has(cd));
 
   const s3map={};
   clRows.filter(r=>s3codes.includes(String(r[3]))).forEach(r=>{
@@ -7632,29 +7666,92 @@ function genEODReport(recName){
   });
   const s3=Object.values(s3map);
 
-  function candActs(code){
-    return clRows.filter(r=>String(r[3])===code).map(r=>{
-      const t=new Date(r[0]).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-      return String(r[4]||'')+(r[5]?' — '+r[5]:'')+' ['+t+']';
-    }).join('; ');
+  // summary stats
+  const totalActioned=s1.length+s3.length+addedToday.length;
+  const totalActions=clRows.length;
+  const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
+  const totalInterviews=clRows.filter(r=>eActType(r[4])==='Interview').length;
+
+  // summary bar CSS
+  const sumBarCss='.sb{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 18px;font-family:Calibri,sans-serif;}'+
+    '.sc{background:#f0f4f8;border-radius:6px;padding:10px 16px;text-align:center;min-width:90px;}'+
+    '.scn{font-size:22pt;font-weight:700;color:#1f5c93;display:block;line-height:1.1;}'+
+    '.scl{font-size:9pt;color:#5f6470;display:block;margin-top:2px;}'+
+    '.sc.grn .scn{color:#3a6b30;}.sc.amb .scn{color:#856404;}.sc.red .scn{color:#9f4a47;}'+
+    '.ttype{display:inline-block;font-size:9pt;padding:1px 5px;border-radius:3px;font-weight:600;}'+
+    '.tt-wa{background:#fff3cd;color:#856404;}.tt-iv{background:#e8eaf6;color:#3949ab;}'+
+    '.tt-jn{background:#e6f2e6;color:#3a6b30;}.tt-fu{background:#f0f4f8;color:#5f6470;}'+
+    '.tt-sr{background:#f3e5f5;color:#6a1b9a;}';
+
+  function typeTag(t){
+    if(t==='WA')return'<span class="ttype tt-wa">WA</span>';
+    if(t==='Interview')return'<span class="ttype tt-iv">Interview</span>';
+    if(t==='Joining')return'<span class="ttype tt-jn">Joining</span>';
+    if(t==='Sourcing')return'<span class="ttype tt-sr">Sourcing</span>';
+    return'<span class="ttype tt-fu">Follow-up</span>';
+  }
+  function typeTagsForCode(code){
+    const types=[...new Set(candClRows(code).map(r=>eActType(r[4])))];
+    return types.map(typeTag).join(' ')||'—';
+  }
+
+  // custom table with raw HTML cells (for type tags)
+  function _rptTblH(hdrs,rows){
+    let t='<table><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
+    if(!rows.length){t+='<tr><td colspan="'+hdrs.length+'" style="color:#5f6470;font-style:italic">No entries</td></tr>';}
+    else{rows.forEach(r=>{t+='<tr>'+r.map((c,i)=>{
+      const raw=String(c||'');
+      const disp=(i<r.length-1&&!raw.includes('<span'))?_tr25(raw):raw;
+      const title=(i<r.length-1&&!raw.includes('<span')&&raw.length>25)?' title="'+raw.replace(/"/g,'&quot;')+'"':'';
+      return'<td'+title+'>'+disp+'</td>';
+    }).join('')+'</tr>';});}
+    return t+'</tbody></table>';
   }
 
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>EOD Report '+dateStr+'</title>'+
-    '<style>'+_rptCss()+'</style></head><body>'+
+    '<style>'+_rptCss()+sumBarCss+'</style></head><body>'+
     '<div class="rh">EOD Report Dated '+dateStr+'</div>'+
     '<div class="rm">Recruiter: '+recName+' &nbsp;|&nbsp; Generated: '+new Date().toLocaleString('en-IN')+'</div>'+
 
-    '<div class="sh">1. Today\'s Tasks Completed ('+s1.length+')</div>'+
-    _rptTbl(['Code','Name','Position','Client','Status','Action Summary'],
-      s1.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],candActs(r[C.code])]))+
+    // Summary stats bar
+    '<div class="sb">'+
+      '<div class="sc grn"><span class="scn">'+addedToday.length+'</span><span class="scl">Sourced Today</span></div>'+
+      '<div class="sc grn"><span class="scn">'+totalActioned+'</span><span class="scl">Candidates Touched</span></div>'+
+      '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
+      '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
+      '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
+      '<div class="sc red"><span class="scn">'+s2.length+'</span><span class="scl">Tasks Pending</span></div>'+
+    '</div>'+
 
+    // S0 — Sourced Today
+    '<div class="sh">0. Candidates Sourced Today ('+addedToday.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Source'],
+      addedToday.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.source]||'—']))+
+
+    // S1 — Tasks Completed (with action count, types, WA count, first/last action time)
+    '<div class="sh">1. Today\'s Tasks Completed ('+s1.length+')</div>'+
+    _rptTblH(['Code','Name','Position','Client','Status','Types','Actions','WA','First','Last','Action Summary'],
+      s1.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],
+        typeTagsForCode(r[C.code]),
+        candActCount(r[C.code]),
+        candWACount(r[C.code])||'—',
+        candFirstAct(r[C.code]),
+        candLastAct(r[C.code]),
+        candActs(r[C.code])]))+
+
+    // S2 — Tasks Pending
     '<div class="sh">2. Today\'s Tasks Pending ('+s2.length+')</div>'+
     _rptTbl(['Code','Name','Position','Client','Status','Pending Reason','Follow-up / IV Date'],
       s2.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],eReason(r),r[C.followupDate]?_fDMY(r[C.followupDate]):r[C.interviewDate]?_fDMY(r[C.interviewDate]):'—']))+
 
+    // S3 — New / Unplanned Actions
     '<div class="sh">3. New Tasks Completed Today ('+s3.length+')</div>'+
-    _rptTbl(['Code','Name','Action Summary'],
-      s3.map(e=>[e.code,e.name,e.actions.join('; ')]))+
+    _rptTblH(['Code','Name','Types','WA','Actions','Action Summary'],
+      s3.map(e=>[e.code,e.name,
+        typeTagsForCode(e.code),
+        candWACount(e.code)||'—',
+        candActCount(e.code),
+        e.actions.join('; ')]))+
 
     (notes?'<div class="nl">Any other inputs</div><div class="nb">'+notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>':'')+
 
