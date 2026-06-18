@@ -1043,6 +1043,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="cm">
 <span class="ccode" id="uCd">—</span>
 <span id="uStat">—</span>
+<span id="uFitmentChip" style="display:none"></span>
 <div class="flex gap8 mt8">
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showWAMenu()"><svg width="12" height="12" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> WA</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showSched()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
@@ -2786,6 +2787,7 @@ if(uSubHdr){
 }
 document.getElementById('uCd').textContent=r[C.code];
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
+const _evU=igEvalData[r[C.code]||'']||{};const _fsEl=document.getElementById('uFitmentChip');if(_fsEl){if(_evU.fitmentScore){const _fc=_evU.fitmentScore>=8?'#5e7855':_evU.fitmentScore>=5?'#34bac6':'#e9982b';_fsEl.innerHTML='<span style="font-size:10px;font-weight:600;color:'+_fc+';background:'+_fc+'18;border:1px solid '+_fc+'44;border-radius:12px;padding:2px 8px">⭐ Fitment '+_evU.fitmentScore+'/10</span>';_fsEl.style.display='inline';}else{_fsEl.style.display='none';}}
 sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 // Pre-fill existing values (including dates) so user sees current state
 sv('uFU',r[C.followupDate]||'');sv('uIvD',r[C.interviewDate]||'');sv('uDecD',r[C.decisionDate]||'');sv('uDOJ',r[C.doj]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');
@@ -7033,6 +7035,7 @@ async function igAISummary() {
   const tickedCount=Object.values(ev.ticked||{}).filter(Boolean).length;
   const totalQs=jd?Object.keys(jd).filter(k=>/^q\d+$/.test(k)&&jd[k]).length:0;
 
+  const jdRoleContext=jd&&jd.rolecontext?jd.rolecontext.trim():'';
   const prompt=`You are an HR recruiter assistant at WithAWill HR Consultancy Services.
 Generate a structured interview summary for the following candidate screening.
 
@@ -7046,7 +7049,7 @@ CURRENT SALARY: ${ev.notes&&ev.notes.cq0?ev.notes.cq0:r[C.salary]||'—'}
 EXPECTED SALARY: ${ev.notes&&ev.notes.cq1?ev.notes.cq1:'—'}
 NOTICE PERIOD: ${ev.notes&&ev.notes.cq2?ev.notes.cq2:r[C.notice]||'—'}
 QUESTIONS ASKED: ${tickedCount} of ${totalQs} core questions
-
+${jdRoleContext?`\nROLE CONTEXT (from JD):\n${jdRoleContext}\n`:''}
 SCORES: ${scoresText||'Not scored'}
 RECOMMENDATION: ${ev.recommendation||'Not set'}
 
@@ -7065,12 +7068,12 @@ Relevant experience includes [2–3 points].
 Tools/systems used: [mention tools if noted].
 Strong example shared: [mention if any].
 Strengths: [key positives].
-Concerns: [if any].
+Areas to explore further: [optional — frame as development opportunities or points needing clarification, not as negatives].
 Current: [salary]. Expected: [salary]. Notice: [period].
 Questions asked: ${tickedCount}/${totalQs}.
 Recommendation: ${ev.recommendation||'[Shortlist/Hold/Reject]'} — [one-line reason].
-
-Use simple English. Do not use jargon.`;
+${jdRoleContext?`\nFITMENT SCORE: [X]/10 — [one-line rationale comparing candidate profile to role context above]`:''}
+Use simple English. Do not use jargon. Frame all observations positively — describe what the candidate brings and what to explore, never what they lack.`;
 
   toast('info','AI','Generating summary...');
   try {
@@ -7081,8 +7084,13 @@ Use simple English. Do not use jargon.`;
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
-    const summary=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'Could not generate summary.';
+    let summary=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'Could not generate summary.';
     if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+    // Extract fitment score if JD was available
+    if(jd&&jd.rolecontext){
+      const sm=summary.match(/FITMENT SCORE:\s*(\d+)\/10/i);
+      if(sm){igEvalData[code].fitmentScore=parseInt(sm[1]);summary=summary.replace(/\nFITMENT SCORE:[^\n]*/i,'').trim();}
+    }
     igEvalData[code].summary=summary;
     const el=document.getElementById('ig-summary');
     if(el){el.value=summary;}else{igGoPage(5);setTimeout(()=>{const el2=document.getElementById('ig-summary');if(el2)el2.value=summary;},100);}
@@ -7146,6 +7154,7 @@ function igExportPDF() {
     </div>
   </div>
   ${scores?`<div class="section"><div class="section-title">Evaluation Scores</div><table><thead><tr style="background:#f8fafc"><th style="padding:6px 10px;text-align:left;font-size:10px;color:#6b7280;font-weight:600">Area</th><th style="padding:6px 10px;font-size:10px;color:#6b7280;font-weight:600">Score</th><th style="padding:6px 10px;font-size:10px;color:#6b7280;font-weight:600">Rating</th></tr></thead><tbody>${scores}</tbody></table></div>`:''}
+  ${ev.fitmentScore?`<div class="section"><div class="section-title">JD Fitment Score</div><div style="display:flex;align-items:center;gap:16px;padding:8px 0"><div style="font-size:36px;font-weight:700;color:#34BAC6;line-height:1">${ev.fitmentScore}<span style="font-size:16px;color:#6b7280;font-weight:400">/10</span></div><div style="flex:1;background:#e8ecf0;border-radius:6px;height:12px;overflow:hidden"><div style="height:100%;width:${ev.fitmentScore*10}%;background:${ev.fitmentScore>=8?'#5e7855':ev.fitmentScore>=5?'#34BAC6':'#e9982b'};border-radius:6px"></div></div></div></div>`:''}
   ${ev.summary?`<div class="section"><div class="section-title">Interview Summary</div><div class="summary-box">${ev.summary}</div></div>`:''}
   ${ev.manualNotes?`<div class="section"><div class="section-title">Recruiter Notes</div><div class="summary-box">${ev.manualNotes}</div></div>`:''}
   <div class="footer">Generated by Talent+ Hire Pulse · WithAWill HR Consultancy Services LLP · ${new Date().toLocaleString('en-IN')}</div>
