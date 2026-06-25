@@ -3143,20 +3143,31 @@ let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
 function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
 // BACKUP
-async function doBackup(){showLoad('Creating backup...');try{const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);const bn='TalentHirePulse_Backup_'+ts+'.xlsx';rebuildDS();
-  // Include invoices in backup
-  if(typeof invoices!=='undefined'&&invoices&&invoices.length){try{const invRows=[['id','candCode','candName','client','amount','gst','total','date','due','status'],...invoices.map(i=>[i.id,i.candCode||'',i.candName||'',i.client||'',i.amount||'',i.gst||'',i.total||'',i.date||'',i.due||'',i.status||''])];WB.Sheets['Invoices']=XLSX.utils.aoa_to_sheet(invRows);if(!WB.SheetNames.includes('Invoices'))WB.SheetNames.push('Invoices');}catch(e){console.warn('inv backup',e);}}
-  // Save commonRepo pages to WB before backup (ensure latest content)
-  try{const fields=['page1','page2','page4','page5'];const rows=[['key','value'],...fields.map(k=>[k,commonRepo[k]||IG_COMMON_DEFAULTS[k]||''])];WB.Sheets['CommonRepo']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('CommonRepo'))WB.SheetNames.push('CommonRepo');}catch(e){}const out=XLSX.write(WB,{bookType:'xlsx',type:'array'});await refreshToken();const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});if(!r.ok)throw new Error('Backup failed: '+r.status);if(!WB.Sheets['Backups Log']){
-    WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet([['Timestamp','File','By','Records','Type']]);
-    if(!WB.SheetNames.includes('Backups Log'))WB.SheetNames.push('Backups Log');
+async function doBackup(){showLoad('Creating backup...');try{
+  const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  const bn='TalentHirePulse_Backup_'+ts+'.xlsx';
+  // Fetch the latest master binary directly from SharePoint — never use in-memory WB
+  await refreshToken();
+  const fr=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
+    {headers:{Authorization:'Bearer '+tok}});
+  if(!fr.ok)throw new Error('Could not fetch master for backup: '+fr.status);
+  const buf=await fr.arrayBuffer();
+  // PUT fresh binary to Backups folder
+  await refreshToken();
+  const br=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Backups/'+bn+':/content',
+    {method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:buf});
+  if(!br.ok)throw new Error('Backup upload failed: '+br.status);
+  // Append log row only after backup file upload succeeds — xlAppendRows only, no saveWB
+  const logRow=[new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual'];
+  await xlAppendRows('Backups Log',[logRow]);
+  // Update in-memory Backups Log so loadBKList() reflects the new entry without reload
+  if(WB&&WB.Sheets['Backups Log']){
+    const brows=XLSX.utils.sheet_to_json(WB.Sheets['Backups Log'],{header:1,defval:''});
+    brows.push(logRow);
+    WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(brows);
   }
-  const bws=WB.Sheets['Backups Log'];
-  const brows=XLSX.utils.sheet_to_json(bws,{header:1,defval:''});
-  brows.push([new Date().toISOString(),bn,acct&&acct.name?acct.name:'',MD.length,'Manual']);
-  WB.Sheets['Backups Log']=XLSX.utils.aoa_to_sheet(brows);
-  _dupCleanupSave=true;await saveWB(false,true);_dupCleanupSave=false;
-  hideLoad();toast('ok','Backup Created',bn);loadBKList();}catch(e){_dupCleanupSave=false;hideLoad();toast('err','Backup failed',e.message);}}
+  hideLoad();toast('ok','Backup Created',bn);loadBKList();
+}catch(e){hideLoad();toast('err','Backup failed',e.message);}}
 function loadBKList(){
   const el=document.getElementById('bkList');if(!el)return;
   try{
