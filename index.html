@@ -2321,7 +2321,7 @@ try{
   hideLoad();toast('err','Save Failed',e.message);throw e;
 }}
 function rebuildDS(){const ws=WB.Sheets['Data'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}const keep=rows.slice(0,hi+1);const data=MD.map(obj=>HDR.map(h=>obj[h]!==undefined?obj[h]:''));WB.Sheets['Data']=XLSX.utils.aoa_to_sheet([...keep,...data]);}
-function writeCL(action,code,field,oldV,newV,nm){try{if(!WB||!WB.Sheets['Change Log'])return null;const ws=WB.Sheets['Change Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const role=curRole||'Unknown';const entry=[new Date().toISOString(),acct&&acct.name?acct.name:'Unknown',role,code,action,field,String(oldV||''),String(newV||''),nm];rows.push(entry);WB.Sheets['Change Log']=XLSX.utils.aoa_to_sheet(rows);return entry;}catch(e){console.warn('CL',e);return null;}}
+function writeCL(action,code,field,oldV,newV,nm){try{if(!WB||!WB.Sheets['Change Log'])return null;const ws=WB.Sheets['Change Log'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const role=curRole||'Unknown';const entry=[new Date().toISOString(),acct&&acct.name?acct.name:'Unknown',role,code,action,field,String(oldV||''),String(newV||''),nm,acct&&acct.username?acct.username.toLowerCase():''];rows.push(entry);WB.Sheets['Change Log']=XLSX.utils.aoa_to_sheet(rows);return entry;}catch(e){console.warn('CL',e);return null;}}
 
 // ══════════════════════════════════════════════════════
 // PHASE A — DATA PROTECTION HELPERS
@@ -7610,7 +7610,9 @@ function genEODReport(recName){
   try{
     if(WB&&WB.Sheets['Change Log']){
       const all=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]);
-      clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&String(r[1]).toLowerCase()===recName.toLowerCase());
+      const recUser=appUsers.find(u=>u.name===recName);
+      const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
+      clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&(recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase()));
     }
   }catch(e){console.warn('EOD CL',e);}
 
