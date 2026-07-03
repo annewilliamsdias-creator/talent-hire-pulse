@@ -747,6 +747,11 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
         <button class="btn btn-ghost btn-sm" onclick="signOut()">Sign Out</button>
       </div>
     </div>
+    <div id="sync-banner" style="display:none;background:#1f5c93;color:#fff;padding:8px 16px;font-size:13px;font-weight:500;align-items:center;gap:12px;justify-content:center;position:sticky;top:0;z-index:99">
+      <span>🔄 Another user has updated data.</span>
+      <button onclick="syncBannerRefreshNow()" style="background:#34bac6;color:#fff;border:none;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer">Refresh Now</button>
+      <button onclick="syncBannerLater()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.4);padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer">Later</button>
+    </div>
     <div class="content" id="mainContent">
 
 <!-- DASHBOARD -->
@@ -1777,6 +1782,11 @@ let eIdx=-1,epIdx=-1,vacEIdx=-1,appUsers=[];
 let curRole='Recruiter',curUser=null,bulkRows=[],myRecName=null;
 // ── Phase A: Data Protection ──────────────────────────
 let _dupCleanupSave=false;   // set true only during admin-initiated cleanup saves
+let _serverETag='';          // eTag at login / last sync
+let _lastOwnWriteAt=0;       // timestamp of this session's last write
+let _syncInProgress=false;   // prevent overlapping syncs
+let _pollInterval=null;      // setInterval handle
+let _pendingSyncETag='';     // eTag received when dirty form blocked sync
 let _bulkSave=false;         // set true during bulk upload saves
 let _bulkExpectedIncrease=0; // number of valid rows being committed in bulk
 let _lastBackupAt=0;         // timestamp of last autoBackupBeforeSave — throttle to 1 per 10 min
@@ -2039,7 +2049,156 @@ async function signIn() {
   }
 }
 
+// ══════════════════════════════════════════════════════
+// CR-SYNC-001 — LIVE SYNC
+// ══════════════════════════════════════════════════════
+function hasDirtyForm(){
+  const active=document.querySelector('.panel.active');
+  const panelId=active?active.id:'';
+  if(panelId==='p-new'){
+    const filled=['nNm','nMob','nEm','nSD','nRec','nCli','nDept','nSrc','nLoc','nPos'].some(id=>{const el=document.getElementById(id);return el&&el.value&&el.value.trim();});
+    if(filled)return true;
+  }
+  if(eIdx!==-1)return true;
+  if(panelId==='p-edit'||panelId==='p-ep')return true;
+  if(document.getElementById('vacFormModal')&&!document.getElementById('vacFormModal').classList.contains('hidden'))return true;
+  if(document.querySelector('.modal:not(.hidden)'))return true;
+  return false;
+}
+function showSyncBanner(){
+  const b=document.getElementById('sync-banner');
+  if(b){b.style.display='flex';}
+}
+function hideSyncBanner(){
+  const b=document.getElementById('sync-banner');
+  if(b){b.style.display='none';}
+  _pendingSyncETag='';
+}
+function syncBannerLater(){
+  hideSyncBanner();
+  if(_pendingSyncETag&&_pendingSyncETag!==_serverETag){
+    setTimeout(()=>{if(_pendingSyncETag&&_pendingSyncETag!==_serverETag)showSyncBanner();},60000);
+  }
+}
+function syncBannerRefreshNow(){
+  if(hasDirtyForm()){
+    if(!confirm('Your unsaved changes will be lost if you refresh now. Refresh anyway?'))return;
+  }
+  hideSyncBanner();
+  syncFromServer(true);
+}
+function preserveUIState(){
+  return{
+    panelId:(document.querySelector('.panel.active')||{}).id||'p-home',
+    hfRec:(document.getElementById('hf-rec')||{}).value||'',
+    hfCli:(document.getElementById('hf-cli')||{}).value||'',
+    hfFrom:(document.getElementById('hf-from')||{}).value||'',
+    hfTo:(document.getElementById('hf-to')||{}).value||'',
+    recSearch:(document.getElementById('recSearch')||{}).value||'',
+    recFilter:(document.getElementById('recFilter')||{}).value||''
+  };
+}
+function restoreUIState(s){
+  const pName=(s.panelId||'p-home').replace('p-','');
+  goPanel(pName);
+  ['hf-rec','hf-cli','hf-from','hf-to'].forEach(id=>{
+    const el=document.getElementById(id);
+    const val=s['hf'+id.replace('hf-','').replace(/-./g,c=>c[1].toUpperCase())];
+    if(el&&val)el.value=val;
+  });
+  const rs=document.getElementById('recSearch');if(rs&&s.recSearch)rs.value=s.recSearch;
+  const rf=document.getElementById('recFilter');if(rf&&s.recFilter)rf.value=s.recFilter;
+}
+async function syncFromServer(force=false){
+  if(_syncInProgress)return;
+  _syncInProgress=true;
+  try{
+    if(!force&&hasDirtyForm()){
+      showSyncBanner();
+      _pendingSyncETag=_pendingSyncETag||'dirty';
+      _syncInProgress=false;
+      return;
+    }
+    await refreshToken();
+    const [dataResp,vacResp]=await Promise.all([
+      fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/workbook/worksheets(\'Data\')/usedRange(valuesOnly=true)',{headers:{Authorization:'Bearer '+tok}}),
+      fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/workbook/worksheets(\'Vacancies\')/usedRange(valuesOnly=true)',{headers:{Authorization:'Bearer '+tok}})
+    ]);
+    if(!dataResp.ok||!vacResp.ok){_syncInProgress=false;return;}
+    const [dataJson,vacJson]=await Promise.all([dataResp.json(),vacResp.json()]);
+    // Validate headers before applying
+    const newHdr=(dataJson.values&&dataJson.values[0])?dataJson.values[0].map(h=>String(h||'').trim()):[];
+    if(newHdr.length&&JSON.stringify(newHdr)!==JSON.stringify(HDR)){
+      console.warn('CR-SYNC-001: header mismatch — forcing full reload');
+      window.location.reload();
+      return;
+    }
+    const ui=preserveUIState();
+    // Rebuild MD[]
+    if(dataJson.values&&dataJson.values.length>1){
+      let hi=0;
+      for(let i=0;i<Math.min(10,dataJson.values.length);i++){if(dataJson.values[i].includes('Name')&&dataJson.values[i].includes('Recruiter')){hi=i;break;}}
+      MD=[];
+      for(let i=hi+1;i<dataJson.values.length;i++){
+        const row=dataJson.values[i];
+        if(row.every(c=>c===''||c===null||c===undefined))continue;
+        const obj={};HDR.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});
+        obj._sheetRow=i+1;
+        if(obj[C.followupDate])obj[C.followupDate]=normDateStr(obj[C.followupDate]);
+        if(obj[C.sourcingDate])obj[C.sourcingDate]=normDateStr(obj[C.sourcingDate]);
+        if(obj[C.updatedOn])obj[C.updatedOn]=normDateStr(obj[C.updatedOn]);
+        MD.push(obj);
+      }
+    }
+    // Rebuild VD[]
+    if(vacJson.values&&vacJson.values.length>1){
+      const vh=(vacJson.values[0]||[]).map(h=>String(h||'').trim());
+      VHDR=vh;VD=[];
+      for(let i=1;i<vacJson.values.length;i++){
+        const row=vacJson.values[i];
+        if(row.every(c=>c===''||c===null||c===undefined))continue;
+        const obj={};vh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});
+        VD.push(obj);
+      }
+    }
+    // Update eTag
+    try{const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag');_serverETag=meta.eTag||_serverETag;}catch(e){}
+    _pendingSyncETag='';
+    // Re-render
+    restoreUIState(ui);
+    loadDash();renderRec();updateTopbar();fillPosDrop();renderVac();renderAVacs();
+    toast('ok','Synced ✓','Data refreshed');
+    setTimeout(()=>{const t=document.querySelector('.toast');if(t&&t.textContent.includes('Synced'))t.style.opacity='0';},2000);
+  }catch(e){console.warn('CR-SYNC-001 syncFromServer error:',e.message);}
+  _syncInProgress=false;
+}
+async function pollVersion(){
+  if(document.hidden||_syncInProgress||Date.now()-_lastOwnWriteAt<8000)return;
+  try{
+    await refreshToken();
+    const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag,lastModifiedDateTime');
+    if(meta.eTag&&meta.eTag!==_serverETag){
+      _pendingSyncETag=meta.eTag;
+      await syncFromServer();
+    }
+  }catch(e){
+    if(e.message&&e.message.includes('429')){clearInterval(_pollInterval);setTimeout(()=>{_pollInterval=setInterval(pollVersion,25000);},60000);}
+  }
+}
+function startPolling(){
+  if(_pollInterval)clearInterval(_pollInterval);
+  _pollInterval=setInterval(pollVersion,25000);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){clearInterval(_pollInterval);_pollInterval=null;}
+    else if(!_pollInterval){_pollInterval=setInterval(pollVersion,25000);}
+  });
+}
+function stopPolling(){
+  if(_pollInterval){clearInterval(_pollInterval);_pollInterval=null;}
+}
+
 function signOut() {
+  stopPolling();
   TS.clear();
   acct = null;
   tok = null;
@@ -2121,12 +2280,14 @@ async function xlPatchRow(r){
   const values=[HDR.map(h=>r[h]!==undefined?String(r[h]):'')];
   const lastCol=xlCol(HDR.length);
   await graphPatch(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('Data')/range(address='A${row}:${lastCol}${row}')`,{values});
+  _lastOwnWriteAt=Date.now();
 }
 async function xlAppendRows(sheetName,rows){
   let nextRow=2;
   try{const used=await graphGet(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('${sheetName}')/usedRange(valuesOnly=true)`);nextRow=(used.rowCount||1)+1;}catch(e){console.warn('xlAppendRows usedRange:',e.message);}
   const cols=rows[0].length;const lastCol=xlCol(cols);const endRow=nextRow+rows.length-1;
   await graphPatch(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('${sheetName}')/range(address='A${nextRow}:${lastCol}${endRow}')`,{values:rows});
+  _lastOwnWriteAt=Date.now();
   return nextRow;
 }
 
@@ -2202,6 +2363,7 @@ async function loadData(){
       WB=XLSX.read(buf,{type:'array',cellDates:true});
     }
     parseWB();
+    try{const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag');_serverETag=meta.eTag||'';}catch(e){console.warn('CR-SYNC-001: eTag fetch failed',e.message);}
     setSP('ok','SharePoint ✓');
     hideLoad();
     initUI();
@@ -2310,6 +2472,7 @@ try{
     {method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:out});
   if(!r.ok)throw new Error('Upload failed: '+r.status);
   _lastGoodCount=newCount;
+  _lastOwnWriteAt=Date.now();
   writeAuditLog(_bulkSave?'BULK_SAVE':'SAVE',_lastGoodCount,newCount,dups,blanks,'ALLOWED','Save successful');
   _bulkSave=false;_bulkExpectedIncrease=0;
   // Auto-backup fires after main save — avoids bandwidth competition
@@ -2492,7 +2655,7 @@ VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv
 // ══════════════════════════════════════════════════════
 // UI INIT
 // ══════════════════════════════════════════════════════
-function initUI(){updateTopbar();refreshAllFilters();loadDash();renderRec();renderVac();initMastersGrid();}
+function initUI(){updateTopbar();refreshAllFilters();loadDash();renderRec();renderVac();initMastersGrid();startPolling();}
 function updateTopbar(){const myMD=myRecName?MD.filter(r=>r[C.recruiter]===myRecName):MD;document.getElementById('tbTot').textContent=myMD.length;const act=myMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;document.getElementById('tbAct').textContent=act;}
 function toggleMobNav(){const sb=document.querySelector('.sidebar');const ov=document.getElementById('mob-overlay');if(!sb)return;const open=sb.classList.toggle('mob-open');if(ov)ov.classList.toggle('visible',open);}
 function closeMobNav(){const sb=document.querySelector('.sidebar');const ov=document.getElementById('mob-overlay');if(sb)sb.classList.remove('mob-open');if(ov)ov.classList.remove('visible');}
@@ -2746,7 +2909,7 @@ showLoad('Adding candidate...');
 const _newRow=await xlAppendRows('Data',[HDR.map(h=>nr[h]!==undefined?String(nr[h]):'')]);
 nr._sheetRow=_newRow;
 if(_clEN)await xlAppendRows('Change Log',[_clEN]);
-hideLoad();
+hideLoad();hideSyncBanner();
 sv('nCodeVal',code);document.getElementById('nCodeBox').classList.remove('hidden');
 showAlert('na','ok','✅ '+nm+' added. Code: '+code);
 updateTopbar();loadDash();renderRec();setTimeout(()=>clearNew(true),100);};
@@ -2831,7 +2994,7 @@ const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=2){r[C.followupDate]='';toast('warn','2 NC Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 const _clEU=writeCL('Status Update',r[C.code],C.status,oldStat,stat,r[C.name]);
-try{showLoad('Updating record...');await xlPatchRow(r);if(_clEU)await xlAppendRows('Change Log',[_clEU]);hideLoad();}catch(e){hideLoad();showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
+try{showLoad('Updating record...');await xlPatchRow(r);if(_clEU)await xlAppendRows('Change Log',[_clEU]);hideLoad();hideSyncBanner();}catch(e){hideLoad();showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(stat)+'">'+stat+'</span>';
 toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();
   const updCode=r[C.code];const updName=r[C.name];
@@ -2866,7 +3029,7 @@ if(!r[C.name]){showAlert('epSaveAlert','err','Name cannot be empty.');return;}
 if(r[C.contact]&&!/^\d{10}$/.test(r[C.contact])){showAlert('epSaveAlert','err','Primary mobile must be 10 digits.');return;}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 const _clEP=changes.map(ch=>writeCL('Profile Edit',r[C.code],ch.lbl,ch.old,ch.new,r[C.name])).filter(Boolean);
-try{showLoad('Saving profile...');await xlPatchRow(r);if(_clEP.length)await xlAppendRows('Change Log',_clEP);hideLoad();}catch(e){hideLoad();showAlert('epSaveAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
+try{showLoad('Saving profile...');await xlPatchRow(r);if(_clEP.length)await xlAppendRows('Change Log',_clEP);hideLoad();hideSyncBanner();}catch(e){hideLoad();showAlert('epSaveAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
 showAlert('epSaveAlert','ok','✅ '+changes.length+' field(s) updated for '+r[C.name]);renderRec();toast('ok','Profile Updated',changes.length+' changes saved');
   // Clear form
   document.getElementById('epForm').classList.add('hidden');
@@ -3358,7 +3521,7 @@ const _ex=VD[vacEIdx];const _patch={};Object.entries(vd).forEach(([k,v])=>{if(k=
 }else if(v!==''&&v!==null&&v!==undefined){_patch[k]=v;}});Object.assign(VD[vacEIdx],_patch);}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
 await saveWB('Saving vacancy...',true);
-closeVacFormModal();
+closeVacFormModal();hideSyncBanner();
 // Auto-tag candidates: if recruiter changed on existing vacancy, update all
 // active candidates linked to this vacancy code to the new recruiter
 if(!isNew && vd['Recruiter']){
