@@ -3560,7 +3560,7 @@ function renderUsers(){const tb=document.getElementById('uBody');if(!tb)return;i
 // ══════════════════════════════════════════════════════
 function today(){return new Date().toISOString().split('T')[0];}
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
-function normDateStr(v){if(!v||v==='nan')return '';const s=String(v).trim();if(!s)return '';if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const d=new Date(s);return isNaN(d)?s:d.toISOString().split('T')[0];}
+function normDateStr(v){if(!v||v==='nan')return '';const s=String(v).trim();if(!s)return '';if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const n=parseFloat(s);if(!isNaN(n)&&n>40000&&n<60000){const d=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000);return isNaN(d)?s:d.toISOString().split('T')[0];}const d=new Date(s);return isNaN(d)?s:d.toISOString().split('T')[0];}
 function fmtD(s){if(!s||s==='nan'||!String(s).trim())return'';const d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
 function bdg(s){s=(s||'').toLowerCase();if(s==='active'||s==='wip')return'b-wip';if(s==='joined')return'b-joined';if(s.includes('reject'))return'b-rejected';if(s==='selected')return'b-selected';if(s.includes('offer'))return'b-offered';if(s==='on hold')return'b-hold';if(s==='dropped'||s==='not contactable'||s==='not interested')return'b-grey';if(s.includes('progress')||s.includes('shortlisted'))return'b-progress';return'b-wip';}
 function genCode(){const yr=new Date().getFullYear();const nums=MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}).filter(n=>n>0);const next=nums.length>0?Math.max(...nums)+1:1269;return'Talent+Hire/'+yr+'/'+String(next).padStart(6,'0');}
