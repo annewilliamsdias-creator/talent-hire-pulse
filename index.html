@@ -1812,6 +1812,11 @@ remark:'Remark',otherComments:'Other comments',roleSummary:'Role summary',
 consent:'Consent Obtained',docLink:'Document Link',prevCode:'Previous Candidate code',
 updatedBy:'Last Updated By',updatedOn:'Last Updated On',archive:'Archive Flag',
 tat:'TAT',sNo:'S. No',recruiter:'Recruiter',reportingDate:'Data base reporting date'};
+// R2 (13 Jul 2026): every date-typed column, normalised wherever records are
+// parsed from an external source (workbook load, live sync) — previously only
+// followupDate/sourcingDate/updatedOn were covered, leaving these others
+// exposed to the same Excel-serial-number bug class.
+const DATE_FIELDS=[C.sourcingDate,C.screeningDate,C.followupDate,C.updatedOn,C.interviewDate,C.decisionDate,C.doj,C.offerDate,C.reportingDate];
 
 const TERMINAL=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
 // Statuses where follow-up date is NOT mandatory
@@ -2144,9 +2149,7 @@ async function syncFromServer(force=false){
         if(row.every(c=>c===''||c===null||c===undefined))continue;
         const obj={};HDR.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});
         obj._sheetRow=i+1;
-        if(obj[C.followupDate])obj[C.followupDate]=normDateStr(obj[C.followupDate]);
-        if(obj[C.sourcingDate])obj[C.sourcingDate]=normDateStr(obj[C.sourcingDate]);
-        if(obj[C.updatedOn])obj[C.updatedOn]=normDateStr(obj[C.updatedOn]);
+        DATE_FIELDS.forEach(f=>{if(obj[f])obj[f]=normDateStr(obj[f]);});
         MD.push(obj);
       }
     }
@@ -2274,13 +2277,31 @@ async function graphPatch(url, body) {
 
 // ── Excel cell-level write helpers (Option C) ─────────────────────────────
 function xlCol(n){let s='';while(n>0){n--;s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26);}return s;}
+// R5 (13 Jul 2026): lightweight eTag refresh shared by xlPatchRow/xlAppendRows/saveWB
+// so a session's own write doesn't leave _serverETag stale and trigger a redundant sync.
+async function _refreshServerETag(){
+  try{const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag');if(meta&&meta.eTag)_serverETag=meta.eTag;}catch(e){}
+}
 async function xlPatchRow(r){
   if(!r._sheetRow)throw new Error('No _sheetRow on record — cannot patch');
   const row=r._sheetRow;
+  // R3 (13 Jul 2026): verify this row still holds the same candidate before
+  // overwriting it — guards against a manual row deletion/shift in Excel
+  // desktop silently redirecting the patch to the wrong candidate.
+  const codeColIdx=HDR.indexOf(C.code);
+  if(codeColIdx>=0){
+    const codeCol=xlCol(codeColIdx+1);
+    const check=await graphGet(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('Data')/range(address='${codeCol}${row}')`);
+    const liveCode=check&&check.values&&check.values[0]?String(check.values[0][0]||'').trim():'';
+    if(liveCode&&r[C.code]&&liveCode!==String(r[C.code]).trim()){
+      throw new Error('Row identity check failed — row '+row+' now holds candidate "'+liveCode+'", not "'+r[C.code]+'". Save aborted to prevent overwriting the wrong candidate. Please refresh and retry.');
+    }
+  }
   const values=[HDR.map(h=>r[h]!==undefined?String(r[h]):'')];
   const lastCol=xlCol(HDR.length);
   await graphPatch(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('Data')/range(address='A${row}:${lastCol}${row}')`,{values});
   _lastOwnWriteAt=Date.now();
+  await _refreshServerETag();
 }
 async function xlAppendRows(sheetName,rows){
   let nextRow=2;
@@ -2288,7 +2309,27 @@ async function xlAppendRows(sheetName,rows){
   const cols=rows[0].length;const lastCol=xlCol(cols);const endRow=nextRow+rows.length-1;
   await graphPatch(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('${sheetName}')/range(address='A${nextRow}:${lastCol}${endRow}')`,{values:rows});
   _lastOwnWriteAt=Date.now();
+  await _refreshServerETag();
   return nextRow;
+}
+
+// R4 (13 Jul 2026): fetch live Change Log rows directly from the workbook API
+// rather than relying on this session's in-memory copy, which only reflects
+// entries this session's own writeCL() calls added plus whatever existed at
+// login — missing anything other sessions/devices appended since. Falls back
+// to the in-memory copy if the live fetch fails, so reports still generate.
+async function fetchLiveChangeLog(){
+  try{
+    await refreshToken();
+    const used=await graphGet(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('Change Log')/usedRange(valuesOnly=true)`);
+    return (used&&used.values)?used.values.slice(1).filter(r=>r[0]):[];
+  }catch(e){
+    console.warn('fetchLiveChangeLog failed — falling back to in-memory Change Log:',e.message);
+    if(WB&&WB.Sheets['Change Log']){
+      try{return XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]);}catch(e2){}
+    }
+    return [];
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -2380,7 +2421,7 @@ const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
 let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}
 HDR=rows[hi].map(h=>String(h).trim());MD=[];
 for(let i=hi+1;i<rows.length;i++){const row=rows[i];if(row.every(c=>c===''||c===null||c===undefined))continue;const obj={};HDR.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});obj._sheetRow=i+1;MD.push(obj);}
-MD.forEach(r=>{if(r[C.followupDate])r[C.followupDate]=normDateStr(r[C.followupDate]);if(r[C.sourcingDate])r[C.sourcingDate]=normDateStr(r[C.sourcingDate]);if(r[C.updatedOn])r[C.updatedOn]=normDateStr(r[C.updatedOn]);});
+MD.forEach(r=>{DATE_FIELDS.forEach(f=>{if(r[f])r[f]=normDateStr(r[f]);});});
 const wsv=WB.Sheets['Vacancies'];
 if(wsv){const vr=XLSX.utils.sheet_to_json(wsv,{header:1,defval:'',raw:false});VHDR=vr[0]?vr[0].map(h=>String(h).trim()):[];VD=[];
 for(let i=1;i<vr.length;i++){if(vr[i].every(c=>c===''||c===null))continue;const obj={};VHDR.forEach((h,j)=>{obj[h]=vr[i][j]!==undefined?String(vr[i][j]).trim():'';});VD.push(obj);}}
@@ -2392,7 +2433,7 @@ else{
   loadRepoData();
   if(repoData.jds.length||repoData.scripts.length||repoData.help.length){
     // Migrate existing localStorage data into workbook so other users can see it
-    setTimeout(()=>{try{const rows=[['type','data'],...repoData.jds.map(d=>['jd',JSON.stringify(d)]),...repoData.scripts.map(d=>['script',JSON.stringify(d)]),...repoData.help.map(d=>['help',JSON.stringify(d)])];WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');saveWB(false,true);}catch(e){console.warn('Repo migrate failed',e);}},3000);
+    setTimeout(()=>{try{const rows=[['type','data'],...repoData.jds.map(d=>['jd',JSON.stringify(d)]),...repoData.scripts.map(d=>['script',JSON.stringify(d)]),...repoData.help.map(d=>['help',JSON.stringify(d)])];WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');saveWB(false,true,['Repository']);}catch(e){console.warn('Repo migrate failed',e);}},3000);
   }
 }
 loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
@@ -2423,7 +2464,7 @@ if(_lastGoodCount>0 && MD.length>_lastGoodCount*1.25){
   },2000);
 }
 }
-async function saveWB(msg, skipRebuild=false){
+async function saveWB(msg, skipRebuild=false, sheets=null){
 if(!WB)return;
 // ── Phase A: Dynamic save guard ───────────────────────
 if(!_dupCleanupSave){
@@ -2458,6 +2499,33 @@ if(!_dupCleanupSave){
 showLoad(msg||'Saving...');
 try{
   if(!skipRebuild)rebuildDS();
+  // ── R1 (13 Jul 2026): fresh-fetch-before-PUT ──────────────────────
+  // Re-download the live workbook and overlay only the sheet(s) this
+  // save intends to change, so any sheet NOT listed here (Data, Change
+  // Log, or anything another session wrote since this session loaded)
+  // is carried forward from the server instead of being reverted to a
+  // stale in-memory copy.
+  if(sheets&&sheets.length){
+    try{
+      await refreshToken();
+      const fr=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{headers:{Authorization:'Bearer '+tok}});
+      if(fr.ok){
+        const freshBuf=await fr.arrayBuffer();
+        const freshWB=XLSX.read(freshBuf,{type:'array',cellDates:true});
+        sheets.forEach(name=>{
+          if(WB.Sheets[name]){
+            freshWB.Sheets[name]=WB.Sheets[name];
+            if(!freshWB.SheetNames.includes(name))freshWB.SheetNames.push(name);
+          }
+        });
+        WB=freshWB;
+      }else{
+        console.warn('saveWB: fresh-fetch failed ('+fr.status+') — saving from in-memory workbook only');
+      }
+    }catch(e){
+      console.warn('saveWB: fresh-fetch error — saving from in-memory workbook only:',e.message);
+    }
+  }
   const {dups,blanks}=countCodeStats();
   const newCount=MD.length;
   // Update metadata with new good count
@@ -2473,6 +2541,9 @@ try{
   if(!r.ok)throw new Error('Upload failed: '+r.status);
   _lastGoodCount=newCount;
   _lastOwnWriteAt=Date.now();
+  // R5 (13 Jul 2026): keep _serverETag current so this save doesn't
+  // trigger a redundant sync (or spurious banner) ~25s later via pollVersion
+  try{const putMeta=await r.json();if(putMeta&&putMeta.eTag)_serverETag=putMeta.eTag;}catch(e){}
   writeAuditLog(_bulkSave?'BULK_SAVE':'SAVE',_lastGoodCount,newCount,dups,blanks,'ALLOWED','Save successful');
   _bulkSave=false;_bulkExpectedIncrease=0;
   // Auto-backup fires after main save — avoids bandwidth competition
@@ -2632,9 +2703,9 @@ function loadMastersCfg(){
     Object.keys(loaded).forEach(k=>{M[k]=loaded[k];});
   }catch(e){console.warn('masters cfg',e);}
 }
-async function saveMastersCfg(silent=false){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}const block=[['Masters'],['key','name','active','extra']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N',k==='recruiters'?(it.doj||''):''])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false,true);if(!silent)toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);if(!silent)toast('err','Save Failed',e.message);}}
+async function saveMastersCfg(silent=false){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}const block=[['Masters'],['key','name','active','extra']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N',k==='recruiters'?(it.doj||''):''])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false,true,['Config']);if(!silent)toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);if(!silent)toast('err','Save Failed',e.message);}}
 function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}const nb=document.getElementById('navBulk');const na=document.getElementById('navAdm');const ni=document.getElementById('navIncentive');const niv=document.getElementById('navInvoice');if(nb)nb.style.display=rd.bulk?'':'none';if(na)na.style.display=rd.admin?'':'none';if(ni)ni.style.display='';if(niv)niv.style.display=rd.admin?'':'none';canEditRepo=!!(rd&&rd.admin);myRecName=(curRole==='Recruiter'&&curUser)?curUser.name:null;}
-async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i;break;}}const block=[['Users'],['Name','Email','Type','Role','Client','Active'],...appUsers.map(u=>[u.name,u.email,u.type||'internal',u.role,u.client||'',u.active?'Y':'N'])];if(ui>=0){let ei=ui+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(ui,ei-ui,...block);}else{all.push([],...block);}WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);await saveWB('Saving users...',true);}catch(e){toast('err','Save Failed',e.message);}}
+async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i;break;}}const block=[['Users'],['Name','Email','Type','Role','Client','Active'],...appUsers.map(u=>[u.name,u.email,u.type||'internal',u.role,u.client||'',u.active?'Y':'N'])];if(ui>=0){let ei=ui+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(ui,ei-ui,...block);}else{all.push([],...block);}WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);await saveWB('Saving users...',true,['Config']);}catch(e){toast('err','Save Failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // DROPDOWNS
@@ -2885,7 +2956,7 @@ const fr=document.getElementById('nFr')&&document.getElementById('nFr').checked;
 const expVal=parseFloat(gv('nExp'))||0;
 if(!fr&&expVal>0){if(!gv('nCo')||!gv('nDe')){showAlert('na','err','Company and Designation are required when experience > 0.');return;}}
 const doAdd=async()=>{
-const code=genCode();
+const code=await genCodeLive();
 const pm=parseFloat(gv('nSPM'))||0,pa=pm*12,epm=parseFloat(gv('nESPM'))||0,epa=epm*12;
 const nr={};HDR.forEach(h=>nr[h]='');
 nr[C.code]=code;nr[C.sourcingDate]=sd;nr[C.screeningDate]=gv('nScD');
@@ -2909,6 +2980,20 @@ showLoad('Adding candidate...');
 const _newRow=await xlAppendRows('Data',[HDR.map(h=>nr[h]!==undefined?String(nr[h]):'')]);
 nr._sheetRow=_newRow;
 if(_clEN)await xlAppendRows('Change Log',[_clEN]);
+// CR-DUP-002: verify no collision occurred despite the live check above —
+// catches the rare case of two submissions computing the same code at
+// nearly the same instant. Never auto-corrects; surfaces a visible warning
+// so an admin verifies and fixes manually.
+try{
+  const postCodes=await fetchLiveCandidateCodes();
+  if(postCodes){
+    const occurrences=postCodes.filter(c=>c===code).length;
+    if(occurrences>1){
+      console.warn('CR-DUP-002: duplicate candidate code detected after append:',code,'occurrences:',occurrences);
+      toast('err','⚠ Duplicate Code Detected',code+' now appears '+occurrences+' times in Data — another submission created the same code at nearly the same moment. Please verify both records in Admin and correct one immediately.');
+    }
+  }
+}catch(e){console.warn('CR-DUP-002 post-append check failed:',e.message);}
 hideLoad();hideSyncBanner();
 sv('nCodeVal',code);document.getElementById('nCodeBox').classList.remove('hidden');
 showAlert('na','ok','✅ '+nm+' added. Code: '+code);
@@ -3276,14 +3361,14 @@ showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',
 function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
 
 function showCustomJD(){if(eIdx===-1)return;const r=MD[eIdx];const lnk=prompt('Enter JD link or SharePoint URL to share:');if(lnk&&lnk.trim())sendJDWA(lnk.trim());}
-async function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=2){r[C.followupDate]='';toast('warn','2 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _clWA=writeCL('WhatsApp Sent',r[C.code],'followupCount',String(cnt-1),String(cnt),r[C.name]);try{if(r._sheetRow)await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);}catch(e){console.warn('sendWA patch',e.message);}
+async function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=2){r[C.followupDate]='';toast('warn','2 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _clWA=writeCL('WhatsApp Sent',r[C.code],'followupCount',String(cnt-1),String(cnt),r[C.name]);try{if(r._sheetRow)await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
 showModal('📱 Message Sent','WhatsApp opened for <strong>'+r[C.name]+'</strong>. What would you like to do next?','',
   '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
   '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
   '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'home\')">Dashboard</button>');}
 function showSched(){if(eIdx===-1)return;const r=MD[eIdx];showModal('📅 Schedule Interview','<strong>'+r[C.name]+'</strong> — '+(r[C.position]||'—')+' @ '+(r[C.client]||'—'),'<div style="display:flex;flex-direction:row;gap:20px;flex-wrap:nowrap;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:6px"><input type="radio" name="si_type" id="si_teams" value="teams" checked onchange="onMeetTypeChange()" style="width:auto;height:auto;margin:0;cursor:pointer"><label for="si_teams" style="cursor:pointer;font-size:12px;color:var(--ow);white-space:nowrap;margin:0">Teams Meeting</label></div><div style="display:flex;align-items:center;gap:6px"><input type="radio" name="si_type" id="si_f2f" value="f2f" onchange="onMeetTypeChange()" style="width:auto;height:auto;margin:0;cursor:pointer"><label for="si_f2f" style="cursor:pointer;font-size:12px;color:var(--ow);white-space:nowrap;margin:0">Face-to-Face (F2F)</label></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="field"><label>Date</label><input type="date" id="si_d" value="'+(r[C.interviewDate]||'')+'" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Time</label><input type="time" id="si_t" value="10:00" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"></div><div class="field"><label>Duration</label><select id="si_dur" style="background:#000000;border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)"><option value="30">30 mins</option><option value="45">45 mins</option><option value="60" selected>60 mins</option><option value="90">90 mins</option></select></div><div class="field"><label>Attendee Emails <span style="font-size:10px;color:var(--w40)">(comma-separated)</span></label><input type="text" id="si_em" style="background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow)" placeholder="email1@co.com, email2@co.com"></div></div><div id="si_venue_wrap" style="display:none;margin-top:10px"><div class="field"><label>Interview Venue / Address</label><textarea id="si_venue" rows="2" style="width:100%;background:var(--w06);border:1px solid var(--w12);border-radius:var(--rs);padding:8px;color:var(--ow);resize:vertical;box-sizing:border-box" placeholder="Building, floor, address, landmark..."></textarea></div></div><div style="font-size:11px;color:var(--w60);margin-top:8px" id="si_note">Outlook calendar invites sent to all participants. WhatsApp option after creation.</div>','<button class="btn btn-t" id="si_btn" onclick="createMeeting()">Create Teams Meeting</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');}
 function onMeetTypeChange(){const isF2F=document.getElementById('si_f2f')&&document.getElementById('si_f2f').checked;const vw=document.getElementById('si_venue_wrap');const btn=document.getElementById('si_btn');const note=document.getElementById('si_note');if(vw)vw.style.display=isF2F?'':'none';if(btn)btn.textContent=isF2F?'Schedule F2F Interview':'Create Teams Meeting';if(note)note.textContent=isF2F?'Calendar invites sent to all attendees with venue address.':'Outlook calendar invites sent to all participants. WhatsApp option after creation.';}
-async function createMeeting(){const r=MD[eIdx];const d=document.getElementById('si_d')&&document.getElementById('si_d').value;const t=document.getElementById('si_t')&&document.getElementById('si_t').value;const dur=parseInt(document.getElementById('si_dur')&&document.getElementById('si_dur').value)||60;const ieRaw=(document.getElementById('si_em')&&document.getElementById('si_em').value)||'';const isF2F=document.getElementById('si_f2f')&&document.getElementById('si_f2f').checked;const venue=((document.getElementById('si_venue')&&document.getElementById('si_venue').value)||'').trim();if(!d||!t){toast('err','Missing details','Date and time required.');return;}if(isF2F&&!venue){toast('err','Venue required','Please enter the interview venue / address.');return;}closeModal();showLoad(isF2F?'Scheduling F2F interview...':'Creating Teams meeting...');try{await refreshToken();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});ieRaw.split(',').map(e=>e.trim()).filter(e=>e.includes('@')).forEach(e=>att.push({emailAddress:{address:e,name:''},type:'required'}));const evBody={subject:(isF2F?'F2F Interview':'Interview')+' — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your '+(isF2F?'in-person interview':'interview')+' for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.'+(isF2F&&venue?'</p><p><strong>Venue:</strong> '+venue:'')+'</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};if(isF2F){if(venue)evBody.location={displayName:venue};}else{evBody.isOnlineMeeting=true;evBody.onlineMeetingProvider='teamsForBusiness';}const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(evBody)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create event');}const ev=await resp.json();const link=ev.onlineMeeting&&ev.onlineMeeting.joinUrl?ev.onlineMeeting.joinUrl:'';r[C.interviewDate]=d;r._iTime=t;r[C.docLink]=isF2F?(venue||'F2F'):(link||'');r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();const _clMtg=writeCL(isF2F?'F2F Interview Scheduled':'Interview Scheduled',r[C.code],'Interview','',d+' '+t+(isF2F?' [F2F @ '+venue+']':''),r[C.name]);if(r._sheetRow)await xlPatchRow(r);if(_clMtg)await xlAppendRows('Change Log',[_clMtg]);hideLoad();showModal(isF2F?'✅ F2F Interview Scheduled':'✅ Meeting Created',isF2F?'In-person interview for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">📍 '+venue+'</span>':'Teams meeting for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">Outlook invites sent to all participants.</span>',isF2F?'':(link?'<div style="font-size:10px;color:var(--w60);word-break:break-all;margin-top:4px">'+link.substring(0,80)+'...</div>':''),'<button class="btn btn-t" onclick="closeModal();sendWA(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="closeModal()">Done</button>');}catch(e){hideLoad();toast('err','Meeting failed',e.message);}}
+async function createMeeting(){const r=MD[eIdx];const d=document.getElementById('si_d')&&document.getElementById('si_d').value;const t=document.getElementById('si_t')&&document.getElementById('si_t').value;const dur=parseInt(document.getElementById('si_dur')&&document.getElementById('si_dur').value)||60;const ieRaw=(document.getElementById('si_em')&&document.getElementById('si_em').value)||'';const isF2F=document.getElementById('si_f2f')&&document.getElementById('si_f2f').checked;const venue=((document.getElementById('si_venue')&&document.getElementById('si_venue').value)||'').trim();if(!d||!t){toast('err','Missing details','Date and time required.');return;}if(isF2F&&!venue){toast('err','Venue required','Please enter the interview venue / address.');return;}closeModal();showLoad(isF2F?'Scheduling F2F interview...':'Creating Teams meeting...');try{await refreshToken();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});ieRaw.split(',').map(e=>e.trim()).filter(e=>e.includes('@')).forEach(e=>att.push({emailAddress:{address:e,name:''},type:'required'}));const evBody={subject:(isF2F?'F2F Interview':'Interview')+' — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your '+(isF2F?'in-person interview':'interview')+' for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.'+(isF2F&&venue?'</p><p><strong>Venue:</strong> '+venue:'')+'</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};if(isF2F){if(venue)evBody.location={displayName:venue};}else{evBody.isOnlineMeeting=true;evBody.onlineMeetingProvider='teamsForBusiness';}const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(evBody)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create event');}const ev=await resp.json();const link=ev.onlineMeeting&&ev.onlineMeeting.joinUrl?ev.onlineMeeting.joinUrl:'';r[C.interviewDate]=d;r._iTime=t;r[C.docLink]=isF2F?(venue||'F2F'):(link||'');r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();const _clMtg=writeCL(isF2F?'F2F Interview Scheduled':'Interview Scheduled',r[C.code],'Interview','',d+' '+t+(isF2F?' [F2F @ '+venue+']':''),r[C.name]);try{if(r._sheetRow)await xlPatchRow(r);if(_clMtg)await xlAppendRows('Change Log',[_clMtg]);}catch(persistErr){console.warn('createMeeting persist',persistErr.message);toast('warn','Not Saved',(isF2F?'Interview':'Meeting')+' created, but the candidate record failed to save to SharePoint: '+persistErr.message+'. Please retry from Update Candidate.');}hideLoad();showModal(isF2F?'✅ F2F Interview Scheduled':'✅ Meeting Created',isF2F?'In-person interview for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">📍 '+venue+'</span>':'Teams meeting for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">Outlook invites sent to all participants.</span>',isF2F?'':(link?'<div style="font-size:10px;color:var(--w60);word-break:break-all;margin-top:4px">'+link.substring(0,80)+'...</div>':''),'<button class="btn btn-t" onclick="closeModal();sendWA(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="closeModal()">Done</button>');}catch(e){hideLoad();toast('err','Meeting failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
 // BULK UPLOAD
@@ -3448,8 +3533,8 @@ function cancelEditMaster(key){_editingMaster=null;renderMT(key);}
 function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
 function getAIKey(){return localStorage.getItem('thp_ai_key')||'';}
-async function saveAIKey(){const v=(document.getElementById('ai-key-input').value||'').trim();if(!v){toast('warn','No key','Paste your Anthropic API key first.');return;}localStorage.setItem('thp_ai_key',v);if(WB){saveMetadata({ai_key:v});await saveWB(false,true);}aiKeyStatus();toast('ok','Key Saved','AI key stored in browser and workbook.');}
-async function clearAIKey(){localStorage.removeItem('thp_ai_key');const el=document.getElementById('ai-key-input');if(el)el.value='';if(WB){saveMetadata({ai_key:''});await saveWB(false,true);}aiKeyStatus();toast('ok','Cleared','AI key removed.');}
+async function saveAIKey(){const v=(document.getElementById('ai-key-input').value||'').trim();if(!v){toast('warn','No key','Paste your Anthropic API key first.');return;}localStorage.setItem('thp_ai_key',v);if(WB){saveMetadata({ai_key:v});await saveWB(false,true,['Config']);}aiKeyStatus();toast('ok','Key Saved','AI key stored in browser and workbook.');}
+async function clearAIKey(){localStorage.removeItem('thp_ai_key');const el=document.getElementById('ai-key-input');if(el)el.value='';if(WB){saveMetadata({ai_key:''});await saveWB(false,true,['Config']);}aiKeyStatus();toast('ok','Cleared','AI key removed.');}
 function aiKeyStatus(){const k=getAIKey();const inp=document.getElementById('ai-key-input');const el=document.getElementById('ai-key-status');if(!el)return;if(k){if(inp&&!inp.value)inp.value=k;el.style.color='#5e7855';el.textContent='✓ Key is set ('+k.slice(0,16)+'…)';}else{el.style.color='#9f4a47';el.textContent='No key saved — AI Summary will not work until a key is entered.';}}
 function initAIKeyUI(){aiKeyStatus();}
 // VACANCIES ADMIN
@@ -3520,7 +3605,7 @@ if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{co
 const _ex=VD[vacEIdx];const _patch={};Object.entries(vd).forEach(([k,v])=>{if(k==='JD Link'){if(v)_patch[k]=v;// preserve existing if form blank
 }else if(v!==''&&v!==null&&v!==undefined){_patch[k]=v;}});Object.assign(VD[vacEIdx],_patch);}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
-await saveWB('Saving vacancy...',true);
+await saveWB('Saving vacancy...',true,['Vacancies']);
 closeVacFormModal();hideSyncBanner();
 // Auto-tag candidates: if recruiter changed on existing vacancy, update all
 // active candidates linked to this vacancy code to the new recruiter
@@ -3539,14 +3624,23 @@ if(!isNew && vd['Recruiter']){
     }
   });
   if(_retagged.length>0){
-    try{for(const _rc of _retagged){if(_rc._sheetRow)await xlPatchRow(_rc);}if(_clRetag.length)await xlAppendRows('Change Log',_clRetag);}catch(e){console.warn('retag patch',e.message);}
-    toast('info','Candidates Retagged',_retagged.length+' active candidate(s) assigned to '+newRec);
+    // R6 (13 Jul 2026): success toast only fires if the SharePoint writes
+    // actually succeed — previously it fired unconditionally, even when the
+    // retag patches silently failed.
+    try{
+      for(const _rc of _retagged){if(_rc._sheetRow)await xlPatchRow(_rc);}
+      if(_clRetag.length)await xlAppendRows('Change Log',_clRetag);
+      toast('info','Candidates Retagged',_retagged.length+' active candidate(s) assigned to '+newRec);
+    }catch(e){
+      console.warn('retag patch',e.message);
+      toast('err','Retag Not Saved','Vacancy recruiter updated, but '+_retagged.length+' candidate record(s) failed to save to SharePoint: '+e.message+'. Please verify and retry.');
+    }
   }
 }
 renderAVacs();renderVac();fillPosDrop();renderRec();loadDash();
 toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);
 showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
-async function toggleVacAct(idx){VD[idx]['Active']=VD[idx]['Active']==='N'?'Y':'N';if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}await saveWB(false,true);renderAVacs();renderVac();fillPosDrop();toast('info','Vacancy Updated',VD[idx]['Designation']+' is now '+(VD[idx]['Active']==='N'?'Inactive':'Active'));}
+async function toggleVacAct(idx){VD[idx]['Active']=VD[idx]['Active']==='N'?'Y':'N';if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}await saveWB(false,true,['Vacancies']);renderAVacs();renderVac();fillPosDrop();toast('info','Vacancy Updated',VD[idx]['Designation']+' is now '+(VD[idx]['Active']==='N'?'Inactive':'Active'));}
 // USERS
 function openAddUser(){document.getElementById('uEI').value='-1';['uUN','uUE'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const ut=document.getElementById('uUT');if(ut)ut.value='internal';const us=document.getElementById('uUS');if(us)us.value='Active';onUType();document.getElementById('uForm2').classList.remove('hidden');}
 function onUType(){const t=gv('uUT');const rf=document.getElementById('uRF');const cf=document.getElementById('uCF');const crf=document.getElementById('uCRF');if(rf)rf.classList.toggle('hidden',t!=='internal');if(cf)cf.classList.toggle('hidden',t!=='client');if(crf)crf.classList.toggle('hidden',t!=='client');}
@@ -3560,10 +3654,77 @@ function renderUsers(){const tb=document.getElementById('uBody');if(!tb)return;i
 // ══════════════════════════════════════════════════════
 function today(){return new Date().toISOString().split('T')[0];}
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
-function normDateStr(v){if(!v||v==='nan')return '';const s=String(v).trim();if(!s)return '';if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const n=parseFloat(s);if(!isNaN(n)&&n>40000&&n<60000){const d=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000);return isNaN(d)?s:d.toISOString().split('T')[0];}const d=new Date(s);return isNaN(d)?s:d.toISOString().split('T')[0];}
+// R2 (13 Jul 2026): month-abbreviation map for explicit d/MMM/yyyy parsing
+const MONTHS3={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function normDateStr(v){
+  if(!v||v==='nan')return '';
+  const s=String(v).trim();
+  if(!s)return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  // Excel serial date number (workbook JSON API / raw cell values return these, not text)
+  const n=parseFloat(s);
+  if(!isNaN(n)&&n>40000&&n<60000){
+    const d=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000);
+    if(!isNaN(d)){console.warn('normDateStr: converted Excel serial number',s,'→',d.toISOString().split('T')[0]);return d.toISOString().split('T')[0];}
+  }
+  // Explicit d/MMM/yyyy or d-MMM-yyyy (e.g. "4/Dec/2025") — parsed deterministically
+  let m=s.match(/^(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{4})$/);
+  if(m){
+    const mon=MONTHS3[m[2].toLowerCase()];
+    if(mon!==undefined){
+      const d=new Date(Date.UTC(parseInt(m[3],10),mon,parseInt(m[1],10)));
+      if(!isNaN(d))return d.toISOString().split('T')[0];
+    }
+  }
+  // Explicit dd/mm/yyyy or dd-mm-yyyy — always read as day-month-year, never
+  // left to the browser's locale-dependent Date parser (which reads US month-day)
+  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m){
+    const day=parseInt(m[1],10),mon=parseInt(m[2],10)-1,yr=parseInt(m[3],10);
+    if(mon>=0&&mon<=11&&day>=1&&day<=31){
+      const d=new Date(Date.UTC(yr,mon,day));
+      if(!isNaN(d))return d.toISOString().split('T')[0];
+    }
+  }
+  // Last-resort ambiguous fallback (e.g. natural-language dates) — logged so
+  // any future misparse is visible rather than silent
+  const d=new Date(s);
+  if(isNaN(d))return s;
+  console.warn('normDateStr: ambiguous date format parsed via locale fallback:',s,'→',d.toISOString().split('T')[0]);
+  return d.toISOString().split('T')[0];
+}
 function fmtD(s){if(!s||s==='nan'||!String(s).trim())return'';const d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
 function bdg(s){s=(s||'').toLowerCase();if(s==='active'||s==='wip')return'b-wip';if(s==='joined')return'b-joined';if(s.includes('reject'))return'b-rejected';if(s==='selected')return'b-selected';if(s.includes('offer'))return'b-offered';if(s==='on hold')return'b-hold';if(s==='dropped'||s==='not contactable'||s==='not interested')return'b-grey';if(s.includes('progress')||s.includes('shortlisted'))return'b-progress';return'b-wip';}
 function genCode(){const yr=new Date().getFullYear();const nums=MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}).filter(n=>n>0);const next=nums.length>0?Math.max(...nums)+1:1269;return'Talent+Hire/'+yr+'/'+String(next).padStart(6,'0');}
+// CR-DUP-002 (13 Jul 2026): genCode() computed the next candidate code purely
+// from local MD[] — two near-simultaneous "Add Candidate" submissions (across
+// users/tabs, or before CR-SYNC-001's poll catches up) could independently
+// compute the same next code, then both append, silently creating duplicates.
+// fetchLiveCandidateCodes() pulls the current code column straight from the
+// workbook API so genCodeLive() computes against live state, not a stale copy.
+async function fetchLiveCandidateCodes(){
+  try{
+    await refreshToken();
+    const used=await graphGet(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('Data')/usedRange(valuesOnly=true)`);
+    if(!used||!used.values||used.values.length<2)return [];
+    const hdr=used.values[0].map(h=>String(h||'').trim());
+    const codeIdx=hdr.indexOf(C.code);
+    if(codeIdx<0)return [];
+    return used.values.slice(1).map(r=>String(r[codeIdx]||'').trim()).filter(Boolean);
+  }catch(e){
+    console.warn('fetchLiveCandidateCodes failed:',e.message);
+    return null; // signals failure — caller falls back to local-only codes
+  }
+}
+async function genCodeLive(){
+  const yr=new Date().getFullYear();
+  const liveCodes=await fetchLiveCandidateCodes();
+  const localNums=MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}).filter(n=>n>0);
+  const liveNums=(liveCodes||[]).map(c=>{const m=String(c).match(/(\d+)$/);return m?parseInt(m[1]):0;}).filter(n=>n>0);
+  const allNums=[...localNums,...liveNums];
+  const next=allNums.length>0?Math.max(...allNums)+1:1269;
+  return 'Talent+Hire/'+yr+'/'+String(next).padStart(6,'0');
+}
 function dupChk(mob,em,excl){const res=[];if(mob&&/^\d{10}$/.test(mob)){const f=MD.find(r=>String(r[C.contact]).trim()===mob&&r[C.code]!==excl);if(f)res.push({type:'Mobile',r:f});}if(em&&em.includes('@')){const f=MD.find(r=>String(r[C.email]).trim().toLowerCase()===em.toLowerCase()&&r[C.code]!==excl);if(f&&!res.find(x=>x.r[C.code]===f[C.code]))res.push({type:'Email',r:f});}return res;}
 function gv(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 function sv(id,val){const el=document.getElementById(id);if(el)el.value=val!==undefined&&val!==null?val:'';}
@@ -4077,7 +4238,7 @@ function renderDeptChart(data) {
 }
 
 // ── DASHBOARD REPORT DOWNLOAD ─────────────────────────────
-function exportDashReport() {
+async function exportDashReport() {
   const dates = getDashDates();
   const data  = filterData(dates);
   const wb    = XLSX.utils.book_new();
@@ -4093,17 +4254,21 @@ function exportDashReport() {
   XLSX.utils.book_append_sheet(wb, ws1, 'Candidate List');
 
   // Sheet 2: Audit Log for these candidates
-  if (WB && WB.Sheets['Change Log']) {
+  // R4 (13 Jul 2026): data rows fetched live from the workbook API instead of
+  // this session's in-memory Change Log, so entries from other sessions since
+  // login are included. Header row still taken from the in-memory sheet —
+  // column titles only, not subject to staleness.
+  try{
+    const liveRows = await fetchLiveChangeLog();
     const codes = new Set(data.map(r => r[C.code]));
-    const clWs  = WB.Sheets['Change Log'];
-    const clRows = XLSX.utils.sheet_to_json(clWs, {header:1, defval:''})
-      .filter((r,i) => i === 0 || codes.has(r[2]));
-    if (clRows.length > 1) {
-      const ws2 = XLSX.utils.aoa_to_sheet(clRows);
+    const clHeader = (WB && WB.Sheets['Change Log']) ? (XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''})[0]||[]) : [];
+    const filtered = liveRows.filter(r => codes.has(r[2]));
+    if (filtered.length) {
+      const ws2 = XLSX.utils.aoa_to_sheet([clHeader, ...filtered]);
       ws2['!cols'] = [{wch:22},{wch:18},{wch:28},{wch:16},{wch:20},{wch:25},{wch:25}];
       XLSX.utils.book_append_sheet(wb, ws2, 'Audit Log');
     }
-  }
+  }catch(e){console.warn('exportDashReport CL',e);}
 
   // Sheet 3: Summary Stats
   const summaryData = [
@@ -6169,7 +6334,7 @@ async function saveIncPolicyToSP(){
       for(let i=0;i<all.length;i++){if(String(all[i][0]).trim()==='IncentivePolicy'){si=i;break;}}
       if(si>=0){let ei=si+1;while(ei<all.length&&all[ei][0])ei++;all.splice(si,ei-si);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);}
     }
-    await saveWB(false,true);
+    await saveWB(false,true,['Incentive_Config','Config']);
   } catch(e) { console.warn('saveIncPolicyToSP',e); }
 }
 
@@ -6354,7 +6519,7 @@ function saveInvoiceData(){
       ...invoices.map(i=>[i.id||'',i.candCode||'',i.candName||'',i.client||'',i.position||'',i.amount||'',i.gst||'',i.total||'',i.date||'',i.due||'',i.terms||'',i.status||''])];
     WB.Sheets['Invoices']=XLSX.utils.aoa_to_sheet(rows);
     if(!WB.SheetNames.includes('Invoices'))WB.SheetNames.push('Invoices');
-    saveWB(false,true);
+    saveWB(false,true,['Invoices']);
   }catch(e){console.warn('Invoice WB save',e);}}
 }
 function loadInvoiceData(){
@@ -6397,7 +6562,7 @@ function saveInvTemplate(){
     const rows=[['key','value'],...Object.entries(invTemplate)];
     WB.Sheets['InvTemplate']=XLSX.utils.aoa_to_sheet(rows);
     if(!WB.SheetNames.includes('InvTemplate'))WB.SheetNames.push('InvTemplate');
-    saveWB(false,true);
+    saveWB(false,true,['InvTemplate']);
   }catch(e){}}
   const n=document.getElementById('it-saved-note');if(n)n.textContent='Saved '+invTemplate.updated;
   toast('ok','Template Saved','Invoice template updated.');
@@ -6556,7 +6721,7 @@ function saveRepoData(){
       ...repoData.help.map(d=>['help',JSON.stringify(d)])];
     WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);
     if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');
-    saveWB(false,true);
+    saveWB(false,true,['Repository']);
   }catch(e){console.warn('Repo WB save failed',e);}}
 }
 function loadRepoData(){}
@@ -7357,7 +7522,7 @@ function saveCommonRepo() {
       ...Object.entries(commonRepo).map(([k,v])=>[k,v])];
     WB.Sheets['CommonRepo']=XLSX.utils.aoa_to_sheet(rows);
     if(!WB.SheetNames.includes('CommonRepo'))WB.SheetNames.push('CommonRepo');
-    saveWB(false,true);
+    saveWB(false,true,['CommonRepo']);
   }catch(e){console.warn('CommonRepo WB save failed',e);}}
   writeCL('Common Interview Repo Updated','ADMIN','Config','','','');
   const el=document.getElementById('cr-lastsaved');if(el)el.textContent=commonRepo.lastSaved;
@@ -7624,7 +7789,7 @@ async function fixVacancyActive(){
     const vh=rows[0];
     WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);
   }
-  await saveWB('Vacancy status corrected',true);
+  await saveWB('Vacancy status corrected',true,['Vacancies']);
   if(res)res.innerHTML='<span style="color:#5e7855;font-weight:600">✓ Done — '+setN+' set Inactive (N), '+setY+' set Active (Y). Verify in Vacancies screen.</span>';
   writeCL('Vacancy Fix','ALL','Active','mixed','N='+setN+' Y='+setY,'Admin');
 }
@@ -7763,21 +7928,21 @@ function genActionReport(recName){
   toast('ok','Downloaded','Action Report generated for '+recName+'.');
 }
 
-function genEODReport(recName){
+async function genEODReport(recName){
   const notes=(document.getElementById('eod-notes')||{}).value||'';
   closeModal();
+  showLoad('Preparing EOD report...');
   const td=today();
   const dateStr=_fDMY(td);
 
   let clRows=[];
   try{
-    if(WB&&WB.Sheets['Change Log']){
-      const all=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]);
-      const recUser=appUsers.find(u=>u.name===recName);
-      const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
-      clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&(recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase()));
-    }
+    const all=await fetchLiveChangeLog();
+    const recUser=appUsers.find(u=>u.name===recName);
+    const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
+    clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&(recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase()));
   }catch(e){console.warn('EOD CL',e);}
+  hideLoad();
 
   const actionedCodes=new Set(clRows.map(r=>String(r[3])));
   const addedToday=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&String(r[C.sourcingDate]||'').slice(0,10)===td);
