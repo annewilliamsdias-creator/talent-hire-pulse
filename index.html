@@ -2275,6 +2275,20 @@ async function graphPatch(url, body) {
   return r.json();
 }
 
+async function graphPost(url, body) {
+  await refreshToken();
+  const r = await fetch(GRAPH + url, {
+    method:'POST',
+    headers:{
+      Authorization:'Bearer ' + tok,
+      'Content-Type':'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(`Graph POST ${url} → ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
 // ── Excel cell-level write helpers (Option C) ─────────────────────────────
 function xlCol(n){let s='';while(n>0){n--;s=String.fromCharCode(65+(n%26))+s;n=Math.floor(n/26);}return s;}
 // R5 (13 Jul 2026): lightweight eTag refresh shared by xlPatchRow/xlAppendRows/saveWB
@@ -7813,6 +7827,125 @@ async function inspectCandidatesListSchema(){
       '</tbody></table></div>';
     showModal('📋 Candidates List Schema','Internal field names — needed for the SP-Lists migration script. Also printed to browser console as a table.',html,'<button class="btn btn-ghost" onclick="closeModal()">Close</button>');
   }catch(e){hideLoad();toast('err','Schema fetch failed',e.message);}
+}
+
+// Column map confirmed against the live 'Candidates' List schema, 26 Jul 2026
+// (post Anne's CandidateCode1 / Combined_x0020_Loan corrections).
+// Maps C{} display-name keys (as used in MD[]) -> real SharePoint List internal field names.
+const SPLIST_FIELD_MAP={
+  [C.code]:'CandidateCode',
+  [C.sourcingDate]:'ProfileSourcingdate',
+  [C.screeningDate]:'ProfileScreeningdate',
+  [C.source]:'Source',
+  [C.sourceDetails]:'SourceDetails',
+  [C.name]:'Name',
+  [C.combinedLoc]:'Combined_x0020_Location',
+  [C.location]:'CurrentLocation',
+  [C.dept]:'Department',
+  [C.position]:'Positionappliedfor',
+  [C.roleInterested]:'RoleInterestedin',
+  [C.contact]:'Contact_x0020_no',
+  [C.altContact]:'Alternatecontactnumber',
+  [C.email]:'Personal_x0020_Email_x0020_ID',
+  [C.altEmail]:'AlternateEmail',
+  [C.expYrs]:'Total_x0020_Yrs_x0020_of_x0020_E',
+  [C.expTenure]:'Exp_x002e_Tenure',
+  [C.company]:'CurrentCompanyName',
+  [C.designation]:'CurrentDesignation',
+  [C.notice]:'Notice_x0020_Period',
+  [C.reason]:'Reasonforleaving',
+  [C.salaryPM]:'CurrentSalary_x0028_Rs_x002e_PM_',
+  [C.salaryPA]:'CurrentSalary_x0028_Rs_x002e_PA_',
+  [C.finalSalary]:'FinalCurrentAnnualSalary',
+  [C.salaryBracket]:'CurrentSalaryBracket',
+  [C.expectedSalary]:'ExpectedSalary_x0028_Rs_x002e__x',
+  [C.offeredSalary]:'OfferedSalary',
+  [C.offerDate]:'OfferDate',
+  [C.client]:'Client_x0020_Name',
+  [C.vacCode]:'VacancyCode',
+  [C.status]:'Final_x0020_Status',
+  [C.dm]:'FinalDecisionMaker',
+  [C.interviewerName]:'ClientInterviewerName',
+  [C.interviewDate]:'ClientInterviewDate',
+  [C.decisionDate]:'ClientSelectionDate',
+  [C.doj]:'Expected_x002f_DOJ',
+  [C.followupDate]:'Follow_x002d_upDate',
+  [C.followupNotes]:'Follow_x002d_upNotes',
+  [C.followupCount]:'Follow_x002d_upAttemptCount',
+  [C.remark]:'Remark',
+  [C.otherComments]:'Othercomments',
+  [C.roleSummary]:'Rolesummary',
+  [C.consent]:'ConsentObtained',
+  [C.docLink]:'DocumentLink',
+  [C.prevCode]:'PreviousCandidatecode',
+  [C.updatedBy]:'LastUpdatedBy',
+  [C.updatedOn]:'LastUpdatedOn',
+  [C.archive]:'ArchiveFlag',
+  [C.tat]:'TAT',
+  [C.recruiter]:'Recruiter',
+  [C.reportingDate]:'Databasereportingdate'
+  // C.sNo intentionally omitted — dropped per Phase 0 (superseded by native List ID)
+};
+const SPLIST_NUMBER_FIELDS=new Set(['CurrentSalary_x0028_Rs_x002e_PM_','CurrentSalary_x0028_Rs_x002e_PA_','FinalCurrentAnnualSalary','ExpectedSalary_x0028_Rs_x002e__x','OfferedSalary','Follow_x002d_upAttemptCount','TAT']);
+const SPLIST_DATE_FIELDS=new Set(['ProfileSourcingdate','ProfileScreeningdate','OfferDate','ClientInterviewDate','ClientSelectionDate','Expected_x002f_DOJ','Follow_x002d_upDate','LastUpdatedOn','Databasereportingdate']);
+
+// One-time migration: Data sheet (MD[]) -> Candidates SharePoint List.
+// Read-only against the Excel Data sheet — never modifies or removes anything there.
+// Idempotent: fetches existing CandidateCode values already in the List first and
+// skips them, so this is safe to re-run if it's interrupted partway through.
+async function migrateDataToCandidatesList(){
+  if(!confirm('This will copy candidate records into the new SharePoint Candidates List (skipping any candidate codes already there). This can take several minutes for '+MD.length+' records. Continue?'))return;
+  showLoad('Checking existing List items...');
+  const existingCodes=new Set();
+  try{
+    let url=`/sites/${siteId}/lists/Candidates/items?$expand=fields($select=CandidateCode)&$top=200`;
+    while(url){
+      const res=await graphGet(url.replace(GRAPH,''));
+      (res.value||[]).forEach(it=>{
+        const c=it.fields&&it.fields.CandidateCode;
+        if(c)existingCodes.add(String(c).trim());
+      });
+      url=res['@odata.nextLink']||null;
+    }
+  }catch(e){hideLoad();toast('err','Migration aborted','Could not read existing List items: '+e.message);return;}
+  console.log('Already in Candidates List:',existingCodes.size);
+
+  const toMigrate=MD.filter(r=>r[C.code]&&!existingCodes.has(String(r[C.code]).trim()));
+  console.log('Candidates to migrate:',toMigrate.length);
+  if(!toMigrate.length){hideLoad();toast('ok','Nothing to migrate','All candidate codes are already present in the Candidates List.');return;}
+
+  let done=0;const failed=[];
+  for(const r of toMigrate){
+    const fields={};
+    for(const[srcCol,internalName]of Object.entries(SPLIST_FIELD_MAP)){
+      const v=r[srcCol];
+      if(v===undefined||v===null||v==='')continue; // omit blanks — do not write empty strings over List defaults
+      if(SPLIST_NUMBER_FIELDS.has(internalName)){
+        const n=parseFloat(String(v).replace(/[^\d.-]/g,''));
+        if(!isNaN(n))fields[internalName]=n;
+      }else if(SPLIST_DATE_FIELDS.has(internalName)){
+        const d=normDateStr(v);
+        if(d)fields[internalName]=d;
+      }else{
+        fields[internalName]=String(v);
+      }
+    }
+    try{
+      await graphPost(`/sites/${siteId}/lists/Candidates/items`,{fields});
+      done++;
+    }catch(e){
+      failed.push({code:r[C.code],name:r[C.name],error:e.message});
+      console.warn('Migration failed for',r[C.code],e.message);
+    }
+    if(done%25===0)showLoad('Migrating candidates... '+done+'/'+toMigrate.length);
+  }
+  hideLoad();
+  if(failed.length){
+    console.table(failed);
+    toast('warn','Migration finished with errors',done+' migrated, '+failed.length+' failed — see console for the list of failed candidate codes.');
+  }else{
+    toast('ok','Migration complete',done+' candidate record(s) migrated to the Candidates List.');
+  }
 }
 
 // === REPORTS (CR-8, 15 Jun 2026) ===
