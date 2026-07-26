@@ -7919,7 +7919,6 @@ function bucketExpLevel(v){
 // Idempotent: fetches existing CandidateCode values already in the List first and
 // skips them, so this is safe to re-run if it's interrupted partway through.
 async function migrateDataToCandidatesList(){
-  if(!confirm('This will copy candidate records into the new SharePoint Candidates List (skipping any candidate codes already there). This can take several minutes for '+MD.length+' records. Continue?'))return;
   showLoad('Checking existing List items...');
   const existingCodes=new Set();
   try{
@@ -7937,7 +7936,13 @@ async function migrateDataToCandidatesList(){
 
   const toMigrate=MD.filter(r=>r[C.code]&&!existingCodes.has(String(r[C.code]).trim()));
   console.log('Candidates to migrate:',toMigrate.length);
-  if(!toMigrate.length){hideLoad();toast('ok','Nothing to migrate','All candidate codes are already present in the Candidates List.');return;}
+  hideLoad();
+  if(!toMigrate.length){toast('ok','Nothing to migrate','All candidate codes are already present in the Candidates List.');return;}
+  // Confirmation now shows the REAL count still to be written (not MD.length) —
+  // 26 Jul 2026: previously showed the total record count regardless of how many
+  // were already migrated, which was confusing on repeat/retry runs.
+  if(!confirm('This will copy '+toMigrate.length+' remaining candidate record(s) into the Candidates List ('+existingCodes.size+' already migrated, will be skipped). Continue?'))return;
+  showLoad('Migrating candidates...');
 
   let done=0;const failed=[];
   for(const r of toMigrate){
