@@ -3681,31 +3681,38 @@ function normDateStr(v){
     const d=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000);
     if(!isNaN(d)){console.warn('normDateStr: converted Excel serial number',s,'→',d.toISOString().split('T')[0]);return d.toISOString().split('T')[0];}
   }
-  // Explicit d/MMM/yyyy or d-MMM-yyyy (e.g. "4/Dec/2025") — parsed deterministically
-  let m=s.match(/^(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{4})$/);
+  // Explicit d/MMM/yyyy, d/MMM/yy, d-MMM-yyyy etc. (e.g. "4/Dec/2025", "4/Dec/25")
+  // — parsed deterministically. 2-digit years assumed 20xx.
+  let m=s.match(/^(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{2,4})$/);
   if(m){
     const mon=MONTHS3[m[2].toLowerCase()];
     if(mon!==undefined){
-      const d=new Date(Date.UTC(parseInt(m[3],10),mon,parseInt(m[1],10)));
+      let yr=parseInt(m[3],10); if(m[3].length===2)yr+=2000;
+      const d=new Date(Date.UTC(yr,mon,parseInt(m[1],10)));
       if(!isNaN(d))return d.toISOString().split('T')[0];
     }
   }
-  // Explicit dd/mm/yyyy or dd-mm-yyyy — always read as day-month-year, never
-  // left to the browser's locale-dependent Date parser (which reads US month-day)
-  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  // Explicit dd/mm/yyyy, dd/mm/yy, dd-mm-yyyy etc. — always read as day-month-year,
+  // never left to the browser's locale-dependent Date parser (which reads US month-day).
+  // 2-digit years assumed 20xx.
+  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
   if(m){
-    const day=parseInt(m[1],10),mon=parseInt(m[2],10)-1,yr=parseInt(m[3],10);
+    const day=parseInt(m[1],10),mon=parseInt(m[2],10)-1;
+    let yr=parseInt(m[3],10); if(m[3].length===2)yr+=2000;
     if(mon>=0&&mon<=11&&day>=1&&day<=31){
       const d=new Date(Date.UTC(yr,mon,day));
       if(!isNaN(d))return d.toISOString().split('T')[0];
     }
   }
   // Last-resort ambiguous fallback (e.g. natural-language dates) — logged so
-  // any future misparse is visible rather than silent
+  // any future misparse is visible rather than silent. Uses the LOCAL date
+  // components from parsing (not toISOString(), which would shift the date
+  // backward by a day for any timezone ahead of UTC, e.g. IST).
   const d=new Date(s);
   if(isNaN(d))return s;
-  console.warn('normDateStr: ambiguous date format parsed via locale fallback:',s,'→',d.toISOString().split('T')[0]);
-  return d.toISOString().split('T')[0];
+  const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  console.warn('normDateStr: ambiguous date format parsed via locale fallback:',s,'→',iso);
+  return iso;
 }
 function fmtD(s){if(!s||s==='nan'||!String(s).trim())return'';const d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
 function bdg(s){s=(s||'').toLowerCase();if(s==='active'||s==='wip')return'b-wip';if(s==='joined')return'b-joined';if(s.includes('reject'))return'b-rejected';if(s==='selected')return'b-selected';if(s.includes('offer'))return'b-offered';if(s==='on hold')return'b-hold';if(s==='dropped'||s==='not contactable'||s==='not interested')return'b-grey';if(s.includes('progress')||s.includes('shortlisted'))return'b-progress';return'b-wip';}
