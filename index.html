@@ -7794,6 +7794,27 @@ async function fixVacancyActive(){
   writeCL('Vacancy Fix','ALL','Active','mixed','N='+setN+' Y='+setY,'Admin');
 }
 
+// === SP-LISTS MIGRATION — Phase 1 prep (26 Jul 2026) ===
+// Read-only diagnostic: fetches the live 'Candidates' SharePoint List's column
+// schema so the migration script can be written against real internal field
+// names instead of guessed ones. No data is read or written by this function.
+async function inspectCandidatesListSchema(){
+  try{
+    showLoad('Fetching Candidates List schema...');
+    const res=await graphGet(`/sites/${siteId}/lists/Candidates/columns`);
+    hideLoad();
+    const cols=(res.value||[]).filter(c=>!c.hidden&&!c.readOnly).map(c=>{
+      const typeKey=['text','number','choice','dateTime','boolean','hyperlinkOrPicture','personOrGroup','lookup'].find(k=>c[k]!==undefined)||'?';
+      return{display:c.displayName,internal:c.name,type:typeKey};
+    });
+    console.table(cols);
+    const html='<div style="max-height:420px;overflow:auto"><table style="width:100%;font-size:11px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--w12)">Display Name</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--w12)">Internal Name</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--w12)">Type</th></tr></thead><tbody>'+
+      cols.map(c=>'<tr><td style="padding:4px 8px">'+c.display+'</td><td class="mono" style="padding:4px 8px">'+c.internal+'</td><td style="padding:4px 8px">'+c.type+'</td></tr>').join('')+
+      '</tbody></table></div>';
+    showModal('📋 Candidates List Schema','Internal field names — needed for the SP-Lists migration script. Also printed to browser console as a table.',html,'<button class="btn btn-ghost" onclick="closeModal()">Close</button>');
+  }catch(e){hideLoad();toast('err','Schema fetch failed',e.message);}
+}
+
 // === REPORTS (CR-8, 15 Jun 2026) ===
 
 function initRptCard(){
