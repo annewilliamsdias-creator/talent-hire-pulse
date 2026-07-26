@@ -7953,14 +7953,6 @@ async function migrateDataToCandidatesList(){
       if(internalName==='Total_x0020_Yrs_x0020_of_x0020_E'){
         const bucket=bucketExpLevel(v);
         if(bucket)fields[internalName]=bucket; // omit if genuinely unparseable, rather than send a bad Choice value
-      }else if(internalName==='DocumentLink'){
-        // 26 Jul 2026: confirmed 100% correlation — every one of the 18 persistent
-        // 500 errors across two runs had a non-blank Document Link, zero successes did.
-        // DocumentLink is a Hyperlink-type column; Graph API requires the structured
-        // {Url, Description} object, not a plain string (which some of these values
-        // aren't even valid URLs to begin with — F2F venue addresses via CR-10 reuse
-        // this same field). Wrapping fixes both cases.
-        fields[internalName]={Url:String(v),Description:String(v)};
       }else if(SPLIST_NUMBER_FIELDS.has(internalName)){
         const n=parseFloat(String(v).replace(/[^\d.-]/g,''));
         if(!isNaN(n))fields[internalName]=n;
