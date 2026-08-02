@@ -2139,20 +2139,13 @@ async function syncFromServer(force=false){
       return;
     }
     const ui=preserveUIState();
-    // Rebuild MD[]
-    if(dataJson.values&&dataJson.values.length>1){
-      let hi=0;
-      for(let i=0;i<Math.min(10,dataJson.values.length);i++){if(dataJson.values[i].includes('Name')&&dataJson.values[i].includes('Recruiter')){hi=i;break;}}
-      MD=[];
-      for(let i=hi+1;i<dataJson.values.length;i++){
-        const row=dataJson.values[i];
-        if(row.every(c=>c===''||c===null||c===undefined))continue;
-        const obj={};HDR.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});
-        obj._sheetRow=i+1;
-        DATE_FIELDS.forEach(f=>{if(obj[f])obj[f]=normDateStr(obj[f]);});
-        MD.push(obj);
-      }
-    }
+    // Rebuild MD[] — Phase 1.3/1.6 (2 Aug 2026): read from the Candidates List via
+    // the same loadCandidatesFromList() used by parseWB(), rather than duplicating
+    // the Data-parsing logic here a second time (see comment on that function).
+    // The Excel Data usedRange fetched above is still used for the header-mismatch
+    // guard and to refresh the code->row map for the Excel dual-write path.
+    MD=await loadCandidatesFromList();
+    mergeSheetRows(MD,await buildCodeToRowMap());
     // Rebuild VD[]
     if(vacJson.values&&vacJson.values.length>1){
       const vh=(vacJson.values[0]||[]).map(h=>String(h||'').trim());
@@ -2316,6 +2309,18 @@ async function xlPatchRow(r){
   await graphPatch(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('Data')/range(address='A${row}:${lastCol}${row}')`,{values});
   _lastOwnWriteAt=Date.now();
   await _refreshServerETag();
+  // Phase 1.4 (2 Aug 2026): dual-write to the Candidates List alongside the
+  // Excel patch above, for the 1.7 parallel-run window. Not fatal if this fails —
+  // Excel remains the write-of-record until 1.8; log and continue so a List-side
+  // hiccup never blocks a recruiter's save.
+  try{
+    const itemId=await resolveSpItemId(r);
+    if(itemId){
+      await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Candidates/items/${itemId}/fields`,buildCandidateListFields(r));
+    }else{
+      console.warn('xlPatchRow: no Candidates List item id for',r[C.code],'— List not updated');
+    }
+  }catch(e){console.warn('xlPatchRow: Candidates List dual-write failed for',r[C.code],e.message);}
 }
 async function xlAppendRows(sheetName,rows){
   let nextRow=2;
@@ -2417,7 +2422,7 @@ async function loadData(){
       showLoad('Reading records...');
       WB=XLSX.read(buf,{type:'array',cellDates:true});
     }
-    parseWB();
+    await parseWB();
     try{const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag');_serverETag=meta.eTag||'';}catch(e){console.warn('CR-SYNC-001: eTag fetch failed',e.message);}
     setSP('ok','SharePoint ✓');
     hideLoad();
@@ -2429,41 +2434,21 @@ async function loadData(){
     console.error('loadData error:',e.message);
   }
 }
-function parseWB(){
+async function parseWB(){
 const ws=WB.Sheets['Data'];if(!ws)return;
 const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
 let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}
-HDR=rows[hi].map(h=>String(h).trim());MD=[];
-for(let i=hi+1;i<rows.length;i++){const row=rows[i];if(row.every(c=>c===''||c===null||c===undefined))continue;const obj={};HDR.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});
-// 2 Aug 2026: for genuine native-date cells among DATE_FIELDS, bypass the
-// formatted-string rendering entirely and read the cell's actual Date object
-// straight off the worksheet. Confirmed root cause: SheetJS's raw:false string
-// conversion renders some date cells in M/D/Y order (not D/M/Y), which the
-// day-first text-date heuristic in normDateStr then reads backward — e.g. an
-// August 3 cell silently became "8 March" across every affected record. Reading
-// the Date object directly removes the ambiguity altogether; normDateStr's
-// text-parsing heuristics remain as the fallback for genuinely typed-text dates.
-DATE_FIELDS.forEach(f=>{
-  const j=HDR.indexOf(f);
-  if(j<0)return;
-  const cell=ws[XLSX.utils.encode_cell({r:i,c:j})];
-  if(cell&&cell.v instanceof Date){
-    // 2 Aug 2026: root cause confirmed by inspecting the raw cell directly —
-    // the stored serial number carries a tiny fractional time component (e.g.
-    // 23:59:50 IST, 10s before midnight), almost certainly floating-point
-    // residue from however the date was originally entered. Excel's own
-    // display ("w" field) rounds this to the nearest day and shows the
-    // intended date correctly; reading calendar components straight off the
-    // unrounded Date (via either UTC or local getters) reads the wrong day.
-    // Round to the nearest UTC day boundary first, matching Excel's own
-    // rounding, then read UTC components off the rounded instant.
-    const dayMs=86400000;
-    const rounded=new Date(Math.round(cell.v.getTime()/dayMs)*dayMs);
-    obj[f]=rounded.getUTCFullYear()+'-'+String(rounded.getUTCMonth()+1).padStart(2,'0')+'-'+String(rounded.getUTCDate()).padStart(2,'0');
-  }
-});
-obj._sheetRow=i+1;MD.push(obj);}
-MD.forEach(r=>{DATE_FIELDS.forEach(f=>{if(r[f])r[f]=normDateStr(r[f]);});});
+// HDR still comes from the live Excel sheet — xlPatchRow/xlAppendRows still
+// write to Excel during the 1.7 parallel-run window and need its real column
+// order, even though MD[] itself is no longer populated from Excel below.
+HDR=rows[hi].map(h=>String(h).trim());
+// Phase 1.3 (2 Aug 2026): candidates now read from the Candidates SharePoint
+// List (loadCandidatesFromList — shared with syncFromServer, see its comment)
+// instead of the Data sheet rows above. _sheetRow is still attached via a
+// lightweight code->row lookup so the Excel dual-write path (xlPatchRow/
+// xlAppendRows) keeps working during the parallel-run window.
+MD=await loadCandidatesFromList();
+mergeSheetRows(MD,await buildCodeToRowMap());
 const wsv=WB.Sheets['Vacancies'];
 if(wsv){const vr=XLSX.utils.sheet_to_json(wsv,{header:1,defval:'',raw:false});VHDR=vr[0]?vr[0].map(h=>String(h).trim()):[];VD=[];
 for(let i=1;i<vr.length;i++){if(vr[i].every(c=>c===''||c===null))continue;const obj={};VHDR.forEach((h,j)=>{obj[h]=vr[i][j]!==undefined?String(vr[i][j]).trim():'';});VD.push(obj);}}
@@ -3021,6 +3006,13 @@ const _clEN=writeCL('New Entry',code,'All','','',nm);
 showLoad('Adding candidate...');
 const _newRow=await xlAppendRows('Data',[HDR.map(h=>nr[h]!==undefined?String(nr[h]):'')]);
 nr._sheetRow=_newRow;
+// Phase 1.5 (2 Aug 2026): dual-write the new candidate into the Candidates
+// List alongside the Excel append above, for the 1.7 parallel-run window.
+// Not fatal if this fails — Excel remains the write-of-record until 1.8.
+try{
+  const res=await writeCandidateListItem('POST',`/sites/${siteId}/lists/Candidates/items`,{fields:buildCandidateListFields(nr)});
+  if(res&&res.id)nr._spItemId=res.id;
+}catch(e){console.warn('submitNew: Candidates List dual-write failed for',code,e.message);}
 if(_clEN)await xlAppendRows('Change Log',[_clEN]);
 // CR-DUP-002: verify no collision occurred despite the live check above —
 // catches the rare case of two submissions computing the same code at
@@ -3424,6 +3416,20 @@ async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.le
 const _bulkData=added.map(code=>{const nr=MD.find(r=>r[C.code]===code);return HDR.map(h=>nr&&nr[h]!==undefined?String(nr[h]):'');});
 const _firstRow=await xlAppendRows('Data',_bulkData);
 added.forEach((code,i)=>{const nr=MD.find(r=>r[C.code]===code);if(nr)nr._sheetRow=_firstRow+i;});
+// Phase 1.5 (2 Aug 2026): dual-write each bulk-added candidate into the
+// Candidates List too, for the 1.7 parallel-run window. Graph's List API has
+// no native multi-item batch write, so this loops per record (same pattern
+// already proven in migrateDataToCandidatesList). Not fatal per-record — a
+// single List write failure doesn't block the rest of the batch or the Excel
+// append above, which remains the write-of-record until 1.8.
+for(const code of added){
+  const nr=MD.find(r=>r[C.code]===code);
+  if(!nr)continue;
+  try{
+    const res=await writeCandidateListItem('POST',`/sites/${siteId}/lists/Candidates/items`,{fields:buildCandidateListFields(nr)});
+    if(res&&res.id)nr._spItemId=res.id;
+  }catch(e){console.warn('commitBulk: Candidates List dual-write failed for',code,e.message);}
+}
 if(_clEB)await xlAppendRows('Change Log',[_clEB]);
 hideLoad();bulkRows=[];document.getElementById('bulkPrev').classList.add('hidden');const fi=document.getElementById('bulkFI');if(fi)fi.value='';renderRec();updateTopbar();loadDash();toast('ok','Bulk Upload Complete',added.length+' candidates added');showAlert('bulkAlert','ok','✅ '+added.length+' candidates added successfully.');}catch(e){hideLoad();toast('err','Bulk upload failed',e.message);}}
 
@@ -7931,6 +7937,17 @@ const SPLIST_FIELD_MAP={
   // C.sNo intentionally omitted — dropped per Phase 0 (superseded by native List ID)
 };
 const SPLIST_NUMBER_FIELDS=new Set(['CurrentSalary_x0028_Rs_x002e_PM_','CurrentSalary_x0028_Rs_x002e_PA_','FinalCurrentAnnualSalary','ExpectedSalary_x0028_Rs_x002e__x','OfferedSalary','Follow_x002d_upAttemptCount','TAT']);
+// 2 Aug 2026: every Choice-type column in the Candidates List has a configured
+// Default (explicit <Default> or, absent one, its first listed Choice — e.g.
+// Source=Campus, Department=Operations, Combined Location=Ahmedabad, Notice
+// Period=Immediate). SharePoint silently substitutes that Default whenever an
+// item is written WITHOUT the field present in the payload at all — confirmed
+// by inspecting the List's own schema export. Root cause of the "phantom data"
+// found in validation (448 candidates with values never present in Excel),
+// which reproduced identically even after a full List wipe + clean re-migration.
+// Fix: for these fields only, explicitly write '' when Excel is blank instead of
+// omitting the field, so the write overrides the Default rather than triggering it.
+const SPLIST_CHOICE_FIELDS=new Set(['Source','Department','Combined_x0020_Location','Notice_x0020_Period','Total_x0020_Yrs_x0020_of_x0020_E','Client_x0020_Name','Final_x0020_Status','FinalDecisionMaker','ConsentObtained','Recruiter','ArchiveFlag']);
 const SPLIST_DATE_FIELDS=new Set(['ProfileSourcingdate','ProfileScreeningdate','OfferDate','ClientInterviewDate','ClientSelectionDate','Expected_x002f_DOJ','Follow_x002d_upDate','LastUpdatedOn','Databasereportingdate']);
 // 26 Jul 2026: Total Yrs of Exp is a strict Choice column (no fill-in allowed) on the
 // live List, but ~79% of source records hold a raw decimal (e.g. "0.6", "3.6", "11")
@@ -7958,7 +7975,15 @@ function buildCandidateListFields(r){
   const fields={};
   for(const[srcCol,internalName]of Object.entries(SPLIST_FIELD_MAP)){
     const v=r[srcCol];
-    if(v===undefined||v===null||v==='')continue; // omit blanks — do not write empty strings over List defaults
+    if(v===undefined||v===null||v===''){
+      // Choice columns must get an explicit null to override the List's own
+      // Default value (see SPLIST_CHOICE_FIELDS note above) — null is the
+      // documented way to clear a Choice field via Graph API; an empty string
+      // risks a 400 since '' isn't one of the column's configured Choices.
+      // All other blank fields are safely omitted instead.
+      if(SPLIST_CHOICE_FIELDS.has(internalName))fields[internalName]=null;
+      continue;
+    }
     if(internalName==='Total_x0020_Yrs_x0020_of_x0020_E'){
       const bucket=bucketExpLevel(v);
       if(bucket)fields[internalName]=bucket; // omit if genuinely unparseable, rather than send a bad Choice value
@@ -7978,6 +8003,93 @@ function buildCandidateListFields(r){
     }
   }
   return fields;
+}
+// Inverse of SPLIST_FIELD_MAP — internal List field name -> Excel display-name
+// (the C.* string). Built once at module load.
+const REVERSE_FIELD_MAP=Object.fromEntries(Object.entries(SPLIST_FIELD_MAP).map(([k,v])=>[v,k]));
+// Inverse of buildCandidateListFields — a List item ({id, fields}) -> an MD-shaped
+// record keyed by the same C.* display-name strings Excel-sourced records use, so
+// all existing rendering/filter/report code (which reads r[C.xxx]) keeps working
+// unchanged regardless of whether the record came from Excel or the List.
+// Dates are truncated to date-only to match the stringly-typed Excel convention
+// the rest of the app expects (List returns full ISO datetime, e.g.
+// "2026-08-03T00:00:00Z").
+function listItemToRecord(item){
+  const r={};
+  const f=item.fields||{};
+  for(const[internalName,srcCol]of Object.entries(REVERSE_FIELD_MAP)){
+    let v=f[internalName];
+    if(v===undefined||v===null){
+      v='';
+    }else if(SPLIST_DATE_FIELDS.has(internalName)){
+      v=String(v).slice(0,10);
+    }else{
+      v=String(v);
+    }
+    r[srcCol]=v;
+  }
+  r._spItemId=item.id;
+  return r;
+}
+// Phase 1.3/1.6 (2 Aug 2026): shared read path for candidates, used by both
+// parseWB() (initial load) and syncFromServer() (periodic re-sync) so there is
+// exactly one place that turns List items into MD[] records — eliminating the
+// pre-existing duplicate-logic risk that caused the Aug 2 date-transposition bug
+// (the same parsing logic existed twice, in parseWB and syncFromServer, and only
+// one copy got fixed at first).
+async function loadCandidatesFromList(){
+  const out=[];
+  let url=`/sites/${siteId}/lists/Candidates/items?$expand=fields&$top=200`;
+  while(url){
+    const res=await graphGet(url.replace(GRAPH,''));
+    (res.value||[]).forEach(it=>out.push(listItemToRecord(it)));
+    url=res['@odata.nextLink']||null;
+  }
+  return out;
+}
+// Candidates are now read from the List, but xlPatchRow/xlAppendRows still need
+// to address the live Excel Data sheet during the 1.7 parallel-run window (dual
+// write). This fetches just the CandidateCode column to rebuild a code->row
+// lookup, mirroring the same usedRange-fetch pattern already proven in
+// fetchLiveCandidateCodes() (assumes header is row 1, same simplifying
+// assumption that function already makes in production).
+async function buildCodeToRowMap(){
+  try{
+    const used=await graphGet(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('Data')/usedRange(valuesOnly=true)`);
+    if(!used||!used.values||used.values.length<2)return{};
+    const hdr=used.values[0].map(h=>String(h||'').trim());
+    const codeIdx=hdr.indexOf(C.code);
+    if(codeIdx<0)return{};
+    const map={};
+    used.values.slice(1).forEach((row,i)=>{
+      const code=String(row[codeIdx]||'').trim();
+      if(code)map[code]=i+2; // +2: 1-indexed rows, plus header row offset
+    });
+    return map;
+  }catch(e){
+    console.warn('buildCodeToRowMap failed:',e.message);
+    return{};
+  }
+}
+function mergeSheetRows(records,codeToRow){
+  records.forEach(r=>{
+    const code=r[C.code];
+    if(code&&codeToRow[code])r._sheetRow=codeToRow[code];
+  });
+}
+// Resolves and caches a record's Candidates List item id by CandidateCode, for
+// records that reached xlPatchRow without one already attached (e.g. any MD
+// record surviving in memory from before this dual-write path existed).
+async function resolveSpItemId(r){
+  if(r._spItemId)return r._spItemId;
+  const code=r[C.code];
+  if(!code)return null;
+  try{
+    const res=await graphGet(`/sites/${siteId}/lists/Candidates/items?$filter=fields/CandidateCode eq '${String(code).replace(/'/g,"''")}'&$expand=fields&$top=1`);
+    const item=res.value&&res.value[0];
+    if(item){r._spItemId=item.id;return item.id;}
+  }catch(e){console.warn('resolveSpItemId failed for',code,e.message);}
+  return null;
 }
 // Compares a List's current field value against a freshly computed one.
 // Date fields come back from the List as full ISO datetime strings
@@ -8000,9 +8112,11 @@ async function writeCandidateListItem(method,url,body){
   let attempt=0,lastErr=null;
   while(attempt<3){
     try{
-      if(method==='POST')await graphPost(url,body);
-      else await graphPatch(url,body);
-      return true;
+      // 2 Aug 2026: return the actual Graph response (not just `true`) — Phase
+      // 1.5's dual-write on new-candidate creation needs the created item's
+      // `id` back to attach as _spItemId for later xlPatchRow dual-writes.
+      if(method==='POST')return await graphPost(url,body);
+      else return await graphPatch(url,body);
     }catch(e){
       lastErr=e;
       const transient=/→\s*5\d\d|generalException/.test(e.message);
