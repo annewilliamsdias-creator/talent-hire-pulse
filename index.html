@@ -7914,90 +7914,138 @@ function bucketExpLevel(v){
   return'12+ yrs';
 }
 
-// One-time migration: Data sheet (MD[]) -> Candidates SharePoint List.
-// Read-only against the Excel Data sheet — never modifies or removes anything there.
-// Idempotent: fetches existing CandidateCode values already in the List first and
-// skips them, so this is safe to re-run if it's interrupted partway through.
+// Shared field-builder — MD[] record -> Candidates List fields object.
+// Used by both the add path and the update path so mapping/validation logic
+// (bucketing, date validation, number casting) never has to be maintained twice.
+function buildCandidateListFields(r){
+  const fields={};
+  for(const[srcCol,internalName]of Object.entries(SPLIST_FIELD_MAP)){
+    const v=r[srcCol];
+    if(v===undefined||v===null||v==='')continue; // omit blanks — do not write empty strings over List defaults
+    if(internalName==='Total_x0020_Yrs_x0020_of_x0020_E'){
+      const bucket=bucketExpLevel(v);
+      if(bucket)fields[internalName]=bucket; // omit if genuinely unparseable, rather than send a bad Choice value
+    }else if(SPLIST_NUMBER_FIELDS.has(internalName)){
+      const n=parseFloat(String(v).replace(/[^\d.-]/g,''));
+      if(!isNaN(n))fields[internalName]=n;
+    }else if(SPLIST_DATE_FIELDS.has(internalName)){
+      const d=normDateStr(v);
+      // Only write if it actually resolved to a real ISO date — normDateStr()
+      // returns the original string unchanged when it can't parse one (e.g. "NA"),
+      // which would otherwise get sent as literal text into a dateTime field and
+      // get rejected by SharePoint (confirmed 26 Jul: Client Interview Date='NA'
+      // caused a 400 badArgument for Talent+Hire/2025/000742).
+      if(/^\d{4}-\d{2}-\d{2}$/.test(d))fields[internalName]=d;
+    }else{
+      fields[internalName]=String(v);
+    }
+  }
+  return fields;
+}
+// Compares a List's current field value against a freshly computed one.
+// Date fields come back from the List as full ISO datetime strings
+// ("2026-08-03T00:00:00Z"); newFields only ever holds date-only ("2026-08-03") —
+// normalise both to date-only before comparing so that format difference alone
+// never registers as a "changed" field.
+function listFieldValueDiffers(oldV,newV){
+  const oldS=(oldV===undefined||oldV===null)?'':String(oldV);
+  const newS=(newV===undefined||newV===null)?'':String(newV);
+  const oldNorm=/^\d{4}-\d{2}-\d{2}/.test(oldS)?oldS.slice(0,10):oldS.trim();
+  const newNorm=/^\d{4}-\d{2}-\d{2}/.test(newS)?newS.slice(0,10):newS.trim();
+  return oldNorm!==newNorm;
+}
+// Write a single item to the Candidates List (add or update), with the same
+// retry-with-backoff used since 26 Jul: 18 of 19 failures in the first migration
+// run were opaque 500 generalException errors consistent with SharePoint
+// throttling under rapid back-to-back writes. Retries only on likely-transient
+// errors (5xx/generalException); a genuine 400 (bad data) fails immediately.
+async function writeCandidateListItem(method,url,body){
+  let attempt=0,lastErr=null;
+  while(attempt<3){
+    try{
+      if(method==='POST')await graphPost(url,body);
+      else await graphPatch(url,body);
+      return true;
+    }catch(e){
+      lastErr=e;
+      const transient=/→\s*5\d\d|generalException/.test(e.message);
+      if(!transient||attempt===2)throw lastErr;
+      await new Promise(res=>setTimeout(res,500*(attempt+1)));
+    }
+    attempt++;
+  }
+  throw lastErr;
+}
+
+// Sync Data sheet (MD[]) -> Candidates SharePoint List. Adds candidates missing
+// from the List, and updates ones already there whose Excel data has changed
+// since they were last synced. Read-only against Excel — never modifies or
+// removes anything in the Data sheet. Safe to re-run any time (e.g. before
+// final cutover, or to catch up after a pause) — unaffected fields are left
+// untouched, only genuinely different ones get written.
 async function migrateDataToCandidatesList(){
-  showLoad('Checking existing List items...');
-  const existingCodes=new Set();
+  showLoad('Reading existing List items...');
+  const existing=new Map(); // code -> {id, fields}
   try{
-    let url=`/sites/${siteId}/lists/Candidates/items?$expand=fields($select=CandidateCode)&$top=200`;
+    let url=`/sites/${siteId}/lists/Candidates/items?$expand=fields&$top=200`;
     while(url){
       const res=await graphGet(url.replace(GRAPH,''));
       (res.value||[]).forEach(it=>{
         const c=it.fields&&it.fields.CandidateCode;
-        if(c)existingCodes.add(String(c).trim());
+        if(c)existing.set(String(c).trim(),{id:it.id,fields:it.fields});
       });
       url=res['@odata.nextLink']||null;
     }
-  }catch(e){hideLoad();toast('err','Migration aborted','Could not read existing List items: '+e.message);return;}
-  console.log('Already in Candidates List:',existingCodes.size);
+  }catch(e){hideLoad();toast('err','Sync aborted','Could not read existing List items: '+e.message);return;}
+  console.log('Already in Candidates List:',existing.size);
 
-  const toMigrate=MD.filter(r=>r[C.code]&&!existingCodes.has(String(r[C.code]).trim()));
-  console.log('Candidates to migrate:',toMigrate.length);
+  const toAdd=[];const toUpdate=[];
+  MD.forEach(r=>{
+    if(!r[C.code])return;
+    const code=String(r[C.code]).trim();
+    const newFields=buildCandidateListFields(r);
+    const existingItem=existing.get(code);
+    if(!existingItem){
+      toAdd.push({r,fields:newFields});
+    }else{
+      const changed={};
+      for(const[k,v]of Object.entries(newFields)){
+        if(listFieldValueDiffers(existingItem.fields[k],v))changed[k]=v;
+      }
+      if(Object.keys(changed).length)toUpdate.push({r,id:existingItem.id,fields:changed});
+    }
+  });
   hideLoad();
-  if(!toMigrate.length){toast('ok','Nothing to migrate','All candidate codes are already present in the Candidates List.');return;}
-  // Confirmation now shows the REAL count still to be written (not MD.length) —
-  // 26 Jul 2026: previously showed the total record count regardless of how many
-  // were already migrated, which was confusing on repeat/retry runs.
-  if(!confirm('This will copy '+toMigrate.length+' remaining candidate record(s) into the Candidates List ('+existingCodes.size+' already migrated, will be skipped). Continue?'))return;
-  showLoad('Migrating candidates...');
+  console.log('To add:',toAdd.length,'| To update:',toUpdate.length);
+  if(!toAdd.length&&!toUpdate.length){toast('ok','Already in sync','No new or changed candidates found — Candidates List matches the Data sheet.');return;}
+  if(!confirm('This will add '+toAdd.length+' new and update '+toUpdate.length+' changed candidate record(s) in the Candidates List. Continue?'))return;
+  showLoad('Syncing candidates...');
 
-  let done=0;const failed=[];
-  for(const r of toMigrate){
-    const fields={};
-    for(const[srcCol,internalName]of Object.entries(SPLIST_FIELD_MAP)){
-      const v=r[srcCol];
-      if(v===undefined||v===null||v==='')continue; // omit blanks — do not write empty strings over List defaults
-      if(internalName==='Total_x0020_Yrs_x0020_of_x0020_E'){
-        const bucket=bucketExpLevel(v);
-        if(bucket)fields[internalName]=bucket; // omit if genuinely unparseable, rather than send a bad Choice value
-      }else if(SPLIST_NUMBER_FIELDS.has(internalName)){
-        const n=parseFloat(String(v).replace(/[^\d.-]/g,''));
-        if(!isNaN(n))fields[internalName]=n;
-      }else if(SPLIST_DATE_FIELDS.has(internalName)){
-        const d=normDateStr(v);
-        // Only write if it actually resolved to a real ISO date — normDateStr()
-        // returns the original string unchanged when it can't parse one (e.g. "NA"),
-        // which would otherwise get sent as literal text into a dateTime field and
-        // get rejected by SharePoint (confirmed 26 Jul: Client Interview Date='NA'
-        // caused a 400 badArgument for Talent+Hire/2025/000742).
-        if(/^\d{4}-\d{2}-\d{2}$/.test(d))fields[internalName]=d;
+  let addedCount=0,updatedCount=0;const failed=[];
+  const work=[...toAdd.map(x=>({...x,mode:'add'})),...toUpdate.map(x=>({...x,mode:'update'}))];
+  for(const item of work){
+    try{
+      if(item.mode==='add'){
+        await writeCandidateListItem('POST',`/sites/${siteId}/lists/Candidates/items`,{fields:item.fields});
+        addedCount++;
       }else{
-        fields[internalName]=String(v);
+        await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Candidates/items/${item.id}/fields`,item.fields);
+        updatedCount++;
       }
-    }
-    // 26 Jul 2026: 18 of 19 failures in the first run were opaque 500 generalException
-    // errors, consistent with SharePoint throttling under rapid back-to-back writes with
-    // no delay/retry. Small delay + retry-with-backoff on likely-transient errors only
-    // (5xx / "generalException") — a genuine 400 (bad data) fails immediately, unchanged.
-    let attempt=0,ok=false,lastErr=null;
-    while(attempt<3&&!ok){
-      try{
-        await graphPost(`/sites/${siteId}/lists/Candidates/items`,{fields});
-        ok=true;done++;
-      }catch(e){
-        lastErr=e;
-        const transient=/→\s*5\d\d|generalException/.test(e.message);
-        if(!transient||attempt===2)break;
-        await new Promise(res=>setTimeout(res,500*(attempt+1)));
-      }
-      attempt++;
-    }
-    if(!ok){
-      failed.push({code:r[C.code],name:r[C.name],error:lastErr?lastErr.message:'unknown'});
-      console.warn('Migration failed for',r[C.code],lastErr?lastErr.message:'unknown');
+    }catch(e){
+      failed.push({code:item.r[C.code],name:item.r[C.name],mode:item.mode,error:e.message});
+      console.warn('Sync failed for',item.r[C.code],'('+item.mode+')',e.message);
     }
     await new Promise(res=>setTimeout(res,120)); // small pacing delay between writes
-    if(done%25===0)showLoad('Migrating candidates... '+done+'/'+toMigrate.length);
+    const done=addedCount+updatedCount;
+    if(done%25===0)showLoad('Syncing candidates... '+done+'/'+work.length);
   }
   hideLoad();
   if(failed.length){
     console.table(failed);
-    toast('warn','Migration finished with errors',done+' migrated, '+failed.length+' failed — see console for the list of failed candidate codes.');
+    toast('warn','Sync finished with errors',addedCount+' added, '+updatedCount+' updated, '+failed.length+' failed — see console for details.');
   }else{
-    toast('ok','Migration complete',done+' candidate record(s) migrated to the Candidates List.');
+    toast('ok','Sync complete',addedCount+' added, '+updatedCount+' updated in the Candidates List.');
   }
 }
 
