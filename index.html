@@ -2448,12 +2448,18 @@ DATE_FIELDS.forEach(f=>{
   if(j<0)return;
   const cell=ws[XLSX.utils.encode_cell({r:i,c:j})];
   if(cell&&cell.v instanceof Date){
-    const dt=cell.v;
-    // Local getters, not UTC — SheetJS's cellDates:true constructs these Date
-    // objects using local-time semantics. Reading UTC components shifted the
-    // date back a day for any timezone ahead of UTC (confirmed 2 Aug 2026: IST
-    // read "2026-08-03" as "2026-08-02" via getUTCDate()).
-    obj[f]=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+    // 2 Aug 2026: root cause confirmed by inspecting the raw cell directly —
+    // the stored serial number carries a tiny fractional time component (e.g.
+    // 23:59:50 IST, 10s before midnight), almost certainly floating-point
+    // residue from however the date was originally entered. Excel's own
+    // display ("w" field) rounds this to the nearest day and shows the
+    // intended date correctly; reading calendar components straight off the
+    // unrounded Date (via either UTC or local getters) reads the wrong day.
+    // Round to the nearest UTC day boundary first, matching Excel's own
+    // rounding, then read UTC components off the rounded instant.
+    const dayMs=86400000;
+    const rounded=new Date(Math.round(cell.v.getTime()/dayMs)*dayMs);
+    obj[f]=rounded.getUTCFullYear()+'-'+String(rounded.getUTCMonth()+1).padStart(2,'0')+'-'+String(rounded.getUTCDate()).padStart(2,'0');
   }
 });
 obj._sheetRow=i+1;MD.push(obj);}
