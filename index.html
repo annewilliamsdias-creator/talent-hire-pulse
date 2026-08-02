@@ -3681,9 +3681,18 @@ function normDateStr(v){
     const d=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000);
     if(!isNaN(d)){console.warn('normDateStr: converted Excel serial number',s,'→',d.toISOString().split('T')[0]);return d.toISOString().split('T')[0];}
   }
+  // 2 Aug 2026: native Excel date/time cells sometimes come through parseWB as a
+  // string with a trailing time component (e.g. "3/8/2026 08:00:00"). The regexes
+  // below used to require an exact end-of-string match, so any trailing time broke
+  // the match entirely and fell through to the ambiguous last-resort fallback, which
+  // then misread a day-first date as US-style month-first (confirmed: "3/8/2026 ..."
+  // — meaning 3 Aug — was written to the Candidates List as 2026-03-08, i.e. 8 March,
+  // across 4 real records on 2 Aug 2026). Strip any trailing time/timezone portion
+  // before pattern-matching so the date-only part is judged on its own.
+  const sDateOnly=s.replace(/[T ]\d{1,2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+\-]\d{2}:?\d{2})?\s*$/,'').trim()||s;
   // Explicit d/MMM/yyyy, d/MMM/yy, d-MMM-yyyy etc. (e.g. "4/Dec/2025", "4/Dec/25")
   // — parsed deterministically. 2-digit years assumed 20xx.
-  let m=s.match(/^(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{2,4})$/);
+  let m=sDateOnly.match(/^(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{2,4})$/);
   if(m){
     const mon=MONTHS3[m[2].toLowerCase()];
     if(mon!==undefined){
@@ -3695,7 +3704,7 @@ function normDateStr(v){
   // Explicit dd/mm/yyyy, dd/mm/yy, dd-mm-yyyy etc. — always read as day-month-year,
   // never left to the browser's locale-dependent Date parser (which reads US month-day).
   // 2-digit years assumed 20xx.
-  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  m=sDateOnly.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
   if(m){
     const day=parseInt(m[1],10),mon=parseInt(m[2],10)-1;
     let yr=parseInt(m[3],10); if(m[3].length===2)yr+=2000;
