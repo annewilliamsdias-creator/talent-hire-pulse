@@ -2434,7 +2434,25 @@ const ws=WB.Sheets['Data'];if(!ws)return;
 const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
 let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&rows[i].includes('Recruiter')){hi=i;break;}}
 HDR=rows[hi].map(h=>String(h).trim());MD=[];
-for(let i=hi+1;i<rows.length;i++){const row=rows[i];if(row.every(c=>c===''||c===null||c===undefined))continue;const obj={};HDR.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});obj._sheetRow=i+1;MD.push(obj);}
+for(let i=hi+1;i<rows.length;i++){const row=rows[i];if(row.every(c=>c===''||c===null||c===undefined))continue;const obj={};HDR.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});
+// 2 Aug 2026: for genuine native-date cells among DATE_FIELDS, bypass the
+// formatted-string rendering entirely and read the cell's actual Date object
+// straight off the worksheet. Confirmed root cause: SheetJS's raw:false string
+// conversion renders some date cells in M/D/Y order (not D/M/Y), which the
+// day-first text-date heuristic in normDateStr then reads backward — e.g. an
+// August 3 cell silently became "8 March" across every affected record. Reading
+// the Date object directly removes the ambiguity altogether; normDateStr's
+// text-parsing heuristics remain as the fallback for genuinely typed-text dates.
+DATE_FIELDS.forEach(f=>{
+  const j=HDR.indexOf(f);
+  if(j<0)return;
+  const cell=ws[XLSX.utils.encode_cell({r:i,c:j})];
+  if(cell&&cell.v instanceof Date){
+    const dt=cell.v;
+    obj[f]=dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');
+  }
+});
+obj._sheetRow=i+1;MD.push(obj);}
 MD.forEach(r=>{DATE_FIELDS.forEach(f=>{if(r[f])r[f]=normDateStr(r[f]);});});
 const wsv=WB.Sheets['Vacancies'];
 if(wsv){const vr=XLSX.utils.sheet_to_json(wsv,{header:1,defval:'',raw:false});VHDR=vr[0]?vr[0].map(h=>String(h).trim()):[];VD=[];
