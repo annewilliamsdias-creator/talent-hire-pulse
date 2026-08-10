@@ -7891,6 +7891,12 @@ const SPLIST_FIELD_MAP={
   [C.name]:'Name',
   [C.combinedLoc]:'Combined_x0020_Location',
   [C.location]:'CurrentLocation',
+  // 10 Aug 2026: closes the field-coverage gap found during Phase 1.3-1.6 review
+  // — these 2 are genuine freeform data (unlike Expected Salary Bracket/Salary
+  // Increase %, which were dropped as computed convenience values, re-derivable
+  // from salary fields already in the List).
+  [C.postingLoc]:'LocationofPosting',
+  [C.locationDetail]:'LocationDetails',
   [C.dept]:'Department',
   [C.position]:'Positionappliedfor',
   [C.roleInterested]:'RoleInterestedin',
