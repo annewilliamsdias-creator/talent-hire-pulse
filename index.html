@@ -6730,11 +6730,13 @@ function renderJDList(){
       '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+j.title+'</div>'+
       '<div style="font-size:11px;color:var(--w60);margin-top:2px">'+(j.client?j.client+' · ':'')+  (j.dept?j.dept+' · ':'')+(j.tags?'Tags: '+j.tags:'')+'</div></div>'+
       '<a href="'+j.link+'" target="_blank" class="btn btn-t btn-sm" style="text-decoration:none">Open ↗</a>'+
+      '<button class="btn btn-ghost btn-sm jd-guide" data-idx="'+i+'" title="View Interview Guide / Role Context">📋 Guide</button>'+
       (canEditRepo?'<button class="btn btn-ghost btn-sm jd-edit" data-idx="'+i+'" style="padding:3px 9px">✏ Edit</button>':'')+
       '<button class="btn btn-ghost btn-sm jd-wa" data-idx="'+i+'" title="Send via WhatsApp">📱 WA</button>'+
       (canEditRepo?'<button class="btn btn-ghost btn-sm jd-del" data-idx="'+i+'" style="color:#ff6b6b">✕</button>':'')+'</div>';
   }).join('');
   setTimeout(function(){
+    document.querySelectorAll('.jd-guide').forEach(el=>{el.addEventListener('click',function(){openInterviewGuidePreview(parseInt(this.getAttribute('data-idx')));});});
     document.querySelectorAll('.jd-edit').forEach(el=>{el.addEventListener('click',function(){editJD(parseInt(this.getAttribute('data-idx')));});});
     document.querySelectorAll('.jd-wa').forEach(el => {el.addEventListener('click', function(){ const i=parseInt(this.getAttribute('data-idx')); if(repoData.jds[i])sendJDToWA(repoData.jds[i].link); });});
     document.querySelectorAll('.jd-del').forEach(el => {el.addEventListener('click', function(){ const i=parseInt(this.getAttribute('data-idx')); delRepo('jds',i); });});
@@ -7092,6 +7094,32 @@ function openInterviewGuide() {
   document.getElementById('ig-overlay').style.display='block';
 }
 
+// 10 Aug 2026: lets recruiters browse a role's Interview Guide (Role Context /
+// Pitch, pre-read, interview questions) straight from the JD Library, without
+// first mapping a candidate. igRenderPage() already tolerates igCandIdx<0
+// (falls back to an empty record — Page 3/Role-specific content comes from
+// the JD itself, not the candidate), so this just opens the same overlay with
+// no real candidate context and jumps straight to that page.
+function openInterviewGuidePreview(jdIdx) {
+  const jd = repoData.jds[jdIdx];
+  if(!jd){toast('err','JD Not Found','This JD could not be found.');return;}
+  igCandIdx = -1;
+  igCachedJD = jd;
+  const el = document.getElementById('ig-subtitle');
+  if(el) el.textContent = 'Preview Mode — no candidate mapped · '+(jd.client?jd.client+' · ':'')+(jd.dept?jd.dept:'');
+  const strip = document.getElementById('ig-jd-strip');
+  const titleEl = document.getElementById('ig-jd-title');
+  const linkEl = document.getElementById('ig-jd-link');
+  if(strip && titleEl && linkEl){
+    titleEl.textContent = jd.title;
+    if(jd.link){linkEl.href = jd.link;linkEl.style.display='';}else{linkEl.style.display='none';}
+    strip.style.display = 'flex';
+  }
+  igCurrentPage = 2; // Page 3 — Role-specific (Role Context/Pitch, pre-read, questions)
+  igRenderPage();
+  document.getElementById('ig-overlay').style.display='block';
+  setTimeout(()=>igGoPage(2), 0); // sync tab highlight/indicator to the page we jumped to
+}
 function closeInterviewGuide() {
   document.getElementById('ig-overlay').style.display='none';
   igCachedJD = null;  // clear cache on close
