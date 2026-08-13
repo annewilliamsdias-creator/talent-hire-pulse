@@ -4161,7 +4161,9 @@ function renderKPIs(data) {
 // to see active AND inactive candidates in one place. Built from the same
 // ACTIVE_STATUSES/INACTIVE_STATUSES sets the rest of the app already uses, so
 // it can never silently drop a status again the way the old hardcoded list did.
-const ALL_STATUSES_ORDERED = ['WIP', ...ACTIVE_STATUSES, ...INACTIVE_STATUSES];
+// 'WIP' already included — it's the first entry in ACTIVE_STATUSES itself
+// (fixed here after deploy showed it duplicated: was also prepended manually).
+const ALL_STATUSES_ORDERED = [...ACTIVE_STATUSES, ...INACTIVE_STATUSES];
 const STATUS_LABELS_SHORT = {
   'Consultant Interview in Progress':'Cons. Interview',
   'Shortlisted for Client I/W':'Shortlisted',
