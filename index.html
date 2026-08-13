@@ -2133,7 +2133,7 @@ async function syncFromServer(force=false){
     // candidates are read straight from the List (below), and the header-mismatch
     // guard that used to compare it against HDR no longer applies now that HDR
     // is a static C-derived list, not read from Excel.
-    const vacResp=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/workbook/worksheets(\'Vacancies\')/usedRange(valuesOnly=true)',{headers:{Authorization:'Bearer '+tok}});
+    const vacResp=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/workbook/worksheets(\'Vacancies\')/usedRange(valuesOnly=true)',{headers:{Authorization:'Bearer '+tok},cache:'no-store'});
     if(!vacResp.ok){_syncInProgress=false;return;}
     const vacJson=await vacResp.json();
     const ui=preserveUIState();
@@ -2353,7 +2353,7 @@ async function fetchLiveChangeLog(){
 // ══════════════════════════════════════════════════════
 async function gGet(url){
   await refreshToken();
-  const r=await fetch(GRAPH+url,{headers:{Authorization:'Bearer '+tok}});
+  const r=await fetch(GRAPH+url,{headers:{Authorization:'Bearer '+tok},cache:'no-store'});
   if(!r.ok)throw new Error('Graph '+url+' → '+r.status);
   return r.json();
 }
@@ -2403,11 +2403,11 @@ async function loadData(){
     // Step 3: Download
     showLoad('Downloading file...');
     const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-      {headers:{Authorization:'Bearer '+tok}});
+      {headers:{Authorization:'Bearer '+tok},cache:'no-store'});
     if(r.status===401){
       await refreshToken();
       const r2=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-        {headers:{Authorization:'Bearer '+tok}});
+        {headers:{Authorization:'Bearer '+tok},cache:'no-store'});
       if(!r2.ok) throw new Error('Download failed after retry: '+r2.status);
       const buf2=await r2.arrayBuffer();
       showLoad('Reading records...');
@@ -2540,7 +2540,7 @@ try{
   if(sheets&&sheets.length){
     try{
       await refreshToken();
-      const fr=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{headers:{Authorization:'Bearer '+tok}});
+      const fr=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',{headers:{Authorization:'Bearer '+tok},cache:'no-store'});
       if(fr.ok){
         const freshBuf=await fr.arrayBuffer();
         const freshWB=XLSX.read(freshBuf,{type:'array',cellDates:true});
@@ -3488,7 +3488,7 @@ async function doBackup(){showLoad('Creating backup...');try{
   // Fetch the latest master binary directly from SharePoint — never use in-memory WB
   await refreshToken();
   const fr=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-    {headers:{Authorization:'Bearer '+tok}});
+    {headers:{Authorization:'Bearer '+tok},cache:'no-store'});
   if(!fr.ok)throw new Error('Could not fetch master for backup: '+fr.status);
   const buf=await fr.arrayBuffer();
   // PUT fresh binary to Backups folder
@@ -7863,7 +7863,7 @@ async function refreshRepoFromSP(force) {
   try {
     await refreshToken();
     const resp = await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-      {headers:{Authorization:'Bearer '+tok}});
+      {headers:{Authorization:'Bearer '+tok},cache:'no-store'});
     if(!resp.ok) return;
     const buf = await resp.arrayBuffer();
     const freshWB = XLSX.read(buf, {type:'array', cellDates:true});
@@ -7898,7 +7898,7 @@ async function saveRepoData() {
       try {
         await refreshToken();
         const resp = await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-          {headers:{Authorization:'Bearer '+tok}});
+          {headers:{Authorization:'Bearer '+tok},cache:'no-store'});
         if(resp.ok){
           const buf = await resp.arrayBuffer();
           const freshWB = XLSX.read(buf, {type:'array', cellDates:true});
