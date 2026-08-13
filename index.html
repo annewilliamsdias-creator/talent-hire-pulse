@@ -905,8 +905,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     <div class="field" style="margin:0">
       <label style="color:var(--w60)">Period</label>
       <select id="df-period" onchange="renderDash()">
-        <option value="all">All Time</option>
-        <option value="fy" selected>This FY (Apr–Mar)</option>
+        <!-- 13 Aug 2026: default changed from "fy" to "all" — the FY default
+             filtered on Last Updated On, which is blank/stale for some
+             candidates, silently hiding them from every Insights chart/KPI
+             with no visible indication a filter was even active. -->
+        <option value="all" selected>All Time</option>
+        <option value="fy">This FY (Apr–Mar)</option>
         <option value="q">This Quarter</option>
         <option value="m">This Month</option>
         <option value="w">This Week</option>
@@ -1826,7 +1830,11 @@ const TERMINAL=new Set(['Rejected by Consultant','Rejected by Client','Not Inter
 // Statuses where follow-up date is NOT mandatory
 const NO_FOLLOWUP=new Set(['On Hold','Dropped','Rejected by Consultant','Rejected by Client','Not Interested','Joined']);
 // Active pipeline statuses (for dashboard Active count)
-const ACTIVE_STATUSES=new Set(['Active','Not Contactable','Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress','On Hold','Selected','Offered','Joining in Progress']);
+// 13 Aug 2026: added 'WIP' — was missing, so a WIP candidate counted as
+// "active" in Insights (which used !TERMINAL.has(status)) but NOT active on
+// the Home Dashboard (which uses this explicit set) — two screens disagreeing
+// on the same candidate. Confirmed WIP is meant to count as active.
+const ACTIVE_STATUSES=new Set(['WIP','Active','Not Contactable','Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress','On Hold','Selected','Offered','Joining in Progress']);
 // Inactive statuses (can be re-approached)
 const INACTIVE_STATUSES=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
 const STATUS_DM={'Consultant Interview in Progress':'Consultant','Rejected by Consultant':'Consultant','Shortlisted for Client I/W':'Consultant','Client I/W in Progress':'Client','Rejected by Client':'Client','Selected':'Client','Offered':'Client','Offer Revoked':'Client','Offer Declined':'Client','Joining in Progress':'Client','Joined':'Client'};
@@ -3949,7 +3957,7 @@ function initChartDefaults() {
 // ── DATE FILTERING ────────────────────────────────────────
 function getDashDates() {
   const period = document.getElementById('df-period') ?
-    document.getElementById('df-period').value : 'fy';
+    document.getElementById('df-period').value : 'all';
   const now = new Date();
   let from, to;
 
@@ -4014,8 +4022,12 @@ function filterData(dates) {
     document.getElementById('df-source').value : '';
 
   const scope = document.getElementById('df-scope') ? document.getElementById('df-scope').value : 'all';
-  if (scope === 'active')   data = data.filter(r => !TERMINAL.has(r[C.status]));
-  if (scope === 'terminal') data = data.filter(r =>  TERMINAL.has(r[C.status]));
+  // 13 Aug 2026: was `!TERMINAL.has(...)`/`TERMINAL.has(...)` — used a different
+  // "active" definition than the rest of the app (Home Dashboard, topbar, EOD
+  // reports all use ACTIVE_STATUSES), so the same candidate could read as
+  // active here but not there. Now consistent everywhere.
+  if (scope === 'active')   data = data.filter(r => ACTIVE_STATUSES.has(r[C.status]));
+  if (scope === 'terminal') data = data.filter(r => INACTIVE_STATUSES.has(r[C.status]));
   if (client) data = data.filter(r => r[C.client] === client);
   if (dept)   data = data.filter(r => r[C.dept] === dept);
   if (rec)    data = data.filter(r => r[C.recruiter] === rec);
@@ -6501,6 +6513,13 @@ function loadIncentiveData(){}
 // ══════════════════════════════════════════════════════
 // INVOICING (Item 20)
 // ══════════════════════════════════════════════════════
+// 13 Aug 2026: was never declared anywhere — every reference to `invoices`
+// (renderInvoices, createInvoice, updateInvStats, renderJoinedCandPicker,
+// saveInvoiceData) threw ReferenceError until loadInvoiceData() happened to
+// assign it from an existing non-empty Invoices sheet. Broke the entire
+// Invoice panel, including invoice creation for Joined candidates, in any
+// workbook state where no invoice had ever been saved yet.
+let invoices = [];
 let invCounter = 1;
 
 function toggleInvCandPicker(){
