@@ -2371,10 +2371,14 @@ async function loadData(){
     // Step 2: Find file by browsing drive (most reliable)
     if(!fileId){
       showLoad('Finding file...');
-      // Try cached fileId first
-      const cachedId=sessionStorage.getItem('thp_file_id');
-      if(cachedId){fileId=cachedId;}
-      else{
+      // 13 Aug 2026: removed the sessionStorage-cached fileId short-circuit —
+      // it was masking the exact-match fix below entirely. Once a WRONG file
+      // got cached once (from the pre-fix ambiguous .find() picking up some
+      // other .xlsx in the folder), every subsequent reload in that same
+      // browser session kept reusing that wrong ID forever, since this early
+      // return skipped the discovery logic — including any later fixes to it
+      // — completely. Always re-resolve now; the discovery calls are cheap.
+      {
         // Browse drive root to find Shared Documents, then our folder
         const driveRoot=await gGet('/sites/'+siteId+'/drive/root/children');
         // Find Shared Documents folder
@@ -2394,7 +2398,7 @@ async function loadData(){
             // require the exact filename match now, only falling back to "any .xlsx"
             // if that genuinely isn't found.
             const xlFile=folderKids.value.find(i=>i.name===CFG.file)||folderKids.value.find(i=>i.name.endsWith('.xlsx'));
-            if(xlFile){fileId=xlFile.id;sessionStorage.setItem('thp_file_id',xlFile.id);}
+            if(xlFile){fileId=xlFile.id;}
           }
         }
         // Fallback: search by name
@@ -2403,7 +2407,7 @@ async function loadData(){
             const srch=await gGet('/sites/'+siteId+"/drive/root/search(q='TalentHirePulse')");
             // Same exact-match-first fix as the folder-browse path above.
             const f=srch.value&&(srch.value.find(i=>i.name===CFG.file)||srch.value.find(i=>i.name.endsWith('.xlsx')));
-            if(f){fileId=f.id;sessionStorage.setItem('thp_file_id',f.id);}
+            if(f){fileId=f.id;}
           }catch(e){console.warn('SP search fallback failed',e.message);}
         }
       }
