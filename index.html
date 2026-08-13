@@ -2385,7 +2385,15 @@ async function loadData(){
           const ourFolder=sdKids.value.find(i=>i.name.includes('Hire')||i.name.includes('Pulse')||i.name.includes('Talent'));
           if(ourFolder){
             const folderKids=await gGet('/sites/'+siteId+'/drive/items/'+ourFolder.id+'/children');
-            const xlFile=folderKids.value.find(i=>i.name===CFG.file||i.name.endsWith('.xlsx'));
+            // 13 Aug 2026: was `i.name===CFG.file||i.name.endsWith('.xlsx')` — since
+            // .find() takes the first array match and this OR doesn't prioritize the
+            // exact filename, ANY other .xlsx in this folder (backup, export, etc.)
+            // could silently get picked instead of the real master file depending on
+            // API return order. Root cause of a production incident where Masters/
+            // Vacancies showed stale data even in a fresh incognito session — always
+            // require the exact filename match now, only falling back to "any .xlsx"
+            // if that genuinely isn't found.
+            const xlFile=folderKids.value.find(i=>i.name===CFG.file)||folderKids.value.find(i=>i.name.endsWith('.xlsx'));
             if(xlFile){fileId=xlFile.id;sessionStorage.setItem('thp_file_id',xlFile.id);}
           }
         }
@@ -2393,7 +2401,8 @@ async function loadData(){
         if(!fileId){
           try{
             const srch=await gGet('/sites/'+siteId+"/drive/root/search(q='TalentHirePulse')");
-            const f=srch.value&&srch.value.find(i=>i.name.endsWith('.xlsx'));
+            // Same exact-match-first fix as the folder-browse path above.
+            const f=srch.value&&(srch.value.find(i=>i.name===CFG.file)||srch.value.find(i=>i.name.endsWith('.xlsx')));
             if(f){fileId=f.id;sessionStorage.setItem('thp_file_id',f.id);}
           }catch(e){console.warn('SP search fallback failed',e.message);}
         }
