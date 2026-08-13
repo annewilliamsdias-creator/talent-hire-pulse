@@ -2140,7 +2140,13 @@ async function syncFromServer(force=false){
     // Rebuild MD[] — Phase 1.3/1.6/1.8: read from the Candidates List via the
     // same loadCandidatesFromList() used by parseWB(), rather than duplicating
     // the Data-parsing logic here a second time (see comment on that function).
-    MD=await loadCandidatesFromList();
+    // 13 Aug 2026: wrapped separately from the Vacancies rebuild below — a
+    // Candidates List hiccup shouldn't also skip refreshing Vacancies this cycle.
+    try{
+      MD=await loadCandidatesFromList();
+    }catch(e){
+      console.warn('syncFromServer: loadCandidatesFromList failed, keeping previous MD:',e.message);
+    }
     // Rebuild VD[]
     if(vacJson.values&&vacJson.values.length>1){
       const vh=(vacJson.values[0]||[]).map(h=>String(h||'').trim());
@@ -2434,7 +2440,20 @@ async function parseWB(){
 // List via loadCandidatesFromList() (shared with syncFromServer, see its
 // comment) — no _sheetRow/Excel-row linkage needed anymore.
 HDR=Object.values(C);
-MD=await loadCandidatesFromList();
+// 13 Aug 2026: wrapped after a production incident — an unguarded throw here
+// (Candidates List fetch is now a real network call, unlike the old synchronous
+// Excel-sheet parsing it replaced) aborted the rest of parseWB() entirely,
+// silently skipping Vacancies/Masters/Config/role-resolution/dropdowns for the
+// whole session. syncFromServer() retries this same fetch and usually recovers
+// candidates on its own, masking the failure — but Masters/Vacancies are ONLY
+// ever populated here, with no retry path, so they stayed stuck empty. Now a
+// failure here is logged/surfaced but never blocks everything downstream.
+try{
+  MD=await loadCandidatesFromList();
+}catch(e){
+  console.error('parseWB: loadCandidatesFromList failed — candidates may be stale/empty, but continuing with Vacancies/Masters/other initialization:',e.message);
+  toast('err','Candidates Load Failed','Could not load candidates from the List: '+e.message+'. Other data loaded normally — click Refresh Now or reload to retry.');
+}
 const wsv=WB.Sheets['Vacancies'];
 if(wsv){const vr=XLSX.utils.sheet_to_json(wsv,{header:1,defval:'',raw:false});VHDR=vr[0]?vr[0].map(h=>String(h).trim()):[];VD=[];
 for(let i=1;i<vr.length;i++){if(vr[i].every(c=>c===''||c===null))continue;const obj={};VHDR.forEach((h,j)=>{obj[h]=vr[i][j]!==undefined?String(vr[i][j]).trim():'';});VD.push(obj);}}
