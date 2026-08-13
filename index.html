@@ -2411,23 +2411,22 @@ async function loadData(){
     if(!fileId) throw new Error('Could not find TalentHirePulse_Master.xlsx on SharePoint');
     // Step 3: Download
     showLoad('Downloading file...');
-    const r=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-      {headers:{Authorization:'Bearer '+tok},cache:'no-store'});
-    if(r.status===401){
-      await refreshToken();
-      const r2=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/content',
-        {headers:{Authorization:'Bearer '+tok},cache:'no-store'});
-      if(!r2.ok) throw new Error('Download failed after retry: '+r2.status);
-      const buf2=await r2.arrayBuffer();
-      showLoad('Reading records...');
-      WB=XLSX.read(buf2,{type:'array',cellDates:true});
-    } else if(!r.ok){
-      throw new Error('Download failed: '+r.status);
-    } else {
-      const buf=await r.arrayBuffer();
-      showLoad('Reading records...');
-      WB=XLSX.read(buf,{type:'array',cellDates:true});
-    }
+    // 13 Aug 2026: switched from GET .../content to the pre-signed
+    // @microsoft.graph.downloadUrl. Root-caused a production incident where
+    // Masters/Vacancies showed stale data even in a brand-new incognito
+    // session (ruling out every client-side cache) — the .../content endpoint
+    // can be served through a CDN layer whose caching our own cache:'no-store'
+    // header can't reach, since that only governs the browser's cache, not any
+    // proxy between us and SharePoint's storage. downloadUrl is regenerated
+    // fresh on every request, so it isn't subject to the same stale cache key.
+    const dlMeta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=@microsoft.graph.downloadUrl');
+    const downloadUrl=dlMeta['@microsoft.graph.downloadUrl'];
+    if(!downloadUrl) throw new Error('Could not get a download URL for the workbook');
+    const r=await fetch(downloadUrl,{cache:'no-store'});
+    if(!r.ok) throw new Error('Download failed: '+r.status);
+    const buf=await r.arrayBuffer();
+    showLoad('Reading records...');
+    WB=XLSX.read(buf,{type:'array',cellDates:true});
     await parseWB();
     try{const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag');_serverETag=meta.eTag||'';}catch(e){console.warn('CR-SYNC-001: eTag fetch failed',e.message);}
     try{_listLastModified=await fetchListLastModified();}catch(e){console.warn('Candidates List lastModified fetch failed:',e.message);}
