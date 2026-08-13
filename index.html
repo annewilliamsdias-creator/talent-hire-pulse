@@ -1544,7 +1544,11 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     <div class="field" style="margin:0"><label>Invoice Date</label><input type="date" id="inv-date"></div>
     <div class="field" style="margin:0"><label>Due Date</label><input type="date" id="inv-due"></div>
     <div class="field" style="margin:0"><label>GST %</label><input type="number" id="inv-gst" placeholder="18" value="18" step="0.1" oninput="calcInvAmount()"></div>
-    <div class="field" style="margin:0"><label>Total with GST ₹</label><input type="number" id="inv-total" readonly></div>
+    <!-- 13 Aug 2026: renamed from id="inv-total" — that id was already in use
+         by the "Total Invoiced" stats display above (line ~1505), a <div>, not
+         a form input. document.getElementById() silently returned the div
+         (no .value property), so gv('inv-total') threw in createInvoice(). -->
+    <div class="field" style="margin:0"><label>Total with GST ₹</label><input type="number" id="inv-form-total" readonly></div>
     <div class="field" style="margin:0"><label>Payment Terms</label><input type="text" id="inv-terms" placeholder="e.g. 30 days net"></div>
   </div>
   <div class="btn-row"><button class="btn btn-t" onclick="createInvoice()">✓ Generate Invoice</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-create-form').classList.add('hidden')">← Back to Candidate List</button></div>
@@ -4068,8 +4072,14 @@ function renderDash() {
   renderTrendChart(data, dates);
   renderRejectionChart(data);
   renderDeptChart(data);
-  // Also refresh action queue
-  loadDash();
+  // 13 Aug 2026: removed `loadDash()` call — it wrote to the exact same
+  // element IDs (kpi-total, kpi-active, kpi-joined, kpi-offered) that
+  // renderKPIs() above just set, using its own unfiltered scopeMD (only
+  // scoped by logged-in recruiter). It silently overwrote every Insights
+  // filter (client/department/source/scope) the moment this panel rendered —
+  // the KPI cards always showed global totals no matter what was selected.
+  // Home Dashboard already calls loadDash() itself on its own navigation
+  // (goPanel('home')), so nothing here needs to trigger it.
 }
 
 function fillDashFilters() {
@@ -4135,13 +4145,17 @@ function renderKPIs(data) {
 
 // ── FUNNEL CHART ──────────────────────────────────────────
 function renderFunnel(data) {
+  // 13 Aug 2026: added 'WIP' — was missing entirely, so WIP candidates
+  // contributed to none of these bars and were invisible in this chart
+  // regardless of the ACTIVE_STATUSES fix (this list is matched by literal
+  // status string, not via ACTIVE_STATUSES).
   const stages = [
-    'Active', 'Not Contactable',
+    'WIP', 'Active', 'Not Contactable',
     'Consultant Interview in Progress', 'Shortlisted for Client I/W',
     'Client I/W in Progress', 'Selected', 'Offered',
     'Joining in Progress', 'Joined'
   ];
-  const labels = ['Active','Not Contactable','Cons. Interview','Shortlisted','Client Interview','Selected','Offered','Joining','Joined'];
+  const labels = ['WIP','Active','Not Contactable','Cons. Interview','Shortlisted','Client Interview','Selected','Offered','Joining','Joined'];
   const counts = stages.map(s => data.filter(r => r[C.status] === s).length);
   mkChart('ch-funnel', {
     type: 'bar',
@@ -4151,7 +4165,7 @@ function renderFunnel(data) {
         label: 'Candidates',
         data: counts,
         backgroundColor: [
-          CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
+          CHART_COLORS.orange, CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
           CHART_COLORS.cyan, CHART_COLORS.teal, CHART_COLORS.green,
           CHART_COLORS.blue, CHART_COLORS.purple, CHART_COLORS.teal
         ],
@@ -4173,7 +4187,11 @@ function renderFunnel(data) {
 
 // ── STATUS DISTRIBUTION (DONUT) ───────────────────────────
 function renderStatusDist(data) {
+  // 13 Aug 2026: added 'WIP' — was missing entirely, so WIP candidates fell
+  // into none of these buckets and were silently excluded from the donut
+  // (not even folded into "Inactive" — just uncounted).
   const statusGroups = {
+    'WIP': data.filter(r=>r[C.status]==='WIP').length,
     'Active': data.filter(r=>r[C.status]==='Active').length,
     'Not Contactable': data.filter(r=>r[C.status]==='Not Contactable').length,
     'In Interview': data.filter(r=>['Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress'].includes(r[C.status])).length,
@@ -4184,7 +4202,7 @@ function renderStatusDist(data) {
   };
   const labels = Object.keys(statusGroups).filter(k => statusGroups[k] > 0);
   const values = labels.map(k => statusGroups[k]);
-  const colors = [CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
+  const colors = [CHART_COLORS.orange, CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
                   CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.purple];
   mkChart('ch-status', {
     type: 'doughnut',
@@ -6620,7 +6638,7 @@ function calcInvAmount(){
   const gst=parseFloat(gv('inv-gst'))||18;
   const amt=ctc*rate/100;
   sv('inv-amount',Math.round(amt));
-  sv('inv-total',Math.round(amt*(1+gst/100)));
+  sv('inv-form-total',Math.round(amt*(1+gst/100)));
 }
 function createInvoice(){
   const candCode=gv('inv-cand-code'),candName=gv('inv-cand-name'),client=gv('inv-client');
@@ -6631,7 +6649,7 @@ function createInvoice(){
     candCode,candName,client,position:gv('inv-position'),
     ctc:parseFloat(gv('inv-ctc'))||0,feeRate:parseFloat(gv('inv-fee-rate'))||0,
     amount,gst:parseFloat(gv('inv-gst'))||18,
-    total:parseFloat(gv('inv-total'))||0,
+    total:parseFloat(gv('inv-form-total'))||0,
     date:gv('inv-date'),due:gv('inv-due'),terms:gv('inv-terms'),
     status:'Draft',created:today()
   };
