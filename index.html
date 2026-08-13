@@ -973,8 +973,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="dash-grid">
   <div class="chart-card">
     <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">⬇</span> Pipeline Funnel</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-funnel','Pipeline_Funnel')">⬇</button></div>
-    <div class="chart-sub">Candidates by stage</div>
-    <div class="chart-wrap"><canvas id="ch-funnel"></canvas></div>
+    <div class="chart-sub">Candidates by status — active and inactive</div>
+    <!-- 13 Aug 2026: taller than the default 220px chart-wrap — now shows all
+         16 statuses (was 9-10), needs more vertical room to stay readable. -->
+    <div class="chart-wrap" style="height:380px"><canvas id="ch-funnel"></canvas></div>
   </div>
   <div class="chart-card">
     <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">◉</span> Status Distribution</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-status','Status_Distribution')">⬇</button></div>
@@ -3952,9 +3954,16 @@ function initChartDefaults() {
   Chart.defaults.plugins.tooltip.borderColor = 'rgba(52,186,198,0.3)';
   Chart.defaults.plugins.tooltip.borderWidth = 1;
   Chart.defaults.plugins.tooltip.padding = 10;
-  // Datalabels OFF by default - enabled per chart when needed
+  // 13 Aug 2026: datalabels ON by default on-screen too — previously only
+  // enabled when temporarily toggled on for PDF/PNG export, so the actual
+  // counts on every chart were invisible until you downloaded a report.
   if (typeof ChartDataLabels !== 'undefined') {
-    Chart.defaults.plugins.datalabels = { display: false };
+    Chart.defaults.plugins.datalabels = {
+      display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
+      color: 'rgba(251,251,250,0.85)',
+      font: { size: 10, weight: '600' },
+      formatter: (v) => v
+    };
   }
 }
 
@@ -4144,19 +4153,30 @@ function renderKPIs(data) {
 }
 
 // ── FUNNEL CHART ──────────────────────────────────────────
+// 13 Aug 2026: single source of truth for "every status" — WIP + every
+// ACTIVE_STATUSES entry + every INACTIVE_STATUSES entry, in pipeline order.
+// Previously this chart hardcoded only 9-10 pipeline stages and silently
+// excluded WIP and every rejected/terminal status (Rejected by Consultant/
+// Client, Not Interested, Offer Declined/Revoked, Dropped) entirely — no way
+// to see active AND inactive candidates in one place. Built from the same
+// ACTIVE_STATUSES/INACTIVE_STATUSES sets the rest of the app already uses, so
+// it can never silently drop a status again the way the old hardcoded list did.
+const ALL_STATUSES_ORDERED = ['WIP', ...ACTIVE_STATUSES, ...INACTIVE_STATUSES];
+const STATUS_LABELS_SHORT = {
+  'Consultant Interview in Progress':'Cons. Interview',
+  'Shortlisted for Client I/W':'Shortlisted',
+  'Client I/W in Progress':'Client Interview',
+  'Joining in Progress':'Joining',
+  'Rejected by Consultant':'Rej. by Consultant',
+  'Rejected by Client':'Rej. by Client',
+  'Not Interested':'Not Interested',
+  'Offer Declined':'Offer Declined',
+  'Offer Revoked':'Offer Revoked',
+};
 function renderFunnel(data) {
-  // 13 Aug 2026: added 'WIP' — was missing entirely, so WIP candidates
-  // contributed to none of these bars and were invisible in this chart
-  // regardless of the ACTIVE_STATUSES fix (this list is matched by literal
-  // status string, not via ACTIVE_STATUSES).
-  const stages = [
-    'WIP', 'Active', 'Not Contactable',
-    'Consultant Interview in Progress', 'Shortlisted for Client I/W',
-    'Client I/W in Progress', 'Selected', 'Offered',
-    'Joining in Progress', 'Joined'
-  ];
-  const labels = ['WIP','Active','Not Contactable','Cons. Interview','Shortlisted','Client Interview','Selected','Offered','Joining','Joined'];
-  const counts = stages.map(s => data.filter(r => r[C.status] === s).length);
+  const counts = ALL_STATUSES_ORDERED.map(s => data.filter(r => r[C.status] === s).length);
+  const labels = ALL_STATUSES_ORDERED.map(s => STATUS_LABELS_SHORT[s] || s);
+  const colors = ALL_STATUSES_ORDERED.map((s,i) => INACTIVE_STATUSES.has(s) ? 'rgba(224,82,82,0.55)' : PALETTE[i % PALETTE.length]);
   mkChart('ch-funnel', {
     type: 'bar',
     data: {
@@ -4164,11 +4184,7 @@ function renderFunnel(data) {
       datasets: [{
         label: 'Candidates',
         data: counts,
-        backgroundColor: [
-          CHART_COLORS.orange, CHART_COLORS.gold, CHART_COLORS.slate, CHART_COLORS.blue,
-          CHART_COLORS.cyan, CHART_COLORS.teal, CHART_COLORS.green,
-          CHART_COLORS.blue, CHART_COLORS.purple, CHART_COLORS.teal
-        ],
+        backgroundColor: colors,
         borderRadius: 4,
         borderSkipped: false,
       }]
