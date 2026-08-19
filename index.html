@@ -1615,7 +1615,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 </div>
 <!-- BACKUP -->
-<div id="ap-vac-fix" class="card" style="border:1px solid #e9982b;margin-bottom:12px"><div class="card-hdr"><div class="card-title"><span class="ac">🔧</span> One-time: Fix Vacancy Active Status</div></div><div style="font-size:12px;color:#5f6470;margin-bottom:10px">Sets Active=N for 7 inactive vacancies, Active=Y for all others. Run once and verify in Vacancies screen. Button can be removed after confirmation.</div><button class="btn btn-sm" style="background:#e9982b;color:#fff;font-weight:600" onclick="fixVacancyActive()">Run Fix Now</button><div id="vac-fix-result" style="margin-top:8px;font-size:12px"></div></div>
 <div id="ap-backup"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">💾</span> Backup Manager</div><button class="btn btn-t btn-sm" onclick="doBackup()">Create Backup Now</button></div><div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">Backups saved to <span style="color:var(--teal);font-family:monospace">/Talent+ Hire-Pulse/Backups/</span> on SharePoint</div><div id="bkList"></div></div></div>
 <!-- CHANGELOG -->
 <div id="ap-changelog" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Change Log</div></div><div class="tw"><table><thead><tr><th>Timestamp</th><th>User</th><th>Code</th><th>Action</th><th>Field</th><th>Old</th><th>New</th></tr></thead><tbody id="clBody"></tbody></table></div></div></div>
@@ -1797,6 +1796,9 @@ let _listLastModified='';    // Phase 1.8 (10 Aug 2026): Candidates List's most-
                               // item timestamp — workbook eTag alone no longer reflects candidate
                               // changes once Excel writes are retired, so pollVersion() also
                               // watches this to keep other sessions' candidate edits visible.
+let _vacListLastModified='';  // 19 Aug 2026: same reasoning, for the Vacancies List — once
+                               // saveVac()/toggleVacAct() stop touching Excel, the workbook eTag
+                               // no longer reflects vacancy changes either.
 let _lastOwnWriteAt=0;       // timestamp of this session's last write
 let _syncInProgress=false;   // prevent overlapping syncs
 let _pollInterval=null;      // setInterval handle
@@ -2147,9 +2149,6 @@ async function syncFromServer(force=false){
     // candidates are read straight from the List (below), and the header-mismatch
     // guard that used to compare it against HDR no longer applies now that HDR
     // is a static C-derived list, not read from Excel.
-    const vacResp=await fetch(GRAPH+'/sites/'+siteId+'/drive/items/'+fileId+'/workbook/worksheets(\'Vacancies\')/usedRange(valuesOnly=true)',{headers:{Authorization:'Bearer '+tok},cache:'no-store'});
-    if(!vacResp.ok){_syncInProgress=false;return;}
-    const vacJson=await vacResp.json();
     const ui=preserveUIState();
     // Rebuild MD[] — Phase 1.3/1.6/1.8: read from the Candidates List via the
     // same loadCandidatesFromList() used by parseWB(), rather than duplicating
@@ -2161,20 +2160,18 @@ async function syncFromServer(force=false){
     }catch(e){
       console.warn('syncFromServer: loadCandidatesFromList failed, keeping previous MD:',e.message);
     }
-    // Rebuild VD[]
-    if(vacJson.values&&vacJson.values.length>1){
-      const vh=(vacJson.values[0]||[]).map(h=>String(h||'').trim());
-      VHDR=vh;VD=[];
-      for(let i=1;i<vacJson.values.length;i++){
-        const row=vacJson.values[i];
-        if(row.every(c=>c===''||c===null||c===undefined))continue;
-        const obj={};vh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});
-        VD.push(obj);
-      }
+    // Rebuild VD[] — 19 Aug 2026: Vacancies migrated to its own List, same
+    // shared-loader pattern as Candidates (loadVacanciesFromList(), also used
+    // by parseWB()) instead of a second independent Excel-parsing copy.
+    try{
+      VD=await loadVacanciesFromList();
+    }catch(e){
+      console.warn('syncFromServer: loadVacanciesFromList failed, keeping previous VD:',e.message);
     }
-    // Update eTag + List-modified tracker so future polls compare against fresh baselines
+    // Update eTag + List-modified trackers so future polls compare against fresh baselines
     try{const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag');_serverETag=meta.eTag||_serverETag;}catch(e){}
     try{_listLastModified=await fetchListLastModified();}catch(e){}
+    try{_vacListLastModified=await fetchVacListLastModified();}catch(e){}
     _pendingSyncETag='';
     // Re-render
     restoreUIState(ui);
@@ -2190,23 +2187,34 @@ async function fetchListLastModified(){
   const res=await graphGet(`/sites/${siteId}/lists/Candidates/items?$orderby=lastModifiedDateTime desc&$top=1&$select=lastModifiedDateTime`);
   return (res.value&&res.value[0]&&res.value[0].lastModifiedDateTime)||'';
 }
+// 19 Aug 2026: same pattern, for the Vacancies List.
+async function fetchVacListLastModified(){
+  const res=await graphGet(`/sites/${siteId}/lists/Vacancies/items?$orderby=lastModifiedDateTime desc&$top=1&$select=lastModifiedDateTime`);
+  return (res.value&&res.value[0]&&res.value[0].lastModifiedDateTime)||'';
+}
 async function pollVersion(){
   if(document.hidden||_syncInProgress||Date.now()-_lastOwnWriteAt<8000)return;
   try{
     await refreshToken();
     const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag,lastModifiedDateTime');
-    // Phase 1.8: workbook eTag alone only reflects Vacancies/Config/other-sheet
-    // changes now that Excel writes are retired for candidates — also check the
-    // Candidates List's own most-recently-modified timestamp so another
-    // session's candidate edit still triggers a sync.
+    // Phase 1.8: workbook eTag alone only reflects Config/other-sheet changes
+    // now that Excel writes are retired for both candidates and vacancies —
+    // also check each List's own most-recently-modified timestamp so another
+    // session's edit still triggers a sync.
     let listChanged=false,newListModified='';
     try{
       newListModified=await fetchListLastModified();
       listChanged=newListModified&&newListModified!==_listLastModified;
-    }catch(e){console.warn('pollVersion: List lastModified check failed:',e.message);}
-    if((meta.eTag&&meta.eTag!==_serverETag)||listChanged){
+    }catch(e){console.warn('pollVersion: Candidates List lastModified check failed:',e.message);}
+    let vacListChanged=false,newVacListModified='';
+    try{
+      newVacListModified=await fetchVacListLastModified();
+      vacListChanged=newVacListModified&&newVacListModified!==_vacListLastModified;
+    }catch(e){console.warn('pollVersion: Vacancies List lastModified check failed:',e.message);}
+    if((meta.eTag&&meta.eTag!==_serverETag)||listChanged||vacListChanged){
       _pendingSyncETag=meta.eTag||_pendingSyncETag;
       if(listChanged)_listLastModified=newListModified;
+      if(vacListChanged)_vacListLastModified=newVacListModified;
       await syncFromServer();
     }
   }catch(e){
@@ -2448,6 +2456,7 @@ async function loadData(){
     await parseWB();
     try{const meta=await gGet('/sites/'+siteId+'/drive/items/'+fileId+'?$select=eTag');_serverETag=meta.eTag||'';}catch(e){console.warn('CR-SYNC-001: eTag fetch failed',e.message);}
     try{_listLastModified=await fetchListLastModified();}catch(e){console.warn('Candidates List lastModified fetch failed:',e.message);}
+    try{_vacListLastModified=await fetchVacListLastModified();}catch(e){console.warn('Vacancies List lastModified fetch failed:',e.message);}
     setSP('ok','SharePoint ✓');
     hideLoad();
     initUI();
@@ -2480,9 +2489,15 @@ try{
   console.error('parseWB: loadCandidatesFromList failed — candidates may be stale/empty, but continuing with Vacancies/Masters/other initialization:',e.message);
   toast('err','Candidates Load Failed','Could not load candidates from the List: '+e.message+'. Other data loaded normally — click Refresh Now or reload to retry.');
 }
-const wsv=WB.Sheets['Vacancies'];
-if(wsv){const vr=XLSX.utils.sheet_to_json(wsv,{header:1,defval:'',raw:false});VHDR=vr[0]?vr[0].map(h=>String(h).trim()):[];VD=[];
-for(let i=1;i<vr.length;i++){if(vr[i].every(c=>c===''||c===null))continue;const obj={};VHDR.forEach((h,j)=>{obj[h]=vr[i][j]!==undefined?String(vr[i][j]).trim():'';});VD.push(obj);}}
+// 19 Aug 2026: Vacancies migrated to its own SharePoint List (mirrors the
+// Candidates migration) — same fault-tolerant wrapping, since this is now a
+// real network call and a hiccup here shouldn't block Repository/Masters/etc.
+try{
+  VD=await loadVacanciesFromList();
+}catch(e){
+  console.error('parseWB: loadVacanciesFromList failed — Vacancies may be stale/empty, but continuing with other initialization:',e.message);
+  toast('err','Vacancies Load Failed','Could not load vacancies from the List: '+e.message+'. Other data loaded normally — click Refresh Now or reload to retry.');
+}
 // Load repo data from SharePoint workbook (shared across all users)
 const wsr=WB.Sheets['Repository'];
 if(wsr){try{const rrows=XLSX.utils.sheet_to_json(wsr,{header:1,defval:'',raw:false}).slice(1).filter(r=>r[0]);repoData={jds:[],scripts:[],help:[]};rrows.forEach(r=>{const t=String(r[0]||'').trim();try{const d=r[1]?JSON.parse(r[1]):{};if(t==='jd')repoData.jds.push(d);else if(t==='script')repoData.scripts.push(d);else if(t==='help')repoData.help.push(d);}catch(pe){console.warn('Repo row parse',pe);}});}catch(e){console.warn('Repo parse',e);loadRepoData();}}
@@ -3721,6 +3736,24 @@ const _ex=VD[vacEIdx];const _patch={};Object.entries(vd).forEach(([k,v])=>{if(k=
 }else if(v!==''&&v!==null&&v!==undefined){_patch[k]=v;}});Object.assign(VD[vacEIdx],_patch);}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
 await saveWB('Saving vacancy...',true,['Vacancies']);
+// 19 Aug 2026: dual-write to the Vacancies List alongside the Excel save
+// above, for the parallel-run window before Excel is retired for Vacancies
+// too (mirrors how Candidates dual-wrote during Phase 1.4/1.5). Not fatal if
+// this fails — Excel remains the write-of-record until cutover.
+try{
+  const vRecord=isNew?vd:VD[vacEIdx];
+  if(isNew){
+    const res=await writeCandidateListItem('POST',`/sites/${siteId}/lists/Vacancies/items`,{fields:buildVacancyListFields(vRecord)});
+    if(res&&res.id)vRecord._spItemId=res.id;
+  }else{
+    const itemId=await resolveVacSpItemId(vRecord);
+    if(itemId){
+      await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields`,buildVacancyListFields(vRecord));
+    }else{
+      console.warn('saveVac: no Vacancies List item id for',vRecord['Vacancy code'],'— List not updated');
+    }
+  }
+}catch(vacListErr){console.warn('saveVac: Vacancies List dual-write failed:',vacListErr.message);}
 closeVacFormModal();hideSyncBanner();
 // Auto-tag candidates: if recruiter changed on existing vacancy, update all
 // active candidates linked to this vacancy code to the new recruiter
@@ -3755,7 +3788,16 @@ if(!isNew && vd['Recruiter']){
 renderAVacs();renderVac();fillPosDrop();renderRec();loadDash();
 toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);
 showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
-async function toggleVacAct(idx){VD[idx]['Active']=VD[idx]['Active']==='N'?'Y':'N';if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}await saveWB(false,true,['Vacancies']);renderAVacs();renderVac();fillPosDrop();toast('info','Vacancy Updated',VD[idx]['Designation']+' is now '+(VD[idx]['Active']==='N'?'Inactive':'Active'));}
+async function toggleVacAct(idx){VD[idx]['Active']=VD[idx]['Active']==='N'?'Y':'N';if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}await saveWB(false,true,['Vacancies']);
+// 19 Aug 2026: dual-write the Active flip to the Vacancies List too, single-
+// field PATCH (no full-sheet rewrite needed on the List side — genuinely
+// simpler than the Excel logic it's running alongside during the parallel-run
+// window). Not fatal if this fails, same reasoning as saveVac()'s dual-write.
+try{
+  const itemId=await resolveVacSpItemId(VD[idx]);
+  if(itemId)await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields`,{[SPLIST_VAC_FIELD_MAP['Active']]:VD[idx]['Active']});
+}catch(vacListErr){console.warn('toggleVacAct: Vacancies List dual-write failed:',vacListErr.message);}
+renderAVacs();renderVac();fillPosDrop();toast('info','Vacancy Updated',VD[idx]['Designation']+' is now '+(VD[idx]['Active']==='N'?'Inactive':'Active'));}
 // USERS
 function openAddUser(){document.getElementById('uEI').value='-1';['uUN','uUE'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const ut=document.getElementById('uUT');if(ut)ut.value='internal';const us=document.getElementById('uUS');if(us)us.value='Active';onUType();document.getElementById('uForm2').classList.remove('hidden');}
 function onUType(){const t=gv('uUT');const rf=document.getElementById('uRF');const cf=document.getElementById('uCF');const crf=document.getElementById('uCRF');if(rf)rf.classList.toggle('hidden',t!=='internal');if(cf)cf.classList.toggle('hidden',t!=='client');if(crf)crf.classList.toggle('hidden',t!=='client');}
@@ -7999,26 +8041,9 @@ async function saveRepoData() {
 }
 
 // === ONE-TIME: Fix Vacancy Active Status (15 Jun 2026) ===
-async function fixVacancyActive(){
-  const INACTIVE=new Set(['VC-2026-0019','VC-2026-0015','VC-2026-0016','VC-2026-0004','VC-2026-0005','VC-2026-0010','VC-2026-0012']);
-  const res=document.getElementById('vac-fix-result');
-  if(!VD.length){if(res)res.textContent='No vacancy data loaded. Please log in first.';return;}
-  let setN=0,setY=0;
-  VD.forEach(v=>{
-    const vc=(v['Vacancy code']||v['Vacancy Code']||'').trim();
-    if(INACTIVE.has(vc)){v['Active']='N';setN++;}
-    else{v['Active']='Y';setY++;}
-  });
-  if(WB&&WB.Sheets['Vacancies']){
-    const ws=WB.Sheets['Vacancies'];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-    const vh=rows[0];
-    WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);
-  }
-  await saveWB('Vacancy status corrected',true,['Vacancies']);
-  if(res)res.innerHTML='<span style="color:#5e7855;font-weight:600">✓ Done — '+setN+' set Inactive (N), '+setY+' set Active (Y). Verify in Vacancies screen.</span>';
-  writeCL('Vacancy Fix','ALL','Active','mixed','N='+setN+' Y='+setY,'Admin');
-}
+// fixVacancyActive() removed 19 Aug 2026 — one-time admin utility with a
+// hardcoded list of vacancy codes, no longer needed now that Vacancies has
+// its own List and current Active status is managed via toggleVacAct().
 
 // === SP-LISTS MIGRATION — Phase 1 prep (26 Jul 2026) ===
 // Read-only diagnostic: fetches the live 'Candidates' SharePoint List's column
@@ -8335,6 +8360,166 @@ async function migrateDataToCandidatesList(){
     toast('warn','Sync finished with errors',addedCount+' added, '+updatedCount+' updated, '+failed.length+' failed — see console for details.');
   }else{
     toast('ok','Sync complete',addedCount+' added, '+updatedCount+' updated in the Candidates List.');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// VACANCIES SHAREPOINT LIST (19 Aug 2026)
+// ══════════════════════════════════════════════════════
+// Maps VD[] display-name keys -> Vacancies List internal field names.
+// Confirmed live against the List's own schema, 19 Aug 2026. All columns are
+// Single-line-of-text (deliberately no Choice type) — the direct lesson from
+// the Candidates List's Choice-Default bug (SharePoint silently substituting
+// a configured Default when a write omits the field) and the ongoing
+// Masters-vs-List-Choice drift problem; Text columns sidestep both entirely.
+// 'Vacancy code' uses the List's built-in Title field (Anne's call — avoids
+// an extra unused column) rather than a dedicated field, unlike Candidates'
+// separate CandidateCode column.
+// 'Sub Department'/'Function'/'Annual Budget'/'Manager'/'Possible income to
+// WithAWill' are legacy fields carried over from the Excel sheet even though
+// the current Admin form doesn't edit them (confirmed 19/37 to 23/37 rows had
+// real data — Anne opted to preserve rather than silently drop it).
+// 'Sr. No.' dropped (superseded by the List's native item ID, same precedent
+// as Candidates' 'S. No'). 'Filled By (Candidate Code)' dropped — confirmed
+// empty on all 37 rows.
+const SPLIST_VAC_FIELD_MAP={
+  'Vacancy code':'Title',
+  'Company':'field_1',
+  'Designation':'field_2',
+  'Department':'field_3',
+  'Sub Department':'field_4',
+  'Function':'field_5',
+  'Location':'field_6',
+  'Monthly Budget':'field_7',
+  'Annual Budget':'field_8',
+  'Budget Min':'field_9',
+  'Budget Max':'field_10',
+  'Experience':'field_11',
+  'Manager':'field_12',
+  'Recruiter':'field_13',
+  'Possible income to WithAWill':'field_14',
+  'Hiring Manager':'field_15',
+  'Manager Name':'field_16',
+  'Date of Vacancy':'field_17',
+  'Target Fill Date':'field_18',
+  'Priority':'field_19',
+  'Positions Count':'field_20',
+  'Remarks':'field_21',
+  'JD Link':'field_22',
+  'Current Status':'field_23',
+  'Active':'field_24',
+  'External Visible':'field_25'
+};
+const SPLIST_VAC_REVERSE_MAP=Object.fromEntries(Object.entries(SPLIST_VAC_FIELD_MAP).map(([k,v])=>[v,k]));
+// All columns are plain text — no Choice/Number/Date special-casing needed,
+// unlike buildCandidateListFields. Blank values are simply omitted (no
+// Choice-Default risk exists here since nothing is Choice-typed).
+function buildVacancyListFields(v){
+  const fields={};
+  for(const[srcCol,internalName]of Object.entries(SPLIST_VAC_FIELD_MAP)){
+    const val=v[srcCol];
+    if(val===undefined||val===null||val==='')continue;
+    fields[internalName]=String(val);
+  }
+  return fields;
+}
+function listItemToVacancyRecord(item){
+  const v={};
+  const f=item.fields||{};
+  for(const[internalName,srcCol]of Object.entries(SPLIST_VAC_REVERSE_MAP)){
+    const val=f[internalName];
+    v[srcCol]=(val===undefined||val===null)?'':String(val);
+  }
+  v._spItemId=item.id;
+  return v;
+}
+async function loadVacanciesFromList(){
+  const out=[];
+  let url=`/sites/${siteId}/lists/Vacancies/items?$expand=fields&$top=200`;
+  while(url){
+    const res=await graphGet(url.replace(GRAPH,''));
+    (res.value||[]).forEach(it=>out.push(listItemToVacancyRecord(it)));
+    url=res['@odata.nextLink']||null;
+  }
+  return out;
+}
+// Resolves and caches a vacancy record's List item id by Vacancy code
+// (the List's Title field) — mirrors resolveSpItemId for Candidates.
+async function resolveVacSpItemId(v){
+  if(v._spItemId)return v._spItemId;
+  const code=v['Vacancy code'];
+  if(!code)return null;
+  try{
+    const res=await graphGet(`/sites/${siteId}/lists/Vacancies/items?$filter=fields/Title eq '${String(code).replace(/'/g,"''")}'&$expand=fields&$top=1`);
+    const item=res.value&&res.value[0];
+    if(item){v._spItemId=item.id;return item.id;}
+  }catch(e){console.warn('resolveVacSpItemId failed for',code,e.message);}
+  return null;
+}
+// One-time migration: Excel Vacancies sheet -> Vacancies List. Safe to re-run
+// (adds missing, updates changed) — same idempotent pattern as
+// migrateDataToCandidatesList. Console-only utility, no UI button.
+async function migrateVacanciesToList(){
+  showLoad('Reading existing Vacancies List items...');
+  const existing=new Map(); // code -> {id, fields}
+  try{
+    let url=`/sites/${siteId}/lists/Vacancies/items?$expand=fields&$top=200`;
+    while(url){
+      const res=await graphGet(url.replace(GRAPH,''));
+      (res.value||[]).forEach(it=>{
+        const c=it.fields&&it.fields.Title;
+        if(c)existing.set(String(c).trim(),{id:it.id,fields:it.fields});
+      });
+      url=res['@odata.nextLink']||null;
+    }
+  }catch(e){hideLoad();toast('err','Sync aborted','Could not read existing Vacancies List items: '+e.message);return;}
+  console.log('Already in Vacancies List:',existing.size);
+
+  const toAdd=[];const toUpdate=[];
+  VD.forEach(v=>{
+    const code=String(v['Vacancy code']||v['Vacancy Code']||'').trim();
+    if(!code)return;
+    const newFields=buildVacancyListFields({...v,'Vacancy code':code});
+    const existingItem=existing.get(code);
+    if(!existingItem){
+      toAdd.push({v,fields:newFields});
+    }else{
+      const changed={};
+      for(const[k,val]of Object.entries(newFields)){
+        if(listFieldValueDiffers(existingItem.fields[k],val))changed[k]=val;
+      }
+      if(Object.keys(changed).length)toUpdate.push({v,id:existingItem.id,fields:changed});
+    }
+  });
+  hideLoad();
+  console.log('To add:',toAdd.length,'| To update:',toUpdate.length);
+  if(!toAdd.length&&!toUpdate.length){toast('ok','Already in sync','No new or changed vacancies found — Vacancies List matches the Excel sheet.');return;}
+  if(!confirm('This will add '+toAdd.length+' new and update '+toUpdate.length+' changed vacancy record(s) in the Vacancies List. Continue?'))return;
+  showLoad('Syncing vacancies...');
+
+  let addedCount=0,updatedCount=0;const failed=[];
+  const work=[...toAdd.map(x=>({...x,mode:'add'})),...toUpdate.map(x=>({...x,mode:'update'}))];
+  for(const item of work){
+    try{
+      if(item.mode==='add'){
+        await writeCandidateListItem('POST',`/sites/${siteId}/lists/Vacancies/items`,{fields:item.fields});
+        addedCount++;
+      }else{
+        await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Vacancies/items/${item.id}/fields`,item.fields);
+        updatedCount++;
+      }
+    }catch(e){
+      failed.push({code:item.v['Vacancy code'],company:item.v['Company'],mode:item.mode,error:e.message});
+      console.warn('Vacancy sync failed for',item.v['Vacancy code'],'('+item.mode+')',e.message);
+    }
+    await new Promise(res=>setTimeout(res,120));
+  }
+  hideLoad();
+  if(failed.length){
+    console.table(failed);
+    toast('warn','Sync finished with errors',addedCount+' added, '+updatedCount+' updated, '+failed.length+' failed — see console for details.');
+  }else{
+    toast('ok','Sync complete',addedCount+' added, '+updatedCount+' updated in the Vacancies List.');
   }
 }
 
