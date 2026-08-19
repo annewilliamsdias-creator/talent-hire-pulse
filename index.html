@@ -8408,18 +8408,29 @@ const SPLIST_VAC_FIELD_MAP={
   'JD Link':'field_22',
   'Current Status':'field_23',
   'Active':'field_24',
-  'External Visible':'field_25'
+  // 20 Aug 2026: renamed from 'External Visible'/field_25 (Text) to match the
+  // exact schema already designed for this by the Candidate Portal project
+  // (Talent+ Candidate Portal/schema/Vacancies_Externally_Visible_Schema_20260819.md)
+  // — 'Externally Visible', Yes/No boolean column, internal name
+  // ExternallyVisible. Nothing read/wrote the old field yet, so this is a
+  // clean rename with no migration needed.
+  'Externally Visible':'ExternallyVisible'
 };
 const SPLIST_VAC_REVERSE_MAP=Object.fromEntries(Object.entries(SPLIST_VAC_FIELD_MAP).map(([k,v])=>[v,k]));
-// All columns are plain text — no Choice/Number/Date special-casing needed,
-// unlike buildCandidateListFields. Blank values are simply omitted (no
-// Choice-Default risk exists here since nothing is Choice-typed).
+// Only 'Externally Visible' is a real Yes/No (boolean) column — Graph expects
+// a native JSON boolean for it, not the 'Y'/'N' text convention every other
+// field here uses. Everything else is plain Single-line-of-text.
+const SPLIST_VAC_BOOLEAN_FIELDS=new Set(['ExternallyVisible']);
 function buildVacancyListFields(v){
   const fields={};
   for(const[srcCol,internalName]of Object.entries(SPLIST_VAC_FIELD_MAP)){
     const val=v[srcCol];
     if(val===undefined||val===null||val==='')continue;
-    fields[internalName]=String(val);
+    if(SPLIST_VAC_BOOLEAN_FIELDS.has(internalName)){
+      fields[internalName]=(val===true||val==='Y'||val==='true');
+    }else{
+      fields[internalName]=String(val);
+    }
   }
   return fields;
 }
@@ -8427,6 +8438,10 @@ function listItemToVacancyRecord(item){
   const v={};
   const f=item.fields||{};
   for(const[internalName,srcCol]of Object.entries(SPLIST_VAC_REVERSE_MAP)){
+    if(SPLIST_VAC_BOOLEAN_FIELDS.has(internalName)){
+      v[srcCol]=f[internalName]===true?'Y':'N';
+      continue;
+    }
     const val=f[internalName];
     v[srcCol]=(val===undefined||val===null)?'':String(val);
   }
