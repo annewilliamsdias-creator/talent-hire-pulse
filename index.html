@@ -8460,6 +8460,25 @@ async function resolveVacSpItemId(v){
 // (adds missing, updates changed) — same idempotent pattern as
 // migrateDataToCandidatesList. Console-only utility, no UI button.
 async function migrateVacanciesToList(){
+  // 20 Aug 2026: reads Excel directly (WB.Sheets['Vacancies']), NOT the global
+  // VD — since VD is now populated from the List itself (parseWB()/
+  // syncFromServer() were already switched over), and the List starts empty.
+  // Reading from VD here would migrate nothing, since there'd be nothing in
+  // VD to migrate FROM. This mirrors the sequencing used for the original
+  // Candidates migration (run before the read-path swap) without needing to
+  // actually reorder the deploy.
+  const ws=WB&&WB.Sheets['Vacancies'];
+  if(!ws){toast('err','No Excel Vacancies sheet','Could not find WB.Sheets[\'Vacancies\'] to migrate from.');return;}
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  const vh=rows[0]?rows[0].map(h=>String(h).trim()):[];
+  const excelVD=[];
+  for(let i=1;i<rows.length;i++){
+    if(rows[i].every(c=>c===''||c===null))continue;
+    const obj={};vh.forEach((h,j)=>{obj[h]=rows[i][j]!==undefined?String(rows[i][j]).trim():'';});
+    excelVD.push(obj);
+  }
+  console.log('Read from Excel Vacancies sheet:',excelVD.length,'records');
+
   showLoad('Reading existing Vacancies List items...');
   const existing=new Map(); // code -> {id, fields}
   try{
@@ -8476,7 +8495,7 @@ async function migrateVacanciesToList(){
   console.log('Already in Vacancies List:',existing.size);
 
   const toAdd=[];const toUpdate=[];
-  VD.forEach(v=>{
+  excelVD.forEach(v=>{
     const code=String(v['Vacancy code']||v['Vacancy Code']||'').trim();
     if(!code)return;
     const newFields=buildVacancyListFields({...v,'Vacancy code':code});
