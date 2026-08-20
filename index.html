@@ -8488,7 +8488,7 @@ function listItemToVacancyRecord(item){
   const f=item.fields||{};
   for(const[internalName,srcCol]of Object.entries(SPLIST_VAC_REVERSE_MAP)){
     if(SPLIST_VAC_BOOLEAN_FIELDS.has(internalName)){
-      v[srcCol]=f[internalName]===true?'Y':'N';
+      v[srcCol]=f[internalName]==="Yes"?'Y':'N';
       continue;
     }
     const val=f[internalName];
