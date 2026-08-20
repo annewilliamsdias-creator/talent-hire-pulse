@@ -8488,8 +8488,9 @@ function listItemToVacancyRecord(item){
   const f=item.fields||{};
   for(const[internalName,srcCol]of Object.entries(SPLIST_VAC_REVERSE_MAP)){
     if(SPLIST_VAC_BOOLEAN_FIELDS.has(internalName)){
-      if(internalName==='ExternallyVisible')console.log('DEBUG ExternallyVisible raw value:',f[internalName],'type:',typeof f[internalName]);
-      v[srcCol]=f[internalName]==="Yes"?'Y':'N';
+      const rawVal=f[internalName];
+      if(internalName==='ExternallyVisible')console.log('DEBUG ExternallyVisible - raw:',rawVal,'typeof:',typeof rawVal,'===Yes?',(rawVal==='Yes'),'===true?',(rawVal===true));
+      v[srcCol]=rawVal==="Yes"?'Y':'N';
       continue;
     }
     const val=f[internalName];
