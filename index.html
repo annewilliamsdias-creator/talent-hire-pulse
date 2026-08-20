@@ -8466,9 +8466,8 @@ const SPLIST_VAC_FIELD_MAP={
   'Externally Visible':'ExternallyVisible'
 };
 const SPLIST_VAC_REVERSE_MAP=Object.fromEntries(Object.entries(SPLIST_VAC_FIELD_MAP).map(([k,v])=>[v,k]));
-// Only 'Externally Visible' is a real Yes/No (boolean) column — Graph expects
-// a native JSON boolean for it, not the 'Y'/'N' text convention every other
-// field here uses. Everything else is plain Single-line-of-text.
+// Only 'Externally Visible' is a real Yes/No (boolean) column. Write: Graph expects
+// native JSON boolean. Read: Graph returns the STRING "True"/"False" (not "Yes"/"No").
 const SPLIST_VAC_BOOLEAN_FIELDS=new Set(['ExternallyVisible']);
 function buildVacancyListFields(v){
   const fields={};
