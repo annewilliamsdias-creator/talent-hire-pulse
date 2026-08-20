@@ -7624,7 +7624,32 @@ async function igAISummary() {
   const mn=document.getElementById('ig-manual-notes');if(mn&&ev)ev.manualNotes=mn.value;
   const on=document.getElementById('ig-otter-notes');if(on&&ev)ev.otterNotes=on.value;
 
-  const notesText=Object.entries(ev.notes||{}).filter(([k,v])=>v).map(([k,v])=>`${k}: ${v}`).join('\n');
+  // 20 Aug 2026: previously this only dumped raw ev.notes entries as bare
+  // "q3: <note>" pairs — no question text, so the AI (and anyone reading the
+  // prompt) had no way to know what q3 actually was. Most recruiters also tick
+  // the "asked" checkbox live on a call without typing a note, so this block
+  // was often near-empty too. Root cause of the 10 core + 5 additional
+  // questions barely showing up in generated summaries. Now pairs each
+  // question's actual text (from the JD) with whether it was ticked and any
+  // note, so there's real substance to draw from even when notes are blank.
+  const coreQA=[];
+  for(let i=1;i<=10;i++){
+    const qText=jd&&jd['q'+i]?jd['q'+i].trim():'';
+    if(!qText)continue;
+    const key='q'+i;
+    const asked=!!(ev.ticked&&ev.ticked[key]);
+    const note=(ev.notes&&ev.notes[key])||'';
+    coreQA.push(`Q${i} (${asked?'Asked':'Not asked'}): "${qText}"${note?` — Candidate response/note: ${note}`:''}`);
+  }
+  const addQA=[];
+  for(let i=1;i<=5;i++){
+    const qText=jd&&jd['aq'+i]?jd['aq'+i].trim():'';
+    if(!qText)continue;
+    const key='aq'+i;
+    const asked=!!(ev.additionalTicked&&ev.additionalTicked[key]);
+    const note=(ev.notes&&ev.notes[key])||'';
+    addQA.push(`AQ${i} (${asked?'Asked':'Not asked'}): "${qText}"${note?` — Candidate response/note: ${note}`:''}`);
+  }
   const scoresText=Object.entries(ev.scores||{}).map(([k,v])=>`${k}: ${v}/5`).join(', ');
   const tickedCount=Object.values(ev.ticked||{}).filter(Boolean).length;
   const totalQs=jd?Object.keys(jd).filter(k=>/^q\d+$/.test(k)&&jd[k]).length:0;
@@ -7653,8 +7678,11 @@ ${ev.manualNotes||'None'}
 OTTER / CALL NOTES:
 ${ev.otterNotes||'None'}
 
-QUESTION NOTES:
-${notesText||'None'}
+CORE INTERVIEW QUESTIONS & RESPONSES:
+${coreQA.join('\n')||'None'}
+
+ADDITIONAL / PROBING QUESTIONS & RESPONSES:
+${addQA.join('\n')||'None'}
 
 Write a professional interview summary in 150–200 words using this format:
 Candidate has [X] years of experience in [area]. Currently working with [company] as [designation].
@@ -7667,7 +7695,8 @@ Current: [salary]. Expected: [salary]. Notice: [period].
 Questions asked: ${tickedCount}/${totalQs}.
 Recommendation: ${ev.recommendation||'[Shortlist/Hold/Reject]'} — [one-line reason].
 ${jdRoleContext?`\nFITMENT SCORE: [X]/10 — [one-line rationale comparing candidate profile to role context above]`:''}
-Use simple English. Do not use jargon. Frame all observations positively — describe what the candidate brings and what to explore, never what they lack.`;
+Use simple English. Do not use jargon. Frame all observations positively — describe what the candidate brings and what to explore, never what they lack.
+Base "Relevant experience", "Strong example shared", and "Strengths" primarily on the candidate's actual responses in CORE INTERVIEW QUESTIONS & RESPONSES and ADDITIONAL / PROBING QUESTIONS & RESPONSES above — that's where the real interview content lives. Use RECRUITER NOTES and OTTER / CALL NOTES to supplement or corroborate, not replace, what the question responses show.`;
 
   toast('info','AI','Generating summary...');
   try {
