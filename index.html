@@ -8460,14 +8460,24 @@ const SPLIST_VAC_FIELD_MAP={
   // 20 Aug 2026: renamed from 'External Visible'/field_25 (Text) to match the
   // exact schema already designed for this by the Candidate Portal project
   // (Talent+ Candidate Portal/schema/Vacancies_Externally_Visible_Schema_20260819.md)
-  // — 'Externally Visible', Yes/No boolean column, internal name
-  // ExternallyVisible. Nothing read/wrote the old field yet, so this is a
-  // clean rename with no migration needed.
+  // — 'Externally Visible', internal name ExternallyVisible. Nothing read/wrote
+  // the old field yet, so this is a clean rename with no migration needed.
+  //
+  // 21 Aug 2026 correction: this is NOT a native SharePoint Yes/No (boolean)
+  // column — confirmed live via Graph's column schema endpoint that it's a
+  // Choice column restricted to the exact strings "Yes"/"No" (allowTextEntry
+  // false). Writing a JSON boolean here (the original assumption) doesn't get
+  // rejected by Graph, but SharePoint silently coerces it to its .NET-style
+  // ToString(), storing the literal string "True"/"False" — which the Choice
+  // column doesn't actually permit and which the Candidate Portal (a separate
+  // codebase reading this same List) never matched against "Yes". Root-caused
+  // together with the Candidate Portal side 21 Aug 2026; see that project's
+  // lib/graph.ts for the corresponding read-side accommodation.
   'Externally Visible':'ExternallyVisible'
 };
 const SPLIST_VAC_REVERSE_MAP=Object.fromEntries(Object.entries(SPLIST_VAC_FIELD_MAP).map(([k,v])=>[v,k]));
-// Only 'Externally Visible' is a real Yes/No (boolean) column. Write: Graph expects
-// native JSON boolean. Read: Graph returns the STRING "True"/"False" (not "Yes"/"No").
+// 'Externally Visible' is a Choice column (Yes/No strings only, not a real
+// boolean type) — write and read both use the literal strings "Yes"/"No".
 const SPLIST_VAC_BOOLEAN_FIELDS=new Set(['ExternallyVisible']);
 function buildVacancyListFields(v){
   const fields={};
@@ -8475,7 +8485,7 @@ function buildVacancyListFields(v){
     const val=v[srcCol];
     if(val===undefined||val===null||val==='')continue;
     if(SPLIST_VAC_BOOLEAN_FIELDS.has(internalName)){
-      fields[internalName]=(val===true||val==='Y'||val==='true');
+      fields[internalName]=(val===true||val==='Y'||val==='true')?'Yes':'No';
     }else{
       fields[internalName]=String(val);
     }
@@ -8487,7 +8497,8 @@ function listItemToVacancyRecord(item){
   const f=item.fields||{};
   for(const[internalName,srcCol]of Object.entries(SPLIST_VAC_REVERSE_MAP)){
     if(SPLIST_VAC_BOOLEAN_FIELDS.has(internalName)){
-      v[srcCol]=f[internalName]==="True"?'Y':'N';
+      // Accept "True" as a fallback for records written before this fix.
+      v[srcCol]=(f[internalName]==="Yes"||f[internalName]==="True")?'Y':'N';
       continue;
     }
     const val=f[internalName];
