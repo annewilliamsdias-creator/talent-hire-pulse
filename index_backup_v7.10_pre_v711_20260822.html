@@ -12,14 +12,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<!-- 22 Aug 2026 (v7.11): pdf.js for client-side resume text extraction (Resume
-     Fitment Vs JD) — jsPDF above only writes PDFs, nothing here reads one.
-     Pinned to 3.11.174 deliberately: cdnjs's current pdf.js (6.x) only ships
-     an ES module build (pdf.min.mjs, no pdfjsLib global), which doesn't mix
-     cleanly with this file's plain classic-script codebase. 3.11.174 is the
-     last version with a working classic pdf.min.js UMD build — confirmed
-     live (loads, exposes window.pdfjsLib) before relying on it. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 
@@ -1836,20 +1828,7 @@ followupDate:'Follow-up Date',followupNotes:'Follow-up Notes',followupCount:'Fol
 remark:'Remark',otherComments:'Other comments',roleSummary:'Role summary',
 consent:'Consent Obtained',docLink:'Document Link',prevCode:'Previous Candidate code',
 updatedBy:'Last Updated By',updatedOn:'Last Updated On',archive:'Archive Flag',
-tat:'TAT',sNo:'S. No',recruiter:'Recruiter',reportingDate:'Data base reporting date',
-// 22 Aug 2026 (v7.11): Talent+ Gateway integration. resumeLink is deliberately
-// separate from docLink — this app's own createMeeting() (below) overwrites
-// docLink with the interview venue/Teams link, which was silently destroying
-// the Portal's resume URL every time an interview got scheduled. See the CR
-// note above SPLIST_VAC_BOOLEAN_FIELDS for the sibling fix on the Vacancies
-// side. videoInterview* are written by the candidate's AI interview
-// (Portal-side); videoInterviewInvited is written here, by this app, when a
-// recruiter invites a candidate — the Portal's /interview/[code] refuses
-// access until this is set. resumeFitmentData is written here too, by
-// computeResumeFitment() (below).
-resumeLink:'Resume Link',videoInterviewInvited:'Video Interview Invited',
-videoInterviewLink:'Video Interview Link',videoInterviewData:'Video Interview Data',
-resumeFitmentData:'Resume Fitment Data'};
+tat:'TAT',sNo:'S. No',recruiter:'Recruiter',reportingDate:'Data base reporting date'};
 // R2 (13 Jul 2026): every date-typed column, normalised wherever records are
 // parsed from an external source (workbook load, live sync) — previously only
 // followupDate/sourcingDate/updatedOn were covered, leaving these others
@@ -3250,7 +3229,7 @@ const totalPages=Math.max(1,Math.ceil(filtered.length/REC_PAGE_SIZE));
 if(recPage>=totalPages)recPage=totalPages-1;
 const start=recPage*REC_PAGE_SIZE,end=Math.min(start+REC_PAGE_SIZE,filtered.length);
 const tb=document.getElementById('rBody');if(!tb)return;
-tb.innerHTML=filtered.slice(start,end).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong>'+(r[C.resumeFitmentData]?'<span title="Resume Fitment scored" style="margin-left:4px;font-size:10px">🔍</span>':'')+(r[C.videoInterviewData]?'<span title="AI video interview complete" style="margin-left:2px;font-size:10px">🎥</span>':(r[C.videoInterviewInvited]?'<span title="Invited to AI interview, awaiting response" style="margin-left:2px;font-size:10px;opacity:.5">🎥</span>':''))+'</td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
+tb.innerHTML=filtered.slice(start,end).map(r=>'<tr><td class="mono">'+r[C.code]+'</td><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td class="m '+(r[C.followupDate]&&r[C.followupDate]<today()?'text-gold':'')+'">'+(r[C.followupDate]?fmtD(r[C.followupDate]):'—')+'</td><td class="m">'+r[C.recruiter]+'</td><td class="m">'+fmtD(r[C.sourcingDate])+'</td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'upd\')" data-code="'+r[C.code]+'">Update</button><button class="btn btn-ghost btn-sm" onclick="openBtn(this,\'view\')" data-code="'+r[C.code]+'">View</button></div></td></tr>').join('');
 const rc=document.getElementById('rCount');if(rc)rc.textContent='Showing '+(start+1)+'–'+end+' of '+filtered.length+' records ('+MD.length+' total)';
 // Render pagination controls
 const pg=document.getElementById('rPagination');
@@ -3269,35 +3248,6 @@ function viewCandModal(code){
   const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status','<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>'],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up',fmtD(r[C.followupDate])],['Interview',r[C.interviewDate]?fmtD(r[C.interviewDate])+(r._iTime?' @ '+r._iTime:''):'—'],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM',r[C.salaryPM]?'₹'+r[C.salaryPM]:'—'],['Exp Salary PM',r[C.expectedSalary]?'₹'+r[C.expectedSalary]:'—'],['Offered Salary',r[C.offeredSalary]?'₹'+r[C.offeredSalary]:'—'],['Expected DOJ',r[C.doj]?fmtD(r[C.doj]):'—'],['Latest Remark',escHtml(latestRem)],['Updated By',r[C.updatedBy]||'—'],['Updated On',fmtD(r[C.updatedOn])]];
   let tableHtml='<div style="max-height:260px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
   if(allRem.length>1){const prev=allRem.slice(0,-1).reverse();tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">📋 Remarks History</div>'+prev.map((rm,i)=>'<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="font-size:9px;color:rgba(251,251,250,.35)">PREV '+(prev.length-i)+'</span><span style="color:var(--w60);margin-left:6px">'+escHtml(rm)+'</span></div>').join('')+'</div>';}
-
-  // 22 Aug 2026 (v7.11): Talent+ Gateway section — only shown for candidates
-  // that actually have this data, so it stays invisible noise for every
-  // non-Portal-sourced candidate (the vast majority of MD today).
-  if(r[C.resumeLink]||r[C.resumeFitmentData]||r[C.videoInterviewInvited]){
-    let fitHtml='';
-    if(r[C.resumeFitmentData]){
-      try{
-        const fd=JSON.parse(r[C.resumeFitmentData]);
-        fitHtml='<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--teal)">RESUME FITMENT VS JD: '+fd.score+'/10</span><div style="font-size:11px;color:var(--w60);margin-top:2px">'+escHtml(fd.recommendations||'')+'</div></div>';
-      }catch(e){}
-    }
-    let interviewHtml='';
-    if(r[C.videoInterviewData]){
-      interviewHtml='<button class="btn btn-t btn-sm" onclick="closeModal();viewVideoInterview(\''+code+'\')">🎥 View AI Interview</button>';
-    }else if(r[C.videoInterviewInvited]){
-      interviewHtml='<span style="font-size:11px;color:var(--w60)">Invited '+fmtD(r[C.videoInterviewInvited])+' — awaiting response</span>';
-    }else if(r[C.vacCode]){
-      interviewHtml='<button class="btn btn-ghost btn-sm" onclick="inviteToVideoInterview(\''+code+'\')">🎥 Invite to AI Interview</button>';
-    }
-    tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:8px">🌐 Talent+ Gateway</div>'+
-      fitHtml+
-      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
-      (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="window.open(\''+r[C.resumeLink]+'\',\'_blank\')">📄 View Resume</button>':'')+
-      (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="computeResumeFitment(\''+code+'\')">🔍 '+(r[C.resumeFitmentData]?'Re-score':'Score')+' Resume Fitment</button>':'')+
-      interviewHtml+
-      '</div></div>';
-  }
-
   window._mc=code;
   showModal('👤 '+r[C.name], r[C.position]+' · '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
@@ -7478,42 +7428,11 @@ function igRenderPage() {
     const RECS = ['Shortlist','Hold','Reject'];
     const ev2 = igEvalData[code]||{};
 
-    // 22 Aug 2026 (v7.11): Talent+ Gateway AI signals — Resume Fitment Vs JD
-    // and the AI video interview, both read straight from the Candidates
-    // List (r[C.*]), NOT from igEvalData — deliberately separate storage so
-    // neither can ever be touched by the manual-scores save path below.
-    // Blank for the vast majority of candidates that never went through the
-    // Portal, by design (same as the viewCandModal block above).
-    let aiSignalsHtml='';
-    if(r[C.resumeFitmentData]||r[C.videoInterviewData]){
-      let fitBlock='',videoBlock='';
-      if(r[C.resumeFitmentData]){
-        try{
-          const fd=JSON.parse(r[C.resumeFitmentData]);
-          fitBlock=`<div><div style="font-size:10px;color:var(--w60);margin-bottom:2px">Resume Fitment Vs JD</div><div style="font-size:20px;font-weight:700;color:var(--teal)">${fd.score}/10</div><div style="font-size:11px;color:var(--w60);margin-top:4px">${escHtml(fd.recommendations||'')}</div></div>`;
-        }catch(e){}
-      }
-      if(r[C.videoInterviewData]){
-        try{
-          const vd=JSON.parse(r[C.videoInterviewData]);
-          videoBlock=`<div><div style="font-size:10px;color:var(--w60);margin-bottom:2px">AI Video Interview</div><div style="font-size:20px;font-weight:700;color:var(--teal)">${vd.overallScore}/10</div><button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="viewVideoInterview('${code}')">🎥 View recording &amp; transcript</button></div>`;
-        }catch(e){}
-      }
-      aiSignalsHtml=`<div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:12px">AI-ASSISTED SIGNALS (from Talent+ Gateway — separate from the manual scores below)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">${fitBlock}${videoBlock}</div>
-      </div>`;
-    }
-
     body.innerHTML = `
     <div style="display:grid;gap:12px">
-      ${aiSignalsHtml}
       <!-- Scores -->
       <div style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px">EVALUATION SCORES (1–5)</div>
-          <button class="btn btn-ghost btn-sm" onclick="igViewHistory('${code}')" title="Every save is kept, not overwritten — view earlier rounds">📜 Previous Rounds</button>
-        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:12px">EVALUATION SCORES (1–5)</div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
           ${AREAS.map(([k,lbl])=>`<div><div style="font-size:10px;color:var(--w60);margin-bottom:4px">${lbl}</div>
           <div style="display:flex;gap:4px">${[1,2,3,4,5].map(n=>`<button onclick="igSetScore('${k}',${n},this)" class="ig-score-btn" data-area="${k}" data-val="${n}" style="width:28px;height:28px;border-radius:50%;border:1px solid ${(ev2.scores&&ev2.scores[k])==n?'var(--teal)':'var(--w12)'};background:${(ev2.scores&&ev2.scores[k])==n?'var(--teal)':'transparent'};color:${(ev2.scores&&ev2.scores[k])==n?'#000':'var(--w60)'};font-size:11px;font-weight:600;cursor:pointer">${n}</button>`).join('')}</div></div>`).join('')}
@@ -7653,43 +7572,6 @@ function igSaveEval() {
     .then(()=>{if(_clEval)return xlAppendRows('Change Log',[_clEval]);})
     .catch(e=>console.warn('igSaveEval append',e.message));
   toast('ok','Saved','Interview evaluation saved.');
-}
-
-// 22 Aug 2026 (v7.11): audit trail for manual evaluations. igSaveEval() above
-// already APPENDS a new row to the Evaluations sheet on every save — it never
-// overwrote anything at the storage layer. The actual gap Anne flagged
-// ("audit record must be available for previous interview or score") was
-// purely that nothing ever surfaced those earlier rows — igEvalData[code]
-// only ever holds whichever row loaded last. This reads every row for a
-// candidate directly from the sheet, independent of what's in memory.
-async function fetchEvaluationHistory(code){
-  try{
-    await refreshToken();
-    const used=await graphGet(`/sites/${siteId}/drive/items/${fileId}/workbook/worksheets('Evaluations')/usedRange(valuesOnly=true)`);
-    const rows=(used&&used.values)?used.values.slice(1).filter(r=>r[0]===code):[];
-    return rows.map(r=>{let d={};try{d=r[3]?JSON.parse(r[3]):{};}catch(e){}return{recruiter:r[1],ts:r[2],data:d};});
-  }catch(e){
-    console.warn('fetchEvaluationHistory failed:',e.message);
-    return null;
-  }
-}
-async function igViewHistory(code){
-  const r=MD.find(x=>x[C.code]===code);if(!r)return;
-  toast('info','Loading','Fetching evaluation history…');
-  const rows=await fetchEvaluationHistory(code);
-  if(rows===null){toast('err','History','Could not load evaluation history — check connection and retry.');return;}
-  if(!rows.length){toast('info','History','No saved evaluation rounds yet for this candidate.');return;}
-  rows.sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-  const html=rows.map((row,i)=>{
-    const d=row.data;
-    const scoreStr=Object.entries(d.scores||{}).map(([k,v])=>k+': '+v).join(', ')||'not scored';
-    return `<div style="padding:10px;margin-bottom:8px;background:var(--w06);border-radius:6px;border-left:3px solid ${i===0?'var(--teal)':'var(--w12)'}">
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--w60);margin-bottom:4px"><span>${i===0?'MOST RECENT — ':''}${fmtD(row.ts)} · ${escHtml(row.recruiter||'—')}</span><span>Fitment ${d.fitmentScore||'—'}/10</span></div>
-      <div style="font-size:11px;color:var(--ow);margin-bottom:4px"><strong>${escHtml(d.recommendation||'No recommendation set')}</strong> — ${escHtml(scoreStr)}</div>
-      ${d.summary?`<div style="font-size:11px;color:var(--w60);white-space:pre-wrap">${escHtml(d.summary)}</div>`:''}
-    </div>`;
-  }).join('');
-  showModal('📜 Evaluation History — '+r[C.name],rows.length+' round(s) on file',html,'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
 
 async function igFetchOtter() {
@@ -7859,136 +7741,6 @@ Base "Relevant experience", "Strong example shared", and "Strengths" primarily o
   } catch(e){
     toast('err','AI','Summary failed: '+e.message);
   }
-}
-
-// ══════════════════════════════════════════════════════
-// 22 Aug 2026 (v7.11) — Talent+ Gateway integration
-// Resume Fitment Vs JD, AI video interview invite + results.
-// See CR note on SPLIST_FIELD_MAP additions (C.resumeLink etc.) for the
-// field-level design; this section is the actual feature logic.
-// ══════════════════════════════════════════════════════
-
-let _pdfWorkerConfigured=false;
-function ensurePdfWorker(){
-  if(_pdfWorkerConfigured)return;
-  if(typeof pdfjsLib!=='undefined'){
-    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    _pdfWorkerConfigured=true;
-  }
-}
-async function extractResumeText(resumeUrl){
-  ensurePdfWorker();
-  const resp=await fetch(resumeUrl);
-  if(!resp.ok)throw new Error('Could not download resume ('+resp.status+')');
-  const buf=await resp.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
-  let text='';
-  for(let i=1;i<=pdf.numPages;i++){
-    const page=await pdf.getPage(i);
-    const content=await page.getTextContent();
-    text+=content.items.map(it=>it.str).join(' ')+'\n';
-  }
-  return text.trim();
-}
-
-// Deliberately reuses the Repository JD entry (role context, core questions,
-// shortlist/redflag indicators) rather than re-extracting the JD PDF a
-// second time — this app already has that curated content from the JD
-// Library, and it's more targeted than raw JD text for a fitment comparison.
-async function computeResumeFitment(code){
-  const r=MD.find(x=>x[C.code]===code);
-  if(!r){toast('err','Not Found','Candidate not found.');return;}
-  const resumeUrl=r[C.resumeLink];
-  if(!resumeUrl){toast('warn','No Resume','This candidate has no resume on file (Portal-sourced candidates only).');return;}
-  const{jdEntry}=resolveJDFromVac(r[C.vacCode]||'');
-  if(!jdEntry){toast('warn','No JD','No Interview Guide/JD linked to this role — add one in Repositories first.');return;}
-
-  toast('info','AI','Extracting resume and comparing to JD…');
-  try{
-    const resumeText=await extractResumeText(resumeUrl);
-    if(!resumeText)throw new Error('Could not extract any text from the resume PDF.');
-
-    const coreQs=[];for(let i=1;i<=10;i++){if(jdEntry['q'+i])coreQs.push(jdEntry['q'+i]);}
-    const prompt=`You compare a candidate's resume against a role's requirements for a recruiter at WithAWill HR Consultancy Services.
-
-ROLE CONTEXT:
-${jdEntry.rolecontext||'(none provided)'}
-
-WHAT THE ROLE REQUIRES (from the interview question bank):
-${coreQs.join('\n')||'(none provided)'}
-
-SHORTLIST INDICATORS:
-${jdEntry.shortlist||'(none provided)'}
-
-CONCERN / RED FLAG INDICATORS:
-${jdEntry.redflag||'(none provided)'}
-
-CANDIDATE'S RESUME TEXT:
-${resumeText.slice(0,12000)}
-
-Score the resume's fit against this role's requirements from 1-10, and give 2-4 sentences of specific, actionable recommendations for the recruiter — what to verify or probe on, not just a summary. Base this only on what's actually in the resume; don't invent experience that isn't stated.
-
-Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations": "<2-4 sentences>"}`;
-
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,messages:[{role:'user',content:prompt}]})
-    });
-    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
-    const data=await resp.json();
-    const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
-    const parsed=JSON.parse(raw.trim());
-
-    r[C.resumeFitmentData]=JSON.stringify({score:parsed.score,recommendations:parsed.recommendations,computedAt:new Date().toISOString()});
-    await xlPatchRow(r);
-    renderRec();
-    toast('ok','Resume Fitment','Score: '+parsed.score+'/10 — '+r[C.name]);
-    if(igCandIdx>=0&&MD[igCandIdx]&&MD[igCandIdx][C.code]===code)igRenderPage();
-  }catch(e){
-    toast('err','Resume Fitment','Failed: '+e.message);
-  }
-}
-
-// Recruiter-gated invite — writes the flag the Portal's /interview/[code]
-// requires before it will hand out questions or upload URLs. This app has
-// no server of its own to send the email itself, so it drafts one (mailto:)
-// for the recruiter to review and send, same pattern as the existing
-// "Send WhatsApp Confirmation" button elsewhere in this app.
-async function inviteToVideoInterview(code){
-  const r=MD.find(x=>x[C.code]===code);
-  if(!r){toast('err','Not Found','Candidate not found.');return;}
-  if(!r[C.vacCode]){toast('warn','No Vacancy','This candidate has no vacancy code tagged.');return;}
-  const link='https://talentplus.withawill.in/interview/'+encodeURIComponent(r[C.vacCode]);
-  r[C.videoInterviewInvited]=new Date().toISOString();
-  try{
-    await xlPatchRow(r);
-    renderRec();
-    const subject=encodeURIComponent('Video Interview Invitation — '+(r[C.position]||'Role'));
-    const body=encodeURIComponent('Hi '+(r[C.name]||'')+',\n\nPlease complete a short AI video interview for this role using the link below. Verify with the same email address you applied with:\n\n'+link+'\n\nThanks,\nWithAWill Talent Team');
-    const mailto='mailto:'+(r[C.email]||'')+'?subject='+subject+'&body='+body;
-    showModal('🎥 Invite Sent',r[C.name]+' is now flagged as invited.',
-      '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
-      '<button class="btn btn-t btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
-  }catch(e){
-    toast('err','Invite Failed',e.message);
-  }
-}
-
-function viewVideoInterview(code){
-  const r=MD.find(x=>x[C.code]===code);
-  if(!r||!r[C.videoInterviewData]){toast('warn','No Interview','No AI video interview on file yet.');return;}
-  let data;
-  try{data=JSON.parse(r[C.videoInterviewData]);}catch(e){toast('err','Parse Error','Could not read interview data.');return;}
-  const scoreRows=Object.entries(data.scores||{}).map(([k,v])=>'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--w08)"><span style="text-transform:capitalize;font-size:11px;color:var(--w60)">'+k.replace(/([A-Z])/g,' $1')+'</span><span style="font-weight:600">'+v+'/5</span></div>').join('');
-  const qList=(data.questions||[]).map((q,i)=>'<div style="margin-bottom:10px;padding:8px;background:var(--w06);border-radius:6px"><div style="font-size:10px;color:var(--w60);margin-bottom:4px">Q'+(i+1)+(q.answered?'':' (skipped)')+': '+escHtml(q.text)+'</div>'+(q.transcriptSegment?'<div style="font-size:12px">'+escHtml(q.transcriptSegment)+'</div>':'<div style="font-size:11px;color:var(--w60);font-style:italic">No response</div>')+'</div>').join('');
-  const html='<video controls style="width:100%;border-radius:8px;margin-bottom:14px;max-height:320px;background:#000" src="'+data.videoUrl+'"></video>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">'+
-    '<div><div style="font-size:11px;font-weight:700;color:var(--teal);margin-bottom:6px">SCORES ('+data.overallScore+'/10 overall)</div>'+scoreRows+'</div>'+
-    '<div><div style="font-size:11px;font-weight:700;color:var(--teal);margin-bottom:6px">AI SUMMARY</div><div style="font-size:12px;line-height:1.7">'+escHtml(data.summary||'')+'</div></div>'+
-    '</div>'+
-    '<div style="font-size:11px;font-weight:700;color:var(--teal);margin-bottom:8px">TRANSCRIPT BY QUESTION</div>'+qList;
-  showModal('🎥 AI Video Interview — '+r[C.name],'Recorded '+fmtD(data.recordedAt),html,'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
 
 function igExportPDF() {
@@ -8423,13 +8175,8 @@ const SPLIST_FIELD_MAP={
   [C.archive]:'ArchiveFlag',
   [C.tat]:'TAT',
   [C.recruiter]:'Recruiter',
-  [C.reportingDate]:'Databasereportingdate',
+  [C.reportingDate]:'Databasereportingdate'
   // C.sNo intentionally omitted — dropped per Phase 0 (superseded by native List ID)
-  [C.resumeLink]:'ResumeLink',
-  [C.videoInterviewInvited]:'VideoInterviewInvited',
-  [C.videoInterviewLink]:'VideoInterviewLink',
-  [C.videoInterviewData]:'VideoInterviewData',
-  [C.resumeFitmentData]:'ResumeFitmentData'
 };
 const SPLIST_NUMBER_FIELDS=new Set(['CurrentSalary_x0028_Rs_x002e_PM_','CurrentSalary_x0028_Rs_x002e_PA_','FinalCurrentAnnualSalary','ExpectedSalary_x0028_Rs_x002e__x','OfferedSalary','Follow_x002d_upAttemptCount','TAT']);
 // 2 Aug 2026: every Choice-type column in the Candidates List has a configured

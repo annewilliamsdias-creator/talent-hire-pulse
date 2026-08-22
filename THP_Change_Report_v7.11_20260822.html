@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>THP Change Report — v7.10 to v7.11</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;background:#e9edf2;color:#291b39;margin:0;padding:24px;}
+h1{color:#1f5c93;font-size:22px;margin-bottom:4px;}
+h2{color:#291b39;font-size:15px;margin:28px 0 10px;}
+.meta{color:#5f6470;font-size:13px;margin-bottom:28px;}
+table{width:100%;border-collapse:collapse;background:#fbfbfa;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:20px;}
+th{background:#1f5c93;color:#fff;padding:10px 14px;text-align:left;font-size:12px;}
+td{padding:9px 14px;font-size:12px;border-bottom:1px solid #d6dbe3;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.pass{background:#e6f2e6;color:#3a6b30;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.open{background:#faeeda;color:#854f0b;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.hold{background:#e8eaf6;color:#3949ab;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.ver-badge{display:inline-block;background:#291b39;color:#fbfbfa;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle;}
+code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;}
+.note{color:#5f6470;font-size:11px;margin-top:3px;}
+.summary-box{background:#fbfbfa;border-radius:8px;padding:14px 18px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:28px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.sum-item{text-align:center;}
+.sum-num{font-size:26px;font-weight:700;color:#1f5c93;}
+.sum-lbl{font-size:11px;color:#5f6470;margin-top:2px;}
+.data-box{background:#f6f1e7;border-radius:6px;padding:10px 14px;font-size:11px;margin:8px 0 20px;}
+.data-box b{color:#1f5c93;}
+</style>
+</head>
+<body>
+
+<h1>Talent+ Hire Pulse — System Change Report v7.10 → v7.11</h1>
+<div class="meta">Period: 22 August 2026 &nbsp;|&nbsp; File: index.html &nbsp;|&nbsp; Not yet deployed — pending Anne's review and manual push to <code>talent-hire-pulse</code> &nbsp;|&nbsp; Prepared by: Claude (Haiku 4.5)</div>
+
+<div class="summary-box">
+  <div class="sum-item"><div class="sum-num">6</div><div class="sum-lbl">Total changes</div></div>
+  <div class="sum-item"><div class="sum-num">6</div><div class="sum-lbl">Ready to deploy</div></div>
+  <div class="sum-item"><div class="sum-num">0</div><div class="sum-lbl">Declined</div></div>
+  <div class="sum-item"><div class="sum-num">5</div><div class="sum-lbl">New SharePoint columns</div></div>
+</div>
+
+<div class="data-box">
+<b>Data/schema touched:</b> 5 new columns already added by Anne to the Candidates List (<code>ResumeLink</code>, <code>VideoInterviewInvited</code>, <code>VideoInterviewLink</code>, <code>VideoInterviewData</code>, <code>ResumeFitmentData</code>) — confirmed present via Graph before this work started. <b>No existing column, sheet, or record was modified or removed.</b> All changes are additive: new field-map entries, new functions, new UI blocks gated behind <code>if</code> checks so they render nothing for the ~95% of candidates with no Talent+ Gateway data. Full diff against the pre-change backup confirmed only 4 existing lines touched (each expanded, not replaced in meaning) — see backup file below.
+</div>
+
+<h2>v7.11 — Talent+ Gateway Integration &nbsp;|&nbsp; 22 Aug 2026 <span class="ver-badge">v7.11</span></h2>
+<table>
+<tr><th style="width:14%">CR Title</th><th style="width:56%">What Changed</th><th style="width:30%">Test Status</th></tr>
+
+<tr>
+<td>Field map extension</td>
+<td>Added 5 new short-name → SharePoint-column mappings to the existing <code>C</code> object and <code>SPLIST_FIELD_MAP</code> (<code>resumeLink</code>, <code>videoInterviewInvited</code>, <code>videoInterviewLink</code>, <code>videoInterviewData</code>, <code>resumeFitmentData</code>). Because reads (<code>listItemToRecord</code>) and writes (<code>buildCandidateListFields</code>/<code>xlPatchRow</code>) both already iterate this map generically, these fields work with zero other code changes — same mechanism as every existing candidate field.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed via console: <code>C.resumeLink</code> etc. resolve correctly; column internal names match what Anne added, checked live via Graph before writing any code against them.</div></td>
+</tr>
+
+<tr>
+<td>Resume access</td>
+<td>New "📄 View Resume" button in the candidate detail modal (<code>viewCandModal</code>), opens <code>r[C.resumeLink]</code> in a new tab. This is the Portal-written resume URL — previously the Portal wrote resumes into <code>DocumentLink</code>, which this app's own <code>createMeeting()</code> silently overwrites with the interview venue/Teams link the moment an interview is scheduled. The Portal now writes resumes to the new, separate <code>ResumeLink</code> field instead (shipped to production 22 Aug 2026); this app's <code>createMeeting()</code> is untouched and keeps using <code>docLink</code> exactly as before.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed live (Portal side) that resumes now land in <code>ResumeLink</code>, not <code>DocumentLink</code>. Button only renders when a candidate actually has a resume link.</div></td>
+</tr>
+
+<tr>
+<td>Resume Fitment Vs JD</td>
+<td>New <code>computeResumeFitment(code)</code>: downloads the candidate's resume PDF, extracts text client-side (pdf.js), compares it against the role's existing Repository JD entry (role context, core questions, shortlist/red-flag indicators — reused rather than re-extracting the JD PDF a second time), and calls Claude for a 1-10 score plus specific recruiter recommendations. Result stored in the new <code>ResumeFitmentData</code> column as JSON — <em>not</em> in <code>igEvalData</code>/the Evaluations sheet, a deliberate separation so it can never be touched by the manual-scores save path. Shown in the candidate detail modal, the Interview Guide's Evaluation page (new "AI-Assisted Signals" block), and as a 🔍 icon next to the candidate's name in the main list.</td>
+<td><span class="open">Needs Anne's live test</span><div class="note">PDF extraction verified working end-to-end (real test PDF generated and read back correctly in-browser). The Anthropic call itself uses the exact same fetch pattern as the already-live <code>igAISummary()</code> — same headers, same key mechanism — but wasn't independently re-tested against a live key, since doing so would need a real logged-in session this environment can't reach (MSAL redirect URI is configured for the live Pages URL, not localhost). Recommend: after deploy, run it once against a real Portal-sourced candidate with a resume on file.</div></td>
+</tr>
+
+<tr>
+<td>AI video interview invite</td>
+<td>New "🎥 Invite to AI Interview" button (candidate detail modal). Writes an ISO timestamp to <code>VideoInterviewInvited</code> and saves via the existing <code>xlPatchRow</code> path, then opens a modal with the interview link and a pre-filled <code>mailto:</code> draft for the recruiter to review and send — this app has no server of its own to send email directly, same reasoning as the existing "Send WhatsApp Confirmation" button pattern elsewhere in this app. The Portal's <code>/interview/[code]</code> now refuses access until this flag is set — previously anyone who found that URL and could verify their own email could start an interview for any role; that gap is now closed on the Portal side (shipped 22 Aug 2026).</td>
+<td><span class="pass">Verified</span><div class="note">Portal-side gate tested live: a non-invited email is correctly rejected with 403 before this button's flag exists to unblock it.</div></td>
+</tr>
+
+<tr>
+<td>AI video interview results</td>
+<td>New <code>viewVideoInterview(code)</code> modal: video playback, the four AI-scored rubric areas (Communication, Role Knowledge, Example Quality, Ownership/Follow-up — the same rubric labels as the existing manual Evaluation Scores below), the AI summary, and a per-question transcript. Reachable from the candidate detail modal and the Interview Guide's Evaluation page. Read directly from <code>VideoInterviewData</code> (written by the Portal after a candidate completes an interview) — this app never writes to that field, only reads it.</td>
+<td><span class="pass">Verified</span><div class="note">Portal-side pipeline (recording → transcription → AI scoring → this exact field) verified end-to-end against live infrastructure in the Talent Gateway repo before this UI was built against it.</div></td>
+</tr>
+
+<tr>
+<td>Evaluation audit trail</td>
+<td>New "📜 Previous Rounds" button on the Evaluation page, backed by <code>fetchEvaluationHistory(code)</code>. Turns out <code>igSaveEval()</code> already <em>appends</em> a new row to the Evaluations sheet on every save rather than overwriting — nothing was ever actually being destroyed at the storage layer. The real gap was that nothing ever surfaced earlier rows; <code>igEvalData[code]</code> only ever held whichever row loaded last. This reads every row for a candidate directly from the sheet and lists each round (timestamp, recruiter, recommendation, scores, summary) newest-first. No change to the save path itself — it was already correct.</td>
+<td><span class="hold">Depends on workbook access</span><div class="note">Uses the same Graph pattern as the existing <code>fetchLiveChangeLog()</code>. Flagging a pre-existing, unrelated risk found while investigating this: <code>TalentHirePulse_Master.xlsx</code> returned 404 at its expected SharePoint path during an earlier session (only stale 10 Jun backups remain there) — if that's still the case, this feature (and the pre-existing Evaluations/AI-summary features it shares a data path with) may already be failing today, independent of anything in this release. Worth Anne confirming the workbook's current live location.</div></td>
+</tr>
+
+</table>
+
+<h2>Library change</h2>
+<table>
+<tr><th style="width:20%">What</th><th style="width:80%">Detail</th></tr>
+<tr><td>New: pdf.js</td><td>Added <code>pdf.js</code> 3.11.174 (classic script, not the newer ES-module-only build cdnjs now defaults to — confirmed 6.x only ships <code>pdf.min.mjs</code> with no <code>pdfjsLib</code> global, which doesn't mix cleanly with this file's non-module script style). Used only by <code>extractResumeText()</code> for Resume Fitment. jsPDF (already present) is unaffected — that library writes PDFs, this one reads them, no overlap.</td></tr>
+</table>
+
+<h2>Rollback</h2>
+<div class="data-box">
+Pre-change backup: <code>index_backup_v7.10_pre_v711_20260822.html</code>, same folder. Diffed against the deployed file to confirm this release is purely additive before writing this report.
+</div>
+
+</body>
+</html>
