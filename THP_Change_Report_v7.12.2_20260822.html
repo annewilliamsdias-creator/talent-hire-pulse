@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>THP Change Report — v7.12 to v7.12.2</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;background:#e9edf2;color:#291b39;margin:0;padding:24px;}
+h1{color:#1f5c93;font-size:22px;margin-bottom:4px;}
+h2{color:#291b39;font-size:15px;margin:28px 0 10px;}
+.meta{color:#5f6470;font-size:13px;margin-bottom:28px;}
+table{width:100%;border-collapse:collapse;background:#fbfbfa;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:20px;}
+th{background:#1f5c93;color:#fff;padding:10px 14px;text-align:left;font-size:12px;}
+td{padding:9px 14px;font-size:12px;border-bottom:1px solid #d6dbe3;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.pass{background:#e6f2e6;color:#3a6b30;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.open{background:#faeeda;color:#854f0b;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.ver-badge{display:inline-block;background:#291b39;color:#fbfbfa;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle;}
+code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;}
+.note{color:#5f6470;font-size:11px;margin-top:3px;}
+.summary-box{background:#fbfbfa;border-radius:8px;padding:14px 18px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:28px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.sum-item{text-align:center;}
+.sum-num{font-size:26px;font-weight:700;color:#1f5c93;}
+.sum-lbl{font-size:11px;color:#5f6470;margin-top:2px;}
+.data-box{background:#f6f1e7;border-radius:6px;padding:10px 14px;font-size:11px;margin:8px 0 20px;}
+.data-box b{color:#1f5c93;}
+</style>
+</head>
+<body>
+
+<h1>Talent+ Hire Pulse — System Change Report v7.12 → v7.12.2</h1>
+<div class="meta">Period: 22 August 2026 &nbsp;|&nbsp; File: index.html &nbsp;|&nbsp; Follow-up fixes after Anne's first real end-to-end AI interview test &nbsp;|&nbsp; Prepared by: Claude</div>
+
+<div class="summary-box">
+  <div class="sum-item"><div class="sum-num">4</div><div class="sum-lbl">Changes</div></div>
+  <div class="sum-item"><div class="sum-num">4</div><div class="sum-lbl">Verified locally</div></div>
+  <div class="sum-item"><div class="sum-num">1</div><div class="sum-lbl">Portal-side fix (separate repo)</div></div>
+  <div class="sum-item"><div class="sum-num">0</div><div class="sum-lbl">New SharePoint columns</div></div>
+</div>
+
+<div class="data-box">
+<b>Data/schema touched:</b> none new. Resume uploads land in the same SharePoint site THP already writes to (a new <code>Resumes/</code> subfolder under the existing Talent+ Hire Pulse document library) and write to the existing <code>ResumeLink</code> field — same field, same downstream behaviour (View Resume, Score Resume Fitment) as a Portal-sourced resume.
+</div>
+
+<h2>v7.12.1 — Transcript mapping and persistence fixes &nbsp;|&nbsp; 22 Aug 2026 <span class="ver-badge">v7.12.1</span></h2>
+<table>
+<tr><th style="width:16%">CR Title</th><th style="width:54%">What Changed</th><th style="width:30%">Test Status</th></tr>
+
+<tr>
+<td>Transcript mapped to wrong question (Portal-side root cause)</td>
+<td>Anne reported answers to 5+ questions showing up against only 3, with unrelated answers (e.g. system-usage questions) landing on Q1. Root cause found in the Portal's own transcription pipeline (<code>talent-gateway/lib/interview-processing.ts</code>, separate repo): the per-question time boundaries passed to the transcript segmenter were filtered to <em>answered</em> questions only, before segmentation ran. Any skipped question's start-time boundary vanished from the timeline as a result — the segment for the question just before a skip silently absorbed the skipped gap and bled into whatever the candidate said on the next answered question, compounding with every subsequent skip. Fixed to pass every logged question (skipped or not) as a boundary, and only filter to answered-only afterward, for scoring. <b>Separate possible contributing factor</b>: if Anne's test session was a continuation of the earlier CORS-failure tab (recorder already stopped, no further audio actually captured) rather than a fresh session, that alone would also produce exactly this symptom — worth confirming on retest whether a genuinely fresh tab still shows any misattribution.</td>
+<td><span class="pass">Verified</span><div class="note">Portal-side change, verified via <code>tsc</code> and a clean production build (<code>talent-gateway</code> commit <code>ad20d53</code>). Not independently re-tested against a live transcription job — would need a real interview submission to confirm end-to-end.</div></td>
+</tr>
+
+<tr>
+<td>AI-interview note "disappearing" after AI Summary</td>
+<td>v7.12 originally <em>wrote</em> the transcript into the question's note field the first time Page 3 rendered. That made what showed up depend on visit order: if AI Summary ran (which reads notes to build its prompt, then auto-saves) before Page 3 had ever rendered in that session, nothing had been written yet — nothing to save, and revisiting Page 3 afterward could look like the content had been removed. Reworked so the transcript is never written into <code>igEvalData</code> at all — <code>igEffectiveNote()</code> computes it fresh from <code>r[C.videoInterviewData]</code> every time it's needed (Page 3's display <em>and</em> AI Summary's prompt-building both call the same function now), and a recruiter's own saved edit (via typing into the field) always takes priority. Nothing session- or order-dependent left in this path.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed with mock data: <code>igEvalData[code].notes</code> stays <code>{}</code> after rendering Page 3 (nothing written), the AI Summary prompt-builder still correctly pulls the transcript for answered questions and correctly leaves a skipped one blank, using the exact same fallback logic as the display.</div></td>
+</tr>
+
+</table>
+
+<h2>v7.12.2 — Recruiter-side resume upload &nbsp;|&nbsp; 22 Aug 2026 <span class="ver-badge">v7.12.2</span></h2>
+<table>
+<tr><th style="width:16%">CR Title</th><th style="width:54%">What Changed</th><th style="width:30%">Test Status</th></tr>
+
+<tr>
+<td>Resume upload (Edit Profile + candidate modal)</td>
+<td>Until now, <code>ResumeLink</code> only ever got populated by the Portal — a candidate sourced directly by a recruiter (not through Talent+ Gateway) had no way to get a resume on file for Resume Fitment scoring or the "View Resume" button. Added a file field to the Edit Profile form (📄 Resume section, PDF/DOC/DOCX, max 5MB) and a standalone "📤 Upload Resume" / "Replace Resume" button in the candidate detail modal next to "Invite to AI Interview", both calling the same new <code>uploadResumeToSharePoint()</code>. Files upload via a plain Graph PUT to a new <code>Resumes/</code> subfolder in the same SharePoint document library THP already writes backups to — no new permissions, no new credentials, same delegated <code>Sites.ReadWrite.All</code> scope already granted. The resulting link is written to the same <code>ResumeLink</code> field the Portal uses, so every downstream feature (View Resume, Score Resume Fitment) works identically regardless of source.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed both entry points render correctly and read/write the right candidate record (button label switches Upload↔Replace based on existing link; Edit Profile shows "View current resume" or "No resume on file yet" correctly on lookup). The actual Graph PUT itself wasn't re-tested against a live upload — same code pattern as the already-live <code>autoBackup()</code> function, not independently verified end-to-end.</div></td>
+</tr>
+
+</table>
+
+<h2>Rollback</h2>
+<div class="data-box">
+Pre-v7.12.1 backup (i.e. the deployed v7.12 state, before this batch): <code>index_backup_v7.12_pre_v7121_20260822.html</code>, same folder — extracted directly from the deployed commit before this change. Diffed against it to confirm this release touched only what's described above.
+</div>
+
+</body>
+</html>

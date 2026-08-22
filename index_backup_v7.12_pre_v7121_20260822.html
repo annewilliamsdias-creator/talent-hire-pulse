@@ -1146,17 +1146,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Vacancy Code</label><input type="text" id="epVC"></div>
 <div class="field"><label>Recruiter</label><select id="epRec"><option value="">— Select —</option></select></div>
 </div>
-<div class="sl2">📄 Resume</div>
-<div class="fg3">
-<div class="field s3">
-  <label>Upload Resume <span class="fhint">(PDF/DOC/DOCX, max 5MB — replaces existing if any)</span></label>
-  <div style="display:flex;gap:8px;align-items:center">
-    <input type="file" id="epResumeFile" accept=".pdf,.doc,.docx" style="flex:1">
-    <button class="btn btn-ghost btn-sm" onclick="epUploadResume()" style="white-space:nowrap">📤 Upload</button>
-  </div>
-  <div id="epResumeStatus" style="font-size:11px;color:var(--w60);margin-top:6px"></div>
-</div>
-</div>
 <div class="btn-row">
 <button class="btn btn-t btn-lg" onclick="saveEP()">✓ Save Changes</button>
 <button class="btn btn-ghost" onclick="document.getElementById('epForm').classList.add('hidden')">Cancel</button>
@@ -3251,9 +3240,6 @@ document.getElementById('epAlert').innerHTML='';document.getElementById('epForm'
 document.getElementById('epNm').textContent=r[C.name]||'Edit Profile';document.getElementById('epCd').textContent=r[C.code]||'';
 const flds=[['epNm2',C.name],['epMob',C.contact],['epAlt',C.altContact],['epEm',C.email],['epAEm',C.altEmail],['epLoc',C.location],['epCo',C.company],['epDe',C.designation],['epExp',C.expYrs],['epNot',C.notice],['epReas',C.reason],['epSPM',C.salaryPM],['epSPA',C.salaryPA],['epESPM',C.expectedSalary],['epSBr',C.salaryBracket],['epCli',C.client],['epDept',C.dept],['epPos',C.position],['epRI',C.roleInterested],['epVC',C.vacCode],['epRec',C.recruiter]];
 flds.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=(r[key]!==undefined&&r[key]!==null)?String(r[key]):'';}); // Bug M fix: safe pre-fill
-const epFileEl=document.getElementById('epResumeFile');if(epFileEl)epFileEl.value='';
-const epStEl=document.getElementById('epResumeStatus');
-if(epStEl)epStEl.innerHTML=r[C.resumeLink]?('📄 <a href="'+r[C.resumeLink]+'" target="_blank" style="color:var(--teal)">View current resume</a>'):'No resume on file yet.';
 setTimeout(()=>{const rec=r[C.recruiter]||'';if(rec&&!mA('recruiters').includes(rec)){const myN=acct&&acct.name?acct.name.split(' ')[0]:'';showModal('👤 Recruiter Update Required','<strong>'+rec+'</strong> is no longer active. Please reassign before saving.','','<button class="btn btn-t" onclick="closeModal();sv(\'epRec\',\''+myN+'\')">Assign to Me</button><button class="btn btn-ghost" onclick="closeModal();document.getElementById(\'epRec\').focus()">Select Recruiter</button>');}},100);}
 async function saveEP(){
 if(epIdx===-1)return;const r=MD[epIdx];
@@ -3346,7 +3332,6 @@ function viewCandModal(code){
       '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
       (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="window.open(\''+r[C.resumeLink]+'\',\'_blank\')">📄 View Resume</button>':'')+
       (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="computeResumeFitment(\''+code+'\')">🔍 '+(r[C.resumeFitmentData]?'Re-score':'Score')+' Resume Fitment</button>':'')+
-      '<button class="btn btn-ghost btn-sm" onclick="triggerResumeUpload(\''+code+'\')">📤 '+(r[C.resumeLink]?'Replace':'Upload')+' Resume</button>'+
       interviewHtml+
       '</div></div>';
   }
@@ -7436,32 +7421,6 @@ function igGetJD() {
   return null;
 }
 
-// 22 Aug 2026 (v7.12.1): the AI interview transcript is now a computed
-// fallback, never written into igEvalData — v7.12 originally auto-wrote it
-// into ev.notes at Page 3 render time, but that made the visible content
-// depend on Page 3 having been rendered at all in the current session
-// before anything else (AI Summary, PDF export) read the notes; if AI
-// Summary ran first, or the notes were saved before Page 3 ever ran once,
-// the transcript never made it in and looked like it had "disappeared".
-// Computing it fresh from r[C.videoInterviewData] every time removes that
-// ordering dependency entirely — a recruiter's own saved edit always wins
-// (ev.notes[key] set = real data, from igNoteQ's onchange), otherwise this
-// always falls back to the transcript, recomputed from durable candidate-
-// record data, not session state.
-function igTranscriptFor(r, idx){
-  if(!r[C.videoInterviewData])return'';
-  try{
-    const qs=JSON.parse(r[C.videoInterviewData]).questions;
-    if(!qs||!qs[idx])return'';
-    return qs[idx].answered?(qs[idx].transcriptSegment||''):'';
-  }catch(e){return'';}
-}
-function igEffectiveNote(r,ev,key,idx){
-  if(ev&&ev.notes&&ev.notes[key])return{val:ev.notes[key],auto:false};
-  const t=igTranscriptFor(r,idx);
-  return t?{val:t,auto:true}:{val:'',auto:false};
-}
-
 function igRenderPage() {
   const body = document.getElementById('ig-body');
   if(!body) return;
@@ -7506,17 +7465,34 @@ function igRenderPage() {
     const addQs = [];
     for(let i=1;i<=5;i++){if(jd['aq'+i]&&jd['aq'+i].trim())addQs.push(jd['aq'+i]);}
 
-    // 22 Aug 2026 (v7.12.1): AI interview transcript shown against these
-    // same questions via igEffectiveNote() — a live computed fallback, not
-    // written into igEvalData (see that function's comment for why v7.12's
-    // original write-on-render approach could make the transcript look
-    // like it "disappeared" depending on page visit order). The Portal's
-    // coreQuestions/additionalQuestions are a manually-copied mirror of
-    // this JD's q1-q10/aq1-aq5 (Anne maintains both), so position-for-
-    // position index mapping is the only correspondence available — if a
-    // JD's questions are ever reordered without updating the Portal's
-    // copy, this mapping silently drifts; no way to detect that from here.
-    let anyAuto=false;
+    // 22 Aug 2026 (v7.12): auto-record the AI video interview's per-question
+    // transcript against these same questions. The Portal's coreQuestions/
+    // additionalQuestions are a manually-copied mirror of this JD's q1-q10/
+    // aq1-aq5 (Anne maintains both), so position-for-position index mapping
+    // is the only correspondence available — combined index i matches
+    // data.questions[i] the same way the Portal built questionLog against
+    // its own [...coreQuestions,...additionalQuestions] array. If a JD's
+    // questions are ever reordered without updating the Portal's copy, this
+    // mapping silently drifts — no way to detect that from here, so this
+    // stays a best-effort mapping, not a verified one.
+    let vdQuestions=null;
+    if(r[C.videoInterviewData]){try{vdQuestions=(JSON.parse(r[C.videoInterviewData]).questions)||null;}catch(e){}}
+    let autoRecorded=false;
+    function transcriptFor(idx){
+      if(!vdQuestions||!vdQuestions[idx])return'';
+      return vdQuestions[idx].answered?(vdQuestions[idx].transcriptSegment||''):'';
+    }
+    function seedNote(key,idx){
+      if(ev.notes&&ev.notes[key])return{val:ev.notes[key],auto:false};
+      const t=transcriptFor(idx);
+      if(t){
+        if(!ev.notes)ev.notes={};
+        ev.notes[key]=t; // auto-recorded now — persists on next Save Notes; recruiter can overwrite freely
+        autoRecorded=true;
+        return{val:t,auto:true};
+      }
+      return{val:'',auto:false};
+    }
 
     let html = '';
     if(jd.preread) html += `<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:6px">📖 PRE-READ FOR RECRUITER</div><div style="font-size:12px;line-height:1.8;white-space:pre-wrap">${escHtml(jd.preread)}</div></div>`;
@@ -7526,12 +7502,11 @@ function igRenderPage() {
       html += `<div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:10px">CORE INTERVIEW QUESTIONS (${coreQs.length})</div>`;
       html += coreQs.map((q,i)=>{
         const key='q'+(i+1); const ticked=ev.ticked&&ev.ticked[key];
-        const eff=igEffectiveNote(r,ev,key,i);
-        if(eff.auto)anyAuto=true;
+        const seeded=seedNote(key,i);
         return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:${ticked?'rgba(52,186,198,.08)':'var(--w06)'};border:1px solid ${ticked?'rgba(52,186,198,.2)':'var(--w08)'};border-radius:var(--rs);margin-bottom:6px">
           <label style="display:flex;align-items:center;gap:0;cursor:pointer;flex-shrink:0;margin-top:2px"><input type="checkbox" class="ig-q-tick" data-key="${key}" ${ticked?'checked':''} style="width:14px;height:14px;accent-color:var(--teal)" onchange="igTickQ(this,'ticked')"></label>
-          <div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${i+1}. ${escHtml(q)}${eff.auto?'<span style="color:var(--teal);font-size:10px;font-weight:400;margin-left:6px">🎥 from AI interview — edit to override</span>':''}</div>
-          <textarea rows="2" class="ig-note-q" data-key="${key}" placeholder="Note..." style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0;resize:vertical;font-family:inherit" onchange="igNoteQ(this,'notes')">${escHtml(eff.val)}</textarea></div></div>`;
+          <div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${i+1}. ${escHtml(q)}${seeded.auto?'<span style="color:var(--teal);font-size:10px;font-weight:400;margin-left:6px">🎥 auto-recorded from AI interview — edit freely</span>':''}</div>
+          <textarea rows="2" class="ig-note-q" data-key="${key}" placeholder="Note..." style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0;resize:vertical;font-family:inherit" onchange="igNoteQ(this,'notes')">${escHtml(seeded.val)}</textarea></div></div>`;
       }).join('');
     }
 
@@ -7539,12 +7514,11 @@ function igRenderPage() {
       html += `<div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:1px;margin:16px 0 10px">ADDITIONAL / PROBING QUESTIONS (use only if needed)</div>`;
       html += addQs.map((q,i)=>{
         const key='aq'+(i+1); const ticked=ev.additionalTicked&&ev.additionalTicked[key];
-        const eff=igEffectiveNote(r,ev,key,coreQs.length+i);
-        if(eff.auto)anyAuto=true;
+        const seeded=seedNote(key,coreQs.length+i);
         return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:${ticked?'rgba(233,152,43,.07)':'var(--w06)'};border:1px solid ${ticked?'rgba(233,152,43,.2)':'var(--w08)'};border-radius:var(--rs);margin-bottom:6px">
           <label style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;margin-top:2px"><input type="checkbox" class="ig-aq-tick" data-key="${key}" ${ticked?'checked':''} style="width:14px;height:14px;accent-color:var(--gold)" onchange="igTickQ(this,'additionalTicked')"></label>
-          <div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${i+1}. ${escHtml(q)}${eff.auto?'<span style="color:var(--teal);font-size:10px;font-weight:400;margin-left:6px">🎥 from AI interview — edit to override</span>':''}</div>
-          <textarea rows="2" class="ig-note-aq" data-key="${key}" placeholder="Note..." style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0;resize:vertical;font-family:inherit" onchange="igNoteQ(this,'notes')">${escHtml(eff.val)}</textarea></div></div>`;
+          <div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${i+1}. ${escHtml(q)}${seeded.auto?'<span style="color:var(--teal);font-size:10px;font-weight:400;margin-left:6px">🎥 auto-recorded from AI interview — edit freely</span>':''}</div>
+          <textarea rows="2" class="ig-note-aq" data-key="${key}" placeholder="Note..." style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0;resize:vertical;font-family:inherit" onchange="igNoteQ(this,'notes')">${escHtml(seeded.val)}</textarea></div></div>`;
       }).join('');
     }
 
@@ -7554,8 +7528,8 @@ function igRenderPage() {
       if(jd.redflag) html += `<div style="background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.15);border-radius:var(--rs);padding:11px 13px"><div style="font-size:10px;font-weight:700;color:#ff6b6b;letter-spacing:1px;margin-bottom:6px">🚩 CONCERN INDICATORS</div><div style="font-size:11px;line-height:1.8;white-space:pre-wrap">${escHtml(jd.redflag)}</div></div>`;
       html += '</div>';
     }
-    if(anyAuto){
-      html = `<div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.25);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--teal)">🎥 Questions marked below are showing the candidate's AI video interview response live — nothing is saved as a note until you edit it or click Save Notes.</div>`+html;
+    if(autoRecorded){
+      html = `<div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.25);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--teal)">🎥 Responses from the candidate's AI video interview have been auto-recorded against the matching questions below — edit or overwrite any of them before saving.</div>`+html;
     }
     body.innerHTML = html;
 
@@ -7909,29 +7883,22 @@ async function igAISummary() {
   // questions barely showing up in generated summaries. Now pairs each
   // question's actual text (from the JD) with whether it was ticked and any
   // note, so there's real substance to draw from even when notes are blank.
-  // Compacted index (skipping empty JD slots) matches how igEffectiveNote's
-  // AI-interview fallback is indexed elsewhere (Page 3, same combined
-  // core-then-additional order the Portal's questionLog is built against).
   const coreQA=[];
-  let _coreIdx=0;
   for(let i=1;i<=10;i++){
     const qText=jd&&jd['q'+i]?jd['q'+i].trim():'';
     if(!qText)continue;
     const key='q'+i;
     const asked=!!(ev.ticked&&ev.ticked[key]);
-    const note=igEffectiveNote(r,ev,key,_coreIdx).val;
-    _coreIdx++;
+    const note=(ev.notes&&ev.notes[key])||'';
     coreQA.push(`Q${i} (${asked?'Asked':'Not asked'}): "${qText}"${note?` — Candidate response/note: ${note}`:''}`);
   }
   const addQA=[];
-  let _addIdx=_coreIdx;
   for(let i=1;i<=5;i++){
     const qText=jd&&jd['aq'+i]?jd['aq'+i].trim():'';
     if(!qText)continue;
     const key='aq'+i;
     const asked=!!(ev.additionalTicked&&ev.additionalTicked[key]);
-    const note=igEffectiveNote(r,ev,key,_addIdx).val;
-    _addIdx++;
+    const note=(ev.notes&&ev.notes[key])||'';
     addQA.push(`AQ${i} (${asked?'Asked':'Not asked'}): "${qText}"${note?` — Candidate response/note: ${note}`:''}`);
   }
   const scoresText=Object.entries(ev.scores||{}).map(([k,v])=>`${k}: ${v}/5`).join(', ');
@@ -8037,71 +8004,6 @@ async function extractResumeText(resumeUrl){
     text+=content.items.map(it=>it.str).join(' ')+'\n';
   }
   return text.trim();
-}
-
-// 22 Aug 2026 (v7.12.2): recruiter-side resume upload — counterpart to the
-// Portal's own upload for candidates who never went through the Gateway.
-// Files land in the same SharePoint site THP already has Sites.ReadWrite.All
-// access to (no new permissions, no new credentials) via a plain PUT to a
-// Resumes/ subfolder — same pattern autoBackup() already uses for xlsx
-// backups. The resulting webUrl goes into the SAME ResumeLink field the
-// Portal writes to, so "View Resume" / "Score Resume Fitment" work
-// identically regardless of which side captured the resume.
-const RESUME_MAX_BYTES=5*1024*1024;
-const RESUME_ALLOWED_EXT=['pdf','doc','docx'];
-async function uploadResumeToSharePoint(file){
-  const ext=(file.name.split('.').pop()||'').toLowerCase();
-  if(!RESUME_ALLOWED_EXT.includes(ext))throw new Error('Only PDF, DOC, or DOCX files are accepted.');
-  if(file.size>RESUME_MAX_BYTES)throw new Error('Resume must be under 5MB.');
-  await refreshToken();
-  const safeName=file.name.replace(/[^\w.\- ]/g,'_');
-  const path=CFG.folder+'/Resumes/'+Date.now()+'_'+safeName;
-  const resp=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+path+':/content',
-    {method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':file.type||'application/octet-stream'},body:file});
-  if(!resp.ok)throw new Error('Upload failed ('+resp.status+')');
-  const item=await resp.json();
-  return item.webUrl;
-}
-async function attachUploadedResume(code,file){
-  const r=MD.find(x=>x[C.code]===code);
-  if(!r){toast('err','Not Found','Candidate not found.');return;}
-  showLoad('Uploading resume...');
-  try{
-    const url=await uploadResumeToSharePoint(file);
-    r[C.resumeLink]=url;
-    await xlPatchRow(r);
-    hideLoad();
-    toast('ok','Resume Uploaded',r[C.name]+"'s resume is now on file.");
-    renderRec();
-    const st=document.getElementById('epResumeStatus');
-    if(st&&document.getElementById('epCd')&&document.getElementById('epCd').textContent===code){
-      st.innerHTML='📄 <a href="'+url+'" target="_blank" style="color:var(--teal)">View current resume</a> — uploaded just now';
-    }
-    if(document.getElementById('modal').classList.contains('show')&&window._mc===code){viewCandModal(code);}
-  }catch(e){
-    hideLoad();
-    toast('err','Upload Failed',e.message);
-  }
-}
-function epUploadResume(){
-  if(epIdx===-1)return;
-  const fileEl=document.getElementById('epResumeFile');
-  const file=fileEl&&fileEl.files[0];
-  if(!file){toast('warn','No File','Choose a file first.');return;}
-  attachUploadedResume(MD[epIdx][C.code],file);
-}
-// Standalone "Upload Resume" button (candidate detail modal) — hidden file
-// input triggered on click, same one-click convenience as "Invite to AI
-// Interview" rather than a separate confirm step.
-function triggerResumeUpload(code){
-  let inp=document.getElementById('_resumeUploadInput');
-  if(!inp){
-    inp=document.createElement('input');
-    inp.type='file';inp.id='_resumeUploadInput';inp.accept='.pdf,.doc,.docx';inp.style.display='none';
-    document.body.appendChild(inp);
-  }
-  inp.onchange=()=>{if(inp.files[0])attachUploadedResume(code,inp.files[0]);inp.value='';};
-  inp.click();
 }
 
 // Deliberately reuses the Repository JD entry (role context, core questions,
