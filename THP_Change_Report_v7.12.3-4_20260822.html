@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>THP Change Report — v7.12.2 to v7.12.4</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;background:#e9edf2;color:#291b39;margin:0;padding:24px;}
+h1{color:#1f5c93;font-size:22px;margin-bottom:4px;}
+h2{color:#291b39;font-size:15px;margin:28px 0 10px;}
+.meta{color:#5f6470;font-size:13px;margin-bottom:28px;}
+table{width:100%;border-collapse:collapse;background:#fbfbfa;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:20px;}
+th{background:#1f5c93;color:#fff;padding:10px 14px;text-align:left;font-size:12px;}
+td{padding:9px 14px;font-size:12px;border-bottom:1px solid #d6dbe3;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.pass{background:#e6f2e6;color:#3a6b30;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.open{background:#faeeda;color:#854f0b;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.ver-badge{display:inline-block;background:#291b39;color:#fbfbfa;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle;}
+code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;}
+.note{color:#5f6470;font-size:11px;margin-top:3px;}
+.summary-box{background:#fbfbfa;border-radius:8px;padding:14px 18px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:28px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.sum-item{text-align:center;}
+.sum-num{font-size:26px;font-weight:700;color:#1f5c93;}
+.sum-lbl{font-size:11px;color:#5f6470;margin-top:2px;}
+.data-box{background:#f6f1e7;border-radius:6px;padding:10px 14px;font-size:11px;margin:8px 0 20px;}
+.data-box b{color:#1f5c93;}
+</style>
+</head>
+<body>
+
+<h1>Talent+ Hire Pulse — System Change Report v7.12.2 → v7.12.4</h1>
+<div class="meta">Period: 22 August 2026 &nbsp;|&nbsp; File: index.html &nbsp;|&nbsp; Prepared by: Claude</div>
+
+<div class="summary-box">
+  <div class="sum-item"><div class="sum-num">4</div><div class="sum-lbl">Changes</div></div>
+  <div class="sum-item"><div class="sum-num">4</div><div class="sum-lbl">Verified locally</div></div>
+  <div class="sum-item"><div class="sum-num">1</div><div class="sum-lbl">Action needed from Anne</div></div>
+  <div class="sum-item"><div class="sum-num">1</div><div class="sum-lbl">New SharePoint column</div></div>
+</div>
+
+<div class="data-box">
+<b>Action needed:</b> add one new column to the live Candidates List — <code>ResumeUploadInvited</code> (same type as the existing <code>VideoInterviewInvited</code> column — single line of text, holds an ISO timestamp). The new "Invite to Upload Resume" button (below) writes to it immediately once added; nothing else is blocked on this, but that one button will silently fail to persist the invite flag until the column exists.
+</div>
+
+<h2>v7.12.3 — Resume Fitment fixes &nbsp;|&nbsp; 22 Aug 2026 <span class="ver-badge">v7.12.3</span></h2>
+<table>
+<tr><th style="width:16%">CR Title</th><th style="width:54%">What Changed</th><th style="width:30%">Test Status</th></tr>
+
+<tr>
+<td>"Score Resume Fitment" — Load failed</td>
+<td>Root cause: resumes uploaded through THP's own new upload feature (v7.12.2) are stored with their SharePoint <code>webUrl</code> as <code>ResumeLink</code> — an interactive viewer page meant for browser navigation, not a raw file stream. <code>extractResumeText()</code> was doing a plain <code>fetch()</code> on that URL, which has no session/auth context and fails outright — the exact "Load failed" signature from the CORS bug fixed earlier this session, but a different root cause this time. Fixed by resolving SharePoint URLs through Graph's <code>/shares</code> endpoint (the documented way to turn any webUrl into a fetchable DriveItem) and downloading via its authenticated <code>/content</code> endpoint instead. Azure-blob resumes (Portal-sourced) are unaffected by this specific fix, but needed a separate one — see next row.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed the URL-type routing logic picks the correct path for both a sample SharePoint URL and a sample blob URL. The live Graph <code>/shares</code> round-trip wasn't independently re-tested (needs a real uploaded resume + live session) — recommend trying Score Resume Fitment again on the resume you just uploaded.</div></td>
+</tr>
+
+<tr>
+<td>Portal-sourced resumes — same failure, different cause</td>
+<td>While fixing the above, found that Portal-sourced resumes (Azure Blob Storage, SAS-scoped URLs) would have hit the <em>same</em> "Load failed" error for a different reason: the storage account's CORS rule (added earlier this session for video interview uploads) only allowed the Portal's own two origins, not THP's GitHub Pages origin — so THP could never have fetched a Portal-sourced resume for scoring either, CORS-fixed webUrl issue or not. Added a second CORS rule permitting GET/HEAD from THP's origin.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed via <code>az storage cors list</code> — two rules now present on <code>talentgatewaysa</code>: the Portal's origins (read/write) and THP's origin (read-only). Purely additive, nothing removed.</div></td>
+</tr>
+
+<tr>
+<td>Resume Fitment Vs JD missing from summary/PDF</td>
+<td>Confirmed: neither the AI-generated interview summary nor the exported PDF report ever referenced the Resume Fitment Vs JD score — it only ever showed in the candidate detail modal and the Interview Guide's AI-Assisted Signals block. Added it to both: the AI Summary prompt now receives the score + recommendations as data and is asked to reference it in one line (kept clearly distinct from the existing rule against the AI inventing the <em>interview's own</em> deterministic fitment score — that rule now explicitly says why, so it doesn't accidentally suppress the resume one too). The exported PDF gets a new "Talent+ Gateway — AI Signals" section showing both Resume Fitment Vs JD and the AI Video Interview score, positioned before the manual Evaluation Scores / Interview Fitment Score section so the two "fitment" numbers are never confused for one another.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed with mock data: the AI Summary prompt correctly includes the resume fitment line, and the exported PDF's captured HTML includes the new section with correct values, without disturbing the existing Interview Fitment Score block.</div></td>
+</tr>
+
+</table>
+
+<h2>v7.12.4 — Candidate resume self-upload invite &nbsp;|&nbsp; 22 Aug 2026 <span class="ver-badge">v7.12.4</span></h2>
+<table>
+<tr><th style="width:16%">CR Title</th><th style="width:54%">What Changed</th><th style="width:30%">Test Status</th></tr>
+
+<tr>
+<td>Invite to Upload Resume</td>
+<td>v7.12.2 added a recruiter-side direct upload (pick a file from your own computer) — this adds the other half: a candidate-facing invite, mirroring "Invite to AI Interview" exactly. New button "📧 Invite to Upload Resume" in the candidate detail modal (shown only when there's no resume on file yet), which sets <code>ResumeUploadInvited</code> and drafts an email with a link to a new Portal page (<code>talent-gateway</code>, separate repo) where the candidate verifies their email via OTP and uploads their own file — landing straight in the same <code>ResumeLink</code> field. Gated the same way the AI interview invite is: only the specific (email, vacancy) pair a recruiter invited can use the link.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed both resume buttons ("Upload Resume" and "Invite to Upload Resume") render side by side and only the invite one shows once a resume already exists. Portal side (new page + two API routes) verified via clean <code>tsc</code> and production build. Not yet tested end-to-end against a live invite — needs the new column added first.</div></td>
+</tr>
+
+</table>
+
+<h2>Rollback</h2>
+<div class="data-box">
+Pre-v7.12.3 backup (i.e. the deployed v7.12.2 state, before this batch): <code>index_backup_v7.122_pre_v7124_20260822.html</code>, same folder — extracted directly from the deployed commit before this change. Diffed against it to confirm this release touched only what's described above.
+</div>
+
+</body>
+</html>
