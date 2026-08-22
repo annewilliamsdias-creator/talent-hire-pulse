@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>THP Change Report — v7.11.1 to v7.12</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;background:#e9edf2;color:#291b39;margin:0;padding:24px;}
+h1{color:#1f5c93;font-size:22px;margin-bottom:4px;}
+h2{color:#291b39;font-size:15px;margin:28px 0 10px;}
+.meta{color:#5f6470;font-size:13px;margin-bottom:28px;}
+table{width:100%;border-collapse:collapse;background:#fbfbfa;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:20px;}
+th{background:#1f5c93;color:#fff;padding:10px 14px;text-align:left;font-size:12px;}
+td{padding:9px 14px;font-size:12px;border-bottom:1px solid #d6dbe3;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.pass{background:#e6f2e6;color:#3a6b30;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.open{background:#faeeda;color:#854f0b;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.hold{background:#e8eaf6;color:#3949ab;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.ver-badge{display:inline-block;background:#291b39;color:#fbfbfa;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle;}
+code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;}
+.note{color:#5f6470;font-size:11px;margin-top:3px;}
+.summary-box{background:#fbfbfa;border-radius:8px;padding:14px 18px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:28px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.sum-item{text-align:center;}
+.sum-num{font-size:26px;font-weight:700;color:#1f5c93;}
+.sum-lbl{font-size:11px;color:#5f6470;margin-top:2px;}
+.data-box{background:#f6f1e7;border-radius:6px;padding:10px 14px;font-size:11px;margin:8px 0 20px;}
+.data-box b{color:#1f5c93;}
+</style>
+</head>
+<body>
+
+<h1>Talent+ Hire Pulse — System Change Report v7.11.1 → v7.12</h1>
+<div class="meta">Period: 22 August 2026 &nbsp;|&nbsp; File: index.html &nbsp;|&nbsp; THP side of a batch of 12 items Anne raised after first live use of the Talent+ Gateway integration — this report covers the 8 that are THP-side; 2 more were Portal-side (separate repo, see talent-gateway's own history) and 2 were answered directly without a code change &nbsp;|&nbsp; Prepared by: Claude</div>
+
+<div class="summary-box">
+  <div class="sum-item"><div class="sum-num">8</div><div class="sum-lbl">THP-side changes</div></div>
+  <div class="sum-item"><div class="sum-num">8</div><div class="sum-lbl">Verified locally</div></div>
+  <div class="sum-item"><div class="sum-num">0</div><div class="sum-lbl">Declined</div></div>
+  <div class="sum-item"><div class="sum-num">0</div><div class="sum-lbl">New SharePoint columns</div></div>
+</div>
+
+<div class="data-box">
+<b>Data/schema touched:</b> none — every change here reads data that already exists (ResumeFitmentData, VideoInterviewData/Invited, the Evaluations sheet already loaded into <code>igEvalData</code> at workbook load, the Vacancies sheet already loaded into <code>VD</code>). The one exception is that Page 3's question notes (<code>igEvalData[code].notes.q1</code> etc.) can now get auto-populated with AI interview transcript text before a recruiter ever touches them — see the "Transcript auto-record" row below for exactly when that happens and how it's saved (same <code>igSaveEval()</code> path as any manually-typed note, nothing new).
+</div>
+
+<h2>v7.12 — Post-launch fixes and dashboard visibility &nbsp;|&nbsp; 22 Aug 2026 <span class="ver-badge">v7.12</span></h2>
+<table>
+<tr><th style="width:16%">CR Title</th><th style="width:54%">What Changed</th><th style="width:30%">Test Status</th></tr>
+
+<tr>
+<td>Video interview viewer — can't close</td>
+<td>Real bug, not a preference: the AI Video Interview popup used the app's generic small dialog (<code>.mc</code>, max-width 460px, no max-height or scroll). A video player + scores + full transcript reliably grew taller than the screen, pushing the Close button below the visible area with no way to scroll to it or click outside to dismiss. Rebuilt <code>viewVideoInterview()</code> as its own dedicated overlay (new <code>#viewint-overlay</code>), matching the Interview Guide's existing overlay pattern exactly: fixed header with the video's title/date, a maximise (⛶) toggle, and a Close button that's always in the header, never dependent on scroll position. Click-outside-to-close also works now.</td>
+<td><span class="pass">Verified</span><div class="note">Rendered with mock interview data locally: confirmed Close returns to the dashboard cleanly, confirmed Maximise expands to full-screen and back. The old trap (content taller than viewport hiding Close) can't recur — the new body div scrolls internally under a header that never moves.</div></td>
+</tr>
+
+<tr>
+<td>Transcript auto-record onto Page 3</td>
+<td>The AI interview's per-question transcript now auto-fills into the matching question's note field on the Interview Guide's Role Questions page (Page 3), the moment the page is opened for a candidate who has completed an interview — not just displayed as a suggestion, but actually written into <code>igEvalData[code].notes</code> so it's captured even if the recruiter never touches the field, and persists on the next "Save Notes" the same way a manually-typed note would. A teal "🎥 auto-recorded from AI interview" tag marks which notes came from this, and typing over any of them permanently overwrites — the auto-fill only ever applies to a still-empty note. Note fields upgraded from single-line inputs to small textareas so real transcript text fits and wraps.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed with mock data: an unanswered question correctly stays blank (no bogus transcript), an answered one is written into <code>igEvalData</code> immediately (checked via console, not just visually). <b>Caveat carried forward from the design, not new:</b> matching is positional — combined question index in the AI interview must line up with this JD's q1-q10/aq1-aq5 order, since the Portal's copy of these questions is manually maintained separately from the JD Library. If a JD's questions are ever reordered without updating the Portal's copy, this mapping silently drifts. No way to detect that from THP's side.</td>
+</tr>
+
+<tr>
+<td>Score reasoning — strengths / watch-outs</td>
+<td>The AI video interview previously only showed a numeric score and one narrative paragraph. The Portal's scoring prompt now also returns specific "Strengths" and "Watch-outs" bullets (see talent-gateway's own change history for the prompt change) — rendered here in three places: the Interview Guide's Evaluation page (AI-Assisted Signals block), the new video interview overlay above, and nowhere else duplicated. Blank/hidden entirely for any interview scored before this change (old data has no <code>strengths</code>/<code>watchOuts</code> fields — code checks for their presence before rendering, no error either way).</td>
+<td><span class="pass">Verified</span><div class="note">Rendered with mock strengths/watchOuts arrays in both locations; confirmed graceful blank when absent (tested by omitting the fields from mock data).</div></td>
+</tr>
+
+<tr>
+<td>"View" added to Home Dashboard rows</td>
+<td>The Action Queue table on the Home Dashboard only had "Update" — a recruiter had to go to All Records to open the read-only candidate view (and, per the item below, to reach the Gateway status/invite action) from the dashboard itself. Added a "View" button next to Update, reusing the exact same <code>openBtn(this,'view')</code> handler All Records already uses. All Records keeps both buttons unchanged.</td>
+<td><span class="pass">Verified</span><div class="note">Clicked live in the local test build — opens the same candidate modal as All Records' View.</div></td>
+</tr>
+
+<tr>
+<td>Gateway status line on dashboard rows</td>
+<td>Added a compact status line under each Action Queue candidate's name/code: a colour dot (grey = not invited, gold = invited/awaiting, teal = interview received), the three scores as text (🔍 Resume Fitment, 🎥 AI Interview, 📋 Recruiter Interview — this last one computed live from <code>igEvalData</code>, converted to the same /10 scale as the other two for a fair side-by-side read, not stored anywhere new), and — only when not yet invited — a small 🎥+ button that calls the existing <code>inviteToVideoInterview()</code> directly from the dashboard row. Blank entirely for any candidate with no vacancy code, matching the gating used everywhere else Gateway data shows.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed against mock data: dot colour, all three scores, and the recruiter-interview average (checked the arithmetic against the mock's manual scores) all matched expectations; invite button fires correctly and disappears once invited.</div></td>
+</tr>
+
+<tr>
+<td>Resume Fitment — visible "not yet scored" state</td>
+<td>The score already displayed once computed, but a candidate with a resume and no score yet showed nothing at all — easy to read as broken rather than "hasn't been scored." Added a visible prompt in the candidate detail modal when a resume link exists but no fitment score does yet, pointing at the existing "Score Resume Fitment" button below it. No change to the scoring flow itself — still a manual, one-click action, by design (AI-cost-conscious).</td>
+<td><span class="pass">Verified</span><div class="note">Tested by clearing a mock candidate's fitment data and confirming the prompt renders exactly where the score normally would.</div></td>
+</tr>
+
+<tr>
+<td>Vacancy filter on Home Dashboard</td>
+<td>Added a Vacancy dropdown to the dashboard's filter bar, alongside the existing Recruiter/Client filters — labelled by Role (Designation) plus Company, not the raw vacancy code, and populated only from vacancies that actually have candidates tagged to them (not every historical vacancy ever created). Filtering by it narrows the same <code>hfMD</code> set every other dashboard filter already narrows — Action Queue, Upcoming Interviews, Joining in Progress, and the KPI counts all respect it.</td>
+<td><span class="pass">Verified</span><div class="note">Confirmed dropdown renders "Role — Company" labels correctly and the Clear button resets it along with the others.</div></td>
+</tr>
+
+</table>
+
+<h2>Not a code change</h2>
+<div class="data-box">
+Two of Anne's twelve items were answered directly rather than built: (1) whether OTP re-verification is still needed given the recruiter already emailed the registered address — yes, kept as-is, since the interview link is shared per-vacancy rather than per-candidate and OTP is what stops anyone else with the link from impersonating an invited candidate. (2) A "trigger to recruiter on submission" — interpreted as satisfied by the dashboard status dot above (a visible "received" state) rather than a separate email/push notification; flagged to Anne as an interpretation she can correct if she actually wants a real notification.
+</div>
+
+<h2>Rollback</h2>
+<div class="data-box">
+Pre-v7.12 backup (i.e. the deployed v7.11.1 state, before this batch): <code>index_backup_v7.11.1_pre_v712_20260822.html</code>, same folder — extracted directly from the deployed commit before this change. Diffed against it to confirm this release touched only what's described above.
+</div>
+
+</body>
+</html>
