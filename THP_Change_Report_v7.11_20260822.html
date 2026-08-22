@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>THP Change Report — v7.10 to v7.11</title>
+<title>THP Change Report — v7.10 to v7.11.1</title>
 <style>
 body{font-family:'Segoe UI',sans-serif;background:#e9edf2;color:#291b39;margin:0;padding:24px;}
 h1{color:#1f5c93;font-size:22px;margin-bottom:4px;}
@@ -28,12 +28,12 @@ code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-family:monospace;
 </head>
 <body>
 
-<h1>Talent+ Hire Pulse — System Change Report v7.10 → v7.11</h1>
-<div class="meta">Period: 22 August 2026 &nbsp;|&nbsp; File: index.html &nbsp;|&nbsp; Not yet deployed — pending Anne's review and manual push to <code>talent-hire-pulse</code> &nbsp;|&nbsp; Prepared by: Claude (Haiku 4.5)</div>
+<h1>Talent+ Hire Pulse — System Change Report v7.10 → v7.11.1</h1>
+<div class="meta">Period: 22 August 2026 &nbsp;|&nbsp; File: index.html &nbsp;|&nbsp; v7.11 deployed to <code>talent-hire-pulse</code> (commit <code>3179ac6</code>, GitHub Pages build verified green) &nbsp;|&nbsp; v7.11.1 hotfix below, deployed same day &nbsp;|&nbsp; Prepared by: Claude</div>
 
 <div class="summary-box">
-  <div class="sum-item"><div class="sum-num">6</div><div class="sum-lbl">Total changes</div></div>
-  <div class="sum-item"><div class="sum-num">6</div><div class="sum-lbl">Ready to deploy</div></div>
+  <div class="sum-item"><div class="sum-num">7</div><div class="sum-lbl">Total changes</div></div>
+  <div class="sum-item"><div class="sum-num">7</div><div class="sum-lbl">Deployed</div></div>
   <div class="sum-item"><div class="sum-num">0</div><div class="sum-lbl">Declined</div></div>
   <div class="sum-item"><div class="sum-num">5</div><div class="sum-lbl">New SharePoint columns</div></div>
 </div>
@@ -84,15 +84,31 @@ code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-family:monospace;
 
 </table>
 
+<h2>v7.11.1 — Post-deploy hotfix &nbsp;|&nbsp; 22 Aug 2026 <span class="ver-badge">v7.11.1</span></h2>
+<table>
+<tr><th style="width:14%">CR Title</th><th style="width:56%">What Changed</th><th style="width:30%">Test Status</th></tr>
+<tr>
+<td>Gateway section visibility</td>
+<td>Anne reported "I don't see the new features in THP" immediately after v7.11 went live. Root cause: the entire Talent+ Gateway block in the candidate detail modal (<code>viewCandModal</code>) — including the "🎥 Invite to AI Interview" button — was gated on <code>r[C.resumeLink]||r[C.resumeFitmentData]||r[C.videoInterviewInvited]</code>. Those three fields only get populated <em>after</em> a candidate has already been invited or gone through the Portal — but the Invite button is the action that sets the first of them. So the section, button included, never rendered for any candidate, since none had that data yet. Fixed by widening the gate to <code>r[C.vacCode]||r[C.resumeLink]||r[C.resumeFitmentData]||r[C.videoInterviewInvited]</code> — nearly every candidate has a vacancy code, so the section (and the Invite button) is now actually reachable. One line changed in <code>viewCandModal</code>; no other logic touched.</td>
+<td><span class="pass">Verified</span><div class="note">Rendered <code>viewCandModal</code> locally with a mock candidate carrying only a vacancy code (no Gateway data) — section and Invite button now appear, as they should for the ~95% of candidates pre-invite. Diffed against the deployed v7.11 file to confirm this is the only change (see backup below).</div></td>
+</tr>
+</table>
+
 <h2>Library change</h2>
 <table>
 <tr><th style="width:20%">What</th><th style="width:80%">Detail</th></tr>
 <tr><td>New: pdf.js</td><td>Added <code>pdf.js</code> 3.11.174 (classic script, not the newer ES-module-only build cdnjs now defaults to — confirmed 6.x only ships <code>pdf.min.mjs</code> with no <code>pdfjsLib</code> global, which doesn't mix cleanly with this file's non-module script style). Used only by <code>extractResumeText()</code> for Resume Fitment. jsPDF (already present) is unaffected — that library writes PDFs, this one reads them, no overlap.</td></tr>
 </table>
 
+<h2>Also noted this session</h2>
+<div class="data-box">
+Anne separately asked about Interview Guide pages 1/2/4/5 appearing as unspaced single-line text. Investigated by rendering all four pages locally with the default content (<code>IG_COMMON_DEFAULTS</code>) — every page wraps and paragraph-breaks correctly; the container CSS (<code>white-space:pre-wrap</code>) is correct on all four. <b>Not a code bug.</b> The live content actually shown must be coming from the <code>CommonRepo</code> sheet (Admin → Interview Repository → Interview Guide Pages), which appears to hold text without real line breaks — most likely pasted in from a source (Word/PDF/email) that collapsed paragraphs into one block. No code change made for this; resolution is either re-entering the text with line breaks in the Admin panel, or clearing the field to fall back to the built-in defaults.
+</div>
+
 <h2>Rollback</h2>
 <div class="data-box">
-Pre-change backup: <code>index_backup_v7.10_pre_v711_20260822.html</code>, same folder. Diffed against the deployed file to confirm this release is purely additive before writing this report.
+Pre-v7.11 backup: <code>index_backup_v7.10_pre_v711_20260822.html</code>, same folder.<br>
+Pre-v7.11.1 backup (i.e. the deployed v7.11 state, before this hotfix): <code>index_backup_v7.11_pre_visibility_fix_20260822.html</code>, same folder — extracted directly from the deployed commit (<code>3179ac6</code>) before the hotfix was applied. Diffed against both backups to confirm each release changed only what's described above.
 </div>
 
 </body>

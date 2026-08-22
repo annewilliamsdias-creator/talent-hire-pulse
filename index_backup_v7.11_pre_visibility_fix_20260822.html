@@ -3270,17 +3270,10 @@ function viewCandModal(code){
   let tableHtml='<div style="max-height:260px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
   if(allRem.length>1){const prev=allRem.slice(0,-1).reverse();tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">📋 Remarks History</div>'+prev.map((rm,i)=>'<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="font-size:9px;color:rgba(251,251,250,.35)">PREV '+(prev.length-i)+'</span><span style="color:var(--w60);margin-left:6px">'+escHtml(rm)+'</span></div>').join('')+'</div>';}
 
-  // 22 Aug 2026 (v7.11): Talent+ Gateway section.
-  // BUG FIXED 22 Aug 2026 (same day, before Anne could find any Gateway data
-  // to test against): originally gated on resumeLink/resumeFitmentData/
-  // videoInterviewInvited only — but the Invite button is the entry point
-  // that SETS videoInterviewInvited, so a candidate with none of those yet
-  // (i.e. every candidate, before being invited) never showed the section
-  // at all, including the button that would invite them. Anne correctly
-  // reported "I don't see the new features" — this was why. Gate on vacCode
-  // instead, which nearly every candidate has, so the invite action is
-  // actually reachable.
-  if(r[C.vacCode]||r[C.resumeLink]||r[C.resumeFitmentData]||r[C.videoInterviewInvited]){
+  // 22 Aug 2026 (v7.11): Talent+ Gateway section — only shown for candidates
+  // that actually have this data, so it stays invisible noise for every
+  // non-Portal-sourced candidate (the vast majority of MD today).
+  if(r[C.resumeLink]||r[C.resumeFitmentData]||r[C.videoInterviewInvited]){
     let fitHtml='';
     if(r[C.resumeFitmentData]){
       try{
