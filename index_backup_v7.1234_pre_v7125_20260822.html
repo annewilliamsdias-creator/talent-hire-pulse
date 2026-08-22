@@ -1651,16 +1651,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   </div>
   <div id="ai-key-status" style="font-size:12px;margin-top:8px;color:#5f6470"></div>
 </div>
-<div style="max-width:600px;padding:14px 0 4px;margin-top:10px;border-top:1px solid #e8ecf0">
-  <div style="font-size:13px;color:#291b39;margin-bottom:6px;font-weight:600">Notify API Key</div>
-  <div style="font-size:12px;color:#5f6470;margin-bottom:10px">Lets "Invite to AI Interview" / "Invite to Upload Resume" send the candidate a real email from Talent+ Gateway automatically, instead of opening a mailto: draft in whatever mail app is the default on this computer. Matches the key configured in the talent-gateway app's <code>NOTIFY_API_KEY</code> setting.</div>
-  <div style="display:flex;gap:8px;align-items:center">
-    <input type="password" id="notify-key-input" placeholder="Paste the shared notify key..." style="flex:1;font-size:13px;font-family:monospace" oninput="notifyKeyStatus()">
-    <button class="btn btn-t btn-sm" onclick="saveNotifyKey()">Save Key</button>
-    <button class="btn btn-ghost btn-sm" onclick="clearNotifyKey()">Clear</button>
-  </div>
-  <div id="notify-key-status" style="font-size:12px;margin-top:8px;color:#5f6470"></div>
-</div>
 </div>
 </div>
 <!-- VACANCIES ADMIN -->
@@ -2556,7 +2546,6 @@ else{
 loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
 // Load AI key from workbook into localStorage (workbook is source of truth)
 (function(){try{const k=getMetadata('ai_key');if(k&&k.trim())localStorage.setItem('thp_ai_key',k.trim());}catch(e){}})();
-(function(){try{const k=getMetadata('notify_key');if(k&&k.trim())localStorage.setItem('thp_notify_key',k.trim());}catch(e){}})();
 // Load evaluations from dedicated Evaluations sheet
 (function(){try{const ws=WB.Sheets['Evaluations'];if(!ws)return;const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(1).filter(r=>r[0]);rows.forEach(r=>{try{const code=String(r[0]);const d=r[3]?JSON.parse(r[3]):{};if(code&&d)igEvalData[code]=d;}catch(e){}});}catch(e){console.warn('Eval load',e);}})();
 // ── Phase A: Read last good count from metadata ───────
@@ -3658,7 +3647,7 @@ if(_bulkFailed.length){
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
@@ -3805,11 +3794,6 @@ async function saveAIKey(){const v=(document.getElementById('ai-key-input').valu
 async function clearAIKey(){localStorage.removeItem('thp_ai_key');const el=document.getElementById('ai-key-input');if(el)el.value='';if(WB){saveMetadata({ai_key:''});await saveWB(false,true,['Config']);}aiKeyStatus();toast('ok','Cleared','AI key removed.');}
 function aiKeyStatus(){const k=getAIKey();const inp=document.getElementById('ai-key-input');const el=document.getElementById('ai-key-status');if(!el)return;if(k){if(inp&&!inp.value)inp.value=k;el.style.color='#5e7855';el.textContent='✓ Key is set ('+k.slice(0,16)+'…)';}else{el.style.color='#9f4a47';el.textContent='No key saved — AI Summary will not work until a key is entered.';}}
 function initAIKeyUI(){aiKeyStatus();}
-function getNotifyKey(){return localStorage.getItem('thp_notify_key')||'';}
-async function saveNotifyKey(){const v=(document.getElementById('notify-key-input').value||'').trim();if(!v){toast('warn','No key','Paste the notify key first.');return;}localStorage.setItem('thp_notify_key',v);if(WB){saveMetadata({notify_key:v});await saveWB(false,true,['Config']);}notifyKeyStatus();toast('ok','Key Saved','Notify key stored in browser and workbook.');}
-async function clearNotifyKey(){localStorage.removeItem('thp_notify_key');const el=document.getElementById('notify-key-input');if(el)el.value='';if(WB){saveMetadata({notify_key:''});await saveWB(false,true,['Config']);}notifyKeyStatus();toast('ok','Cleared','Notify key removed.');}
-function notifyKeyStatus(){const k=getNotifyKey();const inp=document.getElementById('notify-key-input');const el=document.getElementById('notify-key-status');if(!el)return;if(k){if(inp&&!inp.value)inp.value=k;el.style.color='#5e7855';el.textContent='✓ Key is set — invites send automatically from Talent+ Gateway.';}else{el.style.color='#9f4a47';el.textContent='No key saved — invites will fall back to opening an email draft.';}}
-function initNotifyKeyUI(){notifyKeyStatus();}
 // VACANCIES ADMIN
 function populateAvJDSel(cur){
   const sel=document.getElementById('avJDSel');if(!sel)return;
@@ -8232,35 +8216,6 @@ Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations"
 // no server of its own to send the email itself, so it drafts one (mailto:)
 // for the recruiter to review and send, same pattern as the existing
 // "Send WhatsApp Confirmation" button elsewhere in this app.
-// 22 Aug 2026 (v7.12.5): sends the invite email server-side through the
-// Portal's /api/notify/invite (same "Talent+ Gateway" sender that already
-// sends OTP emails), instead of opening a mailto: draft — mailto: launches
-// whatever mail client is the OS default on whichever machine the
-// recruiter happens to be on (Anne saw it open Mac Mail; recruiters use
-// Outlook web/desktop), with zero control over sender identity. Returns
-// true/false rather than throwing — callers fall back to the old mailto
-// draft on any failure (no key configured, network error, API down) so
-// the invite itself (already flagged via xlPatchRow before this runs)
-// never gets blocked by the email step.
-async function sendGatewayInviteEmail(type,r,link){
-  const key=getNotifyKey();
-  if(!key)return false;
-  try{
-    const resp=await fetch('https://talentplus.withawill.in/api/notify/invite',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-notify-key':key},
-      body:JSON.stringify({type,email:r[C.email]||'',name:r[C.name]||'',position:r[C.position]||'',link})
-    });
-    return resp.ok;
-  }catch(e){
-    return false;
-  }
-}
-function mailtoFallback(subjectText,bodyText,r){
-  const subject=encodeURIComponent(subjectText);
-  const body=encodeURIComponent(bodyText);
-  return 'mailto:'+(r[C.email]||'')+'?subject='+subject+'&body='+body;
-}
 async function inviteToVideoInterview(code){
   const r=MD.find(x=>x[C.code]===code);
   if(!r){toast('err','Not Found','Candidate not found.');return;}
@@ -8270,16 +8225,12 @@ async function inviteToVideoInterview(code){
   try{
     await xlPatchRow(r);
     renderRec();
-    const sent=await sendGatewayInviteEmail('interview',r,link);
-    if(sent){
-      toast('ok','Invite Sent',r[C.name]+' has been emailed from Talent+ Gateway.');
-    }else{
-      const mailto=mailtoFallback('Video Interview Invitation — '+(r[C.position]||'Role'),
-        'Hi '+(r[C.name]||'')+',\n\nPlease complete a short AI video interview for this role using the link below. Verify with the same email address you applied with:\n\n'+link+'\n\nThanks,\nWithAWill Talent Team',r);
-      showModal('🎥 Invited — Auto-Email Not Sent',r[C.name]+' is flagged as invited, but the automatic email could not be sent'+(getNotifyKey()?' (delivery failed — check your connection and retry, or send manually below).':' — no Notify API Key is configured yet (Admin → Config → Notify API Key).'),
-        '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
-        '<button class="btn btn-t btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft Instead</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
-    }
+    const subject=encodeURIComponent('Video Interview Invitation — '+(r[C.position]||'Role'));
+    const body=encodeURIComponent('Hi '+(r[C.name]||'')+',\n\nPlease complete a short AI video interview for this role using the link below. Verify with the same email address you applied with:\n\n'+link+'\n\nThanks,\nWithAWill Talent Team');
+    const mailto='mailto:'+(r[C.email]||'')+'?subject='+subject+'&body='+body;
+    showModal('🎥 Invite Sent',r[C.name]+' is now flagged as invited.',
+      '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
+      '<button class="btn btn-t btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
   }catch(e){
     toast('err','Invite Failed',e.message);
   }
@@ -8302,16 +8253,12 @@ async function inviteToResumeUpload(code){
   try{
     await xlPatchRow(r);
     renderRec();
-    const sent=await sendGatewayInviteEmail('resume',r,link);
-    if(sent){
-      toast('ok','Invite Sent',r[C.name]+' has been emailed from Talent+ Gateway.');
-    }else{
-      const mailto=mailtoFallback('Resume Request — '+(r[C.position]||'Role'),
-        'Hi '+(r[C.name]||'')+',\n\nPlease upload your resume for this role using the link below. Verify with the same email address you applied with:\n\n'+link+'\n\nThanks,\nWithAWill Talent Team',r);
-      showModal('📧 Invited — Auto-Email Not Sent',r[C.name]+' is flagged as invited to upload a resume, but the automatic email could not be sent'+(getNotifyKey()?' (delivery failed — check your connection and retry, or send manually below).':' — no Notify API Key is configured yet (Admin → Config → Notify API Key).'),
-        '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
-        '<button class="btn btn-t btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft Instead</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
-    }
+    const subject=encodeURIComponent('Resume Request — '+(r[C.position]||'Role'));
+    const body=encodeURIComponent('Hi '+(r[C.name]||'')+',\n\nPlease upload your resume for this role using the link below. Verify with the same email address you applied with:\n\n'+link+'\n\nThanks,\nWithAWill Talent Team');
+    const mailto='mailto:'+(r[C.email]||'')+'?subject='+subject+'&body='+body;
+    showModal('📧 Invite Sent',r[C.name]+' is now flagged as invited to upload a resume.',
+      '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
+      '<button class="btn btn-t btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
   }catch(e){
     toast('err','Invite Failed',e.message);
   }

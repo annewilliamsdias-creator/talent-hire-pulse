@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>THP Change Report — v7.12.4 to v7.12.5</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;background:#e9edf2;color:#291b39;margin:0;padding:24px;}
+h1{color:#1f5c93;font-size:22px;margin-bottom:4px;}
+h2{color:#291b39;font-size:15px;margin:28px 0 10px;}
+.meta{color:#5f6470;font-size:13px;margin-bottom:28px;}
+table{width:100%;border-collapse:collapse;background:#fbfbfa;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:20px;}
+th{background:#1f5c93;color:#fff;padding:10px 14px;text-align:left;font-size:12px;}
+td{padding:9px 14px;font-size:12px;border-bottom:1px solid #d6dbe3;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.pass{background:#e6f2e6;color:#3a6b30;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.open{background:#faeeda;color:#854f0b;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;font-size:11px;}
+.ver-badge{display:inline-block;background:#291b39;color:#fbfbfa;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle;}
+code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;}
+.note{color:#5f6470;font-size:11px;margin-top:3px;}
+.summary-box{background:#fbfbfa;border-radius:8px;padding:14px 18px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:28px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.sum-item{text-align:center;}
+.sum-num{font-size:26px;font-weight:700;color:#1f5c93;}
+.sum-lbl{font-size:11px;color:#5f6470;margin-top:2px;}
+.data-box{background:#f6f1e7;border-radius:6px;padding:10px 14px;font-size:11px;margin:8px 0 20px;}
+.data-box b{color:#1f5c93;}
+</style>
+</head>
+<body>
+
+<h1>Talent+ Hire Pulse — System Change Report v7.12.4 → v7.12.5</h1>
+<div class="meta">Period: 22 August 2026 &nbsp;|&nbsp; File: index.html &nbsp;|&nbsp; Prepared by: Claude</div>
+
+<div class="summary-box">
+  <div class="sum-item"><div class="sum-num">1</div><div class="sum-lbl">Change</div></div>
+  <div class="sum-item"><div class="sum-num">1</div><div class="sum-lbl">Verified live</div></div>
+  <div class="sum-item"><div class="sum-num">1</div><div class="sum-lbl">Action needed from Anne</div></div>
+  <div class="sum-item"><div class="sum-num">0</div><div class="sum-lbl">New SharePoint columns</div></div>
+</div>
+
+<div class="data-box">
+<b>Action needed:</b> go to <b>Admin → Config → Notify API Key</b> and paste this value, then click Save Key — it's the shared secret this app now uses to authenticate with the Portal's email-sending endpoint (already configured server-side as <code>NOTIFY_API_KEY</code> on the <code>talent-gateway</code> Azure App Service): <code>918b9303e034154f564ae07061871b56073e8274d645f30f771ff1569b6577f4</code><br><br>Until this is entered, both invite buttons fall back to the old mailto: draft behaviour exactly as before — nothing breaks in the meantime, this is additive.
+</div>
+
+<h2>v7.12.5 — Automated invite emails (no more mailto:) &nbsp;|&nbsp; 22 Aug 2026 <span class="ver-badge">v7.12.5</span></h2>
+<table>
+<tr><th style="width:16%">CR Title</th><th style="width:54%">What Changed</th><th style="width:30%">Test Status</th></tr>
+
+<tr>
+<td>Invite emails no longer use mailto:</td>
+<td>Anne's exact complaint: "Invite to interview opens the mailbox — how will it auto identify which mailbox to use — recruiters use Outlook web, I use Outlook desktop, but it opened the Mac Mail app." Root cause: <code>mailto:</code> links have zero control over which mail client or sending identity handles them — that's decided entirely by the OS default on whichever machine clicked the button, different per recruiter, and with no way to make it consistently "come from Talent+ Gateway." Fixed by having THP call a new endpoint on the Portal (<code>talent-gateway</code>, separate repo — <code>/api/notify/invite</code>) that sends the email server-side through the exact same Azure Communication Services sender ("Talent+ Gateway") that already sends every OTP verification email — same sender identity Anne referenced as "the original email." Both "Invite to AI Interview" and "Invite to Upload Resume" now use this. If the send fails for any reason (key not yet configured, network issue, Portal API down), the button falls back to the old mailto: draft rather than silently failing — the invite flag itself is always set first regardless, so a failed email never blocks the actual invite.</td>
+<td><span class="pass">Verified live</span><div class="note">Called the live Portal endpoint directly (curl) with a real email address — confirmed a real email was delivered from the Talent+ Gateway sender. Also confirmed the authorization check (wrong key → 401), CORS headers are present and scoped to this app's exact origin, and a bad recipient correctly surfaces as a clean error rather than a silent failure. One transient issue found and resolved during testing: the very first requests after deploying returned 404 despite the route existing in the build — an edge/routing cache serving a pre-deploy 404 for that exact URL; a full app restart cleared it and the route has responded correctly on every request since (bare URL, no cache-busting needed).</div></td>
+</tr>
+
+</table>
+
+<h2>Rollback</h2>
+<div class="data-box">
+Pre-v7.12.5 backup (i.e. the deployed v7.12.4 state, before this change): <code>index_backup_v7.1234_pre_v7125_20260822.html</code>, same folder — extracted directly from the deployed commit before this change. Diffed against it to confirm this release touched only what's described above.
+</div>
+
+</body>
+</html>
