@@ -2590,16 +2590,26 @@ try{
   console.error('parseWB: loadVacanciesFromList failed — Vacancies may be stale/empty, but continuing with other initialization:',e.message);
   toast('err','Vacancies Load Failed','Could not load vacancies from the List: '+e.message+'. Other data loaded normally — click Refresh Now or reload to retry.');
 }
-// Load repo data from SharePoint workbook (shared across all users)
+// Load repo data from SharePoint workbook (shared across all users). JDs
+// (role-based interview questions) migrated to the Repository_JDs List 23
+// Aug 2026 — loaded separately below via loadJDsFromList(), same
+// fault-tolerant pattern as Candidates/Vacancies above. Scripts/help
+// articles are unmigrated and stay on this Excel sheet.
 const wsr=WB.Sheets['Repository'];
-if(wsr){try{const rrows=XLSX.utils.sheet_to_json(wsr,{header:1,defval:'',raw:false}).slice(1).filter(r=>r[0]);repoData={jds:[],scripts:[],help:[]};rrows.forEach(r=>{const t=String(r[0]||'').trim();try{const d=r[1]?JSON.parse(r[1]):{};if(t==='jd')repoData.jds.push(d);else if(t==='script')repoData.scripts.push(d);else if(t==='help')repoData.help.push(d);}catch(pe){console.warn('Repo row parse',pe);}});}catch(e){console.warn('Repo parse',e);loadRepoData();}}
+if(wsr){try{const rrows=XLSX.utils.sheet_to_json(wsr,{header:1,defval:'',raw:false}).slice(1).filter(r=>r[0]);repoData={jds:[],scripts:[],help:[]};rrows.forEach(r=>{const t=String(r[0]||'').trim();try{const d=r[1]?JSON.parse(r[1]):{};if(t==='script')repoData.scripts.push(d);else if(t==='help')repoData.help.push(d);}catch(pe){console.warn('Repo row parse',pe);}});}catch(e){console.warn('Repo parse',e);loadRepoData();}}
 else{
   // No Repository sheet yet - load from localStorage and push to SharePoint to sync all users
   loadRepoData();
-  if(repoData.jds.length||repoData.scripts.length||repoData.help.length){
+  if(repoData.scripts.length||repoData.help.length){
     // Migrate existing localStorage data into workbook so other users can see it
-    setTimeout(()=>{try{const rows=[['type','data'],...repoData.jds.map(d=>['jd',JSON.stringify(d)]),...repoData.scripts.map(d=>['script',JSON.stringify(d)]),...repoData.help.map(d=>['help',JSON.stringify(d)])];WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');saveWB(false,true,['Repository']);}catch(e){console.warn('Repo migrate failed',e);}},3000);
+    setTimeout(()=>{try{const rows=[['type','data'],...repoData.scripts.map(d=>['script',JSON.stringify(d)]),...repoData.help.map(d=>['help',JSON.stringify(d)])];WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);if(!WB.SheetNames.includes('Repository'))WB.SheetNames.push('Repository');saveWB(false,true,['Repository']);}catch(e){console.warn('Repo migrate failed',e);}},3000);
   }
+}
+try{
+  repoData.jds=await loadJDsFromList();
+}catch(e){
+  console.error('parseWB: loadJDsFromList failed — JD repository may be stale/empty, but continuing with other initialization:',e.message);
+  toast('err','JD Repository Load Failed','Could not load JDs from the List: '+e.message+'. Other data loaded normally — click Refresh Now or reload to retry.');
 }
 loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
 // Load AI key from workbook into localStorage (workbook is source of truth)
@@ -7025,18 +7035,59 @@ function editJD(idx){
   const btn=document.getElementById('jd-save-btn');if(btn)btn.textContent='✓ Update JD';
   document.getElementById('jd-add-form').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+// 23 Aug 2026: JD Repository (role-based interview questions) migrated to
+// its own SharePoint List, same pattern as Candidates (13 Aug) and
+// Vacancies (19 Aug). Confirmed live via Graph: 26 items already present,
+// field_1..field_25 mapped to client/dept/exp/workmodel/link/tags/preread/
+// rolecontext/shortlist/redflag/q1-q10/aq1-aq5 (Title = jd title). Writes
+// (saveJDToList below) were already wired to this List before today —
+// only the read side (load/refresh) and delete were still hitting the old
+// Excel Repository sheet, which this change completes. Scripts/help
+// articles are NOT part of this migration — they stay on the Excel sheet.
+const JD_LIST_ID='5dfe852c-6a3b-4d16-8f02-94a3c09e7e4b';
+function jdToListFields(jd){
+  return {'Title':jd.title||'','field_1':jd.client||'','field_2':jd.dept||'','field_3':jd.exp||'','field_4':jd.workmodel||'','field_5':jd.link||'','field_6':jd.tags||'','field_7':jd.preread||'','field_8':jd.rolecontext||'','field_9':jd.shortlist||'','field_10':jd.redflag||'','field_11':jd.q1||'','field_12':jd.q2||'','field_13':jd.q3||'','field_14':jd.q4||'','field_15':jd.q5||'','field_16':jd.q6||'','field_17':jd.q7||'','field_18':jd.q8||'','field_19':jd.q9||'','field_20':jd.q10||'','field_21':jd.aq1||'','field_22':jd.aq2||'','field_23':jd.aq3||'','field_24':jd.aq4||'','field_25':jd.aq5||''};
+}
+function listItemToJDRecord(item){
+  const f=item.fields||{};
+  return {
+    id:item.id,_spItemId:item.id,
+    title:f.Title||'',client:f.field_1||'',dept:f.field_2||'',exp:f.field_3||'',workmodel:f.field_4||'',
+    link:f.field_5||'',tags:f.field_6||'',preread:f.field_7||'',rolecontext:f.field_8||'',
+    shortlist:f.field_9||'',redflag:f.field_10||'',
+    q1:f.field_11||'',q2:f.field_12||'',q3:f.field_13||'',q4:f.field_14||'',q5:f.field_15||'',
+    q6:f.field_16||'',q7:f.field_17||'',q8:f.field_18||'',q9:f.field_19||'',q10:f.field_20||'',
+    aq1:f.field_21||'',aq2:f.field_22||'',aq3:f.field_23||'',aq4:f.field_24||'',aq5:f.field_25||''
+  };
+}
+async function loadJDsFromList(){
+  const out=[];
+  let url=`/sites/${siteId}/lists/${JD_LIST_ID}/items?$expand=fields&$top=200`;
+  while(url){
+    const res=await graphGet(url.replace(GRAPH,''));
+    (res.value||[]).forEach(it=>out.push(listItemToJDRecord(it)));
+    url=res['@odata.nextLink']||null;
+  }
+  return out;
+}
 async function saveJDToList(jd,isNew=false){
   try{
     await refreshToken();
-    const listId='5dfe852c-6a3b-4d16-8f02-94a3c09e7e4b';
-    const fields={'Title':jd.title||'','field_1':jd.client||'','field_2':jd.dept||'','field_3':jd.exp||'','field_4':jd.workmodel||'','field_5':jd.link||'','field_6':jd.tags||'','field_7':jd.preread||'','field_8':jd.rolecontext||'','field_9':jd.shortlist||'','field_10':jd.redflag||'','field_11':jd.q1||'','field_12':jd.q2||'','field_13':jd.q3||'','field_14':jd.q4||'','field_15':jd.q5||'','field_16':jd.q6||'','field_17':jd.q7||'','field_18':jd.q8||'','field_19':jd.q9||'','field_20':jd.q10||'','field_21':jd.aq1||'','field_22':jd.aq2||'','field_23':jd.aq3||'','field_24':jd.aq4||'','field_25':jd.aq5||''};
+    const fields=jdToListFields(jd);
     if(isNew){
-      const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+listId+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
       if(res.ok){const item=await res.json();jd._spItemId=item.id;}
     }else if(jd._spItemId){
-      await fetch(GRAPH+'/sites/'+siteId+'/lists/'+listId+'/items/'+jd._spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items/'+jd._spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
     }
   }catch(e){console.warn('JD List save failed:',e.message);}
+}
+async function deleteJDFromList(spItemId){
+  if(!spItemId)return;
+  try{
+    await refreshToken();
+    await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items/'+spItemId,{method:'DELETE',headers:{'Authorization':'Bearer '+tok}});
+  }catch(e){console.warn('JD List delete failed:',e.message);}
 }
 function saveJD(){
   if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}
@@ -7052,11 +7103,11 @@ function saveJD(){
     repoData.jds[editIdx]={...repoData.jds[editIdx],...obj,updated:today()};
     document.getElementById('jd-add-form').classList.add('hidden');
     if(eiEl)eiEl.value='-1';
-    saveRepoData();saveJDToList(repoData.jds[editIdx],false);renderJDList();toast('ok','JD Updated',title);
+    saveJDToList(repoData.jds[editIdx],false);renderJDList();toast('ok','JD Updated',title);
   } else {
     repoData.jds.push({id:Date.now(),...obj,added:today()});
     document.getElementById('jd-add-form').classList.add('hidden');
-    saveRepoData();saveJDToList(repoData.jds[repoData.jds.length-1],true);renderJDList();toast('ok','JD Added',title);
+    saveJDToList(repoData.jds[repoData.jds.length-1],true);renderJDList();toast('ok','JD Added',title);
   }
 }
 function renderJDList(){
@@ -7150,7 +7201,7 @@ function renderHelp(){
   }, 0);
 }
 
-function delRepo(type,idx){if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}if(confirm('Delete this item?')){repoData[type].splice(idx,1);saveRepoData();if(type==='jds')renderJDList();if(type==='scripts')renderScripts();if(type==='help')renderHelp();}}
+function delRepo(type,idx){if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}if(confirm('Delete this item?')){const removed=repoData[type][idx];repoData[type].splice(idx,1);if(type==='jds'){if(removed&&removed._spItemId)deleteJDFromList(removed._spItemId);renderJDList();}else{saveRepoData();if(type==='scripts')renderScripts();if(type==='help')renderHelp();}}}
 function saveRepoData(){
   if(WB){try{
     const rows=[['type','data'],
@@ -8868,6 +8919,10 @@ async function forceSyncRepo() {
   toast('ok','Synced','Latest repository data loaded from SharePoint.');
 }
 
+// 23 Aug 2026: jds no longer parsed here — JD Repository lives in the
+// Repository_JDs List now (loadJDsFromList()). This sheet only holds
+// scripts/help going forward; r.jds is kept in the return shape (always
+// empty) so callers that still destructure {jds,scripts,help} don't break.
 function parseRepoSheet(ws) {
   const r = {jds:[], scripts:[], help:[]};
   if(!ws) return r;
@@ -8878,8 +8933,7 @@ function parseRepoSheet(ws) {
         const t=String(row[0]||'').trim();
         try {
           const d=row[1]?JSON.parse(row[1]):{};
-          if(t==='jd') r.jds.push(d);
-          else if(t==='script') r.scripts.push(d);
+          if(t==='script') r.scripts.push(d);
           else if(t==='help') r.help.push(d);
         } catch(e){}
       });
@@ -8914,6 +8968,8 @@ async function refreshRepoFromSP(force) {
     if(freshWB.Sheets['Repository']){
       repoData = parseRepoSheet(freshWB.Sheets['Repository']);
     }
+    // JDs live in the Repository_JDs List now, not this sheet
+    repoData.jds = await loadJDsFromList();
     // Also refresh CommonRepo pages
     if(freshWB.Sheets['CommonRepo']){
       try{
@@ -8952,9 +9008,9 @@ async function saveRepoData() {
       } catch(fe){ console.warn('Pre-save fetch skipped',fe); }
     }
 
-    // Write merged repo to WB and save to SP
+    // Write merged repo to WB and save to SP. JDs excluded — they live in
+    // the Repository_JDs List now (saveJDToList/deleteJDFromList), not here.
     const rows=[['type','data'],
-      ...repoData.jds.map(d=>['jd',JSON.stringify(d)]),
       ...repoData.scripts.map(d=>['script',JSON.stringify(d)]),
       ...repoData.help.map(d=>['help',JSON.stringify(d)])];
     WB.Sheets['Repository']=XLSX.utils.aoa_to_sheet(rows);
