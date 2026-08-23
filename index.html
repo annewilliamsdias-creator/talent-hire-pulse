@@ -315,7 +315,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 ───────────────────────────────────────────────────────────── */
 
 /* 1 · Re-scope CSS custom properties inside every light panel */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk){
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen){
   --ow:#291b39;
   --w60:rgba(41,27,57,.72);
   --w40:rgba(41,27,57,.55);
@@ -337,19 +337,19 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 2 · Cards, stats, chart-cards — white backgrounds on light page */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .stat,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-card{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .card,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .stat,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .chart-card{
   background:#fbfbfa;
   color:#291b39;
   border:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-title{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .chart-title{
   color:#291b39;
 }
 
 /* 3 · Labels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) label{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) label{
   color:#291b39;
   font-size:max(11px,1em);
   font-weight:700;
@@ -357,92 +357,92 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 4 · Helper / hint / muted text */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .fhint,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .ss,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pdet,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .chart-sub,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .filter-label,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .kpi-lbl,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pdate{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .fhint,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .sl,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .ss,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pdet,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .chart-sub,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .filter-label,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .kpi-lbl,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pdate{
   color:#5f6470;
   opacity:1;
 }
 
 /* 5 · Inputs / selects / textareas */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) input,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) select,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) textarea{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) input,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) select,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) textarea{
   background:#ffffff;
   color:#291b39;
   border:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) input::placeholder,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) textarea::placeholder{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) input::placeholder,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) textarea::placeholder{
   color:rgba(41,27,57,.38);
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) select option{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) select option{
   background:#ffffff;
   color:#291b39;
 }
 
 /* 6 · Tables */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) table{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) table{
   background:#fbfbfa;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) thead tr{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) thead tr{
   background:#1f5c93;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) thead th{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) thead th{
   color:#fbfbfa;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody td{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) tbody td{
   color:#291b39;
   border-bottom:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody td.m{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) tbody td.m{
   color:#5f6470;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) tbody tr:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) tbody tr:hover{
   background:rgba(31,92,147,.06);
 }
 
 /* 7 · Mono / code values */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .mono,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) code{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .mono,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) code{
   color:#1f5c93;
 }
 
 /* 8 · Section labels .sl2 */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl2{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .sl2{
   color:#1f5c93;
   font-size:max(11px,1em);
   font-weight:800;
   opacity:1;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .sl2::after{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .sl2::after{
   background:rgba(31,92,147,.20);
 }
 
 /* 9 · Action queue cards: .pi, .lbar, .uz */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pi{
   background:rgba(31,92,147,.06);
   color:#291b39;
   border-color:#d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pi:hover{
   background:rgba(31,92,147,.10);
   border-color:rgba(52,186,198,.35);
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .lbar{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .lbar{
   background:rgba(31,92,147,.06);
   border-color:#d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .uz{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .uz{
   border-color:#d6dbe3;
   color:#5f6470;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .uz:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .uz:hover{
   border-color:var(--teal);
   background:rgba(52,186,198,.06);
 }
@@ -466,44 +466,44 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 13 · .btn-ghost inside light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .btn-ghost{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .btn-ghost{
   color:rgba(41,27,57,.75);
   border-color:#d6dbe3;
   background:transparent;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .btn-ghost:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .btn-ghost:hover{
   background:rgba(31,92,147,.08);
   color:#291b39;
   border-color:#b0bec5;
 }
 
 /* 14 · .b-grey / .b-inactive badges inside light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-grey,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-inactive{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .b-grey,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .b-inactive{
   background:rgba(31,92,147,.08);
   color:#5f6470;
   border-color:#d6dbe3;
 }
 
 /* 15 · Semantic colours — remain consistent in light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .b-err,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .pi.ov{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .b-err,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pi.ov{
   border-left-color:#9f4a47;
 }
 
 /* 16 · Card header text */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card-title,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .card-hdr{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .card-title,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .card-hdr{
   color:#291b39;
 }
 
 /* 17 · Inline note / info strips (tdim, gdim, bdim) */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk) .ci p{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .ci p{
   color:#5f6470;
 }
 
 /* 18 · Scrollbar styling for light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk)::-webkit-scrollbar-thumb{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen)::-webkit-scrollbar-thumb{
   background:rgba(31,92,147,.25);
 }
 
@@ -697,6 +697,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     <div class="nav-item" onclick="goPanel('new')" title="New Candidate">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
       <span class="nav-label">New Candidate</span>
+    </div>
+    <div class="nav-item" onclick="goPanel('screen')" title="Resume Screening">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 15l2 2 4-4"/></svg></span>
+      <span class="nav-label">Resume Screening</span>
     </div>
     <div class="nav-item" onclick="goPanel('ep')" title="Edit Profile">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
@@ -892,6 +896,36 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <button class="btn btn-t btn-sm" onclick="copyCode()">⎘ Copy Code</button>
 <button class="btn btn-ghost btn-sm" onclick="document.getElementById('nCodeBox').classList.add('hidden')">✕ Close</button>
 </div>
+</div>
+</div>
+
+<!-- RESUME FITMENT SCREENING -->
+<div class="panel" id="p-screen">
+<div id="scrAlert" class="mb0"></div>
+<div class="card">
+<div class="card-hdr"><div class="card-title"><span class="ac">🔎</span> Resume Fitment Screening</div></div>
+<div style="font-size:12px;color:var(--w60);margin-bottom:14px">Screen a batch of resumes against a vacancy's JD before any of them become THP records. Nothing here is saved until you click <strong>Push to THP</strong> on a specific candidate — anything left un-pushed is discarded when you leave this screen.</div>
+<div class="sl2">🎯 Step 1 — Choose the Role</div>
+<div class="fg3">
+<div class="field s2"><label>Vacancy <span class="req">*</span></label><select id="scrVac" onchange="onScreenVacChange()"><option value="">— Select open vacancy —</option></select></div>
+<div class="field"><label>&nbsp;</label><div id="scrJDStatus" style="font-size:11px;color:var(--w60);padding-top:8px">Select a vacancy to check its JD.</div></div>
+</div>
+<div class="field" style="margin-top:8px"><label>Additional Requirement for This Run <span class="fhint">(optional — extra client ask, must-have, context)</span></label><textarea id="scrCtx" rows="2" style="width:100%;background:var(--form-input-bg,#fff);border:1px solid var(--form-border,#d6dbe3);border-radius:var(--rs);padding:8px;color:var(--form-text,#291b39);resize:vertical;box-sizing:border-box" placeholder="e.g. Must have led a team of 5+, prior BFSI experience preferred..."></textarea></div>
+<div class="sl2" style="margin-top:16px">📥 Step 2 — Upload Resumes</div>
+<div class="uz" id="scrDrop" onclick="document.getElementById('scrFI').click()" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor=''" ondrop="onScreenDrop(event)">
+<div style="font-size:30px;margin-bottom:7px">📄</div>
+<div style="font-size:13px;font-weight:500;margin-bottom:3px">Click or drag resumes here (5–20 at a time)</div>
+<div style="font-size:11px;color:var(--w60)">PDF only, max 5MB each</div>
+</div>
+<input type="file" id="scrFI" accept=".pdf" multiple style="display:none" onchange="onScreenFiles(event)">
+<div class="btn-row">
+<button class="btn btn-t btn-lg" id="scrRunBtn" onclick="runScreening()">▶ Run Fitment Scoring</button>
+<button class="btn btn-ghost" onclick="clearScreenQueue()">Clear All</button>
+</div>
+</div>
+<div class="card hidden" id="scrResultsCard">
+<div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Screening Results</div><span id="scrCount" style="font-size:12px;color:var(--w60)"></span></div>
+<div class="tw"><table><thead><tr><th>File</th><th>Parsed Name</th><th>Contact</th><th>Company</th><th>Score</th><th>Recommendation</th><th>Status</th><th></th></tr></thead><tbody id="scrBody"></tbody></table></div>
 </div>
 </div>
 
@@ -1596,7 +1630,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="atab" id="at-billing" onclick="switchATab('billing')">💰 Billing Config</div>
 <div class="atab" id="at-dashconfig" onclick="switchATab('dashconfig')">📊 Dashboard</div>
 <div class="atab" id="at-users" onclick="switchATab('users')">👥 Users</div>
-<div class="atab" id="at-commonrepo" onclick="switchATab('commonrepo')">📋 Interview Repository</div>
+<div class="atab" id="at-commonrepo" onclick="switchATab('commonrepo')">📋 Interview Repository</div><div class="atab" id="at-repository" onclick="switchATab('repository')">📤 Repository Migration</div>
 </div>
 <!-- BILLING CONFIG -->
 <div id="ap-billing" class="hidden">
@@ -1779,6 +1813,20 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div id="cr-jd-admin-list"></div>
 </div>
 
+</div></div>
+
+<div id="ap-repository" class="hidden"><div class="card">
+<div class="card-hdr">
+  <div class="card-title"><span class="ac">📤</span> Repository Migration</div>
+</div>
+<div style="padding:16px;border:1px solid var(--w08);border-radius:var(--rs);background:var(--w06)">
+  <div style="font-weight:600;margin-bottom:12px">📤 Import JDs to SharePoint List</div>
+  <div style="font-size:12px;color:var(--w60);margin-bottom:12px">Select <strong>Repository_JDs.xlsx</strong> to import all JDs to the SharePoint Repository_JDs List. Columns will be auto-mapped based on headers.</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <input type="file" id="repo-jd-file" accept=".xlsx" style="flex:1;font-size:12px;padding:8px 10px;border:1px solid var(--w08);border-radius:var(--rs)">
+    <button class="btn btn-t" onclick="migrateRepositoryJDs()" style="white-space:nowrap">Import JDs</button>
+  </div>
+</div>
 </div></div>
 
 <!-- VALIDATION RESULTS -->
@@ -2873,6 +2921,7 @@ function goPanel(name){
     renderPolicyBadge();calcIncentives();
   }
   if(name==='invoice'){renderInvoices();updateInvStats();}
+  if(name==='screen'){fillScreenVacDrop();}
 }
 
 // ══════════════════════════════════════════════════════
@@ -3090,7 +3139,7 @@ function onPosSel(){
     }
   }
 }
-function clearNew(){['nSD','nScD','nSrcD','nMob','nAlt','nEm','nLocD','nPLoc','nExp','nReas','nCo','nDe','nSPM','nSPA','nSBr','nESPM','nESBr','nSInc','nPosC','nVacC','nRem','nFU','nFUN','nNm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['nRec','nSrc','nLoc','nNot','nCli','nDept','nPos','nStat'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const fr=document.getElementById('nFr');if(fr){fr.checked=false;onFr(false);}document.getElementById('nSD').value=today();document.getElementById('nCodeBox').classList.add('hidden');showAlert('na','','');const rs=document.getElementById('nRec');if(rs){if(myRecName){for(const o of rs.options){if(o.value===myRecName){rs.value=o.value;break;}}rs.disabled=!!myRecName;}else{const rn=acct&&acct.name?acct.name.split(' ')[0]:'';for(const o of rs.options){if(o.value.toLowerCase()===rn.toLowerCase()){rs.value=o.value;break;}}rs.disabled=false;}}}
+function clearNew(){_screenPush=null;['nSD','nScD','nSrcD','nMob','nAlt','nEm','nLocD','nPLoc','nExp','nReas','nCo','nDe','nSPM','nSPA','nSBr','nESPM','nESBr','nSInc','nPosC','nVacC','nRem','nFU','nFUN','nNm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['nRec','nSrc','nLoc','nNot','nCli','nDept','nPos','nStat'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const fr=document.getElementById('nFr');if(fr){fr.checked=false;onFr(false);}document.getElementById('nSD').value=today();document.getElementById('nCodeBox').classList.add('hidden');showAlert('na','','');const rs=document.getElementById('nRec');if(rs){if(myRecName){for(const o of rs.options){if(o.value===myRecName){rs.value=o.value;break;}}rs.disabled=!!myRecName;}else{const rn=acct&&acct.name?acct.name.split(' ')[0]:'';for(const o of rs.options){if(o.value.toLowerCase()===rn.toLowerCase()){rs.value=o.value;break;}}rs.disabled=false;}}}
 async function submitNew(){
 const nm=gv('nNm'),mob=gv('nMob'),em=gv('nEm'),sd=gv('nSD'),rec=gv('nRec'),cli=gv('nCli'),dept=gv('nDept'),src=gv('nSrc'),loc=gv('nLoc');
 const pos=gv('nPos')||gv('nPosC'),fu=gv('nFU'),stat=gv('nStat')||'Active';
@@ -3120,6 +3169,13 @@ nr[C.followupDate]=fu;nr[C.followupNotes]=gv('nFUN');nr[C.followupCount]='0';
 nr[C.remark]=gv('nRem');nr[C.consent]='Y';
 nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();
 nr[C.reportingDate]=today();nr[C.recruiter]=rec;nr[C.sNo]=MD.length+1;
+// Resume Fitment Screening (22 Aug 2026): carries forward the resume + AI
+// fitment score from a Push to THP action in the Resume Screening panel —
+// see screenPushToTHP(). Untouched for any candidate added the normal way.
+if(_screenPush){
+  nr[C.resumeLink]=_screenPush.resumeLink;
+  nr[C.resumeFitmentData]=JSON.stringify({score:_screenPush.score,recommendations:_screenPush.recommendations,computedAt:new Date().toISOString()});
+}
 MD.push(nr);
 const _clEN=writeCL('New Entry',code,'All','','',nm);
 showLoad('Adding candidate...');
@@ -3658,7 +3714,7 @@ if(_bulkFailed.length){
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo','repository'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}if(tab==='repository'){console.log('Repository migration tab active');}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
@@ -8227,6 +8283,182 @@ Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations"
   }
 }
 
+// ══════════════════════════════════════════════════════
+// BULK RESUME FITMENT SCREENING (22 Aug 2026)
+// Recruiter-facing "screen before it becomes a THP record" tool — replaces
+// each recruiter's private ad-hoc AI screening with one standardised path.
+// Deliberately reuses computeResumeFitment()'s exact scoring mechanism
+// (same JD-derived prompt inputs from resolveJDFromVac/Repository) rather
+// than a new rubric — the point is one consistent method, not a new one.
+// Nothing here touches MD[] or SharePoint until a specific candidate is
+// pushed via screenPushToTHP(): uploaded files and AI results live only in
+// the in-memory screenQueue[] for this browser tab, so anything not pushed
+// is simply discarded on navigation/reload (no temp storage, per design).
+let screenQueue=[];
+let _screenPush=null; // {resumeLink, score, recommendations} — consumed by submitNew()
+function fillScreenVacDrop(){
+  const sel=document.getElementById('scrVac');if(!sel)return;
+  const cur=sel.value;sel.innerHTML='<option value="">— Select open vacancy —</option>';
+  VD.filter(v=>{const om=['Open','open',''].includes(v['Current Status']||'');const am=v['Active']!=='N';const rm=!myRecName||v['Recruiter']===myRecName;return om&&am&&rm;})
+    .forEach(v=>{const code=v['Vacancy code']||v['Vacancy Code']||'';const o=document.createElement('option');o.value=code;o.textContent=(v['Designation']||'—')+' ('+code+') — '+(v['Company']||'—');sel.appendChild(o);});
+  if(cur)sel.value=cur;
+  onScreenVacChange();
+}
+function onScreenVacChange(){
+  const code=gv('scrVac');const st=document.getElementById('scrJDStatus');if(!st)return;
+  if(!code){st.textContent='Select a vacancy to check its JD.';return;}
+  const{jdEntry}=resolveJDFromVac(code);
+  st.innerHTML=jdEntry?'✅ JD linked: <strong>'+(jdEntry.title||'—')+'</strong>':'⚠ No Interview Guide/JD linked to this role — add one in Repositories before scoring.';
+  st.style.color=jdEntry?'var(--form-muted,#5f6470)':'#9f4a47';
+}
+function onScreenDrop(e){e.preventDefault();addScreenFiles(e.dataTransfer.files);}
+function onScreenFiles(e){addScreenFiles(e.target.files);e.target.value='';}
+function addScreenFiles(fileList){
+  const files=[...fileList];
+  if(screenQueue.length+files.length>20){toast('warn','Batch Too Large','Screen up to 20 resumes at a time.');return;}
+  files.forEach(file=>{
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    if(ext!=='pdf'){toast('warn','Skipped '+file.name,'Only PDF resumes are supported for screening.');return;}
+    if(file.size>RESUME_MAX_BYTES){toast('warn','Skipped '+file.name,'Resume must be under 5MB.');return;}
+    screenQueue.push({file,name:'',email:'',phone:'',company:'',score:null,recommendations:'',status:'queued'});
+  });
+  renderScreenQueue();
+}
+function clearScreenQueue(){screenQueue=[];renderScreenQueue();}
+function screenStatusBadge(st){
+  const map={queued:['#5f6470','Queued'],scoring:['#1f5c93','Scoring…'],scored:['#5e7855','Scored'],error:['#9f4a47','Failed'],pushed:['#34bac6','Pushed to THP']};
+  const[c,l]=map[st]||map.queued;
+  return'<span style="font-size:10px;font-weight:600;color:'+c+';background:'+c+'18;border:1px solid '+c+'44;border-radius:12px;padding:2px 8px">'+l+'</span>';
+}
+function renderScreenQueue(){
+  const card=document.getElementById('scrResultsCard');const body=document.getElementById('scrBody');
+  if(!card||!body)return;
+  card.classList.toggle('hidden',screenQueue.length===0);
+  document.getElementById('scrCount').textContent=screenQueue.length?screenQueue.length+' resume(s)':'';
+  body.innerHTML=screenQueue.map((q,i)=>{
+    const scoreTxt=q.score!=null?('<strong>'+q.score+'/10</strong>'):'—';
+    const canPush=q.status==='scored';
+    return'<tr>'+
+      '<td>'+q.file.name+'</td>'+
+      '<td>'+(q.name||'—')+'</td>'+
+      '<td>'+[q.email,q.phone].filter(Boolean).join('<br>')+'</td>'+
+      '<td>'+(q.company||'—')+'</td>'+
+      '<td>'+scoreTxt+'</td>'+
+      '<td style="max-width:260px;white-space:normal;font-size:12px">'+(q.recommendations||'—')+'</td>'+
+      '<td>'+screenStatusBadge(q.status)+(q.status==='error'?'<div style="font-size:10px;color:#9f4a47;margin-top:2px">'+(q.error||'')+'</div>':'')+'</td>'+
+      '<td><div class="flex gap8">'+
+        (canPush?'<button class="btn btn-t btn-sm" onclick="screenPushToTHP('+i+')">→ Push to THP</button>':'')+
+        (q.status==='error'?'<button class="btn btn-ghost btn-sm" onclick="screenOne('+i+')">Retry</button>':'')+
+        (q.status!=='pushed'?'<button class="btn btn-ghost btn-sm" onclick="screenRemove('+i+')">✕</button>':'')+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+}
+function screenRemove(i){screenQueue.splice(i,1);renderScreenQueue();}
+async function runScreening(){
+  const vacCode=gv('scrVac');
+  if(!vacCode){showAlert('scrAlert','err','Select a vacancy first.');return;}
+  const{jdEntry}=resolveJDFromVac(vacCode);
+  if(!jdEntry){showAlert('scrAlert','err','No JD linked to this vacancy — add one in Repositories first.');return;}
+  const toRun=screenQueue.map((q,i)=>i).filter(i=>screenQueue[i].status==='queued'||screenQueue[i].status==='error');
+  if(!toRun.length){showAlert('scrAlert','warn','Nothing queued to score. Upload resumes first.');return;}
+  const btn=document.getElementById('scrRunBtn');if(btn)btn.disabled=true;
+  for(const i of toRun){await screenOne(i);}
+  if(btn)btn.disabled=false;
+  showAlert('scrAlert','ok','Screening complete.');
+}
+async function screenOne(i){
+  const q=screenQueue[i];if(!q)return;
+  const vacCode=gv('scrVac');
+  const{jdEntry}=resolveJDFromVac(vacCode);
+  if(!jdEntry){q.status='error';q.error='No JD linked to this vacancy.';renderScreenQueue();return;}
+  q.status='scoring';q.error='';renderScreenQueue();
+  try{
+    const resumeText=await extractResumeTextFromFile(q.file);
+    if(!resumeText)throw new Error('Could not extract any text from this PDF.');
+    const coreQs=[];for(let n=1;n<=10;n++){if(jdEntry['q'+n])coreQs.push(jdEntry['q'+n]);}
+    const extraCtx=gv('scrCtx');
+    const prompt=`You review a candidate's resume against a role's requirements for a recruiter at WithAWill HR Consultancy Services, and extract the candidate's basic contact details.
+
+ROLE CONTEXT:
+${jdEntry.rolecontext||'(none provided)'}
+
+WHAT THE ROLE REQUIRES (from the interview question bank):
+${coreQs.join('\n')||'(none provided)'}
+
+SHORTLIST INDICATORS:
+${jdEntry.shortlist||'(none provided)'}
+
+CONCERN / RED FLAG INDICATORS:
+${jdEntry.redflag||'(none provided)'}
+${extraCtx?'\nADDITIONAL REQUIREMENT FOR THIS SCREENING RUN:\n'+extraCtx+'\n':''}
+CANDIDATE'S RESUME TEXT:
+${resumeText.slice(0,12000)}
+
+From the resume text, extract the candidate's full name, email address, 10-digit phone number, and current company (use "" for any not stated — never invent). Then score the resume's fit against this role's requirements from 1-10, and give 2-4 sentences of specific, actionable recommendations for the recruiter — what to verify or probe on, not just a summary. Base this only on what's actually in the resume; don't invent experience that isn't stated.
+
+Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string>","phone":"<string>","company":"<string>","score":<1-10>,"recommendations":"<2-4 sentences>"}`;
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,messages:[{role:'user',content:prompt}]})
+    });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
+    const data=await resp.json();
+    const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
+    const parsed=JSON.parse(raw.trim());
+    q.name=parsed.name||'';q.email=parsed.email||'';q.phone=(parsed.phone||'').replace(/\D/g,'').slice(-10);
+    q.company=parsed.company||'';q.score=parsed.score;q.recommendations=parsed.recommendations||'';
+    q.status='scored';
+  }catch(e){
+    q.status='error';q.error=e.message;
+  }
+  renderScreenQueue();
+}
+async function extractResumeTextFromFile(file){
+  ensurePdfWorker();
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let text='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    text+=content.items.map(it=>it.str).join(' ')+'\n';
+  }
+  return text.trim();
+}
+// Uploads the resume now (same as attachUploadedResume's own path) and stashes
+// the fitment result for submitNew() to attach — mirrors the rest of THP's
+// "AI output is a pre-filled draft, a human clicks the real save" pattern:
+// nothing lands in the Candidates List until the recruiter reviews the
+// pre-filled New Candidate form and clicks Add Candidate themselves.
+async function screenPushToTHP(i){
+  const q=screenQueue[i];if(!q||q.status!=='scored')return;
+  showLoad('Uploading resume...');
+  try{
+    const resumeLink=await uploadResumeToSharePoint(q.file);
+    hideLoad();
+    q.status='pushed';renderScreenQueue();
+    goPanel('new');
+    clearNew();
+    _screenPush={resumeLink,score:q.score,recommendations:q.recommendations};
+    sv('nNm',q.name);sv('nMob',(q.phone||'').replace(/\D/g,'').slice(-10));sv('nEm',q.email);sv('nCo',q.company);
+    const vacCode=gv('scrVac');
+    const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
+    if(vac){
+      const posSel=document.getElementById('nPos');
+      if(posSel){
+        const opt=[...posSel.options].find(o=>o.dataset.code===vacCode);
+        if(opt){posSel.value=opt.value;onPosSel();}
+      }
+    }
+    toast('ok','Ready to Review','Resume uploaded and fitment score attached. Review the pre-filled form and click Add Candidate to save '+(q.name||'this candidate')+'.');
+  }catch(e){
+    hideLoad();
+    toast('err','Push Failed',e.message);
+  }
+}
+
 // Recruiter-gated invite — writes the flag the Portal's /interview/[code]
 // requires before it will hand out questions or upload URLs. This app has
 // no server of its own to send the email itself, so it drafts one (mailto:)
@@ -9261,6 +9493,46 @@ async function migrateVacanciesToList(){
   }else{
     toast('ok','Sync complete',addedCount+' added, '+updatedCount+' updated in the Vacancies List.');
   }
+}
+
+// === REPOSITORY MIGRATION (Phase 4: JDs to SharePoint List) ===
+async function migrateRepositoryJDs(){
+  showLoad('Migrating JDs to SharePoint...');
+  try{
+    const fileInput=document.getElementById('repo-jd-file');
+    if(!fileInput||!fileInput.files[0]){toast('err','No file','Select Repository_JDs.xlsx first');hideLoad();return;}
+    const file=fileInput.files[0];
+    const reader=new FileReader();
+    reader.onload=async(e)=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+        const headers=rows[0];
+        const dataRows=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==null));
+        const fieldMap={'Title':'Title','Client':'field_1','Department':'field_2','Experience':'field_3','WorkModel':'field_4','Link':'field_5','Tags':'field_6','PreRead':'field_7','RoleContext':'field_8','ShortlistIndicators':'field_9','RedFlagIndicators':'field_10','Q1':'field_11','Q2':'field_12','Q3':'field_13','Q4':'field_14','Q5':'field_15','Q6':'field_16','Q7':'field_17','Q8':'field_18','Q9':'field_19','Q10':'field_20','AQ1':'field_21','AQ2':'field_22','AQ3':'field_23','AQ4':'field_24','AQ5':'field_25'};
+        const listId='5dfe852c-6a3b-4d16-8f02-94a3c09e7e4b';
+        let added=0,failed=0;
+        for(const row of dataRows){
+          try{
+            const fields={};
+            headers.forEach((h,i)=>{
+              const internalName=fieldMap[h];
+              if(internalName&&row[i]){fields[internalName]=String(row[i]).trim();}
+            });
+            if(!fields.Title)continue;
+            await refreshToken();
+            const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+listId+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+            if(res.ok){added++;}else{const err=await res.json();console.warn('JD POST failed:',fields.Title,err.error?.message);failed++;}
+          }catch(e){console.warn('JD migration row error:',e.message);failed++;}
+        }
+        hideLoad();
+        toast('ok','Migration Complete',added+' JDs added, '+failed+' failed');
+        if(fileInput)fileInput.value='';
+      }catch(e){hideLoad();toast('err','Parse Error',e.message);}
+    };
+    reader.readAsArrayBuffer(file);
+  }catch(e){hideLoad();toast('err','Migration failed',e.message);}
 }
 
 // === REPORTS (CR-8, 15 Jun 2026) ===
