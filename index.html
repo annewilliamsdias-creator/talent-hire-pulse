@@ -8288,6 +8288,20 @@ function triggerResumeUpload(code){
   inp.click();
 }
 
+// 23 Aug 2026: Claude occasionally wraps its JSON answer in a ```/```json
+// markdown fence despite the "ONLY valid JSON" instruction — a bare
+// JSON.parse(raw.trim()) then throws "Unrecognized token '`'" (hit live
+// during Resume Screening testing). Strips a fence if present, then falls
+// back to slicing between the outermost { and } so stray prose either side
+// of the JSON still parses.
+function parseAIJsonResponse(raw){
+  let s=(raw||'').trim();
+  const fenced=s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if(fenced)s=fenced[1].trim();
+  const start=s.indexOf('{'),end=s.lastIndexOf('}');
+  if(start!==-1&&end!==-1&&end>start)s=s.slice(start,end+1);
+  return JSON.parse(s);
+}
 // Deliberately reuses the Repository JD entry (role context, core questions,
 // shortlist/redflag indicators) rather than re-extracting the JD PDF a
 // second time — this app already has that curated content from the JD
@@ -8335,7 +8349,7 @@ Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations"
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
-    const parsed=JSON.parse(raw.trim());
+    const parsed=parseAIJsonResponse(raw);
 
     r[C.resumeFitmentData]=JSON.stringify({score:parsed.score,recommendations:parsed.recommendations,computedAt:new Date().toISOString()});
     await xlPatchRow(r);
@@ -8470,7 +8484,7 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
-    const parsed=JSON.parse(raw.trim());
+    const parsed=parseAIJsonResponse(raw);
     q.name=parsed.name||'';q.email=parsed.email||'';q.phone=(parsed.phone||'').replace(/\D/g,'').slice(-10);
     q.company=parsed.company||'';q.score=parsed.score;q.recommendations=parsed.recommendations||'';
     q.status='scored';
