@@ -7025,6 +7025,19 @@ function editJD(idx){
   const btn=document.getElementById('jd-save-btn');if(btn)btn.textContent='✓ Update JD';
   document.getElementById('jd-add-form').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+async function saveJDToList(jd,isNew=false){
+  try{
+    await refreshToken();
+    const listId='5dfe852c-6a3b-4d16-8f02-94a3c09e7e4b';
+    const fields={'Title':jd.title||'','field_1':jd.client||'','field_2':jd.dept||'','field_3':jd.exp||'','field_4':jd.workmodel||'','field_5':jd.link||'','field_6':jd.tags||'','field_7':jd.preread||'','field_8':jd.rolecontext||'','field_9':jd.shortlist||'','field_10':jd.redflag||'','field_11':jd.q1||'','field_12':jd.q2||'','field_13':jd.q3||'','field_14':jd.q4||'','field_15':jd.q5||'','field_16':jd.q6||'','field_17':jd.q7||'','field_18':jd.q8||'','field_19':jd.q9||'','field_20':jd.q10||'','field_21':jd.aq1||'','field_22':jd.aq2||'','field_23':jd.aq3||'','field_24':jd.aq4||'','field_25':jd.aq5||''};
+    if(isNew){
+      const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+listId+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      if(res.ok){const item=await res.json();jd._spItemId=item.id;}
+    }else if(jd._spItemId){
+      await fetch(GRAPH+'/sites/'+siteId+'/lists/'+listId+'/items/'+jd._spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    }
+  }catch(e){console.warn('JD List save failed:',e.message);}
+}
 function saveJD(){
   if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}
   const title=gv('jd-title'),link=gv('jd-link');
@@ -7039,11 +7052,11 @@ function saveJD(){
     repoData.jds[editIdx]={...repoData.jds[editIdx],...obj,updated:today()};
     document.getElementById('jd-add-form').classList.add('hidden');
     if(eiEl)eiEl.value='-1';
-    saveRepoData();renderJDList();toast('ok','JD Updated',title);
+    saveRepoData();saveJDToList(repoData.jds[editIdx],false);renderJDList();toast('ok','JD Updated',title);
   } else {
     repoData.jds.push({id:Date.now(),...obj,added:today()});
     document.getElementById('jd-add-form').classList.add('hidden');
-    saveRepoData();renderJDList();toast('ok','JD Added',title);
+    saveRepoData();saveJDToList(repoData.jds[repoData.jds.length-1],true);renderJDList();toast('ok','JD Added',title);
   }
 }
 function renderJDList(){
