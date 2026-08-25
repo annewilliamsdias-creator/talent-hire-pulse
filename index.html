@@ -63,7 +63,7 @@ display:flex;align-items:center;justify-content:center;gap:10px;transition:all .
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:64px;background:rgba(10,5,20,.97);
 border-right:1px solid var(--w06);display:flex;flex-direction:column;align-items:center;
 padding:14px 0;gap:2px;z-index:200;backdrop-filter:blur(20px);transition:width .25s}
-.sidebar:hover{width:220px}
+@media(hover:hover) and (pointer:fine){.sidebar:hover{width:220px}}
 .sb-logo{width:100%;padding:0 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;overflow:hidden}
 .sb-logo img{width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0}
 .sb-logo-text{font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;
@@ -7389,6 +7389,15 @@ function dlChartPNG(canvasId, name) {
 let igCurrentPage = 0;
 let igMaximised = false;
 let igCandIdx = -1;
+// Snapshot of each candidate's last-SAVED Role Questions scoring + Otter
+// notes, keyed by code — compared against on every igSaveEval() to decide
+// whether this save is a genuinely new interview round (counts for EOD
+// "Interviews Conducted") or a trivial re-save like a manual-notes typo fix
+// (still saved for the audit trail, just not counted). Set once per candidate
+// in openInterviewGuide() from whatever was already saved, then kept current
+// after every save — see igSaveEval(). Flagged by Anne 25 Aug 2026: every
+// save was being counted as a new interview regardless of what changed.
+let igEvalBaseline = {};
 let igCachedJD = null;  // JD resolved once when guide opens — stable across page navigation
 let igEvalData = {}; // keyed by candidate code
 
@@ -7513,6 +7522,7 @@ function openInterviewGuide() {
   }
   // load existing eval if any
   if(!igEvalData[code]) igEvalData[code] = {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalBaseline[code]) igEvalBaseline[code]=JSON.stringify({ticked:igEvalData[code].ticked,additionalTicked:igEvalData[code].additionalTicked,otterNotes:igEvalData[code].otterNotes});
   igCurrentPage = 0;
   igRenderPage();
   document.getElementById('ig-overlay').style.display='block';
@@ -7946,7 +7956,15 @@ function igSaveEval() {
   const recruiter=acct&&acct.username?acct.username:'';
   const ts=new Date().toISOString();
   const dataJson=JSON.stringify(igEvalData[code]);
-  const _clEval=writeCL('Interview Eval Saved',code,'Evaluation','','',r[C.name]);
+  // Only classify this as a new "Interview" for EOD's Interviews Conducted
+  // count when Role Questions scoring or Otter meeting notes actually changed
+  // since the last save — a trivial re-save (manual-notes typo fix, etc.)
+  // still gets a Change Log entry for the audit trail, just under an action
+  // string eActType() won't classify as an interview.
+  const sig=JSON.stringify({ticked:igEvalData[code].ticked,additionalTicked:igEvalData[code].additionalTicked,otterNotes:igEvalData[code].otterNotes});
+  const isSignificant=!igEvalBaseline[code]||igEvalBaseline[code]!==sig;
+  const _clEval=writeCL(isSignificant?'Interview Eval Saved':'Eval Notes Updated',code,'Evaluation','','',r[C.name]);
+  igEvalBaseline[code]=sig;
   xlAppendRows('Evaluations',[[code,recruiter,ts,dataJson]])
     .then(()=>{if(_clEval)return xlAppendRows('Change Log',[_clEval]);})
     .catch(e=>console.warn('igSaveEval append',e.message));
