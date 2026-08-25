@@ -20,6 +20,15 @@
      last version with a working classic pdf.min.js UMD build — confirmed
      live (loads, exposes window.pdfjsLib) before relying on it. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- 23 Aug 2026: Resume Screening format expansion (DOCX/PPTX/TXT/JPG/PNG,
+     pdf.js above already covers PDF). mammoth reads .docx to plain text;
+     JSZip unzips .pptx to pull slide XML text runs (no ready-made pptx-to-text
+     lib as standard as mammoth is for docx, so extractPptxText() in the JS
+     below does the XML parsing directly). Legacy binary .doc/.ppt (pre-2007,
+     not the same format as .docx/.pptx) have no practical client-side reader
+     and are rejected with a clear message rather than attempted. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 
@@ -915,9 +924,9 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="uz" id="scrDrop" onclick="document.getElementById('scrFI').click()" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor=''" ondrop="onScreenDrop(event)">
 <div style="font-size:30px;margin-bottom:7px">📄</div>
 <div style="font-size:13px;font-weight:500;margin-bottom:3px">Click or drag resumes here (5–20 at a time)</div>
-<div style="font-size:11px;color:var(--w60)">PDF only, max 5MB each</div>
+<div style="font-size:11px;color:var(--w60)">PDF, Word (.docx), PowerPoint (.pptx), TXT, JPG/PNG — max 5MB each</div>
 </div>
-<input type="file" id="scrFI" accept=".pdf" multiple style="display:none" onchange="onScreenFiles(event)">
+<input type="file" id="scrFI" accept=".pdf,.docx,.pptx,.txt,.jpg,.jpeg,.png" multiple style="display:none" onchange="onScreenFiles(event)">
 <div class="btn-row">
 <button class="btn btn-t btn-lg" id="scrRunBtn" onclick="runScreening()">▶ Run Fitment Scoring</button>
 <button class="btn btn-ghost" onclick="clearScreenQueue()">Clear All</button>
@@ -8391,14 +8400,22 @@ function onScreenVacChange(){
 }
 function onScreenDrop(e){e.preventDefault();addScreenFiles(e.dataTransfer.files);}
 function onScreenFiles(e){addScreenFiles(e.target.files);e.target.value='';}
+// 23 Aug 2026: format expansion — was PDF-only. .doc/.ppt are the legacy
+// binary Office formats (pre-2007), a different format from .docx/.pptx with
+// no practical client-side reader, so rejected explicitly rather than queued
+// and left to fail obscurely at extraction time.
+const SCREEN_TEXT_EXT=new Set(['pdf','docx','pptx','txt']);
+const SCREEN_IMAGE_EXT=new Set(['jpg','jpeg','png']);
+const SCREEN_LEGACY_EXT=new Set(['doc','ppt']);
 function addScreenFiles(fileList){
   const files=[...fileList];
   if(screenQueue.length+files.length>20){toast('warn','Batch Too Large','Screen up to 20 resumes at a time.');return;}
   files.forEach(file=>{
     const ext=(file.name.split('.').pop()||'').toLowerCase();
-    if(ext!=='pdf'){toast('warn','Skipped '+file.name,'Only PDF resumes are supported for screening.');return;}
-    if(file.size>RESUME_MAX_BYTES){toast('warn','Skipped '+file.name,'Resume must be under 5MB.');return;}
-    screenQueue.push({file,name:'',email:'',phone:'',company:'',score:null,recommendations:'',status:'queued'});
+    if(SCREEN_LEGACY_EXT.has(ext)){toast('warn','Skipped '+file.name,'Legacy .doc/.ppt format isn\'t supported — re-save as .docx/.pptx or PDF and re-upload.');return;}
+    if(!SCREEN_TEXT_EXT.has(ext)&&!SCREEN_IMAGE_EXT.has(ext)){toast('warn','Skipped '+file.name,'Unsupported file type. Use PDF, DOCX, PPTX, TXT, or JPG/PNG.');return;}
+    if(file.size>RESUME_MAX_BYTES){toast('warn','Skipped '+file.name,'File must be under 5MB.');return;}
+    screenQueue.push({file,kind:SCREEN_IMAGE_EXT.has(ext)?'image':'text',name:'',email:'',phone:'',company:'',score:null,recommendations:'',status:'queued'});
   });
   renderScreenQueue();
 }
@@ -8452,11 +8469,11 @@ async function screenOne(i){
   if(!jdEntry){q.status='error';q.error='No JD linked to this vacancy.';renderScreenQueue();return;}
   q.status='scoring';q.error='';renderScreenQueue();
   try{
-    const resumeText=await extractResumeTextFromFile(q.file);
-    if(!resumeText)throw new Error('Could not extract any text from this PDF.');
+    const content=await extractResumeContent(q.file);
+    if(content.kind==='text'&&!content.text)throw new Error('Could not extract any text from this file.');
     const coreQs=[];for(let n=1;n<=10;n++){if(jdEntry['q'+n])coreQs.push(jdEntry['q'+n]);}
     const extraCtx=gv('scrCtx');
-    const prompt=`You review a candidate's resume against a role's requirements for a recruiter at WithAWill HR Consultancy Services, and extract the candidate's basic contact details.
+    const header=`You review a candidate's resume against a role's requirements for a recruiter at WithAWill HR Consultancy Services, and extract the candidate's basic contact details.
 
 ROLE CONTEXT:
 ${jdEntry.rolecontext||'(none provided)'}
@@ -8469,17 +8486,22 @@ ${jdEntry.shortlist||'(none provided)'}
 
 CONCERN / RED FLAG INDICATORS:
 ${jdEntry.redflag||'(none provided)'}
-${extraCtx?'\nADDITIONAL REQUIREMENT FOR THIS SCREENING RUN:\n'+extraCtx+'\n':''}
-CANDIDATE'S RESUME TEXT:
-${resumeText.slice(0,12000)}
-
-From the resume text, extract the candidate's full name, email address, 10-digit phone number, and current company (use "" for any not stated — never invent). Then score the resume's fit against this role's requirements from 1-10, and give 2-4 sentences of specific, actionable recommendations for the recruiter — what to verify or probe on, not just a summary. Base this only on what's actually in the resume; don't invent experience that isn't stated.
+${extraCtx?'\nADDITIONAL REQUIREMENT FOR THIS SCREENING RUN:\n'+extraCtx+'\n':''}`;
+    const instructions=`
+From the resume, extract the candidate's full name, email address, 10-digit phone number, and current company (use "" for any not stated — never invent). Then score the resume's fit against this role's requirements from 1-10, and give 2-4 sentences of specific, actionable recommendations for the recruiter — what to verify or probe on, not just a summary. Base this only on what's actually in the resume; don't invent experience that isn't stated.
 
 Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string>","phone":"<string>","company":"<string>","score":<1-10>,"recommendations":"<2-4 sentences>"}`;
+    // Images go straight to the model as a vision input (no OCR step needed);
+    // every other format is extracted to plain text first (pdf.js/mammoth/
+    // JSZip+XML/plain read) and dropped into the prompt as before.
+    const messageContent=content.kind==='image'
+      ?[{type:'image',source:{type:'base64',media_type:content.mediaType,data:content.base64}},
+         {type:'text',text:header+'\nThe candidate\'s resume is provided as an image above — read it directly.\n'+instructions}]
+      :header+'\nCANDIDATE\'S RESUME TEXT:\n'+content.text.slice(0,12000)+'\n'+instructions;
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,messages:[{role:'user',content:messageContent}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
@@ -8493,15 +8515,50 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
   }
   renderScreenQueue();
 }
-async function extractResumeTextFromFile(file){
+// Returns {kind:'text',text} for every format we can turn into plain text
+// (PDF via pdf.js, DOCX via mammoth, PPTX via a direct slide-XML text-run
+// scrape since there's no mammoth-equivalent for pptx, TXT read as-is), or
+// {kind:'image',mediaType,base64} for JPG/PNG — those skip text extraction
+// entirely and go to the model as a vision input in screenOne() instead.
+async function extractResumeContent(file){
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  if(ext==='jpg'||ext==='jpeg'||ext==='png'){
+    const base64=await _readFileAsBase64(file);
+    return{kind:'image',mediaType:ext==='png'?'image/png':'image/jpeg',base64};
+  }
+  if(ext==='txt'){
+    return{kind:'text',text:(await file.text()).trim()};
+  }
+  if(ext==='docx'){
+    if(typeof mammoth==='undefined')throw new Error('DOCX reader failed to load — check your connection and retry.');
+    const result=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});
+    return{kind:'text',text:(result.value||'').trim()};
+  }
+  if(ext==='pptx'){
+    return{kind:'text',text:await extractPptxText(file)};
+  }
   ensurePdfWorker();
   const buf=await file.arrayBuffer();
   const pdf=await pdfjsLib.getDocument({data:buf}).promise;
   let text='';
   for(let i=1;i<=pdf.numPages;i++){
     const page=await pdf.getPage(i);
-    const content=await page.getTextContent();
-    text+=content.items.map(it=>it.str).join(' ')+'\n';
+    const pageContent=await page.getTextContent();
+    text+=pageContent.items.map(it=>it.str).join(' ')+'\n';
+  }
+  return{kind:'text',text:text.trim()};
+}
+async function extractPptxText(file){
+  if(typeof JSZip==='undefined')throw new Error('PPTX reader failed to load — check your connection and retry.');
+  const zip=await JSZip.loadAsync(await file.arrayBuffer());
+  const slideFiles=Object.keys(zip.files)
+    .filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a,b)=>parseInt(a.match(/slide(\d+)\.xml/)[1],10)-parseInt(b.match(/slide(\d+)\.xml/)[1],10));
+  let text='';
+  for(const name of slideFiles){
+    const xml=await zip.files[name].async('text');
+    const runs=xml.match(/<a:t>([^<]*)<\/a:t>/g)||[];
+    text+=runs.map(m=>m.slice(5,-6)).join(' ')+'\n';
   }
   return text.trim();
 }
