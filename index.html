@@ -3441,6 +3441,7 @@ function viewCandModal(code){
       fitHtml+
       '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
       (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="window.open(\''+r[C.resumeLink]+'\',\'_blank\')">📄 View Resume</button>':'')+
+      (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="triggerSendResume(\''+code+'\')" title="Send this resume as an email attachment to an address you enter">✉️ Send Resume</button>':'')+
       (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="computeResumeFitment(\''+code+'\')">🔍 '+(r[C.resumeFitmentData]?'Re-score':'Score')+' Resume Fitment</button>':'')+
       '<button class="btn btn-ghost btn-sm" onclick="triggerResumeUpload(\''+code+'\')">📤 '+(r[C.resumeLink]?'Replace':'Upload')+' Resume</button>'+
       resumeUploadHtml+
@@ -3677,15 +3678,36 @@ async function createMeeting(){const r=MD[eIdx];const d=document.getElementById(
 // resumes are local files on the recruiter's machine, no link to store.
 const resumeFile=(document.getElementById('si_resume')&&document.getElementById('si_resume').files[0])||null;
 if(!d||!t){toast('err','Missing details','Date and time required.');return;}if(isF2F&&!venue){toast('err','Venue required','Please enter the interview venue / address.');return;}if(resumeFile&&resumeFile.size>3*1024*1024){toast('err','Resume too large','Please attach a file under 3MB.');return;}closeModal();showLoad(isF2F?'Scheduling F2F interview...':'Creating Teams meeting...');try{
-// Resume attachment (13 Aug 2026): read BEFORE creating the event and include
-// it directly in the event-creation POST body's `attachments` array, rather
-// than POSTing to /me/events/{id}/attachments afterward. Confirmed in
-// production: an attachment added via that separate follow-up call updates
-// only the organizer's own copy — Exchange does not reliably push it out to
-// attendees' already-sent invites. Attaching in the same request that creates
-// the event ensures it ships with the original invite.
+// Resume attachment — history: (13 Aug 2026) tried attaching inline in the
+// event-creation POST body itself, since the separate POST-attachment call
+// only updates the organizer's own copy, never attendees. That inline
+// approach turned out to have the same real-world problem — Graph's
+// documented Create Event API doesn't actually support inline attachments
+// at creation time, confirmed against Microsoft's own API reference; the
+// symptom was intermittent silent failures (real report, 27 Aug 2026).
+// (28 Aug 2026) Fix: don't attach to the invite at all — send the resume as
+// a real attachment on a separate follow-up email via /me/sendMail
+// (documented, reliable) right after the event is created. See the
+// sendResumeEmail() call below.
 const resumeB64=resumeFile?await _readFileAsBase64(resumeFile):null;
-await refreshToken();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});ieRaw.split(',').map(e=>e.trim()).filter(e=>e.includes('@')).forEach(e=>att.push({emailAddress:{address:e,name:''},type:'required'}));const evBody={subject:(isF2F?'F2F Interview':'Interview')+' — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your '+(isF2F?'in-person interview':'interview')+' for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.'+(isF2F&&venue?'</p><p><strong>Venue:</strong> '+venue:'')+'</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};if(isF2F){if(venue)evBody.location={displayName:venue};}else{evBody.isOnlineMeeting=true;evBody.onlineMeetingProvider='teamsForBusiness';}if(resumeFile&&resumeB64){evBody.attachments=[{'@odata.type':'#microsoft.graph.fileAttachment',name:resumeFile.name,contentType:resumeFile.type||'application/octet-stream',contentBytes:resumeB64}];}const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(evBody)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create event');}const ev=await resp.json();
+await refreshToken();const st=new Date(d+'T'+t+':00');const en=new Date(st.getTime()+dur*60000);const att=[];if(r[C.email])att.push({emailAddress:{address:r[C.email],name:r[C.name]},type:'required'});ieRaw.split(',').map(e=>e.trim()).filter(e=>e.includes('@')).forEach(e=>att.push({emailAddress:{address:e,name:''},type:'required'}));const evBody={subject:(isF2F?'F2F Interview':'Interview')+' — '+r[C.name]+' — '+(r[C.position]||'Role')+' @ '+(r[C.client]||'Client'),start:{dateTime:st.toISOString(),timeZone:'Asia/Kolkata'},end:{dateTime:en.toISOString(),timeZone:'Asia/Kolkata'},attendees:att,body:{contentType:'html',content:'<p>Dear '+r[C.name]+',</p><p>Your '+(isF2F?'in-person interview':'interview')+' for <strong>'+(r[C.position]||'the position')+'</strong> with <strong>'+(r[C.client]||'our client')+'</strong> is confirmed.'+(isF2F&&venue?'</p><p><strong>Venue:</strong> '+venue:'')+'</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>'}};if(isF2F){if(venue)evBody.location={displayName:venue};}else{evBody.isOnlineMeeting=true;evBody.onlineMeetingProvider='teamsForBusiness';}const resp=await fetch(GRAPH+'/me/events',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(evBody)});if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'Failed to create event');}const ev=await resp.json();
+if(resumeFile&&resumeB64){
+  // Interviewer/client attendees only — not the candidate (att[0] when
+  // r[C.email] is set), same emails typed into the "additional interviewer"
+  // field, recomputed here rather than filtering att[] to keep this
+  // independent of attendee-list ordering.
+  const resumeToEmails=ieRaw.split(',').map(e=>e.trim()).filter(e=>e.includes('@'));
+  if(resumeToEmails.length){
+    try{
+      await sendResumeEmail(resumeToEmails,'Resume — '+r[C.name]+(r[C.position]?' — '+r[C.position]:''),
+        '<p>Please find attached the resume for <strong>'+r[C.name]+'</strong> ahead of the scheduled '+(isF2F?'in-person interview':'interview')+'.</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>',
+        resumeFile.name,resumeFile.type,resumeB64);
+    }catch(mailErr){
+      console.warn('Resume follow-up email failed:',mailErr.message);
+      toast('warn','Resume email failed',(isF2F?'Interview':'Meeting')+' created, but the resume follow-up email failed: '+mailErr.message);
+    }
+  }
+}
 const link=ev.onlineMeeting&&ev.onlineMeeting.joinUrl?ev.onlineMeeting.joinUrl:'';r[C.interviewDate]=d;r._iTime=t;r[C.docLink]=isF2F?(venue||'F2F'):(link||'');r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();const _clMtg=writeCL(isF2F?'F2F Interview Scheduled':'Interview Scheduled',r[C.code],'Interview','',d+' '+t+(isF2F?' [F2F @ '+venue+']':''),r[C.name]);try{await xlPatchRow(r);if(_clMtg)await xlAppendRows('Change Log',[_clMtg]);}catch(persistErr){console.warn('createMeeting persist',persistErr.message);toast('warn','Not Saved',(isF2F?'Interview':'Meeting')+' created, but the candidate record failed to save to SharePoint: '+persistErr.message+'. Please retry from Update Candidate.');}hideLoad();showModal(isF2F?'✅ F2F Interview Scheduled':'✅ Meeting Created',isF2F?'In-person interview for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">📍 '+venue+'</span>':'Teams meeting for <strong>'+r[C.name]+'</strong> on '+fmtD(d)+' at '+t+'.<br><span style="color:var(--teal);font-size:11px">Outlook invites sent to all participants.</span>',isF2F?'':(link?'<div style="font-size:10px;color:var(--w60);word-break:break-all;margin-top:4px">'+link.substring(0,80)+'...</div>':''),'<button class="btn btn-t" onclick="closeModal();sendWA(\'interview_confirmation\')">Send WhatsApp Confirmation</button><button class="btn btn-ghost" onclick="closeModal()">Done</button>');}catch(e){hideLoad();toast('err','Meeting failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
@@ -8499,6 +8521,87 @@ function triggerResumeUpload(code){
   }
   inp.onchange=()=>{if(inp.files[0])attachUploadedResume(code,inp.files[0]);inp.value='';};
   inp.click();
+}
+
+// 28 Aug 2026 (queue items 9+11): shared "send an email with a real
+// attachment" capability via /me/sendMail — the one documented, reliable
+// Graph mail-attachment path (unlike inline-attachment-at-event-creation,
+// which only reaches the organizer's own calendar copy, not attendees; see
+// createMeeting()'s resume-follow-up-email call below for that fix).
+// Needs the Mail.Send delegated scope on THP's app registration (client id
+// 81a69b92-602a-49c3-a28c-c551bdc0abef) — NOT yet added to CFG.scopes as of
+// this commit, deliberately: adding an unregistered scope to the MSAL scopes
+// array risks breaking token acquisition for every user at next login if the
+// app registration doesn't support it yet. This call will 403 with a clear
+// message until (a) the scope is added + admin-consented in Azure AD, and
+// (b) CFG.scopes picks it up in a follow-up deploy once that's confirmed
+// done — see project memory for exact steps.
+async function sendResumeEmail(toEmails,subject,bodyHtml,attachmentName,attachmentType,attachmentB64){
+  await refreshToken();
+  const message={
+    subject,
+    body:{contentType:'html',content:bodyHtml},
+    toRecipients:toEmails.map(e=>({emailAddress:{address:e}})),
+    attachments:[{'@odata.type':'#microsoft.graph.fileAttachment',name:attachmentName,contentType:attachmentType||'application/octet-stream',contentBytes:attachmentB64}]
+  };
+  const resp=await fetch(GRAPH+'/me/sendMail',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({message,saveToSentItems:true})});
+  if(!resp.ok){
+    let msg='Failed to send email ('+resp.status+')';
+    try{const e=await resp.json();if(e.error&&e.error.message)msg=e.error.message;}catch(_e){}
+    if(resp.status===403||/consent|scope|permission/i.test(msg)){
+      msg='Email sending isn\'t enabled yet for this app (Mail.Send permission pending in Azure AD). Ask your admin to complete that setup, then sign out and back in.';
+    }
+    throw new Error(msg);
+  }
+}
+// Chunked to avoid "Maximum call stack size exceeded" on larger files —
+// String.fromCharCode(...bytes) via spread blows the argument limit well
+// before a multi-MB resume would (the PKCE b64url() helper near the top of
+// this file uses the spread form too, but only ever on tiny 32-byte hashes,
+// so it was never a safe pattern to reuse here as-is).
+function _arrayBufferToBase64(buf){
+  const bytes=new Uint8Array(buf);
+  let binary='';
+  const chunkSize=8192;
+  for(let i=0;i<bytes.length;i+=chunkSize)binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunkSize));
+  return btoa(binary);
+}
+const RESUME_MIME_BY_EXT={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
+function _resumeExtFromUrl(url){
+  const m=/\.([a-zA-Z0-9]+)(?:\?|#|$)/.exec((url||'').split('?')[0]);
+  return m?m[1].toLowerCase():'pdf';
+}
+function triggerSendResume(code){
+  const r=MD.find(x=>x[C.code]===code);
+  if(!r){toast('err','Not Found','Candidate not found.');return;}
+  if(!r[C.resumeLink]){toast('warn','No Resume','This candidate has no resume on file.');return;}
+  showModal('✉️ Send Resume','Enter the recipient\'s email address — the resume will be sent as a real attachment.',
+    '<input type="email" id="sr-email" placeholder="name@company.com" style="width:100%;padding:8px 10px;background:var(--w06);border:1px solid var(--w08);border-radius:6px;color:var(--ow);font-size:13px" />',
+    '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button><button class="btn btn-t btn-sm" onclick="confirmSendResume(\''+code+'\')">Send</button>');
+}
+async function confirmSendResume(code){
+  const el=document.getElementById('sr-email');
+  const email=(el?el.value:'').trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('err','Invalid Email','Enter a valid email address.');return;}
+  const r=MD.find(x=>x[C.code]===code);
+  if(!r||!r[C.resumeLink]){toast('err','No Resume','Resume not found.');return;}
+  closeModal();
+  showLoad('Sending resume...');
+  try{
+    const buf=await fetchResumeArrayBuffer(r[C.resumeLink]);
+    const b64=_arrayBufferToBase64(buf);
+    const ext=_resumeExtFromUrl(r[C.resumeLink]);
+    const fname=(r[C.name]||'Candidate').replace(/[^\w.\- ]/g,'_')+' - Resume.'+ext;
+    const mime=RESUME_MIME_BY_EXT[ext]||'application/octet-stream';
+    await sendResumeEmail([email],'Resume — '+(r[C.name]||'Candidate')+(r[C.position]?' — '+r[C.position]:''),
+      '<p>Please find attached the resume for <strong>'+(r[C.name]||'the candidate')+'</strong>'+(r[C.position]?' for the <strong>'+r[C.position]+'</strong> role':'')+'.</p><p>Best regards,<br>'+(acct&&acct.name?acct.name:'WithAWill HR')+'<br>WithAWill HR Consultancy Services LLP</p>',
+      fname,mime,b64);
+    hideLoad();
+    toast('ok','Resume Sent','Resume emailed to '+email+'.');
+  }catch(e){
+    hideLoad();
+    toast('err','Send failed',e.message);
+  }
 }
 
 // 23 Aug 2026: Claude occasionally wraps its JSON answer in a ```/```json
