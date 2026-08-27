@@ -8404,6 +8404,32 @@ Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations"
 // pushed via screenPushToTHP(): uploaded files and AI results live only in
 // the in-memory screenQueue[] for this browser tab, so anything not pushed
 // is simply discarded on navigation/reload (no temp storage, per design).
+// ResumeScreened List — one row per resume actually scored (not just
+// uploaded/queued), regardless of whether the recruiter later pushes it to
+// THP or not. Anne's design (27 Aug 2026): every scoring run leaves a
+// record; Status only changes if/when that specific resume is pushed.
+// Non-fatal throughout — a List write failure here must never block the
+// recruiter from seeing their score or pushing a candidate through, same
+// reasoning as saveJDToList()'s own try/catch just logs and moves on.
+const RESUME_SCREENED_LIST_ID='1926b397-6807-4866-b48e-2c99584a5631';
+async function saveResumeScreenedRecord(q,vacCode){
+  try{
+    await refreshToken();
+    const nm=q.name||q.file.name;
+    const fields={Title:nm,CandidateName:nm,Email:q.email||'',PhoneNo:q.phone||'',VacancyCode:vacCode||'',Recruiter:myRecName||(acct&&acct.name?acct.name:'')};
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    if(res.ok){const item=await res.json();return item.id;}
+  }catch(e){console.warn('ResumeScreened save failed:',e.message);}
+  return null;
+}
+async function updateResumeScreenedStatus(spItemId,status){
+  if(!spItemId)return;
+  try{
+    await refreshToken();
+    await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items/'+spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:status}})});
+  }catch(e){console.warn('ResumeScreened status update failed:',e.message);}
+}
+
 let screenQueue=[];
 let _screenPush=null; // {resumeLink, score, recommendations} — consumed by submitNew()
 function fillScreenVacDrop(){
@@ -8533,6 +8559,7 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
     q.name=parsed.name||'';q.email=parsed.email||'';q.phone=(parsed.phone||'').replace(/\D/g,'').slice(-10);
     q.company=parsed.company||'';q.score=parsed.score;q.recommendations=parsed.recommendations||'';
     q.status='scored';
+    saveResumeScreenedRecord(q,vacCode).then(id=>{q.screenedSpItemId=id;});
   }catch(e){
     q.status='error';q.error=e.message;
   }
@@ -8597,6 +8624,7 @@ async function screenPushToTHP(i){
     const resumeLink=await uploadResumeToSharePoint(q.file);
     hideLoad();
     q.status='pushed';renderScreenQueue();
+    updateResumeScreenedStatus(q.screenedSpItemId,'Pushed to THP');
     goPanel('new');
     clearNew();
     _screenPush={resumeLink,score:q.score,recommendations:q.recommendations};
