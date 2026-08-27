@@ -3423,14 +3423,16 @@ function viewCandModal(code){
     if(r[C.videoInterviewData]){
       interviewHtml='<button class="btn btn-t btn-sm" onclick="closeModal();viewVideoInterview(\''+code+'\')">🎥 View AI Interview</button>';
     }else if(r[C.videoInterviewInvited]){
-      interviewHtml='<span style="font-size:11px;color:var(--w60)">Invited '+fmtD(r[C.videoInterviewInvited])+' — awaiting response</span>';
+      interviewHtml='<span style="font-size:11px;color:var(--w60)">Invited '+fmtD(r[C.videoInterviewInvited])+' — awaiting response</span>'+
+        (r[C.vacCode]?' <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:10px" onclick="inviteToVideoInterview(\''+code+'\')" title="Resend the same invite email">🔁 Resend</button>':'');
     }else if(r[C.vacCode]){
       interviewHtml='<button class="btn btn-ghost btn-sm" onclick="inviteToVideoInterview(\''+code+'\')">🎥 Invite to AI Interview</button>';
     }
     let resumeUploadHtml='';
     if(!r[C.resumeLink]){
       if(r[C.resumeUploadInvited]){
-        resumeUploadHtml='<span style="font-size:11px;color:var(--w60)">Resume upload invited '+fmtD(r[C.resumeUploadInvited])+' — awaiting response</span>';
+        resumeUploadHtml='<span style="font-size:11px;color:var(--w60)">Resume upload invited '+fmtD(r[C.resumeUploadInvited])+' — awaiting response</span>'+
+          (r[C.vacCode]?' <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:10px" onclick="inviteToResumeUpload(\''+code+'\')" title="Resend the same invite email">🔁 Resend</button>':'');
       }else if(r[C.vacCode]){
         resumeUploadHtml='<button class="btn btn-ghost btn-sm" onclick="inviteToResumeUpload(\''+code+'\')">📧 Invite to Upload Resume</button>';
       }
