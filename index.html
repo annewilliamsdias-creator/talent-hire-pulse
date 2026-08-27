@@ -8027,7 +8027,17 @@ function igSaveEval() {
   // persist to Evaluations sheet via direct Graph append (CR-OW-002)
   const recruiter=acct&&acct.username?acct.username:'';
   const ts=new Date().toISOString();
-  const dataJson=JSON.stringify(igEvalData[code]);
+  // 27 Aug 2026: Anne's call — once a transcript's useful content has been
+  // distilled via Populate Responses (into question notes + General Notes),
+  // the raw pasted transcript itself doesn't need to live on permanently in
+  // the saved evaluation. Stripped ONLY from what's persisted — the live
+  // in-memory ev.otterNotes/the visible textarea are untouched, so this
+  // session can still reference/re-run matching against it, and the
+  // significance signature below (which needs to detect "transcript notes
+  // changed this round" for EOD's Interviews Conducted count) still reads
+  // the real live value, not this stripped copy.
+  const persistData=Object.assign({},igEvalData[code],{otterNotes:''});
+  const dataJson=JSON.stringify(persistData);
   // Only classify this as a new "Interview" for EOD's Interviews Conducted
   // count when Role Questions scoring or Otter meeting notes actually changed
   // since the last save — a trivial re-save (manual-notes typo fix, etc.)
@@ -8180,7 +8190,9 @@ For each question, look through the transcript for a place where the candidate s
 
 When confident, write a concise 1–3 sentence paraphrase (not a verbatim copy of a long passage) of what the candidate said, in third person, suitable as an interview note.
 
-Return ONLY a JSON object mapping question key to matched note text, e.g. {"q3":"...","aq2":"..."}. Omit any key with no confident match. No markdown fences, no other text.`;
+Separately, the transcript will likely contain relevant information that doesn't map to any single question above — general background, context, observations, or anything else worth the recruiter having on record. Write a short summary (2–5 sentences, third person) of that OTHER material only — do not repeat anything already captured in a question match. Leave it as an empty string if there's genuinely nothing left over.
+
+Return ONLY a JSON object of this exact shape: {"matches":{"q3":"...","aq2":"..."},"otherNotes":"..."}. "matches" omits any key with no confident match. No markdown fences, no other text.`;
 
   toast('info','AI','Matching transcript to Role Questions...');
   try{
@@ -8195,11 +8207,13 @@ Return ONLY a JSON object mapping question key to matched note text, e.g. {"q3":
     let parsed={};
     try{parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){throw new Error('Could not parse AI response');}
     const qByKey={};qList.forEach(q=>qByKey[q.key]=q);
-    const matches=Object.entries(parsed)
+    const rawMatches=(parsed&&typeof parsed.matches==='object'&&parsed.matches)||{};
+    const matches=Object.entries(rawMatches)
       .filter(([k,v])=>qByKey[k]&&typeof v==='string'&&v.trim())
       .map(([k,v])=>({key:k,label:qByKey[k].label,qtext:qByKey[k].text,text:v.trim(),hasExisting:!!(ev.notes&&ev.notes[k]&&ev.notes[k].trim())}));
-    if(!matches.length){toast('info','No Matches','No confident matches found between this transcript and the Role Questions.');return;}
-    igLastTranscriptMatches={code,matches};
+    const otherNotes=(parsed&&typeof parsed.otherNotes==='string')?parsed.otherNotes.trim():'';
+    if(!matches.length&&!otherNotes){toast('info','No Matches','No confident matches — and nothing else worth noting — found in this transcript.');return;}
+    igLastTranscriptMatches={code,matches,otherNotes};
     igShowTranscriptMatchPreview();
   }catch(e){
     toast('err','AI','Transcript matching failed: '+e.message);
@@ -8220,10 +8234,25 @@ function igShowTranscriptMatchPreview(){
       </div>
       <textarea id="tm-txt-${i}" rows="2" style="width:100%;background:var(--w04);border:1px solid var(--w08);border-radius:6px;color:var(--ow);font-size:11px;padding:6px 8px;resize:vertical;font-family:inherit">${escHtml(match.text)}</textarea>
     </div>`).join('');
+  // 27 Aug 2026: leftover transcript content that doesn't map to any single
+  // question — goes into General Notes / Observations (ev.manualNotes),
+  // appended not overwritten, same non-destructive approach as the
+  // per-question matches above.
+  const otherHtml=m.otherNotes?`
+    <div style="padding:10px 12px;background:rgba(233,152,43,.06);border:1px solid rgba(233,152,43,.2);border-radius:var(--rs);margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+        <input type="checkbox" id="tm-chk-other" checked style="width:14px;height:14px;margin-top:2px;accent-color:var(--gold)">
+        <div style="flex:1">
+          <div style="font-size:11px;font-weight:600;color:var(--ow)">📝 Other Notes from Transcript</div>
+          <div style="font-size:9px;font-weight:600;letter-spacing:.3px;margin-top:3px;color:var(--gold)">Doesn't map to a specific question — will be added to General Notes / Observations</div>
+        </div>
+      </div>
+      <textarea id="tm-txt-other" rows="3" style="width:100%;background:var(--w04);border:1px solid var(--w08);border-radius:6px;color:var(--ow);font-size:11px;padding:6px 8px;resize:vertical;font-family:inherit">${escHtml(m.otherNotes)}</textarea>
+    </div>`:'';
   const sub=document.getElementById('tm-subtitle');
-  if(sub)sub.textContent=m.matches.length+' potential match(es) found — review, edit, and deselect any before applying. Nothing is saved yet.';
+  if(sub)sub.textContent=(m.matches.length?m.matches.length+' potential match(es)':'No question matches')+(m.otherNotes?' + other notes':'')+' found — review, edit, and deselect any before applying. Nothing is saved yet.';
   const body=document.getElementById('tm-body');
-  if(body)body.innerHTML=rowsHtml;
+  if(body)body.innerHTML=rowsHtml+otherHtml;
   const ov=document.getElementById('tm-overlay');
   if(ov)ov.style.display='block';
 }
@@ -8251,10 +8280,22 @@ function igApplyTranscriptMatches(){
     if(!hadNote){igEvalData[code].notes[match.key]=text;filled++;}
     else{referenced++;}
   });
+  let addedOther=false;
+  const otherChk=document.getElementById('tm-chk-other');
+  if(otherChk&&otherChk.checked){
+    const otherTxtEl=document.getElementById('tm-txt-other');
+    const otherText=(otherTxtEl?otherTxtEl.value:m.otherNotes||'').trim();
+    if(otherText){
+      const existing=(igEvalData[code].manualNotes||'').trim();
+      igEvalData[code].manualNotes=existing?existing+'\n\n— From meeting transcript —\n'+otherText:otherText;
+      const mn=document.getElementById('ig-manual-notes');if(mn)mn.value=igEvalData[code].manualNotes;
+      addedOther=true;
+    }
+  }
   closeTranscriptMatchPreview();
   if(igCurrentPage===2||igCurrentPage===5)igRenderPage();
   igSaveEval();
-  toast('ok','Applied',filled+' question(s) auto-filled, '+referenced+' kept as reference (existing notes untouched). Saved.');
+  toast('ok','Applied',filled+' question(s) auto-filled, '+referenced+' kept as reference'+(addedOther?', other notes added to General Notes':'')+'. Saved.');
 }
 
 async function igAISummary() {
