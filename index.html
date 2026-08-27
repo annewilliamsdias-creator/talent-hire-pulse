@@ -8607,6 +8607,32 @@ async function updateResumeScreenedStatus(spItemId,status){
     await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items/'+spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:status}})});
   }catch(e){console.warn('ResumeScreened status update failed:',e.message);}
 }
+// 27 Aug 2026 (queue item 10): count of resumes this recruiter scored today,
+// for the EOD Report summary bar. Not loaded into any in-memory array
+// elsewhere in THP (the screening panel is fire-and-forget), so this queries
+// the List directly, same pattern as saveResumeScreenedRecord above.
+// createdDateTime is a top-level Graph item property (always present,
+// independent of $select), not a custom field — same convention used
+// nowhere else in THP yet since every other List here is read via
+// loadCandidatesFromList()/loadJDsFromList() at startup, not filtered by
+// creation date on demand.
+async function fetchResumeScreenedTodayCount(recName,td){
+  try{
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items?$expand=fields($select=Recruiter)&$top=2000',{headers:{'Authorization':'Bearer '+tok}});
+    if(!res.ok)return 0;
+    const data=await res.json();
+    const items=(data&&data.value)||[];
+    return items.filter(it=>{
+      const rec=(it.fields&&it.fields.Recruiter)||'';
+      const created=(it.createdDateTime||'').slice(0,10);
+      return rec===recName&&created===td;
+    }).length;
+  }catch(e){
+    console.warn('fetchResumeScreenedTodayCount failed:',e.message);
+    return 0;
+  }
+}
 
 let screenQueue=[];
 let _screenPush=null; // {resumeLink, score, recommendations} — consumed by submitNew()
@@ -10085,6 +10111,7 @@ async function genEODReport(recName){
     const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
     clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&(recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase()));
   }catch(e){console.warn('EOD CL',e);}
+  const resumesScreenedToday=await fetchResumeScreenedTodayCount(recName,td);
   hideLoad();
 
   const actionedCodes=new Set(clRows.map(r=>String(r[3])));
@@ -10203,6 +10230,7 @@ async function genEODReport(recName){
       '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
       '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
       '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
+      '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesScreenedToday+'</span><span class="scl">Resumes Screened</span></div>'+
       '<div class="sc red"><span class="scn">'+s2.length+'</span><span class="scl">Tasks Pending</span></div>'+
     '</div>'+
 
