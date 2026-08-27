@@ -7907,13 +7907,10 @@ function igRenderPage() {
           <div><label style="font-size:10px;color:var(--w60)">General Notes / Observations</label><textarea id="ig-manual-notes" style="min-height:80px;font-size:12px;margin-top:4px" placeholder="Your interview observations, key points discussed, general impressions..." onchange="igSaveManualNotes(this)">${escHtml(ev2.manualNotes||'')}</textarea></div>
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <label style="font-size:10px;color:var(--w60)">Otter.ai Meeting Notes</label>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 9px" onclick="igFetchOtter()">🎙 Link Otter Meeting</button>
-                <button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 9px" onclick="igPopulateFromTranscript()" title="AI-match this transcript to the Role Questions on Page 3 — nothing is saved until you review and approve">🔎 Populate Responses</button>
-              </div>
+              <label style="font-size:10px;color:var(--w60)">Online Meeting Notes</label>
+              <button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 9px" onclick="igPopulateFromTranscript()" title="AI-match this transcript to the Role Questions on Page 3 — nothing is saved until you review and approve">🔎 Populate Responses</button>
             </div>
-            <textarea id="ig-otter-notes" style="min-height:80px;font-size:11px;color:var(--w60);margin-top:0" placeholder="Paste Otter transcript notes here, or use 'Link Otter Meeting' to pull from your Otter.ai account (paid plan required)." onchange="igSaveOtterNotes(this)">${escHtml(ev2.otterNotes||'')}</textarea>
+            <textarea id="ig-otter-notes" style="min-height:80px;font-size:11px;color:var(--w60);margin-top:0" placeholder="Paste your meeting transcript or notes here (from Teams, Notion, or wherever you keep it)." onchange="igSaveOtterNotes(this)">${escHtml(ev2.otterNotes||'')}</textarea>
           </div>
         </div>
       </div>
@@ -8090,65 +8087,13 @@ async function igViewHistory(code){
   showModal('📜 Evaluation History — '+r[C.name],rows.length+' round(s) on file',html,'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
 
-async function igFetchOtter() {
-  toast('info','Otter.ai','Connecting to Otter.ai...');
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        mcp_servers:[{type:'url',url:'https://mcp.otter.ai/mcp',name:'otter-mcp'}],
-        messages:[{role:'user',content:'List my 10 most recent Otter.ai meetings with their titles and dates. Return ONLY a JSON array like [{"id":"...","title":"...","date":"..."}] with no extra text.'}]
-      })
-    });
-    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
-    const data = await resp.json();
-    const block = data.content&&data.content.find(b=>b.type==='text');
-    if(!block) throw new Error('No response from Otter');
-    let meetings=[];
-    try { const clean=block.text.replace(/```json|```/g,'').trim(); meetings=JSON.parse(clean); } catch(e){ throw new Error('Could not parse Otter response'); }
-    if(!meetings.length){toast('info','Otter.ai','No meetings found.');return;}
-    // show picker
-    const opts = meetings.map((m,i)=>`<div style="padding:9px 12px;cursor:pointer;border-radius:var(--rs);background:var(--w06);border:1px solid var(--w08);margin-bottom:6px;font-size:12px" onclick="igPickOtterMeeting('${m.id}',this)"><strong>${escHtml(m.title||'Untitled')}</strong><span style="float:right;font-size:10px;color:var(--w60)">${m.date||''}</span></div>`).join('');
-    showModal('🎙 Select Otter Meeting','Choose the meeting to pull notes from:',opts,'<button class="btn btn-t btn-sm" onclick="closeModal()">Cancel</button>');
-  } catch(e) {
-    toast('warn','Otter.ai','Could not connect. You can paste notes manually in the text area below. (Otter MCP requires a paid Otter plan.)');
-  }
-}
+// 27 Aug 2026: removed igFetchOtter()/igPickOtterMeeting() (the "Link Otter
+// Meeting" button and its Otter.ai MCP fetch) — Anne's real meeting
+// transcripts live in Teams' own recording or Notion, never an Otter
+// account, so this was dead functionality. Manual paste + Populate
+// Responses (below) is now the only input path.
 
-async function igPickOtterMeeting(id, el) {
-  closeModal();
-  toast('info','Otter.ai','Fetching transcript...');
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        mcp_servers:[{type:'url',url:'https://mcp.otter.ai/mcp',name:'otter-mcp'}],
-        messages:[{role:'user',content:`Fetch the transcript for Otter meeting ID: ${id}. Return ONLY the plain text transcript content, no formatting or extra commentary.`}]
-      })
-    });
-    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
-    const data=await resp.json();
-    const block=data.content&&data.content.find(b=>b.type==='text');
-    const transcript=block?block.text:'No transcript available.';
-    if(igCandIdx>=0){
-      const code=MD[igCandIdx][C.code]||'unknown';
-      if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
-      igEvalData[code].otterNotes=transcript;
-      if(igCurrentPage===5){const el2=document.getElementById('ig-otter-notes');if(el2)el2.value=transcript;}
-    }
-    toast('ok','Otter.ai','Transcript loaded. You can edit before generating summary.');
-  } catch(e){
-    toast('err','Otter.ai','Failed to fetch transcript: '+e.message);
-  }
-}
-
-// 27 Aug 2026: matches a pasted meeting/interview transcript (the same
+// matches a pasted meeting/interview transcript (the same
 // textarea used for Otter/call notes) to the candidate's Role Questions by
 // MEANING, not transcript order — recruiters won't discuss questions in the
 // on-screen sequence. Never writes anything directly: results always go
