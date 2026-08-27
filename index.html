@@ -7402,6 +7402,11 @@ let igCandIdx = -1;
 let igEvalBaseline = {};
 let igCachedJD = null;  // JD resolved once when guide opens — stable across page navigation
 let igEvalData = {}; // keyed by candidate code
+// 27 Aug 2026: per-question "other sources" (AI interview / meeting transcript
+// text not currently shown in the note textarea) — rebuilt every Page 3
+// render, read by igAdoptSource() so the "Use as note" buttons don't need to
+// embed raw candidate text inside onclick HTML attributes (escaping risk).
+let igSrcCache = {};
 
 const IG_COMMON_DEFAULTS = {
   page1: `This guide is designed to help recruiters conduct a structured first-round interview in 25–30 minutes.
@@ -7523,7 +7528,7 @@ function openInterviewGuide() {
     }
   }
   // load existing eval if any
-  if(!igEvalData[code]) igEvalData[code] = {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code]) igEvalData[code] = {scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   if(!igEvalBaseline[code]) igEvalBaseline[code]=JSON.stringify({ticked:igEvalData[code].ticked,additionalTicked:igEvalData[code].additionalTicked,otterNotes:igEvalData[code].otterNotes});
   igCurrentPage = 0;
   igRenderPage();
@@ -7631,12 +7636,49 @@ function igEffectiveNote(r,ev,key,idx){
   return t?{val:t,auto:true}:{val:'',auto:false};
 }
 
+// 27 Aug 2026: renders any source for this question that ISN'T already the
+// value showing in the note textarea above it — e.g. once a recruiter types
+// a manual note, the AI-interview transcript is no longer shown inline (see
+// igEffectiveNote), but it still exists and Anne wants it visible, flagged
+// by source, rather than silently hidden. Same treatment for a meeting-
+// transcript match applied via "Populate Responses". Never auto-adopted —
+// each source is a reference chip with an explicit "Use as note" action.
+function igOtherSourcesHtml(r,ev,code,key,idx,activeVal){
+  if(!igSrcCache[code])igSrcCache[code]={};
+  const aiText=igTranscriptFor(r,idx);
+  const tsText=(ev&&ev.transcriptNotes&&ev.transcriptNotes[key])||'';
+  igSrcCache[code][key]={ai:aiText,transcript:tsText};
+  let chips='';
+  if(aiText&&aiText.trim()&&aiText!==activeVal)chips+=igSrcChip(key,'ai','🎥','AI Interview',aiText);
+  if(tsText&&tsText.trim()&&tsText!==activeVal)chips+=igSrcChip(key,'transcript','📝','Meeting Transcript',tsText);
+  return chips;
+}
+function igSrcChip(key,srcType,icon,label,text){
+  const short=text.length>160?text.slice(0,160)+'…':text;
+  return `<div style="margin-top:5px;padding:6px 8px;background:var(--w04);border:1px dashed var(--w12);border-radius:6px;font-size:10px;color:var(--w60)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div><strong style="color:var(--ow)">${icon} ${label}:</strong> ${escHtml(short)}</div>
+      <button class="btn btn-ghost btn-sm" style="font-size:9px;padding:2px 6px;flex-shrink:0;white-space:nowrap" onclick="igAdoptSource('${key}','${srcType}')">↑ Use as note</button>
+    </div>
+  </div>`;
+}
+function igAdoptSource(key,srcType){
+  if(igCandIdx<0)return;
+  const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
+  const src=igSrcCache[code]&&igSrcCache[code][key];
+  if(!src||!src[srcType]){toast('warn','Not available','That source is no longer available — re-open the guide and try again.');return;}
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  igEvalData[code].notes[key]=src[srcType];
+  igRenderPage();
+  toast('ok','Note updated','Applied — remember to Save Notes.');
+}
+
 function igRenderPage() {
   const body = document.getElementById('ig-body');
   if(!body) return;
   const r = igCandIdx>=0&&igCandIdx<MD.length ? MD[igCandIdx] : {};
   const code = r[C.code]||'unknown';
-  const ev = igEvalData[code] || {scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  const ev = igEvalData[code] || {scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   const jd = igCachedJD || igGetJD();  // use cached — won't break if repoData changes mid-session
 
   if(igCurrentPage===0) {
@@ -7686,6 +7728,7 @@ function igRenderPage() {
     // JD's questions are ever reordered without updating the Portal's
     // copy, this mapping silently drifts; no way to detect that from here.
     let anyAuto=false;
+    igSrcCache[code]={};
 
     let html = '';
     if(jd.preread) html += `<div style="background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:1px;margin-bottom:6px">📖 PRE-READ FOR RECRUITER</div><div style="font-size:12px;line-height:1.8;white-space:pre-wrap">${escHtml(jd.preread)}</div></div>`;
@@ -7697,10 +7740,11 @@ function igRenderPage() {
         const key='q'+(i+1); const ticked=ev.ticked&&ev.ticked[key];
         const eff=igEffectiveNote(r,ev,key,i);
         if(eff.auto)anyAuto=true;
+        const srcHtml=igOtherSourcesHtml(r,ev,code,key,i,eff.val);
         return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:${ticked?'rgba(52,186,198,.08)':'var(--w06)'};border:1px solid ${ticked?'rgba(52,186,198,.2)':'var(--w08)'};border-radius:var(--rs);margin-bottom:6px">
           <label style="display:flex;align-items:center;gap:0;cursor:pointer;flex-shrink:0;margin-top:2px"><input type="checkbox" class="ig-q-tick" data-key="${key}" ${ticked?'checked':''} style="width:14px;height:14px;accent-color:var(--teal)" onchange="igTickQ(this,'ticked')"></label>
           <div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${i+1}. ${escHtml(q)}${eff.auto?'<span style="color:var(--teal);font-size:10px;font-weight:400;margin-left:6px">🎥 from AI interview — edit to override</span>':''}</div>
-          <textarea rows="2" class="ig-note-q" data-key="${key}" placeholder="Note..." style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0;resize:vertical;font-family:inherit" onchange="igNoteQ(this,'notes')">${escHtml(eff.val)}</textarea></div></div>`;
+          <textarea rows="2" class="ig-note-q" data-key="${key}" placeholder="Note..." style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0;resize:vertical;font-family:inherit" onchange="igNoteQ(this,'notes')">${escHtml(eff.val)}</textarea>${srcHtml}</div></div>`;
       }).join('');
     }
 
@@ -7710,10 +7754,11 @@ function igRenderPage() {
         const key='aq'+(i+1); const ticked=ev.additionalTicked&&ev.additionalTicked[key];
         const eff=igEffectiveNote(r,ev,key,coreQs.length+i);
         if(eff.auto)anyAuto=true;
+        const srcHtml=igOtherSourcesHtml(r,ev,code,key,coreQs.length+i,eff.val);
         return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:${ticked?'rgba(233,152,43,.07)':'var(--w06)'};border:1px solid ${ticked?'rgba(233,152,43,.2)':'var(--w08)'};border-radius:var(--rs);margin-bottom:6px">
           <label style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;margin-top:2px"><input type="checkbox" class="ig-aq-tick" data-key="${key}" ${ticked?'checked':''} style="width:14px;height:14px;accent-color:var(--gold)" onchange="igTickQ(this,'additionalTicked')"></label>
           <div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${i+1}. ${escHtml(q)}${eff.auto?'<span style="color:var(--teal);font-size:10px;font-weight:400;margin-left:6px">🎥 from AI interview — edit to override</span>':''}</div>
-          <textarea rows="2" class="ig-note-aq" data-key="${key}" placeholder="Note..." style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0;resize:vertical;font-family:inherit" onchange="igNoteQ(this,'notes')">${escHtml(eff.val)}</textarea></div></div>`;
+          <textarea rows="2" class="ig-note-aq" data-key="${key}" placeholder="Note..." style="width:100%;background:transparent;border:0;border-bottom:1px solid var(--w08);color:var(--ow);font-size:11px;padding:3px 0;resize:vertical;font-family:inherit" onchange="igNoteQ(this,'notes')">${escHtml(eff.val)}</textarea>${srcHtml}</div></div>`;
       }).join('');
     }
 
@@ -7841,7 +7886,10 @@ function igRenderPage() {
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
               <label style="font-size:10px;color:var(--w60)">Otter.ai Meeting Notes</label>
-              <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 9px" onclick="igFetchOtter()">🎙 Link Otter Meeting</button>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 9px" onclick="igFetchOtter()">🎙 Link Otter Meeting</button>
+                <button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 9px" onclick="igPopulateFromTranscript()" title="AI-match this transcript to the Role Questions on Page 3 — nothing is saved until you review and approve">🔎 Populate Responses</button>
+              </div>
             </div>
             <textarea id="ig-otter-notes" style="min-height:80px;font-size:11px;color:var(--w60);margin-top:0" placeholder="Paste Otter transcript notes here, or use 'Link Otter Meeting' to pull from your Otter.ai account (paid plan required)." onchange="igSaveOtterNotes(this)">${escHtml(ev2.otterNotes||'')}</textarea>
           </div>
@@ -7865,7 +7913,7 @@ function igRenderPage() {
 function igTickQ(el,storeKey) {
   if(igCandIdx<0) return;
   const r = MD[igCandIdx]; const code=r[C.code]||'unknown';
-  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   const key=el.getAttribute('data-key');
   igEvalData[code][storeKey][key]=el.checked;
   // re-colour the row
@@ -7876,7 +7924,7 @@ function igTickQ(el,storeKey) {
 function igNoteQ(el,storeKey) {
   if(igCandIdx<0) return;
   const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
-  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   const key=el.getAttribute('data-key');
   igEvalData[code][storeKey][key]=el.value;
 }
@@ -7901,7 +7949,7 @@ function computeFitmentScore(ev){
 function igSetScore(area,val,el) {
   if(igCandIdx<0) return;
   const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
-  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igEvalData[code].scores[area]=val;
   igEvalData[code].fitmentScore=computeFitmentScore(igEvalData[code]);
   // update button styles
@@ -7916,7 +7964,7 @@ function igSetScore(area,val,el) {
 function igSetRec(rec,el) {
   if(igCandIdx<0) return;
   const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
-  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igEvalData[code].recommendation=rec;
   const colors={Shortlist:'var(--teal)',Hold:'var(--gold)',Reject:'#ff6b6b'};
   const bgs={Shortlist:'var(--tdim)',Hold:'var(--gdim)',Reject:'rgba(255,80,80,.1)'};
@@ -7931,19 +7979,19 @@ function igSetRec(rec,el) {
 function igSaveManualNotes(el){
   if(igCandIdx<0) return;
   const code=MD[igCandIdx][C.code]||'unknown';
-  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igEvalData[code].manualNotes=el.value;
 }
 function igSaveOtterNotes(el){
   if(igCandIdx<0) return;
   const code=MD[igCandIdx][C.code]||'unknown';
-  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igEvalData[code].otterNotes=el.value;
 }
 function igSaveSummary(el){
   if(igCandIdx<0) return;
   const code=MD[igCandIdx][C.code]||'unknown';
-  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   igEvalData[code].summary=el.value;
 }
 
@@ -8058,7 +8106,7 @@ async function igPickOtterMeeting(id, el) {
     const transcript=block?block.text:'No transcript available.';
     if(igCandIdx>=0){
       const code=MD[igCandIdx][C.code]||'unknown';
-      if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+      if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
       igEvalData[code].otterNotes=transcript;
       if(igCurrentPage===5){const el2=document.getElementById('ig-otter-notes');if(el2)el2.value=transcript;}
     }
@@ -8066,6 +8114,119 @@ async function igPickOtterMeeting(id, el) {
   } catch(e){
     toast('err','Otter.ai','Failed to fetch transcript: '+e.message);
   }
+}
+
+// 27 Aug 2026: matches a pasted meeting/interview transcript (the same
+// textarea used for Otter/call notes) to the candidate's Role Questions by
+// MEANING, not transcript order — recruiters won't discuss questions in the
+// on-screen sequence. Never writes anything directly: results always go
+// through the preview modal (igShowTranscriptMatchPreview) for the recruiter
+// to review, edit, deselect, and approve before anything touches
+// igEvalData. On apply (igApplyTranscriptMatches), a match is stashed as a
+// labeled reference (ev.transcriptNotes[key]) always, and additionally
+// copied into the live note (ev.notes[key]) ONLY if that question currently
+// has no note at all — an existing manual or AI-interview-derived answer is
+// never overwritten, matching Anne's original ask; it just gets the
+// transcript match sitting alongside it as a source the recruiter can pull
+// in manually via "Use as note" (see igOtherSourcesHtml/igAdoptSource).
+let igLastTranscriptMatches=null; // {code, matches:[{key,label,text,hasExisting}]}
+async function igPopulateFromTranscript(){
+  if(igCandIdx<0){toast('warn','No Candidate','Open a candidate first.');return;}
+  const r=MD[igCandIdx]; const code=r[C.code]||'unknown';
+  const on=document.getElementById('ig-otter-notes');
+  const transcript=(on?on.value:(igEvalData[code]&&igEvalData[code].otterNotes))||'';
+  if(!transcript.trim()){toast('warn','No Transcript','Paste meeting/interview transcript notes into the box above first.');return;}
+  const jd=igCachedJD||igGetJD();
+  if(!jd){toast('warn','No Interview Guide','This role has no linked Role Questions to match against.');return;}
+  const ev=igEvalData[code]||{};
+  const qList=[];
+  for(let i=1;i<=10;i++){if(jd['q'+i]&&jd['q'+i].trim())qList.push({key:'q'+i,label:'Core Q'+i,text:jd['q'+i].trim()});}
+  for(let i=1;i<=5;i++){if(jd['aq'+i]&&jd['aq'+i].trim())qList.push({key:'aq'+i,label:'Additional Q'+i,text:jd['aq'+i].trim()});}
+  if(!qList.length){toast('warn','No Questions','This role\'s Interview Guide has no Core or Additional questions to match against.');return;}
+
+  const prompt=`You are matching a recruiter's meeting/interview transcript to a fixed list of interview questions, BY MEANING — the transcript will not follow the same order as the question list below, and may cover a question's topic while discussing something else.
+
+TRANSCRIPT / MEETING NOTES:
+"""
+${transcript}
+"""
+
+INTERVIEW QUESTIONS (key: question text):
+${qList.map(q=>`${q.key}: ${q.text}`).join('\n')}
+
+For each question, look through the transcript for a place where the candidate substantively answered it. Only report a match if you are genuinely confident the transcript addresses that specific question — if it's unclear, unrelated, or only loosely touches the topic, SKIP that key entirely rather than guessing.
+
+When confident, write a concise 1–3 sentence paraphrase (not a verbatim copy of a long passage) of what the candidate said, in third person, suitable as an interview note.
+
+Return ONLY a JSON object mapping question key to matched note text, e.g. {"q3":"...","aq2":"..."}. Omit any key with no confident match. No markdown fences, no other text.`;
+
+  toast('info','AI','Matching transcript to Role Questions...');
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,messages:[{role:'user',content:prompt}]})
+    });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
+    const data=await resp.json();
+    const raw=(data.content&&data.content[0]&&data.content[0].text)||'{}';
+    let parsed={};
+    try{parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){throw new Error('Could not parse AI response');}
+    const qByKey={};qList.forEach(q=>qByKey[q.key]=q);
+    const matches=Object.entries(parsed)
+      .filter(([k,v])=>qByKey[k]&&typeof v==='string'&&v.trim())
+      .map(([k,v])=>({key:k,label:qByKey[k].label,qtext:qByKey[k].text,text:v.trim(),hasExisting:!!(ev.notes&&ev.notes[k]&&ev.notes[k].trim())}));
+    if(!matches.length){toast('info','No Matches','No confident matches found between this transcript and the Role Questions.');return;}
+    igLastTranscriptMatches={code,matches};
+    igShowTranscriptMatchPreview();
+  }catch(e){
+    toast('err','AI','Transcript matching failed: '+e.message);
+  }
+}
+
+function igShowTranscriptMatchPreview(){
+  const m=igLastTranscriptMatches;
+  if(!m)return;
+  const rowsHtml=m.matches.map((match,i)=>`
+    <div style="padding:10px 12px;background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+        <input type="checkbox" id="tm-chk-${i}" checked style="width:14px;height:14px;margin-top:2px;accent-color:var(--teal)">
+        <div style="flex:1">
+          <div style="font-size:11px;font-weight:600;color:var(--ow)">${escHtml(match.label)}: ${escHtml(match.qtext)}</div>
+          <div style="font-size:9px;font-weight:600;letter-spacing:.3px;margin-top:3px;color:${match.hasExisting?'var(--gold)':'var(--teal)'}">${match.hasExisting?'⚠ ALREADY HAS A NOTE — will be kept as reference only, not overwritten':'✓ CURRENTLY EMPTY — will auto-fill this note if approved'}</div>
+        </div>
+      </div>
+      <textarea id="tm-txt-${i}" rows="2" style="width:100%;background:var(--w04);border:1px solid var(--w08);border-radius:6px;color:var(--ow);font-size:11px;padding:6px 8px;resize:vertical;font-family:inherit">${escHtml(match.text)}</textarea>
+    </div>`).join('');
+  showModal('🔎 Transcript Match Preview',
+    m.matches.length+' potential match(es) found — review, edit, and deselect any before applying. Nothing is saved yet.',
+    rowsHtml,
+    `<button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button><button class="btn btn-t btn-sm" onclick="igApplyTranscriptMatches()">Apply Selected</button>`);
+}
+
+function igApplyTranscriptMatches(){
+  const m=igLastTranscriptMatches;
+  if(!m){closeModal();return;}
+  const code=m.code;
+  if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+  if(!igEvalData[code].transcriptNotes)igEvalData[code].transcriptNotes={};
+  let filled=0,referenced=0;
+  m.matches.forEach((match,i)=>{
+    const chk=document.getElementById('tm-chk-'+i);
+    if(!chk||!chk.checked)return;
+    const txtEl=document.getElementById('tm-txt-'+i);
+    const text=(txtEl?txtEl.value:match.text).trim();
+    if(!text)return;
+    igEvalData[code].transcriptNotes[match.key]=text;
+    const hadNote=!!(igEvalData[code].notes[match.key]&&igEvalData[code].notes[match.key].trim());
+    if(!hadNote){igEvalData[code].notes[match.key]=text;filled++;}
+    else{referenced++;}
+  });
+  igLastTranscriptMatches=null;
+  closeModal();
+  if(igCurrentPage===2||igCurrentPage===5)igRenderPage();
+  igSaveEval();
+  toast('ok','Applied',filled+' question(s) auto-filled, '+referenced+' kept as reference (existing notes untouched). Saved.');
 }
 
 async function igAISummary() {
@@ -8184,7 +8345,7 @@ Base "Relevant experience", "Strong example shared", and "Strengths" primarily o
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     let summary=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'Could not generate summary.';
-    if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
+    if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
     // Defensive: strip a fitment/rating line if the AI includes one anyway
     // despite the prompt instruction not to — belt-and-suspenders, since the
     // real fix is that it's never asked for one and the score is computed
