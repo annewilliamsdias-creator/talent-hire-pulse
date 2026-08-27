@@ -7386,6 +7386,28 @@ function dlChartPNG(canvasId, name) {
 </div>
 </div>
 
+<!-- TRANSCRIPT MATCH PREVIEW — dedicated overlay (27 Aug 2026), same reason
+     as viewint-overlay above: the generic #modal has no max-height/scroll,
+     and a role with 15 Core+Additional questions reliably overflows it,
+     pushing Apply/Cancel off-screen with no way to reach them (real report,
+     Anup Ashok Nishad). Pinned header+footer, scrollable middle only. -->
+<div id="tm-overlay" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeTranscriptMatchPreview()">
+<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:640px;max-width:95vw;max-height:88vh;background:#0f1c2e;border:1px solid rgba(233,152,43,.3);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6)">
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--w08);flex-shrink:0">
+    <div style="flex:1">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:var(--gold)">🔎 Transcript Match Preview</div>
+      <div id="tm-subtitle" style="font-size:11px;color:var(--w60);margin-top:2px">—</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:#ff6b6b" onclick="closeTranscriptMatchPreview()">✕ Close</button>
+  </div>
+  <div id="tm-body" style="flex:1;overflow-y:auto;padding:16px 20px"></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--w08);flex-shrink:0">
+    <button class="btn btn-ghost btn-sm" onclick="closeTranscriptMatchPreview()">Cancel</button>
+    <button class="btn btn-t btn-sm" onclick="igApplyTranscriptMatches()">Apply Selected</button>
+  </div>
+</div>
+</div>
+
 <script>
 // ===== INTERVIEW GUIDE ENGINE =====
 let igCurrentPage = 0;
@@ -8198,15 +8220,22 @@ function igShowTranscriptMatchPreview(){
       </div>
       <textarea id="tm-txt-${i}" rows="2" style="width:100%;background:var(--w04);border:1px solid var(--w08);border-radius:6px;color:var(--ow);font-size:11px;padding:6px 8px;resize:vertical;font-family:inherit">${escHtml(match.text)}</textarea>
     </div>`).join('');
-  showModal('🔎 Transcript Match Preview',
-    m.matches.length+' potential match(es) found — review, edit, and deselect any before applying. Nothing is saved yet.',
-    rowsHtml,
-    `<button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button><button class="btn btn-t btn-sm" onclick="igApplyTranscriptMatches()">Apply Selected</button>`);
+  const sub=document.getElementById('tm-subtitle');
+  if(sub)sub.textContent=m.matches.length+' potential match(es) found — review, edit, and deselect any before applying. Nothing is saved yet.';
+  const body=document.getElementById('tm-body');
+  if(body)body.innerHTML=rowsHtml;
+  const ov=document.getElementById('tm-overlay');
+  if(ov)ov.style.display='block';
+}
+function closeTranscriptMatchPreview(){
+  const ov=document.getElementById('tm-overlay');
+  if(ov)ov.style.display='none';
+  igLastTranscriptMatches=null;
 }
 
 function igApplyTranscriptMatches(){
   const m=igLastTranscriptMatches;
-  if(!m){closeModal();return;}
+  if(!m){closeTranscriptMatchPreview();return;}
   const code=m.code;
   if(!igEvalData[code]) igEvalData[code]={scores:{},notes:{},transcriptNotes:{},ticked:{},additionalTicked:{},otterNotes:'',manualNotes:'',summary:'',recommendation:''};
   if(!igEvalData[code].transcriptNotes)igEvalData[code].transcriptNotes={};
@@ -8222,8 +8251,7 @@ function igApplyTranscriptMatches(){
     if(!hadNote){igEvalData[code].notes[match.key]=text;filled++;}
     else{referenced++;}
   });
-  igLastTranscriptMatches=null;
-  closeModal();
+  closeTranscriptMatchPreview();
   if(igCurrentPage===2||igCurrentPage===5)igRenderPage();
   igSaveEval();
   toast('ok','Applied',filled+' question(s) auto-filled, '+referenced+' kept as reference (existing notes untouched). Saved.');
