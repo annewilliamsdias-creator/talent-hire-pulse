@@ -1112,6 +1112,14 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showSched()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:var(--teal);border-color:rgba(52,186,198,.3)" onclick="openInterviewGuide()">📋 Interview Guide</button>
 </div>
+<!-- 28 Aug 2026: Talent+ Gateway scores + actions (resume scoring, AI
+     interview invite/resend, resume upload invite/resend, send resume) —
+     previously only reachable from the separate candidate detail popup.
+     Populated by renderUpdGateway(), called from doLookup() and refreshed
+     by refreshCandSurfaces() after any action changes what it shows. -->
+<div id="uGwScores" style="margin-top:8px"></div>
+<div id="uGwBtns" class="flex gap8 mt8" style="flex-wrap:wrap"></div>
+</div>
 </div>
 </div>
 <div class="card">
@@ -3279,6 +3287,7 @@ if(uSubHdr){
 document.getElementById('uCd').textContent=r[C.code];
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
 const _evU=igEvalData[r[C.code]||'']||{};const _fsEl=document.getElementById('uFitmentChip');if(_fsEl){if(_evU.fitmentScore){const _fc=_evU.fitmentScore>=8?'#5e7855':_evU.fitmentScore>=5?'#34bac6':'#e9982b';_fsEl.innerHTML='<span style="font-size:10px;font-weight:600;color:'+_fc+';background:'+_fc+'18;border:1px solid '+_fc+'44;border-radius:12px;padding:2px 8px" title="Final Recruiter Interview Score">⭐ '+_evU.fitmentScore+'/10</span>';_fsEl.style.display='inline';}else{_fsEl.style.display='none';}}
+renderUpdGateway(r,r[C.code]);
 sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 // Pre-fill existing values (including dates) so user sees current state
 sv('uFU',r[C.followupDate]||'');sv('uIvD',r[C.interviewDate]||'');sv('uDecD',r[C.decisionDate]||'');sv('uDOJ',r[C.doj]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');
@@ -3399,66 +3408,108 @@ if(pg){
     '<button class="btn btn-ghost btn-sm" '+(recPage>=totalPages-1?'disabled':'')+' onclick="recPage++;renderRec()">Next →</button>';
 }}
 
+// 28 Aug 2026: shared by viewCandModal() and the Update Record banner
+// (doLookup()/renderUpdGateway()) — Anne wanted resume/AI-interview scores
+// and actions visible from the Update Record form too, not only this
+// popup, so this logic needed to stop being private to viewCandModal().
+// Gate condition history (22 Aug 2026, v7.11): originally gated on
+// resumeLink/resumeFitmentData/videoInterviewInvited only — but the Invite
+// button is the entry point that SETS videoInterviewInvited, so a candidate
+// with none of those yet (i.e. every candidate, before being invited) never
+// showed the section at all, including the button that would invite them.
+// Gate on vacCode instead, which nearly every candidate has.
+function buildGatewayHtml(r,code){
+  if(!(r[C.vacCode]||r[C.resumeLink]||r[C.resumeFitmentData]||r[C.videoInterviewInvited]))return{scoresHtml:'',btnsHtml:''};
+  let fitHtml='';
+  if(r[C.resumeFitmentData]){
+    try{
+      const fd=JSON.parse(r[C.resumeFitmentData]);
+      fitHtml='<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--teal)">RESUME FITMENT VS JD: '+fd.score+'/10</span><div style="font-size:11px;color:var(--w60);margin-top:2px">'+escHtml(fd.recommendations||'')+'</div></div>';
+    }catch(e){}
+  }else if(r[C.resumeLink]){
+    fitHtml='<div style="margin-bottom:8px;font-size:11px;color:var(--gold)">🔍 Resume Fitment not yet scored — click "Score Resume Fitment" below</div>';
+  }
+  // 28 Aug 2026: AI Video Interview score was never surfaced here at all
+  // (only inside the Interview Guide's own Evaluation tab) — added so "all
+  // scores visible in one place" is actually true.
+  let vidHtml='';
+  if(r[C.videoInterviewData]){
+    try{
+      const vd=JSON.parse(r[C.videoInterviewData]);
+      vidHtml='<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--teal)">AI VIDEO INTERVIEW: '+vd.overallScore+'/10</span>'+(vd.summary?'<div style="font-size:11px;color:var(--w60);margin-top:2px">'+escHtml(vd.summary)+'</div>':'')+'</div>';
+    }catch(e){}
+  }
+  let interviewHtml='';
+  if(r[C.videoInterviewData]){
+    interviewHtml='<button class="btn btn-t btn-sm" onclick="closeModal();closeViewCandModal();viewVideoInterview(\''+code+'\')">🎥 View AI Interview</button>';
+  }else if(r[C.videoInterviewInvited]){
+    interviewHtml='<span style="font-size:11px;color:var(--w60)">Invited '+fmtD(r[C.videoInterviewInvited])+' — awaiting response</span>'+
+      (r[C.vacCode]?' <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:10px" onclick="inviteToVideoInterview(\''+code+'\')" title="Resend the same invite email">🔁 Resend</button>':'');
+  }else if(r[C.vacCode]){
+    interviewHtml='<button class="btn btn-ghost btn-sm" onclick="inviteToVideoInterview(\''+code+'\')">🎥 Invite to AI Interview</button>';
+  }
+  let resumeUploadHtml='';
+  if(!r[C.resumeLink]){
+    if(r[C.resumeUploadInvited]){
+      resumeUploadHtml='<span style="font-size:11px;color:var(--w60)">Resume upload invited '+fmtD(r[C.resumeUploadInvited])+' — awaiting response</span>'+
+        (r[C.vacCode]?' <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:10px" onclick="inviteToResumeUpload(\''+code+'\')" title="Resend the same invite email">🔁 Resend</button>':'');
+    }else if(r[C.vacCode]){
+      resumeUploadHtml='<button class="btn btn-ghost btn-sm" onclick="inviteToResumeUpload(\''+code+'\')">📧 Invite to Upload Resume</button>';
+    }
+  }
+  const btnsHtml='<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
+    (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="window.open(\''+r[C.resumeLink]+'\',\'_blank\')">📄 View Resume</button>':'')+
+    (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="triggerSendResume(\''+code+'\')" title="Send this resume as an email attachment to an address you enter">✉️ Send Resume</button>':'')+
+    (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="computeResumeFitment(\''+code+'\')">🔍 '+(r[C.resumeFitmentData]?'Re-score':'Score')+' Resume Fitment</button>':'')+
+    '<button class="btn btn-ghost btn-sm" onclick="triggerResumeUpload(\''+code+'\')">📤 '+(r[C.resumeLink]?'Replace':'Upload')+' Resume</button>'+
+    resumeUploadHtml+
+    interviewHtml+
+    '</div>';
+  return{scoresHtml:fitHtml+vidHtml,btnsHtml};
+}
+// 28 Aug 2026: any action that can change what buildGatewayHtml() shows
+// (fitment scored, resume uploaded, invite sent) calls this afterward so
+// whichever surface(s) are currently showing that candidate — the Update
+// Record banner and/or this popup — reflect it without a manual re-lookup.
+function refreshCandSurfaces(code){
+  const r=MD.find(x=>x[C.code]===code);
+  if(!r)return;
+  if(eIdx!==-1&&MD[eIdx]&&MD[eIdx][C.code]===code)renderUpdGateway(r,code);
+  if(window._mc===code&&document.getElementById('vc-overlay').style.display==='block')viewCandModal(code);
+}
+function closeViewCandModal(){
+  const ov=document.getElementById('vc-overlay');
+  if(ov)ov.style.display='none';
+}
+// 28 Aug 2026: populates the Update Record banner's score+action area —
+// same buildGatewayHtml() output viewCandModal() uses, just without the
+// boxed "🌐 Talent+ Gateway" heading/border (this is a compact banner, not
+// a document — the scores/buttons flow inline instead).
+function renderUpdGateway(r,code){
+  const sc=document.getElementById('uGwScores'),bt=document.getElementById('uGwBtns');
+  if(!sc||!bt)return;
+  const gw=buildGatewayHtml(r,code);
+  sc.innerHTML=gw.scoresHtml;
+  bt.innerHTML=gw.btnsHtml;
+}
 function viewCandModal(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
   const allRem=(r[C.remark]||'').split('|').map(s=>s.trim()).filter(Boolean);
   const latestRem=allRem.length?allRem[allRem.length-1]:'—';
   const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status','<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>'],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up',fmtD(r[C.followupDate])],['Interview',r[C.interviewDate]?fmtD(r[C.interviewDate])+(r._iTime?' @ '+r._iTime:''):'—'],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM',r[C.salaryPM]?'₹'+r[C.salaryPM]:'—'],['Exp Salary PM',r[C.expectedSalary]?'₹'+r[C.expectedSalary]:'—'],['Offered Salary',r[C.offeredSalary]?'₹'+r[C.offeredSalary]:'—'],['Expected DOJ',r[C.doj]?fmtD(r[C.doj]):'—'],['Latest Remark',escHtml(latestRem)],['Updated By',r[C.updatedBy]||'—'],['Updated On',fmtD(r[C.updatedOn])]];
-  let tableHtml='<div style="max-height:260px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table></div>';
+  let tableHtml='<table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table>';
   if(allRem.length>1){const prev=allRem.slice(0,-1).reverse();tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">📋 Remarks History</div>'+prev.map((rm,i)=>'<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="font-size:9px;color:rgba(251,251,250,.35)">PREV '+(prev.length-i)+'</span><span style="color:var(--w60);margin-left:6px">'+escHtml(rm)+'</span></div>').join('')+'</div>';}
 
-  // 22 Aug 2026 (v7.11): Talent+ Gateway section.
-  // BUG FIXED 22 Aug 2026 (same day, before Anne could find any Gateway data
-  // to test against): originally gated on resumeLink/resumeFitmentData/
-  // videoInterviewInvited only — but the Invite button is the entry point
-  // that SETS videoInterviewInvited, so a candidate with none of those yet
-  // (i.e. every candidate, before being invited) never showed the section
-  // at all, including the button that would invite them. Anne correctly
-  // reported "I don't see the new features" — this was why. Gate on vacCode
-  // instead, which nearly every candidate has, so the invite action is
-  // actually reachable.
-  if(r[C.vacCode]||r[C.resumeLink]||r[C.resumeFitmentData]||r[C.videoInterviewInvited]){
-    let fitHtml='';
-    if(r[C.resumeFitmentData]){
-      try{
-        const fd=JSON.parse(r[C.resumeFitmentData]);
-        fitHtml='<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--teal)">RESUME FITMENT VS JD: '+fd.score+'/10</span><div style="font-size:11px;color:var(--w60);margin-top:2px">'+escHtml(fd.recommendations||'')+'</div></div>';
-      }catch(e){}
-    }else if(r[C.resumeLink]){
-      fitHtml='<div style="margin-bottom:8px;font-size:11px;color:var(--gold)">🔍 Resume Fitment not yet scored — click "Score Resume Fitment" below</div>';
-    }
-    let interviewHtml='';
-    if(r[C.videoInterviewData]){
-      interviewHtml='<button class="btn btn-t btn-sm" onclick="closeModal();viewVideoInterview(\''+code+'\')">🎥 View AI Interview</button>';
-    }else if(r[C.videoInterviewInvited]){
-      interviewHtml='<span style="font-size:11px;color:var(--w60)">Invited '+fmtD(r[C.videoInterviewInvited])+' — awaiting response</span>'+
-        (r[C.vacCode]?' <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:10px" onclick="inviteToVideoInterview(\''+code+'\')" title="Resend the same invite email">🔁 Resend</button>':'');
-    }else if(r[C.vacCode]){
-      interviewHtml='<button class="btn btn-ghost btn-sm" onclick="inviteToVideoInterview(\''+code+'\')">🎥 Invite to AI Interview</button>';
-    }
-    let resumeUploadHtml='';
-    if(!r[C.resumeLink]){
-      if(r[C.resumeUploadInvited]){
-        resumeUploadHtml='<span style="font-size:11px;color:var(--w60)">Resume upload invited '+fmtD(r[C.resumeUploadInvited])+' — awaiting response</span>'+
-          (r[C.vacCode]?' <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:10px" onclick="inviteToResumeUpload(\''+code+'\')" title="Resend the same invite email">🔁 Resend</button>':'');
-      }else if(r[C.vacCode]){
-        resumeUploadHtml='<button class="btn btn-ghost btn-sm" onclick="inviteToResumeUpload(\''+code+'\')">📧 Invite to Upload Resume</button>';
-      }
-    }
-    tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:8px">🌐 Talent+ Gateway</div>'+
-      fitHtml+
-      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
-      (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="window.open(\''+r[C.resumeLink]+'\',\'_blank\')">📄 View Resume</button>':'')+
-      (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="triggerSendResume(\''+code+'\')" title="Send this resume as an email attachment to an address you enter">✉️ Send Resume</button>':'')+
-      (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="computeResumeFitment(\''+code+'\')">🔍 '+(r[C.resumeFitmentData]?'Re-score':'Score')+' Resume Fitment</button>':'')+
-      '<button class="btn btn-ghost btn-sm" onclick="triggerResumeUpload(\''+code+'\')">📤 '+(r[C.resumeLink]?'Replace':'Upload')+' Resume</button>'+
-      resumeUploadHtml+
-      interviewHtml+
-      '</div></div>';
+  const gw=buildGatewayHtml(r,code);
+  if(gw.scoresHtml||gw.btnsHtml){
+    tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:8px">🌐 Talent+ Gateway</div>'+gw.scoresHtml+gw.btnsHtml+'</div>';
   }
 
   window._mc=code;
-  showModal('👤 '+r[C.name], r[C.position]+' · '+r[C.client],tableHtml,'<button class="btn btn-t btn-sm" onclick="closeModal();if(window._mc)qUpd(window._mc)">Update Record</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  document.getElementById('vc-title').textContent='👤 '+r[C.name];
+  document.getElementById('vc-subtitle').textContent=(r[C.position]||'')+' · '+(r[C.client]||'');
+  document.getElementById('vc-body').innerHTML=tableHtml;
+  document.getElementById('vc-overlay').style.display='block';
 }
 function dlAllRecords(){
   const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec'),scope=gv('rScope')||'all';
@@ -7448,6 +7499,29 @@ function dlChartPNG(canvasId, name) {
 </div>
 </div>
 
+<!-- CANDIDATE DETAIL — dedicated overlay (28 Aug 2026), same reason as
+     tm-overlay/viewint-overlay above: the generic #modal has no
+     max-height/scroll, and viewCandModal()'s content (full field table,
+     remarks history, Gateway signals+actions) reliably overflows it on any
+     candidate with real history. Pinned header+footer, scrollable middle
+     only. -->
+<div id="vc-overlay" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeViewCandModal()">
+<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:640px;max-width:95vw;max-height:88vh;background:#0f1c2e;border:1px solid rgba(52,186,198,.25);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6)">
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--w08);flex-shrink:0">
+    <div style="flex:1">
+      <div id="vc-title" style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:var(--teal)">—</div>
+      <div id="vc-subtitle" style="font-size:11px;color:var(--w60);margin-top:2px">—</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:#ff6b6b" onclick="closeViewCandModal()">✕ Close</button>
+  </div>
+  <div id="vc-body" style="flex:1;overflow-y:auto;padding:16px 20px"></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--w08);flex-shrink:0">
+    <button class="btn btn-ghost btn-sm" onclick="closeViewCandModal()">Close</button>
+    <button class="btn btn-t btn-sm" onclick="closeViewCandModal();if(window._mc)qUpd(window._mc)">Update Record</button>
+  </div>
+</div>
+</div>
+
 <script>
 // ===== INTERVIEW GUIDE ENGINE =====
 let igCurrentPage = 0;
@@ -8514,7 +8588,7 @@ async function attachUploadedResume(code,file){
     if(st&&document.getElementById('epCd')&&document.getElementById('epCd').textContent===code){
       st.innerHTML='📄 <a href="'+url+'" target="_blank" style="color:var(--teal)">View current resume</a> — uploaded just now';
     }
-    if(document.getElementById('modal').classList.contains('show')&&window._mc===code){viewCandModal(code);}
+    refreshCandSurfaces(code);
   }catch(e){
     hideLoad();
     toast('err','Upload Failed',e.message);
@@ -8688,6 +8762,7 @@ Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations"
     r[C.resumeFitmentData]=JSON.stringify({score:parsed.score,recommendations:parsed.recommendations,computedAt:new Date().toISOString()});
     await xlPatchRow(r);
     renderRec();
+    refreshCandSurfaces(code);
     toast('ok','Resume Fitment','Score: '+parsed.score+'/10 — '+r[C.name]);
     if(igCandIdx>=0&&MD[igCandIdx]&&MD[igCandIdx][C.code]===code)igRenderPage();
   }catch(e){
@@ -9020,8 +9095,20 @@ async function inviteToVideoInterview(code){
     // button below — sendWA() reads MD[eIdx], and this function is commonly
     // called from viewCandModal (code-based), which doesn't touch eIdx at
     // all, so without this a stale eIdx could send the invite to the wrong
-    // candidate.
+    // candidate. Captured BEFORE forcing it, so the Update Record banner
+    // only re-renders if it already had this candidate loaded — otherwise
+    // this eIdx reassignment would silently swap whatever candidate was
+    // showing there, just as a side effect of inviting someone else from
+    // the popup.
+    const wasEIdxThis=eIdx!==-1&&MD[eIdx]&&MD[eIdx][C.code]===code;
     eIdx=MD.indexOf(r);
+    if(wasEIdxThis)renderUpdGateway(r,code);
+    // Close (don't refresh) the candidate popup if it's open for this
+    // candidate — it sits above the generic #modal (z-index 2100 vs 800),
+    // so the "Invite Sent" dialog below would render invisibly underneath
+    // it otherwise. Recruiter can reopen the popup afterward to see the
+    // updated state.
+    if(window._mc===code&&document.getElementById('vc-overlay').style.display==='block')closeViewCandModal();
     const sent=await sendGatewayInviteEmail('interview',r,link);
     const waBtn='<button class="btn btn-t btn-sm" onclick="closeModal();sendWA(\'ai_interview_invite\')">📱 Send WhatsApp</button>&nbsp;';
     if(sent){
@@ -9057,7 +9144,12 @@ async function inviteToResumeUpload(code){
   try{
     await xlPatchRow(r);
     renderRec();
-    eIdx=MD.indexOf(r); // see comment in inviteToVideoInterview() above
+    // see comments in inviteToVideoInterview() above — same wasEIdxThis
+    // guard and popup-close-not-refresh reasoning apply here.
+    const wasEIdxThis=eIdx!==-1&&MD[eIdx]&&MD[eIdx][C.code]===code;
+    eIdx=MD.indexOf(r);
+    if(wasEIdxThis)renderUpdGateway(r,code);
+    if(window._mc===code&&document.getElementById('vc-overlay').style.display==='block')closeViewCandModal();
     const sent=await sendGatewayInviteEmail('resume',r,link);
     const waBtn='<button class="btn btn-t btn-sm" onclick="closeModal();sendWA(\'resume_upload_invite\')">📱 Send WhatsApp</button>&nbsp;';
     if(sent){
