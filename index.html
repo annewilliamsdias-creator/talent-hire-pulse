@@ -1992,10 +1992,18 @@ interview_confirmation:'Hi {N}, your interview for *{P}* with *{C}* is confirmed
 selected:'Hi {N}, great news! You have been selected for *{P}* with *{C}*. We will share next steps shortly. - {R}, WithAWill HR',
 offered:'Hi {N}, an offer has been extended for *{P}* with *{C}*. Please revert with your confirmation. - {R}, WithAWill HR',
 send_jd:'Hi {N}, please find the Job Description for the *{P}* role with *{C}* attached.\n\nKindly review and let us know your interest and availability.\n\n- {R}, WithAWill HR',
+// 28 Aug 2026: {IL} ("invite link") is a second dynamic-link placeholder,
+// separate from {L} (which fillWA() ties specifically to r[C.docLink], the
+// scheduled-meeting venue/Teams link — wrong link entirely for these two).
+// sendWA() computes the actual URL at send time (same formula
+// inviteToVideoInterview()/inviteToResumeUpload() use, not stored on the
+// candidate record) and passes it in as fillWA()'s third argument.
+ai_interview_invite:'Hi {N}, please complete a short AI video interview for the *{P}* role with *{C}* using the link below:\n\n{IL}\n\nVerify with the same email address you applied with.\n\n- {R}, WithAWill HR',
+resume_upload_invite:'Hi {N}, please upload your resume for the *{P}* role with *{C}* using the link below:\n\n{IL}\n\nThis helps us take your application forward.\n\n- {R}, WithAWill HR',
 general:'Hi {N}, '};
-function fillWA(tpl,r){
+function fillWA(tpl,r,extraLink){
 const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
-return tpl.replace(/{N}/g,r[C.name]||'').replace(/{P}/g,r[C.position]||'').replace(/{C}/g,r[C.client]||'').replace(/{R}/g,rn).replace(/{D}/g,r[C.interviewDate]?fmtD(r[C.interviewDate]):'[Date TBC]').replace(/{T}/g,r._iTime||'[Time TBC]').replace(/{L}/g,r[C.docLink]||'[Teams link to follow]');}
+return tpl.replace(/{N}/g,r[C.name]||'').replace(/{P}/g,r[C.position]||'').replace(/{C}/g,r[C.client]||'').replace(/{R}/g,rn).replace(/{D}/g,r[C.interviewDate]?fmtD(r[C.interviewDate]):'[Date TBC]').replace(/{T}/g,r._iTime||'[Time TBC]').replace(/{L}/g,r[C.docLink]||'[Teams link to follow]').replace(/{IL}/g,extraLink||'[Link to follow]');}
 
 // ════════════════════════════════════════════════════════
 //  NATIVE OAUTH2 PKCE AUTH — no external library needed
@@ -3650,7 +3658,7 @@ function showWAMenu(){if(eIdx===-1)return;const r=MD[eIdx];
 const {jdLink,jdEntry}=resolveJDFromVac(r[C.vacCode]||'');
 const hasJD=!!jdLink;
 const jdTitle=jdEntry?jdEntry.title:jdLink;
-const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['send_jd','📄 Share JD'],['general','💬 General']];
+const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['interview_confirmation','📅 Interview Confirmation'],['ai_interview_invite','🎥 AI Interview Invite'],['resume_upload_invite','📤 Resume Upload Invite'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['send_jd','📄 Share JD'],['general','💬 General']];
 // View JD button (opens SP file) + WhatsApp templates including send_jd
 const jdSection=hasJD
   ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="viewJDLink()">📄 View JD — '+jdTitle+'</button>'
@@ -3663,7 +3671,17 @@ showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',
 function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
 
 function showCustomJD(){if(eIdx===-1)return;const r=MD[eIdx];const lnk=prompt('Enter JD link or SharePoint URL to share:');if(lnk&&lnk.trim())sendJDWA(lnk.trim());}
-async function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=2){r[C.followupDate]='';toast('warn','2 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _clWA=writeCL('WhatsApp Sent',r[C.code],'followupCount',String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
+async function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}
+// 28 Aug 2026: ai_interview_invite/resume_upload_invite need a link derived
+// from r[C.vacCode] at send time (same formula inviteToVideoInterview()/
+// inviteToResumeUpload() use to build the actual invite) — not a stored
+// field, so computed here rather than via a {L}-style static replace.
+let extraLink;
+if(tplKey==='ai_interview_invite'||tplKey==='resume_upload_invite'){
+  if(!r[C.vacCode]){toast('warn','No Vacancy','This candidate has no vacancy code tagged.');return;}
+  extraLink=(tplKey==='ai_interview_invite'?'https://talentplus.withawill.in/interview/':'https://talentplus.withawill.in/resume-upload/')+encodeURIComponent(r[C.vacCode]);
+}
+const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=2){r[C.followupDate]='';toast('warn','2 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _clWA=writeCL('WhatsApp Sent',r[C.code],'followupCount',String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
 showModal('📱 Message Sent','WhatsApp opened for <strong>'+r[C.name]+'</strong>. What would you like to do next?','',
   '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
   '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
@@ -8998,15 +9016,24 @@ async function inviteToVideoInterview(code){
   try{
     await xlPatchRow(r);
     renderRec();
+    // 28 Aug 2026: sync eIdx to this candidate before offering the WhatsApp
+    // button below — sendWA() reads MD[eIdx], and this function is commonly
+    // called from viewCandModal (code-based), which doesn't touch eIdx at
+    // all, so without this a stale eIdx could send the invite to the wrong
+    // candidate.
+    eIdx=MD.indexOf(r);
     const sent=await sendGatewayInviteEmail('interview',r,link);
+    const waBtn='<button class="btn btn-t btn-sm" onclick="closeModal();sendWA(\'ai_interview_invite\')">📱 Send WhatsApp</button>&nbsp;';
     if(sent){
-      toast('ok','Invite Sent',r[C.name]+' has been emailed from Talent+ Gateway.');
+      showModal('🎥 Invite Sent',r[C.name]+' has been emailed from Talent+ Gateway. You can also send the link over WhatsApp.',
+        '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
+        waBtn+'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Done</button>');
     }else{
       const mailto=mailtoFallback('Video Interview Invitation — '+(r[C.position]||'Role'),
         'Hi '+(r[C.name]||'')+',\n\nPlease complete a short AI video interview for this role using the link below. Verify with the same email address you applied with:\n\n'+link+'\n\nThanks,\nWithAWill Talent Team',r);
       showModal('🎥 Invited — Auto-Email Not Sent',r[C.name]+' is flagged as invited, but the automatic email could not be sent'+(getNotifyKey()?' (delivery failed — check your connection and retry, or send manually below).':' — no Notify API Key is configured yet (Admin → Config → Notify API Key).'),
         '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
-        '<button class="btn btn-t btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft Instead</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+        waBtn+'<button class="btn btn-ghost btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft Instead</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
     }
   }catch(e){
     toast('err','Invite Failed',e.message);
@@ -9030,15 +9057,19 @@ async function inviteToResumeUpload(code){
   try{
     await xlPatchRow(r);
     renderRec();
+    eIdx=MD.indexOf(r); // see comment in inviteToVideoInterview() above
     const sent=await sendGatewayInviteEmail('resume',r,link);
+    const waBtn='<button class="btn btn-t btn-sm" onclick="closeModal();sendWA(\'resume_upload_invite\')">📱 Send WhatsApp</button>&nbsp;';
     if(sent){
-      toast('ok','Invite Sent',r[C.name]+' has been emailed from Talent+ Gateway.');
+      showModal('📤 Invite Sent',r[C.name]+' has been emailed from Talent+ Gateway. You can also send the link over WhatsApp.',
+        '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
+        waBtn+'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Done</button>');
     }else{
       const mailto=mailtoFallback('Resume Request — '+(r[C.position]||'Role'),
         'Hi '+(r[C.name]||'')+',\n\nPlease upload your resume for this role using the link below. Verify with the same email address you applied with:\n\n'+link+'\n\nThanks,\nWithAWill Talent Team',r);
       showModal('📧 Invited — Auto-Email Not Sent',r[C.name]+' is flagged as invited to upload a resume, but the automatic email could not be sent'+(getNotifyKey()?' (delivery failed — check your connection and retry, or send manually below).':' — no Notify API Key is configured yet (Admin → Config → Notify API Key).'),
         '<div style="font-size:11px;word-break:break-all;background:var(--w06);padding:8px 10px;border-radius:6px;margin-bottom:12px">'+link+'</div>',
-        '<button class="btn btn-t btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft Instead</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+        waBtn+'<button class="btn btn-ghost btn-sm" onclick="window.open(\''+mailto+'\')">✉ Open Email Draft Instead</button>&nbsp;<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
     }
   }catch(e){
     toast('err','Invite Failed',e.message);
