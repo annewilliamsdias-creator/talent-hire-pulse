@@ -3418,15 +3418,22 @@ if(pg){
 // with none of those yet (i.e. every candidate, before being invited) never
 // showed the section at all, including the button that would invite them.
 // Gate on vacCode instead, which nearly every candidate has.
-function buildGatewayHtml(r,code){
+function buildGatewayHtml(r,code,compact){
   if(!(r[C.vacCode]||r[C.resumeLink]||r[C.resumeFitmentData]||r[C.videoInterviewInvited]))return{scoresHtml:'',btnsHtml:''};
+  // 28 Aug 2026: compact=true (Update Record banner) — score chip only, no
+  // recommendations/summary text, so the whole Gateway area stays to ~2-3
+  // lines total instead of the multi-line paragraph blocks that are fine in
+  // the (now-scrollable) candidate popup but ate too much space in a
+  // banner meant for quick scanning.
   let fitHtml='';
   if(r[C.resumeFitmentData]){
     try{
       const fd=JSON.parse(r[C.resumeFitmentData]);
-      fitHtml='<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--teal)">RESUME FITMENT VS JD: '+fd.score+'/10</span><div style="font-size:11px;color:var(--w60);margin-top:2px">'+escHtml(fd.recommendations||'')+'</div></div>';
+      fitHtml=compact
+        ?'<span style="font-size:10px;font-weight:600;color:var(--teal);background:rgba(52,186,198,.1);border:1px solid rgba(52,186,198,.3);border-radius:12px;padding:2px 8px;margin-right:6px" title="Resume Fitment Vs JD">📄 '+fd.score+'/10</span>'
+        :'<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--teal)">RESUME FITMENT VS JD: '+fd.score+'/10</span><div style="font-size:11px;color:var(--w60);margin-top:2px">'+escHtml(fd.recommendations||'')+'</div></div>';
     }catch(e){}
-  }else if(r[C.resumeLink]){
+  }else if(r[C.resumeLink]&&!compact){
     fitHtml='<div style="margin-bottom:8px;font-size:11px;color:var(--gold)">🔍 Resume Fitment not yet scored — click "Score Resume Fitment" below</div>';
   }
   // 28 Aug 2026: AI Video Interview score was never surfaced here at all
@@ -3436,7 +3443,9 @@ function buildGatewayHtml(r,code){
   if(r[C.videoInterviewData]){
     try{
       const vd=JSON.parse(r[C.videoInterviewData]);
-      vidHtml='<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--teal)">AI VIDEO INTERVIEW: '+vd.overallScore+'/10</span>'+(vd.summary?'<div style="font-size:11px;color:var(--w60);margin-top:2px">'+escHtml(vd.summary)+'</div>':'')+'</div>';
+      vidHtml=compact
+        ?'<span style="font-size:10px;font-weight:600;color:var(--teal);background:rgba(52,186,198,.1);border:1px solid rgba(52,186,198,.3);border-radius:12px;padding:2px 8px" title="AI Video Interview Score">🎥 '+vd.overallScore+'/10</span>'
+        :'<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--teal)">AI VIDEO INTERVIEW: '+vd.overallScore+'/10</span>'+(vd.summary?'<div style="font-size:11px;color:var(--w60);margin-top:2px">'+escHtml(vd.summary)+'</div>':'')+'</div>';
     }catch(e){}
   }
   let interviewHtml='';
@@ -3488,7 +3497,7 @@ function closeViewCandModal(){
 function renderUpdGateway(r,code){
   const sc=document.getElementById('uGwScores'),bt=document.getElementById('uGwBtns');
   if(!sc||!bt)return;
-  const gw=buildGatewayHtml(r,code);
+  const gw=buildGatewayHtml(r,code,true);
   sc.innerHTML=gw.scoresHtml;
   bt.innerHTML=gw.btnsHtml;
 }
@@ -3714,10 +3723,19 @@ const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['
 const jdSection=hasJD
   ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="viewJDLink()">📄 View JD — '+jdTitle+'</button>'
   :'<div style="font-size:11px;color:var(--w40);padding:4px 0 8px">No JD linked to this vacancy</div>';
+// 28 Aug 2026: #modal-btns is a plain `display:flex` row (.flex class, no
+// wrap) — fine for the usual 2-3 button footer, but each of these template
+// buttons is `width:100%` expecting a one-per-line vertical stack, and
+// without flex-wrap a flex row just shrinks+overflows instead of actually
+// stacking. Wrapping in an explicit column flex container restores the
+// intended stacked-menu layout regardless of the parent's own flex
+// direction — went unnoticed with 7 templates, visibly overflowed the box
+// once ai_interview_invite/resume_upload_invite brought it to 9.
 showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',
   jdSection+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',
-  tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+
-  '<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button>');}
+  '<div style="display:flex;flex-direction:column;gap:4px;width:100%">'+
+  tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+
+  '<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button></div>');}
 
 function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
 
