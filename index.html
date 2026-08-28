@@ -8828,7 +8828,18 @@ async function saveResumeScreenedRecord(q,vacCode){
   try{
     await refreshToken();
     const nm=q.name||q.file.name;
-    const fields={Title:nm,CandidateName:nm,Email:q.email||'',PhoneNo:q.phone||'',VacancyCode:vacCode||'',Recruiter:myRecName||(acct&&acct.name?acct.name:'')};
+    // 28 Aug 2026: was Recruiter:myRecName||acct.name — myRecName is ONLY
+    // ever set for curRole==='Recruiter', so any Admin/Super Admin running
+    // the panel themselves fell through to the raw M365 display name
+    // ("Anne Williams Dias") instead of the short appUsers/M.recruiters
+    // name ("Anne") the EOD report's recruiter picker actually filters by
+    // — real report, the count silently never showed for either the
+    // logged-in Super Admin or the vacancy's assigned recruiter. curUser is
+    // always set by resolveRole() regardless of role, and curUser.name
+    // equals myRecName exactly whenever myRecName is set (same value,
+    // narrower condition) — so this is behavior-neutral for genuine
+    // Recruiter-role users and only fixes the Admin/Super Admin case.
+    const fields={Title:nm,CandidateName:nm,Email:q.email||'',PhoneNo:q.phone||'',VacancyCode:vacCode||'',Recruiter:(curUser&&curUser.name)||(acct&&acct.name?acct.name:'')};
     const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
     if(res.ok){const item=await res.json();return item.id;}
   }catch(e){console.warn('ResumeScreened save failed:',e.message);}
