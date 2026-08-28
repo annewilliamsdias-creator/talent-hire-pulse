@@ -9008,7 +9008,17 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
     q.name=parsed.name||'';q.email=parsed.email||'';q.phone=(parsed.phone||'').replace(/\D/g,'').slice(-10);
     q.company=parsed.company||'';q.score=parsed.score;q.recommendations=parsed.recommendations||'';
     q.status='scored';
-    saveResumeScreenedRecord(q,vacCode).then(id=>{q.screenedSpItemId=id;});
+    // 28 Aug 2026: screenOne() runs for both the initial score AND
+    // "Re-score" (same function) — was writing a new ResumeScreened row
+    // every single time, so a re-scored candidate counted twice (or more)
+    // toward the EOD "Resumes Screened" chip. Anne confirmed: re-scoring
+    // should not add to the count. The List doesn't even store the score
+    // itself (just candidate identity + Recruiter + Status), so a re-score
+    // has nothing new worth writing — only save once, on this queue item's
+    // first successful score.
+    if(!q.screenedSpItemId){
+      saveResumeScreenedRecord(q,vacCode).then(id=>{q.screenedSpItemId=id;});
+    }
   }catch(e){
     q.status='error';q.error=e.message;
   }
