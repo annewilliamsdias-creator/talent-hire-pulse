@@ -8831,12 +8831,24 @@ function buildReengagementEmailHtml(r,roleBrief,link,recruiterFullName){
   const position=escHtml(r[C.position]||'—');
   const client=escHtml(r[C.client]||'—');
   const brief=escHtml(roleBrief||'—');
-  return `<div style="font-family:'Times New Roman',Georgia,serif;font-size:10pt;color:#000;max-width:700px">
+  // 1 Sep 2026: real mismatch caught live — the first version applied a
+  // blanket 10pt Times New Roman to the whole email, including the
+  // WithAWill brand line, the "Before We Move Ahead…" headline, and "JOB
+  // DETAILS" — but in the original, only the "HR CONSULTANCY SERVICES"
+  // line, the callout body paragraphs, and the JOB DETAILS table cells
+  // carry that explicit 10pt Times styling; the brand line and the two
+  // bold headings were left at Outlook's larger default size, which is
+  // what gave the original its visual hierarchy (big brand + big headings
+  // vs small body text). Base wrapper now only sets the same sans-serif
+  // fallback/default size the original's outermost div used
+  // (Aptos/Arial/Helvetica, 12pt) — 10pt Times is applied explicitly only
+  // where the original actually had it, nowhere else.
+  return `<div style="font-family:Aptos,Arial,Helvetica,sans-serif;font-size:12pt;color:#000;max-width:700px">
     <p style="margin:0 0 2pt"><b>WithAWill</b></p>
-    <div style="border-bottom:1.5pt solid #C1703D;padding-bottom:6pt;margin-bottom:12pt"><b>HR CONSULTANCY SERVICES</b></div>
+    <div style="border-bottom:1.5pt solid #C1703D;padding-bottom:6pt;margin-bottom:12pt;font-family:'Times New Roman',Georgia,serif;font-size:10pt"><b>HR CONSULTANCY SERVICES</b></div>
     <p style="margin:0 0 2pt"><b>Before We Move Ahead…</b></p>
     <p style="margin:0 0 12pt"><b>There's an opportunity we think is worth a conversation.</b></p>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:14pt"><tr><td style="background:#F7F4EE;border:1pt solid #E3D9C8;border-left:2.25pt solid #C1703D;padding:12pt 14pt">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14pt"><tr><td style="background:#F7F4EE;border:1pt solid #E3D9C8;border-left:2.25pt solid #C1703D;padding:12pt 14pt;font-family:'Times New Roman',Georgia,serif;font-size:10pt">
       <p style="margin:0 0 10pt">Hi <b>${name}</b>,</p>
       <p style="margin:0 0 10pt">We came across your profile on <b>Naukri</b> and were impressed by your experience and background. We've, therefore, tried reaching you a couple of times about a critical vacancy with one of our client — and haven't heard back yet.</p>
       <p style="margin:0 0 10pt">No pressure at all, but this one has a deadline attached, and we'd rather hold your spot than fill it without checking in with you first.</p>
@@ -8849,7 +8861,7 @@ function buildReengagementEmailHtml(r,roleBrief,link,recruiterFullName){
       <p style="margin:0"><b>${escHtml(recruiterFullName)}</b><br><b>WithAWill HR Consultancy| Talent Acquisition Team</b></p>
     </td></tr></table>
     <p style="margin:0 0 6pt"><b>JOB DETAILS</b></p>
-    <table style="width:100%;border-collapse:collapse">
+    <table style="width:100%;border-collapse:collapse;font-family:'Times New Roman',Georgia,serif;font-size:10pt">
       <tr><td style="background:#171A22;color:#fff;padding:4.5pt 6pt;border:1pt solid #D8D3C8"><b>Section</b></td><td style="background:#171A22;color:#fff;padding:4.5pt 6pt;border:1pt solid #D8D3C8"><b>Details</b></td></tr>
       <tr><td style="padding:4.5pt 6pt;border:1pt solid #D8D3C8"><b>Role Title</b></td><td style="padding:4.5pt 6pt;border:1pt solid #D8D3C8">${position}</td></tr>
       <tr><td style="padding:4.5pt 6pt;border:1pt solid #D8D3C8"><b>Role Brief</b></td><td style="padding:4.5pt 6pt;border:1pt solid #D8D3C8">${brief}</td></tr>
