@@ -1943,7 +1943,7 @@ tat:'TAT',sNo:'S. No',recruiter:'Recruiter',reportingDate:'Data base reporting d
 resumeLink:'Resume Link',videoInterviewInvited:'Video Interview Invited',
 videoInterviewLink:'Video Interview Link',videoInterviewData:'Video Interview Data',
 resumeFitmentData:'Resume Fitment Data',resumeUploadInvited:'Resume Upload Invited',
-reengagementSent:'Reengagement Sent'};
+reengagementSent:'Reengagement Sent',reengagementReminderSent:'Reengagement Reminder Sent'};
 // R2 (13 Jul 2026): every date-typed column, normalised wherever records are
 // parsed from an external source (workbook load, live sync) — previously only
 // followupDate/sourcingDate/updatedOn were covered, leaving these others
@@ -3474,14 +3474,21 @@ function buildGatewayHtml(r,code,compact){
       resumeUploadHtml='<button class="btn btn-ghost btn-sm" onclick="inviteToResumeUpload(\''+code+'\')">📧 Invite to Upload Resume</button>';
     }
   }
-  // 1 Sep 2026: one reminder per candidate, per Anne's call — once sent,
-  // shown as plain confirmed-sent text, no resend button (unlike the
-  // invite flows above, which are meant to be resendable).
+  // 1 Sep 2026 (revised): up to TWO sends per candidate — an initial email
+  // plus one follow-up reminder — per Anne's clarification ("1 initial
+  // email + 1 reminder"), not just a single one-shot send. Three states:
+  // neither sent (offer initial), initial sent only (offer the follow-up,
+  // stage='reminder'), both sent (locked, plain text, no further sends).
   let reengagementHtml='';
   if(r[C.email]&&r[C.vacCode]){
-    reengagementHtml=r[C.reengagementSent]
-      ?'<span style="font-size:11px;color:var(--w60)">🔔 Reminder sent '+fmtD(r[C.reengagementSent])+'</span>'
-      :'<button class="btn btn-ghost btn-sm" onclick="triggerReengagementReminder(\''+code+'\')" title="Send the &quot;Before We Move Ahead&quot; re-engagement email">🔔 Re-engagement Reminder</button>';
+    if(r[C.reengagementReminderSent]){
+      reengagementHtml='<span style="font-size:11px;color:var(--w60)">🔔 Sent '+fmtD(r[C.reengagementSent])+' · Reminder sent '+fmtD(r[C.reengagementReminderSent])+'</span>';
+    }else if(r[C.reengagementSent]){
+      reengagementHtml='<span style="font-size:11px;color:var(--w60)">🔔 Sent '+fmtD(r[C.reengagementSent])+'</span>'+
+        ' <button class="btn btn-ghost btn-sm" onclick="triggerReengagementReminder(\''+code+'\',\'reminder\')" title="Send one follow-up reminder of the same email">🔁 Send Reminder</button>';
+    }else{
+      reengagementHtml='<button class="btn btn-ghost btn-sm" onclick="triggerReengagementReminder(\''+code+'\',\'initial\')" title="Send the &quot;Before We Move Ahead&quot; re-engagement email">🔔 Re-engagement Reminder</button>';
+    }
   }
   const btnsHtml='<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
     (r[C.resumeLink]?'<button class="btn btn-ghost btn-sm" onclick="window.open(\''+r[C.resumeLink]+'\',\'_blank\')">📄 View Resume</button>':'')+
@@ -8741,8 +8748,9 @@ async function sendPlainEmail(toEmails,subject,bodyHtml){
 // (a new Candidates List column, added by Anne — no app-only Graph
 // permission to create columns) gates it to once per candidate, per her
 // explicit call ("enable 1 reminder") — no resend option once sent.
-let _reengData=null; // {code,link}
-function triggerReengagementReminder(code){
+let _reengData=null; // {code,link,stage}
+function triggerReengagementReminder(code,stage){
+  stage=stage||'initial';
   const r=MD.find(x=>x[C.code]===code);
   if(!r){toast('err','Not Found','Candidate not found.');return;}
   if(!r[C.email]){toast('warn','No Email','This candidate has no email on file.');return;}
@@ -8750,9 +8758,9 @@ function triggerReengagementReminder(code){
   const {jdEntry}=resolveJDFromVac(r[C.vacCode]);
   const link='https://talentplus.withawill.in/vacancies/'+encodeURIComponent(r[C.vacCode]);
   const roleBrief=(jdEntry&&jdEntry.rolecontext)?jdEntry.rolecontext.trim():'';
-  _reengData={code,link};
+  _reengData={code,link,stage};
   const sub=document.getElementById('reeng-subtitle');
-  if(sub)sub.textContent='To '+r[C.name]+' ('+r[C.email]+')';
+  if(sub)sub.textContent=(stage==='reminder'?'Follow-up Reminder':'Initial Send')+' · To '+r[C.name]+' ('+r[C.email]+')';
   const body=document.getElementById('reeng-body');
   if(body)body.innerHTML=`
     <div style="display:grid;gap:10px;font-size:12px">
@@ -8788,13 +8796,13 @@ function closeReengagementPreview(){
 }
 async function sendReengagementReminder(){
   if(!_reengData)return;
-  const{code,link}=_reengData;
+  const{code,link,stage}=_reengData;
   const r=MD.find(x=>x[C.code]===code);
   if(!r){toast('err','Not Found','Candidate not found.');closeReengagementPreview();return;}
   const briefEl=document.getElementById('reeng-brief');
   const brief=(briefEl?briefEl.value:'').trim();
   closeReengagementPreview();
-  showLoad('Sending reminder...');
+  showLoad(stage==='reminder'?'Sending follow-up reminder...':'Sending reminder...');
   // 1 Sep 2026: real bug caught live — the original version wrapped the
   // send AND the SharePoint save in one try/catch, so a save failure (e.g.
   // ReengagementEmailSent column not created yet — confirmed live, 400 on
@@ -8813,17 +8821,21 @@ async function sendReengagementReminder(){
     toast('err','Send Failed',e.message);
     return;
   }
-  r[C.reengagementSent]=new Date().toISOString();
+  // 1 Sep 2026: up to two sends per candidate (Anne's clarification — "1
+  // initial email + 1 reminder") — which field gets stamped depends on
+  // which stage this send was.
+  const stampField=stage==='reminder'?C.reengagementReminderSent:C.reengagementSent;
+  r[stampField]=new Date().toISOString();
   refreshCandSurfaces(code);
   try{
     await xlPatchRow(r);
-    const _cl=writeCL('Re-engagement Reminder Sent',code,'Email','','',r[C.name]);
+    const _cl=writeCL(stage==='reminder'?'Re-engagement Follow-up Sent':'Re-engagement Reminder Sent',code,'Email','','',r[C.name]);
     if(_cl)await xlAppendRows('Change Log',[_cl]);
     hideLoad();
-    toast('ok','Reminder Sent','Re-engagement email sent to '+r[C.name]+'.');
+    toast('ok',stage==='reminder'?'Follow-up Sent':'Reminder Sent','Re-engagement email sent to '+r[C.name]+'.');
   }catch(e){
     hideLoad();
-    toast('warn','Sent, Not Recorded','Email sent to '+r[C.name]+', but the "sent" flag could not be saved to SharePoint: '+e.message+'. It will show as sent for this session, but check the ReengagementEmailSent column exists so it persists after reload.');
+    toast('warn','Sent, Not Recorded','Email sent to '+r[C.name]+', but the "sent" flag could not be saved to SharePoint: '+e.message+'. It will show as sent for this session, but check the '+(stage==='reminder'?'ReengagementReminderSent':'ReengagementEmailSent')+' column exists so it persists after reload.');
   }
 }
 function buildReengagementEmailHtml(r,roleBrief,link,recruiterFullName){
@@ -10048,7 +10060,8 @@ const SPLIST_FIELD_MAP={
   [C.videoInterviewData]:'VideoInterviewData',
   [C.resumeFitmentData]:'ResumeFitmentData',
   [C.resumeUploadInvited]:'ResumeUploadInvited',
-  [C.reengagementSent]:'ReengagementEmailSent'
+  [C.reengagementSent]:'ReengagementEmailSent',
+  [C.reengagementReminderSent]:'ReengagementReminderSent'
 };
 const SPLIST_NUMBER_FIELDS=new Set(['CurrentSalary_x0028_Rs_x002e_PM_','CurrentSalary_x0028_Rs_x002e_PA_','FinalCurrentAnnualSalary','ExpectedSalary_x0028_Rs_x002e__x','OfferedSalary','Follow_x002d_upAttemptCount','TAT']);
 // 2 Aug 2026: every Choice-type column in the Candidates List has a configured
