@@ -8795,19 +8795,35 @@ async function sendReengagementReminder(){
   const brief=(briefEl?briefEl.value:'').trim();
   closeReengagementPreview();
   showLoad('Sending reminder...');
+  // 1 Sep 2026: real bug caught live — the original version wrapped the
+  // send AND the SharePoint save in one try/catch, so a save failure (e.g.
+  // ReengagementEmailSent column not created yet — confirmed live, 400 on
+  // the PATCH) surfaced as "Send Failed" even though the email had already
+  // gone out (confirmed in Sent Items). Split into two stages: a failure
+  // sending the email is genuinely nothing-happened; a failure saving
+  // AFTER a successful send is reported honestly as sent-but-not-recorded,
+  // and the in-memory flag is set regardless so this session's UI doesn't
+  // re-offer the button and risk a duplicate send before the save issue
+  // (usually the missing column) is fixed.
   try{
     const html=buildReengagementEmailHtml(r,brief,link,acct&&acct.name?acct.name:'WithAWill HR');
     await sendPlainEmail([r[C.email]],r[C.name]+', we didn\'t want you to miss this opportunity',html);
-    r[C.reengagementSent]=new Date().toISOString();
+  }catch(e){
+    hideLoad();
+    toast('err','Send Failed',e.message);
+    return;
+  }
+  r[C.reengagementSent]=new Date().toISOString();
+  refreshCandSurfaces(code);
+  try{
     await xlPatchRow(r);
     const _cl=writeCL('Re-engagement Reminder Sent',code,'Email','','',r[C.name]);
     if(_cl)await xlAppendRows('Change Log',[_cl]);
-    refreshCandSurfaces(code);
     hideLoad();
     toast('ok','Reminder Sent','Re-engagement email sent to '+r[C.name]+'.');
   }catch(e){
     hideLoad();
-    toast('err','Send Failed',e.message);
+    toast('warn','Sent, Not Recorded','Email sent to '+r[C.name]+', but the "sent" flag could not be saved to SharePoint: '+e.message+'. It will show as sent for this session, but check the ReengagementEmailSent column exists so it persists after reload.');
   }
 }
 function buildReengagementEmailHtml(r,roleBrief,link,recruiterFullName){
