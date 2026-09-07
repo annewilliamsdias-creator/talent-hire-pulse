@@ -817,6 +817,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     </div>
     <button class="btn btn-ghost btn-sm" onclick="triggerActionReport()">⬇ Action Report</button>
     <button class="btn btn-ghost btn-sm" onclick="triggerEODReport()">⬇ EOD Report</button>
+    <button class="btn btn-ghost btn-sm" onclick="triggerWeeklyReport()">📊 Weekly Report</button>
   </div>
 </div>
 
@@ -1654,6 +1655,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="atab" id="at-dashconfig" onclick="switchATab('dashconfig')">📊 Dashboard</div>
 <div class="atab" id="at-users" onclick="switchATab('users')">👥 Users</div>
 <div class="atab" id="at-commonrepo" onclick="switchATab('commonrepo')">📋 Interview Repository</div><div class="atab" id="at-repository" onclick="switchATab('repository')">📤 Repository Migration</div>
+<div class="atab" id="at-remap" onclick="switchATab('remap')">🔀 Remap Requests <span id="remap-pending-badge" style="display:none;background:#e9982b;color:#0e0f17;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px"></span></div>
 </div>
 <!-- BILLING CONFIG -->
 <div id="ap-billing" class="hidden">
@@ -1850,6 +1852,23 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     <button class="btn btn-t" onclick="migrateRepositoryJDs()" style="white-space:nowrap">Import JDs</button>
   </div>
 </div>
+</div></div>
+
+<!-- REMAP REQUESTS — 4 Sep 2026: recruiter-raised "not sure how to resolve
+     this duplicate" requests (see submitNew()'s dupChk modal, Raise Request
+     to Admin). Approve creates the candidate through the same
+     createCandidateFromForm() core a normal Add uses, stamped with Previous
+     Candidate code; Reject discards it, nothing added. -->
+<div id="ap-remap" class="hidden"><div class="card">
+<div class="card-hdr">
+  <div class="card-title"><span class="ac">🔀</span> Remap Requests</div>
+  <div class="flex gap8">
+    <label style="font-size:11px;color:var(--w60);display:flex;align-items:center;gap:5px"><input type="checkbox" id="remap-show-resolved" onchange="renderRemapRequests()"> Show resolved</label>
+    <button class="btn btn-ghost btn-sm" onclick="loadRemapRequests()">🔄 Refresh</button>
+  </div>
+</div>
+<div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">A recruiter hit a possible duplicate (same mobile/email as an existing record) and wasn't sure whether it's a genuine new application. <strong style="color:var(--teal)">Approve</strong> adds the candidate, linked to the matched record via Previous Candidate code. <strong style="color:#ff6b6b">Reject</strong> discards the request — nothing is added.</div>
+<div id="remap-list"></div>
 </div></div>
 
 <!-- VALIDATION RESULTS -->
@@ -2912,7 +2931,11 @@ function loadMastersCfg(){
   }catch(e){console.warn('masters cfg',e);}
 }
 async function saveMastersCfg(silent=false){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}const block=[['Masters'],['key','name','active','extra']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N',k==='recruiters'?(it.doj||''):''])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false,true,['Config']);if(!silent)toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);if(!silent)toast('err','Save Failed',e.message);}}
-function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}const nb=document.getElementById('navBulk');const na=document.getElementById('navAdm');const ni=document.getElementById('navIncentive');const niv=document.getElementById('navInvoice');if(nb)nb.style.display=rd.bulk?'':'none';if(na)na.style.display=rd.admin?'':'none';if(ni)ni.style.display='';if(niv)niv.style.display=rd.admin?'':'none';canEditRepo=!!(rd&&rd.admin);myRecName=(curRole==='Recruiter'&&curUser)?curUser.name:null;}
+function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}const nb=document.getElementById('navBulk');const na=document.getElementById('navAdm');const ni=document.getElementById('navIncentive');const niv=document.getElementById('navInvoice');if(nb)nb.style.display=rd.bulk?'':'none';if(na)na.style.display=rd.admin?'':'none';if(ni)ni.style.display='';if(niv)niv.style.display=rd.admin?'':'none';canEditRepo=!!(rd&&rd.admin);myRecName=(curRole==='Recruiter'&&curUser)?curUser.name:null;
+// 4 Sep 2026: surface the pending-Remap-Requests count on the Admin tab
+// badge right away, not only after Admin happens to open that tab —
+// fire-and-forget, never blocks login.
+if(rd.admin)loadRemapRequests().catch(()=>{});}
 async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i;break;}}const block=[['Users'],['Name','Email','Type','Role','Client','Active'],...appUsers.map(u=>[u.name,u.email,u.type||'internal',u.role,u.client||'',u.active?'Y':'N'])];if(ui>=0){let ei=ui+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(ui,ei-ui,...block);}else{all.push([],...block);}WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);await saveWB('Saving users...',true,['Config']);}catch(e){toast('err','Save Failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
@@ -3182,49 +3205,51 @@ function onPosSel(){
   }
 }
 function clearNew(){_screenPush=null;['nSD','nScD','nSrcD','nMob','nAlt','nEm','nLocD','nPLoc','nExp','nReas','nCo','nDe','nSPM','nSPA','nSBr','nESPM','nESBr','nSInc','nPosC','nVacC','nRem','nFU','nFUN','nNm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['nRec','nSrc','nLoc','nNot','nCli','nDept','nPos','nStat'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const fr=document.getElementById('nFr');if(fr){fr.checked=false;onFr(false);}document.getElementById('nSD').value=today();document.getElementById('nCodeBox').classList.add('hidden');showAlert('na','','');const rs=document.getElementById('nRec');if(rs){if(myRecName){for(const o of rs.options){if(o.value===myRecName){rs.value=o.value;break;}}rs.disabled=!!myRecName;}else{const rn=acct&&acct.name?acct.name.split(' ')[0]:'';for(const o of rs.options){if(o.value.toLowerCase()===rn.toLowerCase()){rs.value=o.value;break;}}rs.disabled=false;}}}
-async function submitNew(){
-const nm=gv('nNm'),mob=gv('nMob'),em=gv('nEm'),sd=gv('nSD'),rec=gv('nRec'),cli=gv('nCli'),dept=gv('nDept'),src=gv('nSrc'),loc=gv('nLoc');
-const pos=gv('nPos')||gv('nPosC'),fu=gv('nFU'),stat=gv('nStat')||'Active';
-if(!nm||!mob||!em||!sd||!rec||!cli||!dept||!src||!loc||!pos){showAlert('na','err','Please fill all required fields (marked *).');return;}
-if(!/^\d{10}$/.test(mob)){showAlert('na','err','Primary mobile must be exactly 10 digits.');return;}
-if(!em.includes('@')){showAlert('na','err','Please enter a valid email address.');return;}
-if(!TERMINAL.has(stat)&&!fu){showAlert('na','err','Follow-up date is required for this status.');return;}
-const fr=document.getElementById('nFr')&&document.getElementById('nFr').checked;
-const expVal=parseFloat(gv('nExp'))||0;
-if(!fr&&expVal>0){if(!gv('nCo')||!gv('nDe')){showAlert('na','err','Company and Designation are required when experience > 0.');return;}}
-const doAdd=async()=>{
+// Shared candidate-creation core (4 Sep 2026) — factored out of submitNew()'s
+// old inline doAdd so the Admin "Approve" action on a Remap Request
+// (approveRemapRequest(), below) persists a candidate through the exact same
+// path as a normal Add, instead of a second copy of this logic drifting out
+// of sync. fv carries the same values gv() reads from the New Candidate form
+// (see submitNew()'s captureFv). prevCode (optional) stamps the existing
+// "Previous Candidate code" column so a knowingly-linked second record — the
+// recruiter chose "Map as New Application" over a dupChk match, or an Admin
+// approved a Remap Request — stays traceable rather than looking like an
+// accidental blind duplicate the next time someone scans for those. Returns
+// {ok:true,code} or {ok:false,error}.
+async function createCandidateFromForm(fv){
 const code=await genCodeLive();
-const pm=parseFloat(gv('nSPM'))||0,pa=pm*12,epm=parseFloat(gv('nESPM'))||0,epa=epm*12;
+const pm=parseFloat(fv.spm)||0,pa=pm*12,epm=parseFloat(fv.espm)||0,epa=epm*12;
 const nr={};HDR.forEach(h=>nr[h]='');
-nr[C.code]=code;nr[C.sourcingDate]=sd;nr[C.screeningDate]=gv('nScD');
-nr[C.source]=src;nr[C.sourceDetails]=gv('nSrcD');nr[C.name]=nm;
-nr[C.location]=loc;nr[C.locationDetail]=gv('nLocD');nr[C.postingLoc]=gv('nPLoc');
-nr[C.combinedLoc]=loc;nr[C.dept]=dept;nr[C.position]=pos;
-nr[C.contact]=mob;nr[C.altContact]=gv('nAlt');nr[C.email]=em;
-nr[C.expYrs]=fr?'Fresher':gv('nExp');nr[C.notice]=gv('nNot');
-nr[C.company]=gv('nCo');nr[C.designation]=gv('nDe');nr[C.reason]=gv('nReas');
+nr[C.code]=code;nr[C.sourcingDate]=fv.sd;nr[C.screeningDate]=fv.scd||'';
+nr[C.source]=fv.src;nr[C.sourceDetails]=fv.srcd||'';nr[C.name]=fv.nm;
+nr[C.location]=fv.loc;nr[C.locationDetail]=fv.locd||'';nr[C.postingLoc]=fv.ploc||'';
+nr[C.combinedLoc]=fv.loc;nr[C.dept]=fv.dept;nr[C.position]=fv.pos;
+nr[C.contact]=fv.mob;nr[C.altContact]=fv.alt||'';nr[C.email]=fv.em;
+nr[C.expYrs]=fv.fr?'Fresher':(fv.exp||'');nr[C.notice]=fv.notice||'';
+nr[C.company]=fv.co||'';nr[C.designation]=fv.de||'';nr[C.reason]=fv.reason||'';
 nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.finalSalary]=pa||'';nr[C.salaryBracket]=bkt(pa);
 nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);
 if(pa>0&&epa>0)nr[C.salaryIncrease]=((epa-pa)/pa*100>=0?'+':'')+((epa-pa)/pa*100).toFixed(1)+'%';
-nr[C.client]=cli;nr[C.vacCode]=gv('nVacC');nr[C.status]=stat;nr[C.dm]=STATUS_DM[stat]||'';
-nr[C.followupDate]=fu;nr[C.followupNotes]=gv('nFUN');nr[C.followupCount]='0';
-nr[C.remark]=gv('nRem');nr[C.consent]='Y';
+nr[C.client]=fv.cli;nr[C.vacCode]=fv.vacC||'';nr[C.status]=fv.stat;nr[C.dm]=STATUS_DM[fv.stat]||'';
+nr[C.followupDate]=fv.fu||'';nr[C.followupNotes]=fv.fun||'';nr[C.followupCount]='0';
+nr[C.remark]=fv.rem||'';nr[C.consent]='Y';
 nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();
-nr[C.reportingDate]=today();nr[C.recruiter]=rec;nr[C.sNo]=MD.length+1;
+nr[C.reportingDate]=today();nr[C.recruiter]=fv.rec;nr[C.sNo]=MD.length+1;
 // Resume Fitment Screening (22 Aug 2026): carries forward the resume + AI
 // fitment score from a Push to THP action in the Resume Screening panel —
 // see screenPushToTHP(). Untouched for any candidate added the normal way.
-if(_screenPush){
-  nr[C.resumeLink]=_screenPush.resumeLink;
-  nr[C.resumeFitmentData]=JSON.stringify({score:_screenPush.score,recommendations:_screenPush.recommendations,computedAt:new Date().toISOString()});
+if(fv.screenPush){
+  nr[C.resumeLink]=fv.screenPush.resumeLink;
+  nr[C.resumeFitmentData]=JSON.stringify({score:fv.screenPush.score,recommendations:fv.screenPush.recommendations,computedAt:new Date().toISOString()});
 }
+if(fv.prevCode)nr[C.prevCode]=fv.prevCode;
 MD.push(nr);
-const _clEN=writeCL('New Entry',code,'All','','',nm);
-showLoad('Adding candidate...');
+const _clEN=writeCL('New Entry',code,'All','','',fv.nm);
 // Phase 1.8 (10 Aug 2026): Excel retired as candidate source of truth — the
 // Candidates List is now the only write. Unlike the 1.7 dual-write, a failure
-// here is fatal (no Excel fallback left) — surface it and bail rather than
-// leaving a candidate in MD[] that was never actually persisted anywhere.
+// here is fatal (no Excel fallback left) — roll back MD and report the error
+// rather than leaving a candidate in MD[] that was never actually persisted
+// anywhere.
 try{
   const res=await writeCandidateListItem('POST',`/sites/${siteId}/lists/Candidates/items`,{fields:buildCandidateListFields(nr)});
   if(res&&res.id)nr._spItemId=res.id;
@@ -3232,9 +3257,7 @@ try{
   _listLastModified=new Date().toISOString();
 }catch(e){
   const idx=MD.indexOf(nr);if(idx>=0)MD.splice(idx,1);
-  hideLoad();
-  showAlert('na','err','Save failed: '+e.message+'. Candidate was NOT added. Please try again.');
-  return;
+  return{ok:false,error:e.message};
 }
 if(_clEN)await xlAppendRows('Change Log',[_clEN]);
 // CR-DUP-002: verify no collision occurred despite the live check above —
@@ -3251,19 +3274,72 @@ try{
     }
   }
 }catch(e){console.warn('CR-DUP-002 post-append check failed:',e.message);}
-hideLoad();hideSyncBanner();
-sv('nCodeVal',code);document.getElementById('nCodeBox').classList.remove('hidden');
-showAlert('na','ok','✅ '+nm+' added. Code: '+code);
+return{ok:true,code};
+}
+async function submitNew(){
+const nm=gv('nNm'),mob=gv('nMob'),em=gv('nEm'),sd=gv('nSD'),rec=gv('nRec'),cli=gv('nCli'),dept=gv('nDept'),src=gv('nSrc'),loc=gv('nLoc');
+const pos=gv('nPos')||gv('nPosC'),fu=gv('nFU'),stat=gv('nStat')||'Active';
+if(!nm||!mob||!em||!sd||!rec||!cli||!dept||!src||!loc||!pos){showAlert('na','err','Please fill all required fields (marked *).');return;}
+if(!/^\d{10}$/.test(mob)){showAlert('na','err','Primary mobile must be exactly 10 digits.');return;}
+if(!em.includes('@')){showAlert('na','err','Please enter a valid email address.');return;}
+if(!TERMINAL.has(stat)&&!fu){showAlert('na','err','Follow-up date is required for this status.');return;}
+const fr=document.getElementById('nFr')&&document.getElementById('nFr').checked;
+const expVal=parseFloat(gv('nExp'))||0;
+if(!fr&&expVal>0){if(!gv('nCo')||!gv('nDe')){showAlert('na','err','Company and Designation are required when experience > 0.');return;}}
+// Snapshot of the form in createCandidateFromForm's shape — reused as-is for
+// a genuine Add below, and (with prevCode blank) for a Raise Request to
+// Admin capture so nothing typed is lost if dupChk finds a match.
+const captureFv=(prevCode)=>({nm,mob,em,sd,rec,cli,dept,src,loc,pos,fu,stat,fr,
+  scd:gv('nScD'),srcd:gv('nSrcD'),locd:gv('nLocD'),ploc:gv('nPLoc'),alt:gv('nAlt'),
+  exp:gv('nExp'),notice:gv('nNot'),co:gv('nCo'),de:gv('nDe'),reason:gv('nReas'),
+  spm:gv('nSPM'),espm:gv('nESPM'),vacC:gv('nVacC'),fun:gv('nFUN'),rem:gv('nRem'),
+  screenPush:_screenPush||null,prevCode:prevCode||''});
+const doAdd=async(prevCode)=>{
+showLoad('Adding candidate...');
+const res=await createCandidateFromForm(captureFv(prevCode));
+hideLoad();
+if(!res.ok){showAlert('na','err','Save failed: '+res.error+'. Candidate was NOT added. Please try again.');return;}
+hideSyncBanner();
+sv('nCodeVal',res.code);document.getElementById('nCodeBox').classList.remove('hidden');
+showAlert('na','ok','✅ '+nm+' added. Code: '+res.code);
 updateTopbar();loadDash();renderRec();setTimeout(()=>clearNew(true),100);};
 const dups=dupChk(mob,em);
 if(dups.length){const d=dups[0];const r=d.r;const isInactive=INACTIVE_STATUSES.has(r[C.status]);
   const title=isInactive?'♻ Re-engage Candidate?':'⚠ Duplicate Found';
   const msg=isInactive?'This candidate was previously marked <strong>'+r[C.status]+'</strong> but can be re-approached for a new opportunity.':'A candidate with the same '+d.type+' already exists.';
-  showModal(title,msg,'<strong>'+r[C.name]+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br><span style="font-size:12px;color:var(--w60)">'+r[C.position]+' @ '+r[C.client]+' · '+r[C.status]+'</span>',
+  showModal(title,msg,'<strong>'+r[C.name]+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br><span style="font-size:12px;color:var(--w60)">'+r[C.position]+' @ '+r[C.client]+' · '+r[C.status]+'</span>'
+  +'<div style="margin-top:10px"><label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Note (optional)</label><textarea id="dupNote" rows="2" style="width:100%;font-size:12px;margin-top:4px;padding:6px 8px;box-sizing:border-box;font-family:inherit" placeholder="Why proceed, or what should Admin know?"></textarea></div>',
   '<button class="btn btn-t" onclick="closeModal();qUpd(\'' + r[C.code] + '\')">Update Profile</button>'+
-  (isInactive?'<button class="btn btn-g" onclick="closeModal();window._doAdd()">Add as New Record</button>':'')+
+  '<button class="btn btn-g" onclick="window._mapAsNew()">🔗 Map as New Application</button>'+
+  '<button class="btn btn-ghost" style="color:#e9982b;border-color:rgba(233,152,43,.4)" onclick="window._raiseRemapRequest()">🚩 Raise Request to Admin</button>'+
   '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
-  window._doAdd=doAdd;}
+  // Recruiter recognizes this as genuinely the same person (a new role, or a
+  // re-application) — go ahead and add a second row, but stamp Previous
+  // Candidate code so it stays traceable as a known, intentional link rather
+  // than an accidental blind duplicate.
+  window._mapAsNew=()=>{closeModal();doAdd(r[C.code]);};
+  // Recruiter isn't sure this is theirs to decide — capture the whole form
+  // (nothing typed is lost) into RemapRequests for Admin to review. Nothing
+  // is added to Candidates until Admin approves it (approveRemapRequest()).
+  window._raiseRemapRequest=async()=>{
+    const note=gv('dupNote');
+    closeModal();
+    showLoad('Submitting request to Admin...');
+    try{
+      await refreshToken();
+      const fields={Title:nm+' — Remap Request',CandidateName:nm,Mobile:mob,Email:em,
+        MatchedCode:r[C.code],MatchedName:r[C.name],MatchType:d.type,
+        RaisedBy:(curUser&&curUser.name)||(acct&&acct.name?acct.name:''),
+        RaisedOn:new Date().toISOString(),Note:note||'',
+        FormDataJSON:JSON.stringify(captureFv('')),Status:'Pending'};
+      const res2=await fetch(GRAPH+'/sites/'+siteId+'/lists/RemapRequests/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      if(!res2.ok){const t=await res2.text().catch(()=>'');throw new Error('HTTP '+res2.status+(t?': '+t.slice(0,150):''));}
+      hideLoad();
+      showAlert('na','ok','🚩 Request raised for Admin review. '+nm+' was not added yet — you\'ll see it once Admin resolves it.');
+      setTimeout(()=>clearNew(true),100);
+    }catch(e){hideLoad();showAlert('na','err','Could not raise request: '+e.message+'. Please try again or contact Admin directly.');}
+  };
+}
 else await doAdd();}
 
 // ══════════════════════════════════════════════════════
@@ -3292,6 +3368,7 @@ if(r[C.client])l2.push(r[C.client]);
 if(r[C.recruiter])l2.push(r[C.recruiter]);
 if(r[C.expYrs])l2.push(r[C.expYrs]+' yrs');
 if(r[C.company])l2.push(r[C.company]+(r[C.designation]?', '+r[C.designation]:''));
+if(r[C.prevCode])l2.push('🔗 Linked from '+r[C.prevCode]);
 document.getElementById('uLine2').textContent=l2.join('  ·  ')||'—';
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
 const _evU=igEvalData[r[C.code]||'']||{};const _fsEl=document.getElementById('uFitmentChip');if(_fsEl){if(_evU.fitmentScore){const _fc=_evU.fitmentScore>=8?'#5e7855':_evU.fitmentScore>=5?'#34bac6':'#e9982b';_fsEl.innerHTML='<span style="font-size:10px;font-weight:600;color:'+_fc+';background:'+_fc+'18;border:1px solid '+_fc+'44;border-radius:12px;padding:2px 8px" title="Final Recruiter Interview Score">⭐ '+_evU.fitmentScore+'/10</span>';_fsEl.style.display='inline';}else{_fsEl.style.display='none';}}
@@ -3530,7 +3607,7 @@ function viewCandModal(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
   const allRem=(r[C.remark]||'').split('|').map(s=>s.trim()).filter(Boolean);
   const latestRem=allRem.length?allRem[allRem.length-1]:'—';
-  const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status','<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>'],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up',fmtD(r[C.followupDate])],['Interview',r[C.interviewDate]?fmtD(r[C.interviewDate])+(r._iTime?' @ '+r._iTime:''):'—'],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM',r[C.salaryPM]?'₹'+r[C.salaryPM]:'—'],['Exp Salary PM',r[C.expectedSalary]?'₹'+r[C.expectedSalary]:'—'],['Offered Salary',r[C.offeredSalary]?'₹'+r[C.offeredSalary]:'—'],['Expected DOJ',r[C.doj]?fmtD(r[C.doj]):'—'],['Latest Remark',escHtml(latestRem)],['Updated By',r[C.updatedBy]||'—'],['Updated On',fmtD(r[C.updatedOn])]];
+  const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status','<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>'],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up',fmtD(r[C.followupDate])],['Interview',r[C.interviewDate]?fmtD(r[C.interviewDate])+(r._iTime?' @ '+r._iTime:''):'—'],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM',r[C.salaryPM]?'₹'+r[C.salaryPM]:'—'],['Exp Salary PM',r[C.expectedSalary]?'₹'+r[C.expectedSalary]:'—'],['Offered Salary',r[C.offeredSalary]?'₹'+r[C.offeredSalary]:'—'],['Expected DOJ',r[C.doj]?fmtD(r[C.doj]):'—'],['Latest Remark',escHtml(latestRem)],['🔗 Linked From',r[C.prevCode]],['Updated By',r[C.updatedBy]||'—'],['Updated On',fmtD(r[C.updatedOn])]];
   let tableHtml='<table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table>';
   if(allRem.length>1){const prev=allRem.slice(0,-1).reverse();tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">📋 Remarks History</div>'+prev.map((rm,i)=>'<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="font-size:9px;color:rgba(251,251,250,.35)">PREV '+(prev.length-i)+'</span><span style="color:var(--w60);margin-left:6px">'+escHtml(rm)+'</span></div>').join('')+'</div>';}
 
@@ -3879,7 +3956,7 @@ if(_bulkFailed.length){
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo','repository'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}if(tab==='repository'){console.log('Repository migration tab active');}}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo','repository','remap'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}if(tab==='repository'){console.log('Repository migration tab active');}if(tab==='remap'){loadRemapRequests();}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
@@ -8010,7 +8087,7 @@ function igRenderPage() {
         <div style="font-size:10px;color:var(--w60)">🤖 Pre-filled from candidate profile where available</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        ${['Current Salary','Expected Salary','Notice Period','Notice Negotiable?','Currently Serving Notice?','Holding Other Offer?','Location Comfort','Work Model Comfort','Reason for Change','Next Round Availability'].map((lbl,i)=>{
+        ${['Current Salary (eg INR 5.0 L p.a.)','Expected Salary (eg INR 6.0 L p.a.)','Notice Period','Notice Negotiable?','Currently Serving Notice?','Holding Other Offer?','Location Comfort','Work Model Comfort','Reason for Change','Next Round Availability'].map((lbl,i)=>{
           const saved = ev.notes&&ev.notes['cq'+i] ? ev.notes['cq'+i] : '';
           const prefill = saved || cqDefaults[i] || '';
           const isAutoFill = !saved && cqDefaults[i];
@@ -9079,6 +9156,134 @@ async function fetchResumeScreenedTodayCount(recName,td){
     console.warn('fetchResumeScreenedTodayCount failed:',e.message);
     return 0;
   }
+}
+// 4 Sep 2026 (Weekly Report): same query, date-range instead of exact-day —
+// added alongside rather than generalizing fetchResumeScreenedTodayCount
+// itself, so the EOD report's existing call site is untouched.
+async function fetchResumeScreenedRangeCount(recName,startStr,endStr){
+  try{
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items?$expand=fields($select=Recruiter)&$top=2000',{headers:{'Authorization':'Bearer '+tok}});
+    if(!res.ok)return 0;
+    const data=await res.json();
+    const items=(data&&data.value)||[];
+    return items.filter(it=>{
+      const rec=(it.fields&&it.fields.Recruiter)||'';
+      const created=(it.createdDateTime||'').slice(0,10);
+      return rec===recName&&created>=startStr&&created<=endStr;
+    }).length;
+  }catch(e){
+    console.warn('fetchResumeScreenedRangeCount failed:',e.message);
+    return 0;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// REMAP REQUESTS — Admin queue for submitNew()'s "Raise Request to Admin"
+// (4 Sep 2026): a recruiter hit a dupChk match but wasn't sure whether it's
+// a genuine new application or an accidental duplicate, and asked Admin to
+// decide instead of unilaterally choosing "Map as New Application" — see the
+// dupChk modal in submitNew(). List is Admin-created manually the same way
+// every other List this app writes to was (app-only Graph creds can't
+// create new Lists), referenced by literal name like Candidates itself, not
+// a GUID.
+// ══════════════════════════════════════════════════════
+let REMAP_REQUESTS=[];
+async function loadRemapRequests(){
+  const listEl=document.getElementById('remap-list');
+  if(listEl)listEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">Loading…</div>';
+  try{
+    await refreshToken();
+    // $orderby on a custom (non-indexed) SharePoint column is unreliable via
+    // Graph — no other List read in this app relies on it (all sort
+    // server-side only by the built-in lastModifiedDateTime, e.g.
+    // fetchListLastModified()); sort client-side instead, newest first.
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/RemapRequests/items?$expand=fields&$top=500',{headers:{'Authorization':'Bearer '+tok}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    REMAP_REQUESTS=((data&&data.value)||[]).map(it=>({id:it.id,...it.fields}))
+      .sort((a,b)=>(b.RaisedOn||'').localeCompare(a.RaisedOn||''));
+  }catch(e){
+    console.warn('loadRemapRequests failed:',e.message);
+    if(listEl)listEl.innerHTML='<div style="text-align:center;padding:24px;color:#ff6b6b">Could not load Remap Requests: '+e.message+'</div>';
+    REMAP_REQUESTS=[];
+    updateRemapBadge();
+    return;
+  }
+  renderRemapRequests();
+  updateRemapBadge();
+}
+function updateRemapBadge(){
+  const n=REMAP_REQUESTS.filter(r=>(r.Status||'Pending')==='Pending').length;
+  const b=document.getElementById('remap-pending-badge');
+  if(!b)return;
+  if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}
+}
+function renderRemapRequests(){
+  const el=document.getElementById('remap-list');if(!el)return;
+  const showResolved=document.getElementById('remap-show-resolved')&&document.getElementById('remap-show-resolved').checked;
+  const rows=REMAP_REQUESTS.filter(r=>showResolved||(r.Status||'Pending')==='Pending');
+  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--w60)">✅ No pending remap requests.</div>';return;}
+  el.innerHTML='<div class="tw"><table style="width:100%;font-size:12px"><thead><tr>'
+    +'<th>Candidate</th><th>Mobile</th><th>Email</th><th>Matched Record</th><th>Match Type</th><th>Note</th><th>Raised By</th><th>Raised On</th><th>Status</th><th></th>'
+    +'</tr></thead><tbody>'+rows.map(r=>{
+      const pending=(r.Status||'Pending')==='Pending';
+      const statusBadge=pending?'<span class="badge b-wip">Pending</span>':(r.Status==='Approved'?'<span class="badge b-selected">Approved</span>':'<span class="badge" style="background:rgba(255,107,107,.12);color:#ff6b6b">Rejected</span>');
+      const actions=pending
+        ?'<button class="btn btn-t btn-sm" onclick="approveRemapRequest(\''+r.id+'\')">✓ Approve</button> <button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="rejectRemapRequest(\''+r.id+'\')">✕ Reject</button>'
+        :'<span style="font-size:10px;color:var(--w60)">'+(r.ResolvedBy||'—')+' · '+fmtD(r.ResolvedOn)+(r.NewCandidateCode?'<br><span class="mono">'+r.NewCandidateCode+'</span>':'')+'</span>';
+      return '<tr>'
+        +'<td><strong>'+(r.CandidateName||'—')+'</strong></td>'
+        +'<td class="mono">'+(r.Mobile||'—')+'</td>'
+        +'<td class="m">'+(r.Email||'—')+'</td>'
+        +'<td><span class="mono" style="font-size:10px">'+(r.MatchedCode||'—')+'</span><br><span style="font-size:11px;color:var(--w60)">'+(r.MatchedName||'')+'</span></td>'
+        +'<td>'+(r.MatchType||'—')+'</td>'
+        +'<td class="m" style="max-width:180px">'+(r.Note?escHtml(r.Note):'<span style="color:var(--w60)">—</span>')+'</td>'
+        +'<td>'+(r.RaisedBy||'—')+'</td>'
+        +'<td class="m">'+fmtD(r.RaisedOn)+'</td>'
+        +'<td>'+statusBadge+'</td>'
+        +'<td>'+actions+'</td>'
+        +'</tr>';
+    }).join('')+'</tbody></table></div>';
+}
+// Approve reuses createCandidateFromForm() — the exact same core submitNew()
+// itself calls — so an approved remap request produces a candidate row
+// identical in shape to one added directly, just stamped with Previous
+// Candidate code = the record it was matched against.
+async function approveRemapRequest(itemId){
+  const req=REMAP_REQUESTS.find(r=>r.id===itemId);if(!req)return;
+  if(!req.FormDataJSON){toast('err','Cannot Approve','This request has no captured form data.');return;}
+  let fv;
+  try{fv=JSON.parse(req.FormDataJSON);}catch(e){toast('err','Cannot Approve','Captured form data is corrupted: '+e.message);return;}
+  fv.prevCode=req.MatchedCode||'';
+  showLoad('Creating linked candidate record...');
+  const res=await createCandidateFromForm(fv);
+  if(!res.ok){hideLoad();toast('err','Approve Failed',res.error);return;}
+  try{
+    await refreshToken();
+    await fetch(GRAPH+'/sites/'+siteId+'/lists/RemapRequests/items/'+itemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Approved',ResolvedBy:(curUser&&curUser.name)||(acct&&acct.name?acct.name:''),ResolvedOn:new Date().toISOString(),NewCandidateCode:res.code}})});
+  }catch(e){console.warn('approveRemapRequest: status update failed (candidate WAS created):',e.message);}
+  hideLoad();
+  toast('ok','Approved','Candidate added: '+res.code+' — linked to '+(req.MatchedCode||''));
+  updateTopbar();loadDash();renderRec();
+  loadRemapRequests();
+}
+async function rejectRemapRequest(itemId){
+  const req=REMAP_REQUESTS.find(r=>r.id===itemId);if(!req)return;
+  showModal('✕ Reject Remap Request','Reject the request for <strong>'+(req.CandidateName||'')+'</strong>? No candidate record will be created.',
+    '<div style="margin-top:6px"><label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Reason (optional)</label><textarea id="remapRejNote" rows="2" style="width:100%;font-size:12px;margin-top:4px;padding:6px 8px;box-sizing:border-box;font-family:inherit"></textarea></div>',
+    '<button class="btn btn-ghost" style="color:#ff6b6b;border-color:rgba(255,107,107,.4)" onclick="window._confirmRejectRemap()">Reject</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
+  window._confirmRejectRemap=async()=>{
+    const reason=gv('remapRejNote');
+    closeModal();
+    showLoad('Rejecting request...');
+    try{
+      await refreshToken();
+      await fetch(GRAPH+'/sites/'+siteId+'/lists/RemapRequests/items/'+itemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Rejected',ResolvedBy:(curUser&&curUser.name)||(acct&&acct.name?acct.name:''),ResolvedOn:new Date().toISOString(),ResolutionNote:reason||''}})});
+      hideLoad();toast('ok','Rejected','Request rejected — no candidate created.');
+      loadRemapRequests();
+    }catch(e){hideLoad();toast('err','Reject Failed',e.message);}
+  };
 }
 
 let screenQueue=[];
@@ -10579,6 +10784,37 @@ function triggerEODReport(){
     '<button class="btn btn-t" onclick="genEODReport(\''+rec.replace(/'/g,"\\'")+'\')" >⬇ Download</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
 }
 
+// Monday–Sunday of the week before this one. Business-week convention
+// (Mon start) — matches how Anne referred to it ("start of last week, end
+// of last week"), editable in the modal below if a different window is meant.
+function _lastWeekBounds(){
+  const now=new Date();
+  const daysSinceMon=(now.getDay()+6)%7; // Mon=0 ... Sun=6
+  const thisMon=new Date(now);thisMon.setDate(now.getDate()-daysSinceMon);
+  const lastMon=new Date(thisMon);lastMon.setDate(thisMon.getDate()-7);
+  const lastSun=new Date(lastMon);lastSun.setDate(lastMon.getDate()+6);
+  return{start:lastMon.toISOString().slice(0,10),end:lastSun.toISOString().slice(0,10)};
+}
+function triggerWeeklyReport(){
+  const rec=_rptRec();
+  if(!rec){toast('warn','Select Recruiter','Please select a recruiter first.');return;}
+  const{start,end}=_lastWeekBounds();
+  showModal('📊 Weekly Report — '+rec,
+    'Defaults to last week (Mon–Sun) — adjust the range if needed.',
+    '<div style="display:flex;gap:10px;margin-top:8px">'+
+    '<div style="flex:1"><label style="font-size:13px;font-weight:600;color:#1f5c93;display:block;margin-bottom:6px">Start Date</label><input type="date" id="wr-start" value="'+start+'" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px;border:1px solid var(--w12);border-radius:var(--rs);background:var(--w06);color:var(--ow)"></div>'+
+    '<div style="flex:1"><label style="font-size:13px;font-weight:600;color:#1f5c93;display:block;margin-bottom:6px">End Date</label><input type="date" id="wr-end" value="'+end+'" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px;border:1px solid var(--w12);border-radius:var(--rs);background:var(--w06);color:var(--ow)"></div>'+
+    '</div>',
+    '<button class="btn btn-t" onclick="window._genWeekly()">⬇ Download</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
+  window._genWeekly=()=>{
+    const s=gv('wr-start'),e=gv('wr-end');
+    if(!s||!e){toast('warn','Missing Dates','Please set both a start and end date.');return;}
+    if(s>e){toast('warn','Invalid Range','Start date must be on or before end date.');return;}
+    closeModal();
+    genWeeklyReport(rec,s,e);
+  };
+}
+
 function _tr25(s){const v=String(s||'');return v.length>25?v.slice(0,24)+'…':v;}
 
 function _fDMY(d){
@@ -10678,6 +10914,19 @@ function genActionReport(recName){
 async function genEODReport(recName){
   const notes=(document.getElementById('eod-notes')||{}).value||'';
   closeModal();
+  // 4 Sep 2026: this free-text field was never persisted anywhere — it only
+  // ever existed inside that one day's downloaded HTML file, so a Weekly
+  // Report had nothing to read back for past days. Log it to Change Log
+  // (same sheet/pattern as every other audited action — no new List needed)
+  // whenever it's non-blank, so genWeeklyReport() can show/summarize it
+  // going forward. Non-fatal: a logging failure must never block the EOD
+  // report the recruiter is actually here for.
+  if(notes.trim()){
+    try{
+      const _clNote=writeCL('EOD Notes','','All','',notes.trim(),recName);
+      if(_clNote)await xlAppendRows('Change Log',[_clNote]);
+    }catch(e){console.warn('EOD Notes log failed (report still generates):',e.message);}
+  }
   showLoad('Preparing EOD report...');
   const td=today();
   const dateStr=_fDMY(td);
@@ -10848,6 +11097,175 @@ async function genEODReport(recName){
 
   _dlReport(html,'EOD_Report_'+td.replace(/-/g,'')+'_'+recName.replace(/\s+/g,'_')+'.html');
   toast('ok','Downloaded','EOD Report generated for '+recName+'.');
+}
+
+// Weekly Performance Report (4 Sep 2026). Deliberately activity-based, not a
+// retroactive "what was pending" view: THP only ever stores the CURRENT
+// candidate state (status/follow-up/updatedOn), no daily snapshot history,
+// so EOD's "Tasks Pending" concept — checking today's live state against a
+// window relative to right now — has no honest equivalent for a past week
+// (a candidate's status today reflects everything that happened since,
+// not what it was that week). Change Log rows, sourcingDate, offerDate and
+// DOJ are all genuinely dated facts, safe to range-filter — that's what
+// this pulls from instead. See EOD's genEODReport() just above for the
+// same building blocks at daily scope.
+async function genWeeklyReport(recName,startStr,endStr){
+  showLoad('Preparing Weekly Report...');
+  const startDisp=_fDMY(startStr),endDisp=_fDMY(endStr);
+
+  let weekRows=[];
+  try{
+    const all=await fetchLiveChangeLog();
+    const recUser=appUsers.find(u=>u.name===recName);
+    const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
+    weekRows=all.filter(r=>{
+      const d=String(r[0]).slice(0,10);
+      if(d<startStr||d>endStr)return false;
+      return recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase();
+    });
+  }catch(e){console.warn('Weekly CL',e);}
+
+  // EOD Notes entries (see genEODReport above) are administrative, not
+  // candidate actions — split out so they don't pollute the per-candidate
+  // activity rollup or the action-type counts below.
+  const noteRows=weekRows.filter(r=>r[4]==='EOD Notes');
+  const clRows=weekRows.filter(r=>r[4]!=='EOD Notes');
+
+  const resumesScreenedWeek=await fetchResumeScreenedRangeCount(recName,startStr,endStr);
+  hideLoad();
+
+  const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y');
+  const sourcedWeek=recMD.filter(r=>{const d=String(r[C.sourcingDate]||'').slice(0,10);return d>=startStr&&d<=endStr;});
+  const offersWeek=recMD.filter(r=>{const d=String(r[C.offerDate]||'').slice(0,10);return d&&d>=startStr&&d<=endStr;});
+  // "Joined" is inferred from current status + Expected/DOJ falling in
+  // range — Joined is a terminal status that essentially never reverts, and
+  // DOJ is a fixed dated fact rather than reconstructed history, so this
+  // stays a safe retroactive read despite leaning on "current" status.
+  const joinedWeek=recMD.filter(r=>r[C.status]==='Joined'&&(()=>{const d=String(r[C.doj]||'').slice(0,10);return d&&d>=startStr&&d<=endStr;})());
+
+  function eActType(action){
+    const a=String(action||'').toLowerCase();
+    if(a.includes('whatsapp')||a.includes('wa '))return'WA';
+    if(a.includes('interview')||a.includes('i/w'))return'Interview';
+    if(a.includes('joining'))return'Joining';
+    if(a.includes('sourced')||a.includes('added'))return'Sourcing';
+    return'Follow-up';
+  }
+  function typeTag(t){
+    if(t==='WA')return'<span class="ttype tt-wa">WA</span>';
+    if(t==='Interview')return'<span class="ttype tt-iv">Interview</span>';
+    if(t==='Joining')return'<span class="ttype tt-jn">Joining</span>';
+    if(t==='Sourcing')return'<span class="ttype tt-sr">Sourcing</span>';
+    return'<span class="ttype tt-fu">Follow-up</span>';
+  }
+  function candClRows(code){return clRows.filter(r=>String(r[3])===code);}
+  function candActCount(code){return candClRows(code).length;}
+  function candWACount(code){return candClRows(code).filter(r=>eActType(r[4])==='WA').length;}
+  function fmtDT(ts){return new Date(ts).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});}
+  function candFirstAct(code){const rows=candClRows(code);return rows.length?fmtDT(rows[0][0]):'—';}
+  function candLastAct(code){const rows=candClRows(code);return rows.length?fmtDT(rows[rows.length-1][0]):'—';}
+  function candActs(code){return candClRows(code).map(r=>String(r[4]||'')+(r[5]?' — '+r[5]:'')+' ['+fmtDT(r[0])+']').join('; ');}
+  function typeTagsForCode(code){const types=[...new Set(candClRows(code).map(r=>eActType(r[4])))];return types.map(typeTag).join(' ')||'—';}
+
+  const touchedCodes=[...new Set(clRows.map(r=>String(r[3])).filter(Boolean))];
+  // Prefer live MD for name/position/client/status where the candidate
+  // record still exists; fall back to what Change Log itself recorded for a
+  // code that's since been archived/removed, so the row isn't blank.
+  const touched=touchedCodes.map(code=>{
+    const r=MD.find(x=>x[C.code]===code);
+    const clSample=candClRows(code)[0];
+    return r?{code,name:r[C.name],position:r[C.position],client:r[C.client],status:r[C.status]}
+            :{code,name:(clSample&&clSample[8])||'—',position:'—',client:'—',status:'—'};
+  });
+
+  const totalActions=clRows.length;
+  const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
+  const totalInterviews=clRows.filter(r=>eActType(r[4])==='Interview').length;
+
+  const sumBarCss='.sb{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 18px;font-family:Calibri,sans-serif;}'+
+    '.sc{background:#f0f4f8;border-radius:6px;padding:10px 16px;text-align:center;min-width:90px;}'+
+    '.scn{font-size:22pt;font-weight:700;color:#1f5c93;display:block;line-height:1.1;}'+
+    '.scl{font-size:9pt;color:#5f6470;display:block;margin-top:2px;}'+
+    '.sc.grn .scn{color:#3a6b30;}.sc.amb .scn{color:#856404;}.sc.red .scn{color:#9f4a47;}'+
+    '.ttype{display:inline-block;font-size:9pt;padding:1px 5px;border-radius:3px;font-weight:600;}'+
+    '.tt-wa{background:#fff3cd;color:#856404;}.tt-iv{background:#e8eaf6;color:#3949ab;}'+
+    '.tt-jn{background:#e6f2e6;color:#3a6b30;}.tt-fu{background:#f0f4f8;color:#5f6470;}'+
+    '.tt-sr{background:#f3e5f5;color:#6a1b9a;}';
+
+  function _rptTblH(hdrs,rows){
+    let t='<table><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
+    if(!rows.length){t+='<tr><td colspan="'+hdrs.length+'" style="color:#5f6470;font-style:italic">No entries</td></tr>';}
+    else{rows.forEach(r=>{t+='<tr>'+r.map((c,i)=>{
+      const raw=String(c||'');
+      const disp=(i<r.length-1&&!raw.includes('<span'))?_tr25(raw):raw;
+      const title=(i<r.length-1&&!raw.includes('<span')&&raw.length>25)?' title="'+raw.replace(/"/g,'&quot;')+'"':'';
+      return'<td'+title+'>'+disp+'</td>';
+    }).join('')+'</tr>';});}
+    return t+'</tbody></table>';
+  }
+
+  // Optional AI-condensed summary of the week's manual EOD notes — degrades
+  // silently to just the raw chronological list below when no AI key is
+  // configured (same graceful-degradation pattern every other AI feature in
+  // this app already follows — see the transcript-matching feature above).
+  let notesSummary='';
+  if(noteRows.length&&getAIKey()){
+    try{
+      const notesText=noteRows.map(r=>_fDMY(String(r[0]).slice(0,10))+': '+String(r[7]||'')).join('\n\n');
+      const prompt='These are a recruiter\'s own end-of-day notes across one week, in their own words. Write a concise 3-5 sentence third-person summary of what they describe doing this week — no invented details, don\'t just restate the dates, capture the substance. Return ONLY the summary text, no preamble, no markdown.\n\n'+notesText;
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,messages:[{role:'user',content:prompt}]})
+      });
+      if(resp.ok){
+        const data=await resp.json();
+        notesSummary=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
+      }
+    }catch(e){console.warn('Weekly notes AI summary failed (raw notes still shown):',e.message);}
+  }
+  const escN=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Weekly Report '+startDisp+' - '+endDisp+'</title>'+
+    '<style>'+_rptCss()+sumBarCss+'</style></head><body>'+
+    '<div class="rh">Weekly Performance Report — '+startDisp+' to '+endDisp+'</div>'+
+    '<div class="rm">Recruiter: '+recName+' &nbsp;|&nbsp; Generated: '+new Date().toLocaleString('en-IN')+'</div>'+
+
+    '<div class="sb">'+
+      '<div class="sc grn"><span class="scn">'+sourcedWeek.length+'</span><span class="scl">Sourced</span></div>'+
+      '<div class="sc grn"><span class="scn">'+touched.length+'</span><span class="scl">Candidates Touched</span></div>'+
+      '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
+      '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
+      '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
+      '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesScreenedWeek+'</span><span class="scl">Resumes Screened</span></div>'+
+      '<div class="sc" style="background:#e6f2e6"><span class="scn" style="color:#3a6b30">'+offersWeek.length+'</span><span class="scl">Offers Made</span></div>'+
+      '<div class="sc" style="background:#e6f2e6"><span class="scn" style="color:#3a6b30">'+joinedWeek.length+'</span><span class="scl">Joined</span></div>'+
+    '</div>'+
+
+    '<div class="sh">0. Candidates Sourced This Week ('+sourcedWeek.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Source','Sourced On'],
+      sourcedWeek.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.source]||'—',_fDMY(r[C.sourcingDate])]))+
+
+    '<div class="sh">1. Candidate Activity This Week ('+touched.length+')</div>'+
+    _rptTblH(['Code','Name','Position','Client','Status','Types','Actions','WA','First','Last','Action Summary'],
+      touched.map(t=>[t.code,t.name,t.position,t.client,t.status,
+        typeTagsForCode(t.code),candActCount(t.code),candWACount(t.code)||'—',
+        candFirstAct(t.code),candLastAct(t.code),candActs(t.code)]))+
+
+    '<div class="sh">2. Offers &amp; Joins This Week</div>'+
+    _rptTbl(['Code','Name','Position','Client','Offer Date','Expected/DOJ','Status'],
+      [...offersWeek,...joinedWeek.filter(r=>!offersWeek.includes(r))].map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],_fDMY(r[C.offerDate]),_fDMY(r[C.doj]),r[C.status]]))+
+
+    '<div class="sh">3. Daily Notes This Week'+(noteRows.length?' ('+noteRows.length+' entries)':'')+'</div>'+
+    (notesSummary?'<div class="nb" style="margin-bottom:8pt;background:#f0f4f8;border-color:#1f5c93"><strong>AI Summary:</strong> '+escN(notesSummary)+'</div>':'')+
+    (noteRows.length
+      ?noteRows.map(r=>'<div class="nl" style="font-size:11pt;margin:8pt 0 2pt">'+_fDMY(String(r[0]).slice(0,10))+'</div><div class="nb">'+escN(r[7])+'</div>').join('')
+      :'<div class="nil">No daily notes logged this week.</div>')+
+
+    '</body></html>';
+
+  _dlReport(html,'Weekly_Report_'+startStr.replace(/-/g,'')+'_'+endStr.replace(/-/g,'')+'_'+recName.replace(/\s+/g,'_')+'.html');
+  toast('ok','Downloaded','Weekly Report generated for '+recName+'.');
 }
 
 </script>
