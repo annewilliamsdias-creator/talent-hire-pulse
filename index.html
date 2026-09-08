@@ -1197,11 +1197,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div class="sl2">🎯 Role</div>
 <div class="fg3">
-<div class="field"><label>Client</label><select id="epCli"><option value="">— Select —</option></select></div>
-<div class="field"><label>Department</label><select id="epDept"><option value="">— Select —</option></select></div>
-<div class="field"><label>Position</label><input type="text" id="epPos"></div>
+<div class="field"><label>Client</label><select id="epCli" onchange="epFillPosDrop()"><option value="">— Select —</option></select></div>
+<div class="field"><label>Department</label><select id="epDept" onchange="epFillPosDrop()"><option value="">— Select —</option></select></div>
+<div class="field"><label>Position <span class="fhint">(open vacancies, all recruiters)</span></label><select id="epPos" onchange="onEpPosSel()"><option value="">— Select open vacancy —</option></select></div>
 <div class="field"><label>Role Interested In</label><input type="text" id="epRI"></div>
-<div class="field"><label>Vacancy Code</label><input type="text" id="epVC"></div>
+<div class="field"><label>Vacancy Code <span class="fhint">(auto)</span></label><input type="text" id="epVC" readonly></div>
+<div class="field"><label>Location of Posting <span class="fhint">(auto)</span></label><input type="text" id="epPLoc" placeholder="Auto from vacancy" readonly></div>
 <div class="field"><label>Recruiter</label><select id="epRec"><option value="">— Select —</option></select></div>
 </div>
 <div class="sl2">📄 Resume</div>
@@ -2953,6 +2954,34 @@ const cv=document.getElementById('nCli')?document.getElementById('nCli').value:'
 const dv=document.getElementById('nDept')?document.getElementById('nDept').value:'';
 const cur=sel.value;sel.innerHTML='<option value="">— Select open vacancy —</option>';
 VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv;const om=['Open','open',''].includes(v['Current Status']||'');const am=v['Active']!=='N';const rm=!myRecName||v['Recruiter']===myRecName;return cm&&dm&&om&&am&&rm;}).forEach(v=>{const o=document.createElement('option');const code=v['Vacancy code']||v['Vacancy Code']||'';o.value=v['Designation']||'';o.dataset.code=code;o.dataset.loc=v['Location']||'';o.textContent=(v['Designation']||'—')+' ('+code+') — '+(v['Company']||'—');sel.appendChild(o);});if(cur)sel.value=cur;}
+// Edit Profile's vacancy-position dropdown (8 Sep 2026). Same open+active
+// filter as fillPosDrop() above (Anne: "the logic for only open vacancies
+// should apply here too") but deliberately WITHOUT the myRecName
+// ownership filter — Anne's explicit call: Edit Profile must show vacancies
+// across every recruiter, since its purpose here includes transferring an
+// already-active candidate onto a vacancy that may not be their own.
+function epFillPosDrop(){
+const sel=document.getElementById('epPos');if(!sel)return;
+const cv=document.getElementById('epCli')?document.getElementById('epCli').value:'';
+const dv=document.getElementById('epDept')?document.getElementById('epDept').value:'';
+const cur=sel.value;sel.innerHTML='<option value="">— Select open vacancy —</option>';
+VD.filter(v=>{const cm=!cv||v['Company']===cv;const dm=!dv||v['Department']===dv;const om=['Open','open',''].includes(v['Current Status']||'');const am=v['Active']!=='N';return cm&&dm&&om&&am;}).forEach(v=>{const o=document.createElement('option');const code=v['Vacancy code']||v['Vacancy Code']||'';o.value=v['Designation']||'';o.dataset.code=code;o.dataset.loc=v['Location']||'';o.dataset.company=v['Company']||'';o.dataset.dept=v['Department']||'';o.textContent=(v['Designation']||'—')+' ('+code+') — '+(v['Company']||'—');sel.appendChild(o);});if(cur)sel.value=cur;}
+// Mirrors onPosSel() — selecting a vacancy auto-fills Vacancy Code and the
+// new Location of Posting field (job location, deliberately distinct from
+// the candidate's own City field — Anne confirmed "yes job location"), and
+// backfills Client/Department if they weren't already set to match.
+function onEpPosSel(){
+const sel=document.getElementById('epPos');
+const ch=sel&&sel.options[sel.selectedIndex];
+if(!ch||ch.dataset.code===undefined)return;
+sv('epVC',ch.dataset.code||'');sv('epPLoc',ch.dataset.loc||'');
+const cli=document.getElementById('epCli'),dept=document.getElementById('epDept');
+const chVal=ch.value,chCli=ch.dataset.company,chDept=ch.dataset.dept;
+if(cli&&chCli)cli.value=chCli;
+if(dept&&chDept)dept.value=chDept;
+epFillPosDrop();
+sel.value=chVal;
+}
 
 // ══════════════════════════════════════════════════════
 // UI INIT
@@ -3437,15 +3466,50 @@ if(idx===-1){showAlert('epAlert','err','No record found for "'+code+'".');docume
 epIdx=idx;const r=MD[idx];
 document.getElementById('epAlert').innerHTML='';document.getElementById('epForm').classList.remove('hidden');
 document.getElementById('epNm').textContent=r[C.name]||'Edit Profile';document.getElementById('epCd').textContent=r[C.code]||'';
-const flds=[['epNm2',C.name],['epMob',C.contact],['epAlt',C.altContact],['epEm',C.email],['epAEm',C.altEmail],['epLoc',C.location],['epCo',C.company],['epDe',C.designation],['epExp',C.expYrs],['epNot',C.notice],['epReas',C.reason],['epSPM',C.salaryPM],['epSPA',C.salaryPA],['epESPM',C.expectedSalary],['epSBr',C.salaryBracket],['epCli',C.client],['epDept',C.dept],['epPos',C.position],['epRI',C.roleInterested],['epVC',C.vacCode],['epRec',C.recruiter]];
+// Same defensive refresh doLookup() already does for Update Record — without
+// it, epCli/epDept (and epLoc/epNot/epRec) only ever have the option list
+// from login-time, so a Master added/edited mid-session (or, previously, the
+// very first panel visit landing on Edit Profile with no options at all)
+// could leave a value unable to select/match here.
+fillDrops();
+const flds=[['epNm2',C.name],['epMob',C.contact],['epAlt',C.altContact],['epEm',C.email],['epAEm',C.altEmail],['epLoc',C.location],['epCo',C.company],['epDe',C.designation],['epExp',C.expYrs],['epNot',C.notice],['epReas',C.reason],['epSPM',C.salaryPM],['epSPA',C.salaryPA],['epESPM',C.expectedSalary],['epSBr',C.salaryBracket],['epCli',C.client],['epDept',C.dept],['epPos',C.position],['epRI',C.roleInterested],['epVC',C.vacCode],['epPLoc',C.postingLoc],['epRec',C.recruiter]];
 flds.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=(r[key]!==undefined&&r[key]!==null)?String(r[key]):'';}); // Bug M fix: safe pre-fill
+// 8 Sep 2026: epPos is now a vacancy-backed dropdown (see epFillPosDrop()),
+// not free text — the generic pre-fill above can't select a matching
+// <option> since the dropdown was still empty when it ran. Populate it now
+// that Client/Department are set, then explicitly resolve the candidate's
+// current position: match by Vacancy Code first (most reliable — Designation
+// text can collide across companies), falling back to a label match. If
+// neither matches (their vacancy is now closed, or this candidate's Position
+// was always free text with no real vacancy behind it), synthesize a
+// one-off option so the existing value still displays correctly instead of
+// silently reverting to blank — picking a real open vacancy afterward
+// replaces it as normal.
+epFillPosDrop();
+(()=>{
+  const sel=document.getElementById('epPos');if(!sel||!r[C.position])return;
+  const opts=[...sel.options];
+  const match=(r[C.vacCode]&&opts.find(o=>o.dataset.code===r[C.vacCode]))||opts.find(o=>o.value===r[C.position]);
+  // Backfill Vacancy Code/Location of Posting from the matched option, not
+  // just whatever's already stored on the record — an older candidate may
+  // predate the Location of Posting field entirely (blank on the record
+  // even though we now know exactly which vacancy this is).
+  if(match){sel.value=match.value;sv('epVC',match.dataset.code||'');sv('epPLoc',match.dataset.loc||'');return;}
+  const opt=document.createElement('option');
+  opt.value=r[C.position];
+  opt.dataset.code=r[C.vacCode]||'';opt.dataset.loc=r[C.postingLoc]||'';
+  opt.dataset.company=r[C.client]||'';opt.dataset.dept=r[C.dept]||'';
+  opt.textContent=r[C.position]+(r[C.vacCode]?' ('+r[C.vacCode]+')':'')+' — current, not an open vacancy';
+  sel.insertBefore(opt,sel.options[1]||null);
+  sel.value=r[C.position];
+})();
 const epFileEl=document.getElementById('epResumeFile');if(epFileEl)epFileEl.value='';
 const epStEl=document.getElementById('epResumeStatus');
 if(epStEl)epStEl.innerHTML=r[C.resumeLink]?('📄 <a href="'+r[C.resumeLink]+'" target="_blank" style="color:var(--teal)">View current resume</a>'):'No resume on file yet.';
 setTimeout(()=>{const rec=r[C.recruiter]||'';if(rec&&!mA('recruiters').includes(rec)){const myN=acct&&acct.name?acct.name.split(' ')[0]:'';showModal('👤 Recruiter Update Required','<strong>'+rec+'</strong> is no longer active. Please reassign before saving.','','<button class="btn btn-t" onclick="closeModal();sv(\'epRec\',\''+myN+'\')">Assign to Me</button><button class="btn btn-ghost" onclick="closeModal();document.getElementById(\'epRec\').focus()">Select Recruiter</button>');}},100);}
 async function saveEP(){
 if(epIdx===-1)return;const r=MD[epIdx];
-const flds=[['epNm2',C.name,'Name'],['epMob',C.contact,'Mobile'],['epAlt',C.altContact,'Alt Mobile'],['epEm',C.email,'Email'],['epAEm',C.altEmail,'Alt Email'],['epLoc',C.location,'Location'],['epCo',C.company,'Company'],['epDe',C.designation,'Designation'],['epExp',C.expYrs,'Experience'],['epNot',C.notice,'Notice'],['epReas',C.reason,'Reason'],['epSPM',C.salaryPM,'Salary PM'],['epSPA',C.salaryPA,'Salary PA'],['epESPM',C.expectedSalary,'Expected Salary'],['epSBr',C.salaryBracket,'Salary Bracket'],['epCli',C.client,'Client'],['epDept',C.dept,'Dept'],['epPos',C.position,'Position'],['epRI',C.roleInterested,'Role Interested'],['epVC',C.vacCode,'Vacancy Code'],['epRec',C.recruiter,'Recruiter']];
+const flds=[['epNm2',C.name,'Name'],['epMob',C.contact,'Mobile'],['epAlt',C.altContact,'Alt Mobile'],['epEm',C.email,'Email'],['epAEm',C.altEmail,'Alt Email'],['epLoc',C.location,'Location'],['epCo',C.company,'Company'],['epDe',C.designation,'Designation'],['epExp',C.expYrs,'Experience'],['epNot',C.notice,'Notice'],['epReas',C.reason,'Reason'],['epSPM',C.salaryPM,'Salary PM'],['epSPA',C.salaryPA,'Salary PA'],['epESPM',C.expectedSalary,'Expected Salary'],['epSBr',C.salaryBracket,'Salary Bracket'],['epCli',C.client,'Client'],['epDept',C.dept,'Dept'],['epPos',C.position,'Position'],['epRI',C.roleInterested,'Role Interested'],['epVC',C.vacCode,'Vacancy Code'],['epPLoc',C.postingLoc,'Location of Posting'],['epRec',C.recruiter,'Recruiter']];
 const changes=[];
 flds.forEach(([id,key,lbl])=>{const el=document.getElementById(id);if(!el)return;const nv=el.value.trim(),ov=String(r[key]||'').trim();if(nv!==ov){changes.push({key,lbl,old:ov,new:nv});r[key]=nv;}});
 if(!changes.length){showAlert('epSaveAlert','info','No changes detected.');return;}
