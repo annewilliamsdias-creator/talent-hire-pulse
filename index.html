@@ -9106,7 +9106,13 @@ async function computeResumeFitment(code){
     if(!resumeText)throw new Error('Could not extract any text from the resume PDF.');
 
     const coreQs=[];for(let i=1;i<=10;i++){if(jdEntry['q'+i])coreQs.push(jdEntry['q'+i]);}
-    const prompt=`You compare a candidate's resume against a role's requirements for a recruiter at WithAWill HR Consultancy Services.
+    // 8 Sep 2026 — prompt caching, same reasoning as screenOne()'s bulk
+    // panel just above: scoring several candidates already on the same
+    // vacancy one after another is the exact repeat-header pattern caching
+    // is for. Header (role context/requirements/indicators) goes in
+    // `system` with cache_control; only the per-candidate resume text stays
+    // in `messages`.
+    const header=`You compare a candidate's resume against a role's requirements for a recruiter at WithAWill HR Consultancy Services.
 
 ROLE CONTEXT:
 ${jdEntry.rolecontext||'(none provided)'}
@@ -9118,9 +9124,8 @@ SHORTLIST INDICATORS:
 ${jdEntry.shortlist||'(none provided)'}
 
 CONCERN / RED FLAG INDICATORS:
-${jdEntry.redflag||'(none provided)'}
-
-CANDIDATE'S RESUME TEXT:
+${jdEntry.redflag||'(none provided)'}`;
+    const body=`CANDIDATE'S RESUME TEXT:
 ${resumeText.slice(0,12000)}
 
 Score the resume's fit against this role's requirements from 1-10, and give 2-4 sentences of specific, actionable recommendations for the recruiter — what to verify or probe on, not just a summary. Base this only on what's actually in the resume; don't invent experience that isn't stated.
@@ -9130,7 +9135,7 @@ Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations"
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:body}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
@@ -9463,14 +9468,23 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
     // Images go straight to the model as a vision input (no OCR step needed);
     // every other format is extracted to plain text first (pdf.js/mammoth/
     // JSZip+XML/plain read) and dropped into the prompt as before.
+    // 8 Sep 2026 — prompt caching: `header` (role context/requirements/
+    // shortlist/red-flag indicators, and the run's extra context) is
+    // identical across every resume screened against the same vacancy in
+    // one sitting — the only thing that changes call to call is the resume
+    // itself. Moved out of the per-message content into `system` with
+    // cache_control below, so the 2nd+ resume in a batch reads that shared
+    // block at a fraction of normal input cost instead of paying full price
+    // on every single call (this is the actual cost driver Anne asked about
+    // — bulk resume screening).
     const messageContent=content.kind==='image'
       ?[{type:'image',source:{type:'base64',media_type:content.mediaType,data:content.base64}},
-         {type:'text',text:header+'\nThe candidate\'s resume is provided as an image above — read it directly.\n'+instructions}]
-      :header+'\nCANDIDATE\'S RESUME TEXT:\n'+content.text.slice(0,12000)+'\n'+instructions;
+         {type:'text',text:'The candidate\'s resume is provided as an image above — read it directly.\n'+instructions}]
+      :'CANDIDATE\'S RESUME TEXT:\n'+content.text.slice(0,12000)+'\n'+instructions;
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,messages:[{role:'user',content:messageContent}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:messageContent}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
