@@ -1708,6 +1708,13 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <span id="salMigStatus" style="font-size:11px;color:var(--w60);margin-left:10px"></span>
 </div>
 </div>
+<div class="card" style="margin-top:14px"><div class="card-hdr"><div class="card-title"><span class="ac">📌</span> Vacancy Budget Migration</div></div>
+<div style="max-width:600px;padding:4px 0">
+  <div style="font-size:12px;color:#5f6470;margin-bottom:10px">One-time fix (18 Sep 2026): Vacancy Budget Min/Max now store an <strong>annual</strong> figure instead of monthly, matching how they're entered going forward — this also fixes the "Potential Fee Per Vacancy" report and the compensation shown on the Candidate Portal. Existing vacancies still hold the old monthly number — run this once to convert them.</div>
+  <button class="btn btn-t btn-sm" onclick="migrateVacancyBudgetToAnnual()">🔧 Run Migration</button>
+  <span id="vacMigStatus" style="font-size:11px;color:var(--w60);margin-left:10px"></span>
+</div>
+</div>
 <div class="card" style="margin-top:14px"><div class="card-hdr"><div class="card-title"><span class="ac">🤖</span> AI Settings</div></div>
 <div style="max-width:600px;padding:4px 0">
   <div style="font-size:13px;color:#291b39;margin-bottom:6px;font-weight:600">Anthropic API Key</div>
@@ -1740,8 +1747,8 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Role / Designation <span class="req">*</span></label><input type="text" id="avRole" placeholder="e.g. Operations Executive"></div>
 <div class="field"><label>Department <span class="req">*</span></label><select id="avDept"><option value="">— Select —</option></select></div>
 <div class="field"><label>Location</label><select id="avLoc"><option value="">— Select —</option></select></div>
-<div class="field"><label>Budget Min ₹/month</label><input type="number" id="avBudgetMin" placeholder="e.g. 40000"></div>
-<div class="field"><label>Budget Max ₹/month</label><input type="number" id="avBudgetMax" placeholder="e.g. 60000"></div>
+<div class="field"><label>Budget Min ₹/annum</label><input type="number" id="avBudgetMin" placeholder="e.g. 480000"></div>
+<div class="field"><label>Budget Max ₹/annum</label><input type="number" id="avBudgetMax" placeholder="e.g. 720000"></div>
 <div class="field"><label>Experience Required</label><input type="text" id="avExp" placeholder="e.g. 2-4 years"></div>
 <div class="field"><label>Recruiter Assigned</label><select id="avRec"><option value="">— Select —</option></select></div>
 <div class="field"><label>Hiring Manager</label><input type="text" id="avHiringMgr" placeholder="Name of hiring manager"></div>
@@ -3280,6 +3287,77 @@ async function migrateSalaryToAnnual(){
     }
   };
 }
+// Sibling one-time fix (18 Sep 2026) for Vacancy Budget Min/Max — same
+// monthly->annual flip, same reasoning as migrateSalaryToAnnual() above, but
+// a separate guard flag since that one may already have been run. This also
+// fixes the "Potential Fee Per Vacancy" report (calcFirmFee no longer
+// multiplies by 12) and the compensation figure the Candidate Portal shows
+// (computePublicCompensation there is unit-agnostic — it just scales
+// whatever's in Budget Min/Max by 0.75, so once these are annual, the
+// portal reads annual too).
+async function migrateVacancyBudgetToAnnual(){
+  const already=getMetadata('vacBudgetMigrated2026');
+  const statusEl=document.getElementById('vacMigStatus');
+  if(already){
+    showModal('📌 Already Migrated','This migration already ran on <strong>'+already+'</strong>. Running it again would multiply already-annual budgets by 12 a second time.',
+      '','<button class="btn btn-ghost" onclick="closeModal()">Close</button>');
+    return;
+  }
+  const affected=VD.filter(v=>(parseFloat(v['Budget Min'])||0)>0||(parseFloat(v['Budget Max'])||0)>0);
+  if(!affected.length){
+    if(statusEl)statusEl.textContent='No vacancies with Budget Min/Max found — nothing to migrate.';
+    return;
+  }
+  showModal('📌 Migrate Vacancy Budget to Annual','This will multiply Budget Min/Max by 12 for <strong>'+affected.length+' vacancy(ies)</strong> — converting old monthly figures to annual, to match the new entry convention. This cannot be automatically undone. Continue?',
+    '','<button class="btn btn-t" onclick="window._confirmVacMigration()">Migrate '+affected.length+' Vacancy(ies)</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
+  window._confirmVacMigration=async()=>{
+    closeModal();
+    showLoad('Migrating vacancy budget data...');
+    const clRows=[];
+    try{
+      for(const v of affected){
+        const code=v['Vacancy code']||v['Vacancy Code']||'';
+        const nm=(v['Company']||'')+' — '+(v['Designation']||'');
+        let newMin='',newMax='';
+        if((parseFloat(v['Budget Min'])||0)>0){
+          newMin=Math.round(parseFloat(v['Budget Min'])*12);
+          const cl=writeCL('Vacancy Budget Migration',code,'Budget Min',v['Budget Min'],newMin,nm);
+          if(cl)clRows.push(cl);
+          v['Budget Min']=newMin;
+        }
+        if((parseFloat(v['Budget Max'])||0)>0){
+          newMax=Math.round(parseFloat(v['Budget Max'])*12);
+          const cl=writeCL('Vacancy Budget Migration',code,'Budget Max',v['Budget Max'],newMax,nm);
+          if(cl)clRows.push(cl);
+          v['Budget Max']=newMax;
+        }
+        v['Monthly Budget']=v['Budget Min']?v['Budget Min']+' - '+v['Budget Max']:v['Budget Max']||'';
+        try{
+          const itemId=await resolveVacSpItemId(v);
+          if(itemId){
+            const patch={};
+            if(newMin!=='')patch[SPLIST_VAC_FIELD_MAP['Budget Min']]=String(newMin);
+            if(newMax!=='')patch[SPLIST_VAC_FIELD_MAP['Budget Max']]=String(newMax);
+            patch[SPLIST_VAC_FIELD_MAP['Monthly Budget']]=v['Monthly Budget'];
+            await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields`,patch);
+          }
+        }catch(e){console.warn('migrateVacancyBudgetToAnnual: List dual-write failed for',code,e.message);}
+      }
+      if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
+      await saveWB(false,true,['Vacancies']);
+      if(clRows.length)await xlAppendRows('Change Log',clRows);
+      saveMetadata({vacBudgetMigrated2026:today()});
+      await saveWB(false,true,['Config']);
+      hideLoad();
+      if(statusEl)statusEl.textContent='✅ Migrated '+affected.length+' vacancy(ies) on '+today()+'.';
+      toast('ok','Vacancy Budget Migration Complete',affected.length+' vacancy(ies) converted to annual.');
+      renderAVacs();renderVac();
+    }catch(e){
+      hideLoad();
+      toast('err','Migration Failed',e.message+' — some vacancies may be partially migrated. Check the Change Log before retrying.');
+    }
+  };
+}
 
 // ══════════════════════════════════════════════════════
 // NEW CANDIDATE
@@ -3895,7 +3973,7 @@ function viewVacModal(idx){
     ['Priority',v['Priority']||'—'],['# Positions',v['Positions Count']||'1'],
     ['Active Candidates',code ? activeCount+' active · '+joinedCount+' joined · '+vacCands.length+' total' : '—'],
     ['Status',v['Current Status']||'—'],['Active',v['Active']==='N'?'No':'Yes'],
-    ['Budget Range','₹'+(v['Budget Min']||'—')+' – ₹'+(v['Budget Max']||'—')],['Monthly Budget',v['Monthly Budget']||'—'],['Experience Required',v['Experience']||'—'],
+    ['Budget Range (₹ PA)','₹'+(v['Budget Min']||'—')+' – ₹'+(v['Budget Max']||'—')],['Budget (Combined)',v['Monthly Budget']||'—'],['Experience Required',v['Experience']||'—'],
     ['Recruiter Assigned',v['Recruiter']||'—'],['Hiring Manager',v['Hiring Manager']||'—'],
     ['Manager Name',v['Manager Name']||'—'],['Date of Vacancy',fmtD(v['Date of Vacancy'])],
     ['Target Fill Date',fmtD(v['Target Fill Date'])],['Remarks',v['Remarks']||'—'],
@@ -6964,10 +7042,10 @@ function genProjections(){
     const budgetMin = parseFloat(v['Budget Min']||0);
     const budgetMax = parseFloat(v['Budget Max']||0);
     const midBudget = budgetMin && budgetMax ? (budgetMin+budgetMax)/2 : budgetMin||budgetMax||0;
-    const annualMid = midBudget * 12;
+    const annualMid = midBudget;
     const exp = parseExp(v['Experience'] || '2');
-    const feeMin = budgetMin ? calcFirmFee(exp, budgetMin*12, v['Company']) : 0;
-    const feeMax = budgetMax ? calcFirmFee(exp, budgetMax*12, v['Company']) : 0;
+    const feeMin = budgetMin ? calcFirmFee(exp, budgetMin, v['Company']) : 0;
+    const feeMax = budgetMax ? calcFirmFee(exp, budgetMax, v['Company']) : 0;
     const feeMid = calcFirmFee(exp, annualMid, v['Company']);
     const positions = parseInt(v['Positions Count']||1);
     const recPhase = v['Recruiter'] ? getRecruiterPhase(v['Recruiter'], today()) : {phase:'unknown'};
