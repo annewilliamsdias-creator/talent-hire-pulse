@@ -1657,6 +1657,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="atab" id="at-users" onclick="switchATab('users')">👥 Users</div>
 <div class="atab" id="at-commonrepo" onclick="switchATab('commonrepo')">📋 Interview Repository</div><div class="atab" id="at-repository" onclick="switchATab('repository')">📤 Repository Migration</div>
 <div class="atab" id="at-remap" onclick="switchATab('remap')">🔀 Remap Requests <span id="remap-pending-badge" style="display:none;background:#e9982b;color:#0e0f17;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px"></span></div>
+<div class="atab" id="at-pool" onclick="switchATab('pool')">🌊 Talent Pool <span id="pool-new-badge" style="display:none;background:#e9982b;color:#0e0f17;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px"></span></div>
 </div>
 <!-- BILLING CONFIG -->
 <div id="ap-billing" class="hidden">
@@ -1870,6 +1871,18 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">A recruiter hit a possible duplicate (same mobile/email as an existing record) and wasn't sure whether it's a genuine new application. <strong style="color:var(--teal)">Approve</strong> adds the candidate, linked to the matched record via Previous Candidate code. <strong style="color:#ff6b6b">Reject</strong> discards the request — nothing is added.</div>
 <div id="remap-list"></div>
+</div></div>
+
+<div id="ap-pool" class="hidden"><div class="card">
+<div class="card-hdr">
+  <div class="card-title"><span class="ac">🌊</span> Talent Pool</div>
+  <div class="flex gap8">
+    <input type="text" id="pool-filter" placeholder="Search name, company, role, summary…" style="font-size:11px;padding:5px 8px;width:220px" oninput="renderTalentPool()">
+    <button class="btn btn-ghost btn-sm" onclick="loadTalentPool()">🔄 Refresh</button>
+  </div>
+</div>
+<div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">General applications submitted via the Candidate Portal, not tied to any vacancy. <strong style="color:var(--teal)">Promote</strong> pre-fills the New Candidate form for review before it becomes a real candidate record. When a new vacancy is created, this pool is automatically checked for likely matches.</div>
+<div id="pool-list"></div>
 </div></div>
 
 <!-- VALIDATION RESULTS -->
@@ -2936,7 +2949,8 @@ function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').t
 // 4 Sep 2026: surface the pending-Remap-Requests count on the Admin tab
 // badge right away, not only after Admin happens to open that tab —
 // fire-and-forget, never blocks login.
-if(rd.admin)loadRemapRequests().catch(()=>{});}
+if(rd.admin)loadRemapRequests().catch(()=>{});
+if(rd.admin)loadTalentPool().catch(()=>{});}
 async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i;break;}}const block=[['Users'],['Name','Email','Type','Role','Client','Active'],...appUsers.map(u=>[u.name,u.email,u.type||'internal',u.role,u.client||'',u.active?'Y':'N'])];if(ui>=0){let ei=ui+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(ui,ei-ui,...block);}else{all.push([],...block);}WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);await saveWB('Saving users...',true,['Config']);}catch(e){toast('err','Save Failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
@@ -4020,7 +4034,7 @@ if(_bulkFailed.length){
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo','repository','remap'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}if(tab==='repository'){console.log('Repository migration tab active');}if(tab==='remap'){loadRemapRequests();}}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo','repository','remap','pool'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}if(tab==='repository'){console.log('Repository migration tab active');}if(tab==='remap'){loadRemapRequests();}if(tab==='pool'){loadTalentPool();}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
@@ -4259,6 +4273,11 @@ try{
     }
   }
 }catch(vacListErr){console.warn('saveVac: Vacancies List dual-write failed:',vacListErr.message);}
+// Auto-match the talent pool + resurfaceable past candidates against this
+// new vacancy — approved 18 Sep 2026 (Notion "Open Applications / Searchable
+// Talent Database"). Fire-and-forget: never await this inline, a slow or
+// failed AI call must never block or break the vacancy save above.
+if(isNew){triggerPoolMatchForVacancy(vd).catch(e=>console.warn('pool match trigger failed',e.message));}
 closeVacFormModal();hideSyncBanner();
 // Auto-tag candidates: if recruiter changed on existing vacancy, update all
 // active candidates linked to this vacancy code to the new recruiter
@@ -9355,6 +9374,68 @@ async function rejectRemapRequest(itemId){
   };
 }
 
+async function loadTalentPool(){
+  const listEl=document.getElementById('pool-list');
+  if(listEl)listEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">Loading…</div>';
+  try{
+    POOL_ENTRIES=await loadPoolFromList();
+    POOL_ENTRIES.sort((a,b)=>(b.submittedOn||'').localeCompare(a.submittedOn||''));
+  }catch(e){
+    console.warn('loadTalentPool failed:',e.message);
+    if(listEl)listEl.innerHTML='<div style="text-align:center;padding:24px;color:#ff6b6b">Could not load Talent Pool: '+e.message+'</div>';
+    POOL_ENTRIES=[];
+    updatePoolBadge();
+    return;
+  }
+  renderTalentPool();
+  updatePoolBadge();
+}
+function updatePoolBadge(){
+  const n=POOL_ENTRIES.filter(p=>p.status==='New').length;
+  const b=document.getElementById('pool-new-badge');
+  if(!b)return;
+  if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}
+}
+function renderTalentPool(){
+  const el=document.getElementById('pool-list');if(!el)return;
+  const q=(gv('pool-filter')||'').toLowerCase();
+  const rows=POOL_ENTRIES.filter(p=>p.status!=='Dismissed'&&p.status!=='Promoted').filter(p=>!q||[p.name,p.company,p.desiredRole,p.summary].join(' ').toLowerCase().includes(q));
+  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--w60)">🌊 No open Talent Pool entries.</div>';return;}
+  el.innerHTML='<div class="tw"><table style="width:100%;font-size:12px"><thead><tr>'
+    +'<th>Name</th><th>Current Company</th><th>Desired Role</th><th>Location</th><th>Summary</th><th>Submitted</th><th>Status</th><th></th>'
+    +'</tr></thead><tbody>'+rows.map(p=>{
+      const statusBadge=p.status==='New'?'<span class="badge b-wip">New</span>':'<span class="badge b-active">Reviewed</span>';
+      return '<tr>'
+        +'<td><strong>'+escHtml(p.name||'—')+'</strong><br><span class="mono" style="font-size:10px;color:var(--w60)">'+escHtml(p.code||'')+'</span></td>'
+        +'<td class="m">'+escHtml(p.company||'—')+'</td>'
+        +'<td class="m">'+escHtml(p.desiredRole||'—')+'</td>'
+        +'<td class="m">'+escHtml(p.location||'—')+'</td>'
+        +'<td class="m" style="max-width:260px">'+escHtml(p.summary||'—')+'</td>'
+        +'<td class="m">'+fmtD(p.submittedOn)+'</td>'
+        +'<td>'+statusBadge+'</td>'
+        +'<td><div class="flex gap8">'+(p.resumeLink?'<a class="btn btn-ghost btn-sm" href="'+p.resumeLink+'" target="_blank">Resume</a>':'')+'<button class="btn btn-t btn-sm" onclick="promotePoolEntry(\''+p._spItemId+'\')">✓ Promote</button><button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="dismissPoolEntry(\''+p._spItemId+'\')">✕ Dismiss</button></div></td>'
+        +'</tr>';
+    }).join('')+'</tbody></table></div>';
+}
+// Promotes a pool entry into a real THP candidate by pre-filling the New
+// Candidate form — same UX as screenPushToTHP() below — rather than a
+// silent one-click create, since a pool entry has no vacancy/client/
+// department attached yet and needs a recruiter to complete those. Marks
+// the pool entry Promoted optimistically (best-effort, non-fatal) on click,
+// same convention as every other secondary write in this file.
+function promotePoolEntry(itemId){
+  const p=POOL_ENTRIES.find(x=>x._spItemId===itemId);if(!p)return;
+  goPanel('new');
+  clearNew();
+  sv('nNm',p.name);sv('nMob',(p.mobile||'').replace(/\D/g,'').slice(-10));sv('nEm',p.email);sv('nCo',p.company);
+  sv('nRem','Promoted from Talent Pool '+(p.code||'')+' — Desired role: '+(p.desiredRole||'—')+', Preferred location: '+(p.location||'—')+'. Profile summary: '+(p.summary||'—'));
+  toast('info','Ready to Review','Pool entry pre-filled. Complete client/department and click Add Candidate to save '+(p.name||'this candidate')+'.');
+  patchPoolEntry(itemId,{[SPLIST_POOL_FIELD_MAP.status]:'Promoted'}).then(()=>{loadTalentPool();}).catch(e=>console.warn('promotePoolEntry: status update failed',e.message));
+}
+function dismissPoolEntry(itemId){
+  patchPoolEntry(itemId,{[SPLIST_POOL_FIELD_MAP.status]:'Dismissed'}).then(()=>{toast('ok','Dismissed','Pool entry dismissed.');loadTalentPool();}).catch(e=>toast('err','Dismiss Failed',e.message));
+}
+
 let screenQueue=[];
 let _screenPush=null; // {resumeLink, score, recommendations} — consumed by submitNew()
 function fillScreenVacDrop(){
@@ -10697,6 +10778,98 @@ async function resolveVacSpItemId(v){
     if(item){v._spItemId=item.id;return item.id;}
   }catch(e){console.warn('resolveVacSpItemId failed for',code,e.message);}
   return null;
+}
+// Talent Pool — general (not tied to a specific vacancy) applications from
+// the Candidate Portal's /apply-general flow, approved via the Notion "Open
+// Applications / Searchable Talent Database" item, 18 Sep 2026. List-only
+// (no Excel sheet — CLAUDE.md Rule 2 doesn't require one for every new List;
+// RemapRequests/JD/RESUME_SCREENED lists are List-only the same way),
+// created manually by Anne in SharePoint like every other List in this app,
+// addressed by name (TalentPool) since she was asked to use plain no-space
+// column names matching their internal names exactly.
+const SPLIST_POOL_FIELD_MAP={code:'Title',name:'Name',mobile:'Mobile',email:'Email',company:'CurrentCompany',desiredRole:'DesiredRole',location:'PreferredLocation',salaryPM:'CurrentSalaryPM',resumeLink:'ResumeLink',summary:'ProfileSummary',notes:'RecruiterNotes',submittedOn:'SubmittedOn',status:'Status',promotedCode:'PromotedToCandidateCode'};
+// Statuses (from Anne's Notion answer, 18 Sep 2026) that should still
+// resurface in a pool-match search even though the candidate already exists
+// in THP — genuinely worth a second look, not dead ends.
+const POOL_RESURFACE_STATUSES=new Set(['Not Interested','On Hold','Rejected by Client','Not Contactable']);
+let POOL_ENTRIES=[];
+function listItemToPoolRecord(item){
+  const p={_spItemId:item.id};
+  const f=item.fields||{};
+  for(const[key,internalName]of Object.entries(SPLIST_POOL_FIELD_MAP)){
+    const val=f[internalName];
+    p[key]=(val===undefined||val===null)?'':String(val);
+  }
+  return p;
+}
+async function loadPoolFromList(){
+  const out=[];
+  let url=`/sites/${siteId}/lists/TalentPool/items?$expand=fields&$top=200`;
+  while(url){
+    const res=await graphGet(url.replace(GRAPH,''));
+    (res.value||[]).forEach(it=>out.push(listItemToPoolRecord(it)));
+    url=res['@odata.nextLink']||null;
+  }
+  return out;
+}
+async function patchPoolEntry(itemId,fields){
+  return writeCandidateListItem('PATCH',`/sites/${siteId}/lists/TalentPool/items/${itemId}/fields`,fields);
+}
+// One AI call per new vacancy, modeled on computeResumeFitment() below —
+// cached JD/role context in `system`, the pool + resurfaceable-candidate
+// summaries in `messages`. Fire-and-forget from saveVac(): a slow or failed
+// call here must never block or break the vacancy save itself.
+async function triggerPoolMatchForVacancy(vd){
+  const vacCode=vd['Vacancy code'];
+  if(!vacCode)return;
+  const pool=await loadPoolFromList().catch(e=>{console.warn('triggerPoolMatchForVacancy: pool load failed',e.message);return[];});
+  const openPool=pool.filter(p=>p.status==='New'||p.status==='Reviewed');
+  const resurfaceCands=MD.filter(r=>POOL_RESURFACE_STATUSES.has(r[C.status]));
+  if(!openPool.length&&!resurfaceCands.length)return;
+  // Safety cap for future pool growth — not needed at today's scale, but
+  // keeps a single call bounded rather than silently ballooning in size/cost.
+  const profiles=[
+    ...openPool.map(p=>({ref:p.code,kind:'pool',name:p.name,company:p.company,desiredRole:p.desiredRole,location:p.location,summary:p.summary})),
+    ...resurfaceCands.map(r=>({ref:r[C.code],kind:'candidate',name:r[C.name],company:r[C.company],desiredRole:r[C.position]||r[C.roleInterested],location:r[C.location],status:r[C.status],remark:r[C.remark]}))
+  ].slice(0,300);
+  const{jdEntry}=resolveJDFromVac(vacCode);
+  const coreQs=[];if(jdEntry)for(let i=1;i<=10;i++){if(jdEntry['q'+i])coreQs.push(jdEntry['q'+i]);}
+  const header=`You rank candidates from a recruiter's talent pool + past candidates against a brand-new vacancy at WithAWill HR Consultancy Services.
+
+VACANCY:
+Role: ${vd['Designation']||''}
+Department: ${vd['Department']||''}
+Location: ${vd['Location']||''}
+Experience required: ${vd['Experience']||''}
+${jdEntry?`ROLE CONTEXT:\n${jdEntry.rolecontext||''}\n\nWHAT THE ROLE REQUIRES:\n${coreQs.join('\n')}`:''}`;
+  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering):
+${JSON.stringify(profiles)}
+
+Return the top matches (at most 10, fewer if fewer are genuinely relevant — don't pad the list), ranked best first. Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","rationale":"<1-2 sentence specific reason this profile fits this vacancy>"}]}`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:body}]})
+    });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
+    const data=await resp.json();
+    const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
+    const parsed=parseAIJsonResponse(raw);
+    const matches=parsed.matches||[];
+    vd.MatchResults=JSON.stringify({matches,computedAt:new Date().toISOString()});
+    try{
+      const itemId=await resolveVacSpItemId(vd);
+      if(itemId)await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields`,{MatchResults:vd.MatchResults});
+    }catch(e){console.warn('triggerPoolMatchForVacancy: MatchResults List write failed',e.message);}
+    if(!matches.length)return;
+    const rows=matches.map(m=>'<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+escHtml(m.name||m.ref||'—')+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td></tr>').join('');
+    showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role.',
+      '<div class="tw"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
+      '<button class="btn btn-t" onclick="closeModal()">Close</button>');
+  }catch(e){
+    console.warn('triggerPoolMatchForVacancy failed:',e.message);
+  }
 }
 // One-time migration: Excel Vacancies sheet -> Vacancies List. Safe to re-run
 // (adds missing, updates changed) — same idempotent pattern as
