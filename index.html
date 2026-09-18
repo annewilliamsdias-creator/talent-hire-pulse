@@ -871,10 +871,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div class="sl2">💰 Salary</div>
 <div class="fg3">
-<div class="field"><label>Current Salary ₹ PM</label><input type="number" id="nSPM" placeholder="e.g. 35000" oninput="calcSal()"></div>
-<div class="field"><label>Current ₹ PA <span class="fhint">(auto)</span></label><input type="number" id="nSPA" readonly></div>
+<div class="field"><label>Current ₹ PM <span class="fhint">(auto)</span></label><input type="number" id="nSPM" readonly></div>
+<div class="field"><label>Current Salary ₹ PA</label><input type="number" id="nSPA" placeholder="e.g. 420000" oninput="calcSal()"></div>
 <div class="field"><label>Current Range <span class="fhint">(auto)</span></label><input type="text" id="nSBr" readonly></div>
-<div class="field"><label>Expected Salary ₹ PM</label><input type="number" id="nESPM" placeholder="e.g. 45000" oninput="calcSal()"></div>
+<div class="field"><label>Expected Salary ₹ PA</label><input type="number" id="nESPM" placeholder="e.g. 540000" oninput="calcSal()"></div>
 <div class="field"><label>Expected Range <span class="fhint">(auto)</span></label><input type="text" id="nESBr" readonly></div>
 <div class="field"><label>Salary Increase % <span class="fhint">(auto)</span></label><input type="text" id="nSInc" readonly></div>
 </div>
@@ -1147,7 +1147,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="sl2">📋 Offer &amp; Joining</div>
 <div class="fg3">
 <div class="field"><label>Expected DOJ</label><input type="date" id="uDOJ" onchange="if(document.getElementById('uS').value==='Joining in Progress'&&this.value)document.getElementById('uFU').value=addDays(this.value,-1)"></div>
-<div class="field"><label>Offered Salary ₹</label><input type="number" id="uOffS"></div>
+<div class="field"><label>Offered Salary ₹ PA</label><input type="number" id="uOffS" placeholder="Annual CTC"></div>
 <div class="field"><label>Offer Date</label><input type="date" id="uOffD"></div>
 <div class="field"><label>Role Interested In</label><select id="uRI"><option value="">— Select —</option></select></div>
 <div class="field s2"><label>Remarks (appended)</label><input type="text" id="uRem" placeholder="Update notes"></div>
@@ -1190,10 +1190,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div class="sl2">💰 Salary</div>
 <div class="fg3">
-<div class="field"><label>Current ₹ PM</label><input type="number" id="epSPM" oninput="epCalcSal()"></div>
-<div class="field"><label>Current ₹ PA <span class="fhint">(auto)</span></label><input type="number" id="epSPA" readonly></div>
+<div class="field"><label>Current ₹ PM <span class="fhint">(auto)</span></label><input type="number" id="epSPM" readonly></div>
+<div class="field"><label>Current ₹ PA</label><input type="number" id="epSPA" oninput="epCalcSal()"></div>
 <div class="field"><label>Range <span class="fhint">(auto)</span></label><input type="text" id="epSBr" readonly></div>
-<div class="field"><label>Expected ₹ PM</label><input type="number" id="epESPM"></div>
+<div class="field"><label>Expected ₹ PA</label><input type="number" id="epESPM"></div>
 </div>
 <div class="sl2">🎯 Role</div>
 <div class="fg3">
@@ -1701,6 +1701,13 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div id="ap-changelog" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Change Log</div></div><div class="tw"><table><thead><tr><th>Timestamp</th><th>User</th><th>Code</th><th>Action</th><th>Field</th><th>Old</th><th>New</th></tr></thead><tbody id="clBody"></tbody></table></div></div></div>
 <!-- CONFIG -->
 <div id="ap-config" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">⚙</span> Config &amp; Masters</div><button class="btn btn-t btn-sm" onclick="saveCfg()">✓ Save Templates</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="mgrid"></div></div>
+<div class="card" style="margin-top:14px"><div class="card-hdr"><div class="card-title"><span class="ac">💰</span> Salary Data Migration</div></div>
+<div style="max-width:600px;padding:4px 0">
+  <div style="font-size:12px;color:#5f6470;margin-bottom:10px">One-time fix (18 Sep 2026): Offered Salary and Expected Salary now store an <strong>annual</strong> figure instead of monthly, matching how they're entered going forward. Existing records still hold the old monthly number — run this once to convert them, so the Incentive dashboard and Invoice prefills stay correct.</div>
+  <button class="btn btn-t btn-sm" onclick="migrateSalaryToAnnual()">🔧 Run Migration</button>
+  <span id="salMigStatus" style="font-size:11px;color:var(--w60);margin-left:10px"></span>
+</div>
+</div>
 <div class="card" style="margin-top:14px"><div class="card-hdr"><div class="card-title"><span class="ac">🤖</span> AI Settings</div></div>
 <div style="max-width:600px;padding:4px 0">
   <div style="font-size:13px;color:#291b39;margin-bottom:6px;font-weight:600">Anthropic API Key</div>
@@ -3210,14 +3217,69 @@ function aqToggle(id){
 // ══════════════════════════════════════════════════════
 function bkt(pa){if(!pa||pa<=0)return'';if(pa<=180000)return'0-1.8 L';if(pa<=360000)return'1.8-3.6 L';if(pa<=600000)return'3.6-6 L';if(pa<=1000000)return'6-10 L';if(pa<=1500000)return'10-15 L';if(pa<=2000000)return'15-20 L';return'20+ L';}
 function calcSal(){
-const pm=parseFloat(gv('nSPM'))||0,pa=pm*12;
-sv('nSPA',pa||'');sv('nSBr',bkt(pa));
-const epm=parseFloat(gv('nESPM'))||0,epa=epm*12;
+const pa=parseFloat(gv('nSPA'))||0,pm=pa?Math.round(pa/12):0;
+sv('nSPM',pm||'');sv('nSBr',bkt(pa));
+const epa=parseFloat(gv('nESPM'))||0;
 sv('nESBr',bkt(epa));
 const el=document.getElementById('nSInc');
 if(el){if(pa>0&&epa>0){const pct=((epa-pa)/pa*100).toFixed(1);el.value=(pct>=0?'+':'')+pct+'%';el.style.color=pct>=0?'var(--teal)':'#ff6b6b';}else{el.value='';el.style.color='';}}
 }
-function epCalcSal(){const pm=parseFloat(gv('epSPM'))||0,pa=pm*12;sv('epSPA',pa||'');sv('epSBr',bkt(pa));}
+function epCalcSal(){const pa=parseFloat(gv('epSPA'))||0,pm=pa?Math.round(pa/12):0;sv('epSPM',pm||'');sv('epSBr',bkt(pa));}
+// One-time production fix (18 Sep 2026): Offered Salary and Expected Salary
+// switched from monthly to annual entry — see calcSal()/epCalcSal() above
+// and the Update Candidate panel's uOffS field. Existing records still hold
+// the old monthly figure in those same columns (neither ever had a separate
+// PA column the way Current Salary does), so every Incentive-dashboard KPI
+// and Invoice prefill reading them would silently compute 12x too low until
+// this runs once. Guarded by a [THP_META] flag so it can't be replayed by
+// accident — safe-to-re-run-once pattern, matching the existing Excel-
+// >Vacancies-List migration elsewhere in this file.
+async function migrateSalaryToAnnual(){
+  const already=getMetadata('salaryMigrated2026');
+  const statusEl=document.getElementById('salMigStatus');
+  if(already){
+    showModal('💰 Already Migrated','This migration already ran on <strong>'+already+'</strong>. Running it again would multiply already-annual figures by 12 a second time.',
+      '','<button class="btn btn-ghost" onclick="closeModal()">Close</button>');
+    return;
+  }
+  const affected=MD.filter(r=>(parseFloat(r[C.offeredSalary])||0)>0||(parseFloat(r[C.expectedSalary])||0)>0);
+  if(!affected.length){
+    if(statusEl)statusEl.textContent='No records with Offered/Expected Salary found — nothing to migrate.';
+    return;
+  }
+  showModal('💰 Migrate Salary to Annual','This will multiply the stored Offered Salary and/or Expected Salary by 12 for <strong>'+affected.length+' candidate(s)</strong> — converting old monthly figures to annual, to match the new entry convention. This cannot be automatically undone. Continue?',
+    '','<button class="btn btn-t" onclick="window._confirmSalMigration()">Migrate '+affected.length+' Record(s)</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
+  window._confirmSalMigration=async()=>{
+    closeModal();
+    showLoad('Migrating salary data...');
+    const clRows=[];
+    try{
+      for(const r of affected){
+        if((parseFloat(r[C.offeredSalary])||0)>0){
+          const oldV=r[C.offeredSalary],newV=Math.round(parseFloat(oldV)*12);
+          const cl=writeCL('Salary Migration',r[C.code],C.offeredSalary,oldV,newV,r[C.name]);
+          r[C.offeredSalary]=newV; if(cl)clRows.push(cl);
+        }
+        if((parseFloat(r[C.expectedSalary])||0)>0){
+          const oldV=r[C.expectedSalary],newV=Math.round(parseFloat(oldV)*12);
+          const cl=writeCL('Salary Migration',r[C.code],C.expectedSalary,oldV,newV,r[C.name]);
+          r[C.expectedSalary]=newV; r[C.expectedBracket]=bkt(newV); if(cl)clRows.push(cl);
+        }
+        await xlPatchRow(r);
+      }
+      if(clRows.length)await xlAppendRows('Change Log',clRows);
+      saveMetadata({salaryMigrated2026:today()});
+      await saveWB(false,true,['Config']);
+      hideLoad();
+      if(statusEl)statusEl.textContent='✅ Migrated '+affected.length+' record(s) on '+today()+'.';
+      toast('ok','Salary Migration Complete',affected.length+' candidate(s) converted to annual.');
+      renderRec();loadDash();
+    }catch(e){
+      hideLoad();
+      toast('err','Migration Failed',e.message+' — some records may be partially migrated. Check the Change Log before retrying.');
+    }
+  };
+}
 
 // ══════════════════════════════════════════════════════
 // NEW CANDIDATE
@@ -3261,7 +3323,7 @@ function clearNew(){_screenPush=null;['nSD','nScD','nSrcD','nMob','nAlt','nEm','
 // {ok:true,code} or {ok:false,error}.
 async function createCandidateFromForm(fv){
 const code=await genCodeLive();
-const pm=parseFloat(fv.spm)||0,pa=pm*12,epm=parseFloat(fv.espm)||0,epa=epm*12;
+const pa=parseFloat(fv.spa)||0,pm=pa?Math.round(pa/12):0,epa=parseFloat(fv.espa)||0;
 const nr={};HDR.forEach(h=>nr[h]='');
 nr[C.code]=code;nr[C.sourcingDate]=fv.sd;nr[C.screeningDate]=fv.scd||'';
 nr[C.source]=fv.src;nr[C.sourceDetails]=fv.srcd||'';nr[C.name]=fv.nm;
@@ -3271,7 +3333,7 @@ nr[C.contact]=fv.mob;nr[C.altContact]=fv.alt||'';nr[C.email]=fv.em;
 nr[C.expYrs]=fv.fr?'Fresher':(fv.exp||'');nr[C.notice]=fv.notice||'';
 nr[C.company]=fv.co||'';nr[C.designation]=fv.de||'';nr[C.reason]=fv.reason||'';
 nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.finalSalary]=pa||'';nr[C.salaryBracket]=bkt(pa);
-nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);
+nr[C.expectedSalary]=epa||'';nr[C.expectedBracket]=bkt(epa);
 if(pa>0&&epa>0)nr[C.salaryIncrease]=((epa-pa)/pa*100>=0?'+':'')+((epa-pa)/pa*100).toFixed(1)+'%';
 nr[C.client]=fv.cli;nr[C.vacCode]=fv.vacC||'';nr[C.status]=fv.stat;nr[C.dm]=STATUS_DM[fv.stat]||'';
 nr[C.followupDate]=fv.fu||'';nr[C.followupNotes]=fv.fun||'';nr[C.followupCount]='0';
@@ -3335,7 +3397,7 @@ if(!fr&&expVal>0){if(!gv('nCo')||!gv('nDe')){showAlert('na','err','Company and D
 const captureFv=(prevCode)=>({nm,mob,em,sd,rec,cli,dept,src,loc,pos,fu,stat,fr,
   scd:gv('nScD'),srcd:gv('nSrcD'),locd:gv('nLocD'),ploc:gv('nPLoc'),alt:gv('nAlt'),
   exp:gv('nExp'),notice:gv('nNot'),co:gv('nCo'),de:gv('nDe'),reason:gv('nReas'),
-  spm:gv('nSPM'),espm:gv('nESPM'),vacC:gv('nVacC'),fun:gv('nFUN'),rem:gv('nRem'),
+  spa:gv('nSPA'),espa:gv('nESPM'),vacC:gv('nVacC'),fun:gv('nFUN'),rem:gv('nRem'),
   screenPush:_screenPush||null,prevCode:prevCode||''});
 const doAdd=async(prevCode)=>{
 showLoad('Adding candidate...');
@@ -3685,7 +3747,7 @@ function viewCandModal(code){
   const r=MD.find(x=>x[C.code]===code);if(!r)return;
   const allRem=(r[C.remark]||'').split('|').map(s=>s.trim()).filter(Boolean);
   const latestRem=allRem.length?allRem[allRem.length-1]:'—';
-  const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status','<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>'],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up',fmtD(r[C.followupDate])],['Interview',r[C.interviewDate]?fmtD(r[C.interviewDate])+(r._iTime?' @ '+r._iTime:''):'—'],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM',r[C.salaryPM]?'₹'+r[C.salaryPM]:'—'],['Exp Salary PM',r[C.expectedSalary]?'₹'+r[C.expectedSalary]:'—'],['Offered Salary',r[C.offeredSalary]?'₹'+r[C.offeredSalary]:'—'],['Expected DOJ',r[C.doj]?fmtD(r[C.doj]):'—'],['Latest Remark',escHtml(latestRem)],['🔗 Linked From',r[C.prevCode]],['Updated By',r[C.updatedBy]||'—'],['Updated On',fmtD(r[C.updatedOn])]];
+  const rows=[['Code',r[C.code]],['Name',r[C.name]],['Contact',r[C.contact]],['Email',r[C.email]],['Status','<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>'],['Client',r[C.client]],['Position',r[C.position]],['Department',r[C.dept]],['Recruiter',r[C.recruiter]],['Source',r[C.source]],['Sourced On',fmtD(r[C.sourcingDate])],['Follow-up',fmtD(r[C.followupDate])],['Interview',r[C.interviewDate]?fmtD(r[C.interviewDate])+(r._iTime?' @ '+r._iTime:''):'—'],['Company',r[C.company]],['Designation',r[C.designation]],['Experience',r[C.expYrs]],['Notice Period',r[C.notice]],['Current Salary PM',r[C.salaryPM]?'₹'+r[C.salaryPM]:'—'],['Exp Salary PA',r[C.expectedSalary]?'₹'+r[C.expectedSalary]:'—'],['Offered Salary PA',r[C.offeredSalary]?'₹'+r[C.offeredSalary]:'—'],['Expected DOJ',r[C.doj]?fmtD(r[C.doj]):'—'],['Latest Remark',escHtml(latestRem)],['🔗 Linked From',r[C.prevCode]],['Updated By',r[C.updatedBy]||'—'],['Updated On',fmtD(r[C.updatedOn])]];
   let tableHtml='<table style="width:100%">'+rows.filter(x=>x[1]&&x[1]!=='—').map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+x[1]+'</td></tr>').join('')+'</table>';
   if(allRem.length>1){const prev=allRem.slice(0,-1).reverse();tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">📋 Remarks History</div>'+prev.map((rm,i)=>'<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="font-size:9px;color:rgba(251,251,250,.35)">PREV '+(prev.length-i)+'</span><span style="color:var(--w60);margin-left:6px">'+escHtml(rm)+'</span></div>').join('')+'</div>';}
 
@@ -3707,8 +3769,8 @@ function dlAllRecords(){
     const scopeOk=scope==='all'||!TERMINAL.has(r[C.status]);
     return ms&&scopeOk&&(!sf||r[C.status]===sf)&&(!cf||r[C.client]===cf)&&(!rf||r[C.recruiter]===rf);
   });
-  const cols=[C.code,C.name,C.contact,C.email,C.client,C.position,C.dept,C.status,C.recruiter,C.sourcingDate,C.followupDate,C.company,C.salaryPM,C.expectedSalary,C.offeredSalary,C.doj,C.remark];
-  const labels=['Code','Name','Contact','Email','Client','Position','Department','Status','Recruiter','Sourced','Follow-up','Company','Cur Sal PM','Exp Sal PM','Offered Sal','DOJ','Remarks'];
+  const cols=[C.code,C.name,C.contact,C.email,C.client,C.position,C.dept,C.status,C.recruiter,C.sourcingDate,C.followupDate,C.company,C.salaryPA,C.expectedSalary,C.offeredSalary,C.doj,C.remark];
+  const labels=['Code','Name','Contact','Email','Client','Position','Department','Status','Recruiter','Sourced','Follow-up','Company','Cur Sal PA','Exp Sal PA','Offered Sal PA','DOJ','Remarks'];
   const ws2=XLSX.utils.aoa_to_sheet([labels,...data.map(r=>cols.map(k=>r[k]||''))]);
   const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws2,'Candidates');
   XLSX.writeFile(wb2,'THP_Records_'+today()+'.xlsx');
@@ -3995,7 +4057,7 @@ function onBulkDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)p
 function onBulkFile(e){const f=e.target.files[0];if(f)procBulk(f);}
 function procBulk(file){showLoad('Reading file...');const rd=new FileReader();rd.onload=function(e){try{const wb2=XLSX.read(e.target.result,{type:'array',cellDates:true});const ws=wb2.Sheets[wb2.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});let hi=0;for(let i=0;i<Math.min(10,rows.length);i++){if(rows[i].includes('Name')&&(rows[i].includes('Contact no')||rows[i].includes('Client Name'))){hi=i;break;}}const fh=rows[hi].map(h=>String(h).trim().replace(/[★*]/g,'').trim());const dr=rows.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null));bulkRows=dr.map((row,i)=>{const obj={};fh.forEach((h,j)=>{obj[h]=row[j]!==undefined?String(row[j]).trim():'';});const iss=[];if(!obj['Name'])iss.push('Name required');const mob=(obj['Contact no']||'').replace(/\D/g,'');if(!mob||!/^\d{10}$/.test(mob))iss.push('Invalid mobile');if(!obj['Personal Email ID']||!obj['Personal Email ID'].includes('@'))iss.push('Invalid email');if(!obj['Client Name'])iss.push('Client required');if(!obj['Position applied for'])iss.push('Position required');if(!obj['Source'])iss.push('Source required');if(mob.length===10){const d=MD.find(r=>String(r[C.contact]).trim()===mob);if(d)iss.push('Dup: '+d[C.code]);}const vc=(obj['Vacancy Code']||'').trim();if(vc){const vacMatch=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===vc&&v['Active']!=='N');if(!vacMatch)iss.push('Invalid Vacancy Code: '+vc);}return{row:i+1,data:obj,valid:iss.length===0,issues:iss.join('; ')};});hideLoad();renderBulkPrev();}catch(err){hideLoad();toast('err','File error',err.message);}};rd.readAsArrayBuffer(file);}
 function renderBulkPrev(){const v=bulkRows.filter(r=>r.valid).length;const iv=bulkRows.filter(r=>!r.valid).length;document.getElementById('bulkPrev').classList.remove('hidden');const bs=document.getElementById('bulkSum');if(bs)bs.innerHTML='<span style="color:var(--teal)">'+v+' valid</span> | <span style="color:#ff6b6b">'+iv+' issues</span>';const bc=document.getElementById('bulkCmt');if(bc){bc.disabled=v===0;bc.textContent='✓ Commit '+v+' Valid Rows';}const tb=document.getElementById('bulkBody');if(tb)tb.innerHTML=bulkRows.map(r=>'<tr style="'+(r.valid?'':'background:rgba(220,50,50,.06)')+'"><td>'+r.row+'</td><td>'+(r.valid?'<span style="color:var(--teal)">✓</span>':'<span style="color:#ff6b6b">✗</span>')+'</td><td><strong>'+(r.data['Name']||'—')+'</strong></td><td class="mono">'+(r.data['Contact no']||'—')+'</td><td class="m">'+((r.data['Personal Email ID']||'—').substring(0,20))+'</td><td class="m">'+(r.data['Position applied for']||'—')+'</td><td class="m">'+(r.data['Client Name']||'—')+'</td><td style="font-size:11px;color:'+(r.valid?'var(--teal)':'#ff6b6b')+'">'+(r.issues||'Ready')+'</td></tr>').join('');}
-async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pm=parseFloat(obj['Current Salary (Rs. PM)'])||0;const pa=pm*12;const epm=parseFloat(obj['Expected Salary (Rs.)'])||0;const epa=epm*12;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=normDateStr(obj['Profile Sourcing date'])||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';const _vc=(obj['Vacancy Code']||'').trim();const _vacM=_vc?VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===_vc&&v['Active']!=='N'):null;nr[C.location]=(_vacM&&_vacM['Location'])||obj['Current Location']||'';nr[C.dept]=(_vacM&&_vacM['Department'])||obj['Department']||'';nr[C.position]=(_vacM&&_vacM['Designation'])||obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epm||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=_vacM?(_vacM['Company']||obj['Client Name']||''):obj['Client Name']||'';nr[C.vacCode]=_vc||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=normDateStr(obj['Follow-up Date']||'');nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=(_vacM&&_vacM['Recruiter'])||(acct&&acct.name?acct.name.split(' ')[0]:'');nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}const _clEB=writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));
+async function commitBulk(){const valid=bulkRows.filter(r=>r.valid);if(!valid.length)return;showLoad('Adding '+valid.length+' candidates...');try{const yr=new Date().getFullYear();let nx=Math.max(0,...MD.map(r=>{const m=String(r[C.code]).match(/(\d+)$/);return m?parseInt(m[1]):0;}));const added=[];for(const rv of valid){nx++;const code='Talent+Hire/'+yr+'/'+String(nx).padStart(6,'0');const obj=rv.data;const pa=parseFloat(obj['Current Salary (Rs. PA)'])||0;const pm=pa?Math.round(pa/12):0;const epa=parseFloat(obj['Expected Salary (Rs.)'])||0;const nr={};HDR.forEach(h=>nr[h]='');nr[C.code]=code;nr[C.sourcingDate]=normDateStr(obj['Profile Sourcing date'])||today();nr[C.source]=obj['Source']||'';nr[C.sourceDetails]=obj['Source Details']||'';nr[C.name]=obj['Name']||'';const _vc=(obj['Vacancy Code']||'').trim();const _vacM=_vc?VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===_vc&&v['Active']!=='N'):null;nr[C.location]=(_vacM&&_vacM['Location'])||obj['Current Location']||'';nr[C.dept]=(_vacM&&_vacM['Department'])||obj['Department']||'';nr[C.position]=(_vacM&&_vacM['Designation'])||obj['Position applied for']||'';nr[C.contact]=(obj['Contact no']||'').replace(/\D/g,'');nr[C.email]=obj['Personal Email ID']||'';nr[C.expYrs]=obj['Total Yrs of Exp']||'';nr[C.notice]=obj['Notice Period']||'';nr[C.company]=obj['Current Company Name']||'';nr[C.designation]=obj['Current Designation']||'';nr[C.reason]=obj['Reason for leaving']||'';nr[C.salaryPM]=pm||'';nr[C.salaryPA]=pa||'';nr[C.salaryBracket]=bkt(pa);nr[C.expectedSalary]=epa||'';nr[C.expectedBracket]=bkt(epa);nr[C.client]=_vacM?(_vacM['Company']||obj['Client Name']||''):obj['Client Name']||'';nr[C.vacCode]=_vc||'';nr[C.status]=obj['Final Status']||'Active';nr[C.dm]=STATUS_DM[nr[C.status]]||'';nr[C.followupDate]=normDateStr(obj['Follow-up Date']||'');nr[C.remark]=obj['Remark']||'';nr[C.consent]='Y';nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();nr[C.reportingDate]=today();nr[C.recruiter]=(_vacM&&_vacM['Recruiter'])||(acct&&acct.name?acct.name.split(' ')[0]:'');nr[C.sNo]=MD.length+1;MD.push(nr);added.push(code);}const _clEB=writeCL('Bulk Upload',added.join(','),'Multiple','',added.length+' records','Bulk by '+(acct&&acct.name?acct.name:'Admin'));
 // Phase 1.8 (10 Aug 2026): Excel retired as candidate source of truth — writes
 // go to the Candidates List only. Graph's List API has no native multi-item
 // batch write, so this loops per record (same pattern already proven in
@@ -5322,7 +5384,7 @@ async function dlTemplate(type) {
     { key:'company',  label:'Current Company Name',    req:false, width:22, type:'text' },
     { key:'desig',    label:'Current Designation',     req:false, width:22, type:'text' },
     { key:'reason',   label:'Reason for leaving',      req:false, width:22, type:'text' },
-    { key:'salPM',    label:'Current Salary (Rs. PM)', req:false, width:16, type:'number', note:'Numbers only' },
+    { key:'salPM',    label:'Current Salary (Rs. PA)', req:false, width:16, type:'number', note:'Numbers only' },
     { key:'expSal',   label:'Expected Salary (Rs.)',   req:false, width:16, type:'number', note:'Numbers only' },
     { key:'source',   label:'Source',                  req:true,  width:16, type:'list', master:'sources', col:3 },
     { key:'srcDet',   label:'Source Details',          req:false, width:20, type:'text' },
@@ -5351,7 +5413,7 @@ async function dlTemplate(type) {
       { label:'Follow-up Date', key:'fuDate', width:14 },
       { label:'Remark / Update Note', key:'remark', width:32 },
       { label:'Expected DOJ', key:'doj', width:14 },
-      { label:'Offered Salary ₹', key:'offSal', width:14 },
+      { label:'Offered Salary ₹ PA', key:'offSal', width:14 },
       { label:'Other Comments', key:'comments', width:28 },
     ];
     const hr = ws2.getRow(3); hr.height = 18;
@@ -5489,8 +5551,8 @@ async function dlTemplate(type) {
     ['Client Name','YES','Select from dropdown only - case sensitive','Atmann','ATMANN vs Atmann'],
     ['Department','YES','Select from dropdown only','Operations','Operations vs Ops'],
     ['Position applied for','YES','Free text - job title only','Operations Manager','Leaving blank'],
-    ['Current Salary (Rs. PM)','NO','Numbers only - monthly amount','45000','45,000 or Rs.45000 or 45k'],
-    ['Expected Salary (Rs.)','NO','Numbers only - monthly amount','55000','55,000 or 55K'],
+    ['Current Salary (Rs. PA)','NO','Numbers only - annual amount','540000','5,40,000 or Rs.540000 or 5.4L'],
+    ['Expected Salary (Rs.)','NO','Numbers only - annual amount','660000','6,60,000 or 6.6L'],
     ['Total Yrs of Exp','NO','Number (decimals ok) or word Fresher','3.5 or Fresher','3 years or Three'],
     ['Notice Period','NO','Select from dropdown only','30 days','30days or One month'],
     ['Final Status','NO','Select from dropdown - default is Active','Active','Leaving blank = Active'],
@@ -5612,7 +5674,7 @@ async function validateBulkFile(event) {
         }
 
         // Salary format
-        if ((hdr==='Current Salary (Rs. PM)'||hdr==='Expected Salary (Rs.)') && val && isNaN(parseFloat(val.replace(/,/g,'')))) {
+        if ((hdr==='Current Salary (Rs. PA)'||hdr==='Expected Salary (Rs.)') && val && isNaN(parseFloat(val.replace(/,/g,'')))) {
           errors.push({ row:rowNum, name:nameVal, field:hdr,
             value:val, issue:'Must be a number only (no ₹, commas or text)',
             valid:'e.g. 45000' });
@@ -6315,12 +6377,12 @@ function renderSectionAView(el, recSel, p){
 
 function _updateKPICards(recSel){
   const pipe2 = MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&(!recSel||r[C.recruiter]===recSel));
-  let pot2=0; pipe2.forEach(r=>{pot2+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||0)*12,r[C.client]);});
+  let pot2=0; pipe2.forEach(r=>{pot2+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||0),r[C.client]);});
   const ymtd=today().slice(0,4)+'-04-01'; const tm=today().slice(0,7);
   const ytdJ=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=ymtd&&(!recSel||r[C.recruiter]===recSel));
-  let ytd=0; ytdJ.forEach(r=>{ytd+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);});
+  let ytd=0; ytdJ.forEach(r=>{ytd+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]);});
   const tmJ=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]&&r[C.doj].slice(0,7)===tm&&(!recSel||r[C.recruiter]===recSel));
-  let tmf=0; tmJ.forEach(r=>{tmf+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);});
+  let tmf=0; tmJ.forEach(r=>{tmf+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]);});
   const se=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   se('inc-earned','\u20b9'+Math.round(tmf).toLocaleString('en-IN'));
   se('inc-ytd','\u20b9'+Math.round(ytd).toLocaleString('en-IN'));
@@ -6345,15 +6407,15 @@ function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
   const sortedMks = Object.keys(byCalMonth).sort();
   const multi = sortedMks.length > 1;
   if(multi && monthlySalary > 0){
-    const grandFirm = joined.reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]),0);
+    const grandFirm = joined.reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
     const grandInc  = sortedMks.reduce((s,mk)=>{
-      const mf=byCalMonth[mk].reduce((a,r)=>a+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]),0);
+      const mf=byCalMonth[mk].reduce((a,r)=>a+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
       return s+(calcRecIncentive(mf,monthlySalary).incentive||0);
     },0);
     html += '<div class="tw"><table><thead><tr><th>Month</th><th>Hires</th><th>Firm Revenue</th><th>Multiple</th><th>Rate</th><th>Incentive</th></tr></thead><tbody>';
     sortedMks.forEach(mk=>{
       const ml=new Date(mk+'-01').toLocaleString('en-IN',{month:'short',year:'numeric'});
-      const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]),0);
+      const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
       const inc=calcRecIncentive(mf,monthlySalary);
       html+=`<tr><td class="mono" style="font-size:11px">${ml}</td><td class="m">${byCalMonth[mk].length}</td><td class="m" style="font-weight:600">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td><td class="m">${inc.multiple}\u00d7</td><td class="m">${inc.rate}%</td><td style="color:var(--teal);font-weight:600">\u20b9${inc.incentive.toLocaleString('en-IN')}</td></tr>`;
     });
@@ -6362,13 +6424,13 @@ function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
   }
   sortedMks.forEach(mk=>{
     const ml=new Date(mk+'-01').toLocaleString('en-IN',{month:'short',year:'numeric'});
-    const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]),0);
+    const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
     const inc=monthlySalary>0?calcRecIncentive(mf,monthlySalary):null;
     if(multi) html+=`<div class="sl2" style="margin:12px 0 6px">${ml} \u2014 ${byCalMonth[mk].length} hire${byCalMonth[mk].length>1?'s':''}</div>`;
     html+='<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Pos</th><th>Exp</th><th>Joined</th><th>CTC \u20b9 PA</th><th>Firm Fee</th></tr></thead><tbody>';
     byCalMonth[mk].forEach(r=>{
-      const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);
-      html+=`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.client]}</td><td class="m">${r[C.position]}</td><td class="m">${parseExp(r[C.expYrs]).toFixed(1)} yrs</td><td class="mono">${fmtD(r[C.doj])}</td><td class="m">\u20b9${((parseFloat(r[C.offeredSalary])||0)*12).toLocaleString('en-IN')}</td><td class="m" style="font-weight:600">\u20b9${Math.round(fee).toLocaleString('en-IN')}</td></tr>`;
+      const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]);
+      html+=`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.client]}</td><td class="m">${r[C.position]}</td><td class="m">${parseExp(r[C.expYrs]).toFixed(1)} yrs</td><td class="mono">${fmtD(r[C.doj])}</td><td class="m">\u20b9${((parseFloat(r[C.offeredSalary])||0)).toLocaleString('en-IN')}</td><td class="m" style="font-weight:600">\u20b9${Math.round(fee).toLocaleString('en-IN')}</td></tr>`;
     });
     html+=`<tr style="background:rgba(80,80,80,.06)"><td colspan="6" style="padding:7px 11px;font-weight:700">Firm Revenue \u2014 ${ml}</td><td style="padding:7px 11px;font-weight:700">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td></tr></tbody></table></div>`;
     if(!multi && inc){
@@ -6473,7 +6535,7 @@ function calcIncentives(){
 
   allJoined.forEach(r => {
     const exp  = parseExp(r[C.expYrs]);
-    const ctc  = (parseFloat(r[C.offeredSalary])||0)*12;
+    const ctc  = (parseFloat(r[C.offeredSalary])||0);
     const fee  = calcFirmFee(exp, ctc, r[C.client], r[C.doj]);
     const row  = {name:r[C.name], client:r[C.client], pos:r[C.position], exp, placedOn:r[C.doj], ctc, fee, raw:r};
     if(recSel){
@@ -6517,7 +6579,7 @@ function calcIncentives(){
         <div class="sl2" style="margin-bottom:6px">${allJoined.length} hire${allJoined.length>1?'s':''} in period (unclassified — incentive calculation blocked)</div>
         <div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Placed On</th><th>Firm Fee</th></tr></thead><tbody>
         ${allJoined.map(r=>{
-          const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0)*12,r[C.client],r[C.doj]);
+          const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]);
           return '<tr><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.client]+'</td><td class="mono">'+fmtD(r[C.doj])+'</td><td class="m">₹'+Math.round(fee).toLocaleString('en-IN')+'</td></tr>';
         }).join('')}
         </tbody></table></div>
@@ -6672,7 +6734,7 @@ function calcTeamEarnings(){
     const joined = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=from&&r[C.doj]<=to&&r[C.recruiter]===rec);
     let firmTotal = 0;
     joined.forEach(r=>{
-      const exp=parseExp(r[C.expYrs]);const ctc=(parseFloat(r[C.offeredSalary])||0)*12;
+      const exp=parseExp(r[C.expYrs]);const ctc=(parseFloat(r[C.offeredSalary])||0);
       firmTotal += calcFirmFee(exp,ctc,r[C.client],r[C.doj]);
     });
     const pipe = MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&r[C.recruiter]===rec).length;
@@ -6707,7 +6769,7 @@ function dlTeamEarnings(){
   recruiters.forEach(rec=>{
     const joined=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=from&&r[C.doj]<=to&&r[C.recruiter]===rec);
     let firm=0;
-    joined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0)*12;firm+=calcFirmFee(e,c,r[C.client],r[C.doj]);});
+    joined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0);firm+=calcFirmFee(e,c,r[C.client],r[C.doj]);});
     const pipe=MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&r[C.recruiter]===rec).length;
     rows.push([rec,joined.length,pipe,Math.round(firm)]);
   });
@@ -7184,7 +7246,7 @@ function selectJoinedCandForInvoice(code){
   const sv=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
   sv('inv-cand-code',r[C.code]);sv('inv-cand-name',r[C.name]);sv('inv-client',r[C.client]);sv('inv-position',r[C.position]);
   // Auto-calc CTC and fee from policy
-  const ctcPA=(parseFloat(r[C.offeredSalary])||0)*12;
+  const ctcPA=(parseFloat(r[C.offeredSalary])||0);
   sv('inv-ctc',ctcPA||'');
   if(ctcPA){
     const exp=parseExp(r[C.expYrs]);
@@ -7208,7 +7270,7 @@ function lookupInvCand(){
     sv('inv-client',r[C.client]);
     sv('inv-position',r[C.position]);
     const offSal=parseFloat(r[C.offeredSalary])||0;
-    if(offSal){sv('inv-ctc',offSal*12);}
+    if(offSal){sv('inv-ctc',offSal);}
     // Auto-fill fee rate from matrix
     const mat=billingMatrix.find(m=>m.client===r[C.client])||{rate:8.33};
     sv('inv-fee-rate',mat.rate);
@@ -8153,7 +8215,7 @@ function igRenderPage() {
     // Auto-populate from candidate profile when answer not yet saved
     const cqDefaults = [
       r[C.salaryPM] ? '₹'+r[C.salaryPM]+'/month' : '',
-      r[C.expectedSalary] ? '₹'+r[C.expectedSalary]+'/month' : '',
+      r[C.expectedSalary] ? '₹'+r[C.expectedSalary]+'/annum' : '',
       r[C.notice] || '',
       '', // Notice negotiable - leave for recruiter
       '', // Serving notice - leave for recruiter
@@ -9428,7 +9490,9 @@ function promotePoolEntry(itemId){
   goPanel('new');
   clearNew();
   sv('nNm',p.name);sv('nMob',(p.mobile||'').replace(/\D/g,'').slice(-10));sv('nEm',p.email);sv('nCo',p.company);
+  if(p.salaryPA)sv('nSPA',p.salaryPA);
   sv('nRem','Promoted from Talent Pool '+(p.code||'')+' — Desired role: '+(p.desiredRole||'—')+', Preferred location: '+(p.location||'—')+'. Profile summary: '+(p.summary||'—'));
+  calcSal();
   toast('info','Ready to Review','Pool entry pre-filled. Complete client/department and click Add Candidate to save '+(p.name||'this candidate')+'.');
   patchPoolEntry(itemId,{[SPLIST_POOL_FIELD_MAP.status]:'Promoted'}).then(()=>{loadTalentPool();}).catch(e=>console.warn('promotePoolEntry: status update failed',e.message));
 }
@@ -10787,7 +10851,7 @@ async function resolveVacSpItemId(v){
 // created manually by Anne in SharePoint like every other List in this app,
 // addressed by name (TalentPool) since she was asked to use plain no-space
 // column names matching their internal names exactly.
-const SPLIST_POOL_FIELD_MAP={code:'Title',name:'Name',mobile:'Mobile',email:'Email',company:'CurrentCompany',desiredRole:'DesiredRole',location:'PreferredLocation',salaryPM:'CurrentSalaryPM',resumeLink:'ResumeLink',summary:'ProfileSummary',notes:'RecruiterNotes',submittedOn:'SubmittedOn',status:'Status',promotedCode:'PromotedToCandidateCode'};
+const SPLIST_POOL_FIELD_MAP={code:'Title',name:'Name',mobile:'Mobile',email:'Email',company:'CurrentCompany',desiredRole:'DesiredRole',location:'PreferredLocation',salaryPA:'CurrentSalaryPA',resumeLink:'ResumeLink',summary:'ProfileSummary',notes:'RecruiterNotes',submittedOn:'SubmittedOn',status:'Status',promotedCode:'PromotedToCandidateCode'};
 // Statuses (from Anne's Notion answer, 18 Sep 2026) that should still
 // resurface in a pool-match search even though the candidate already exists
 // in THP — genuinely worth a second look, not dead ends.
