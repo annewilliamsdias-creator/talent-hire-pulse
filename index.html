@@ -723,6 +723,11 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
       <span class="nav-label">Vacancies</span>
     </div>
+    <div class="nav-item" onclick="goPanel('pool')" title="Talent Pool">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M12 2c2.5 2.5 4 6 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6-4-10s1.5-7.5 4-10z"/></svg></span>
+      <span class="nav-label">Talent Pool</span>
+      <span class="nav-badge" id="pool-new-badge" style="display:none">0</span>
+    </div>
     <div class="nav-item" onclick="goPanel('repos')" title="Repositories">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
       <span class="nav-label">Repositories</span>
@@ -1265,7 +1270,22 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <select id="vf-tat" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All TAT</option><option value="green">On Track</option><option value="amber">At Risk</option><option value="red">Overdue</option></select>
   <button class="btn btn-ghost btn-sm" onclick="['vf-rec','vf-cli','vf-dept','vf-loc','vf-tat'].forEach(function(id){var e=document.getElementById(id);if(e)e.selectedIndex=0;});renderVac()">✕ Clear</button>
 </div>
-<div class="tw"><table id="vacTable"><thead><tr><th onclick="sortVac(0)">Code</th><th onclick="sortVac(1)">Client</th><th onclick="sortVac(2)">Role</th><th onclick="sortVac(3)">Dept</th><th onclick="sortVac(4)">Location</th><th onclick="sortVac(5)">Budget</th><th onclick="sortVac(6)">Recruiter</th><th onclick="sortVac(7)">Priority</th><th onclick="sortVac(8)">TAT</th><th onclick="sortVac(9)">Status</th><th>View</th></tr></thead><tbody id="vBody"></tbody></table></div>
+<div class="tw"><table id="vacTable"><thead><tr><th onclick="sortVac(0)">Code</th><th onclick="sortVac(1)">Client</th><th onclick="sortVac(2)">Role</th><th onclick="sortVac(3)">Dept</th><th onclick="sortVac(4)">Location</th><th onclick="sortVac(5)">Budget</th><th onclick="sortVac(6)">Recruiter</th><th onclick="sortVac(7)">Priority</th><th onclick="sortVac(8)">TAT</th><th onclick="sortVac(9)">Status</th><th>View</th><th>Matches</th></tr></thead><tbody id="vBody"></tbody></table></div>
+</div>
+</div>
+
+<!-- TALENT POOL -->
+<div class="panel" id="p-pool">
+<div class="card">
+<div class="card-hdr">
+  <div class="card-title"><span class="ac">🌊</span> Talent Pool</div>
+  <div class="flex gap8">
+    <input type="text" id="pool-filter" placeholder="Search name, company, role, summary…" style="font-size:11px;padding:5px 8px;width:220px" oninput="renderTalentPool()">
+    <button class="btn btn-ghost btn-sm" onclick="loadTalentPool()">🔄 Refresh</button>
+  </div>
+</div>
+<div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">General applications submitted via the Candidate Portal, not tied to any vacancy. <strong style="color:var(--teal)">Promote</strong> pre-fills the New Candidate form for review before it becomes a real candidate record. When a new vacancy is created, this pool is automatically checked for likely matches — see the <strong style="color:var(--teal)">Matches</strong> column on Vacancies.</div>
+<div id="pool-list"></div>
 </div>
 </div>
 
@@ -1657,7 +1677,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="atab" id="at-users" onclick="switchATab('users')">👥 Users</div>
 <div class="atab" id="at-commonrepo" onclick="switchATab('commonrepo')">📋 Interview Repository</div><div class="atab" id="at-repository" onclick="switchATab('repository')">📤 Repository Migration</div>
 <div class="atab" id="at-remap" onclick="switchATab('remap')">🔀 Remap Requests <span id="remap-pending-badge" style="display:none;background:#e9982b;color:#0e0f17;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px"></span></div>
-<div class="atab" id="at-pool" onclick="switchATab('pool')">🌊 Talent Pool <span id="pool-new-badge" style="display:none;background:#e9982b;color:#0e0f17;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px"></span></div>
 </div>
 <!-- BILLING CONFIG -->
 <div id="ap-billing" class="hidden">
@@ -1887,17 +1906,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div id="remap-list"></div>
 </div></div>
 
-<div id="ap-pool" class="hidden"><div class="card">
-<div class="card-hdr">
-  <div class="card-title"><span class="ac">🌊</span> Talent Pool</div>
-  <div class="flex gap8">
-    <input type="text" id="pool-filter" placeholder="Search name, company, role, summary…" style="font-size:11px;padding:5px 8px;width:220px" oninput="renderTalentPool()">
-    <button class="btn btn-ghost btn-sm" onclick="loadTalentPool()">🔄 Refresh</button>
-  </div>
-</div>
-<div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">General applications submitted via the Candidate Portal, not tied to any vacancy. <strong style="color:var(--teal)">Promote</strong> pre-fills the New Candidate form for review before it becomes a real candidate record. When a new vacancy is created, this pool is automatically checked for likely matches.</div>
-<div id="pool-list"></div>
-</div></div>
 
 <!-- VALIDATION RESULTS -->
 <div class="card hidden" id="valResultCard">
@@ -2964,7 +2972,10 @@ function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').t
 // badge right away, not only after Admin happens to open that tab —
 // fire-and-forget, never blocks login.
 if(rd.admin)loadRemapRequests().catch(()=>{});
-if(rd.admin)loadTalentPool().catch(()=>{});}
+// Talent Pool moved out of the Admin-only area (19 Sep 2026) — every
+// recruiter now has their own nav item for it, so the badge fires for
+// everyone, not just admins.
+loadTalentPool().catch(()=>{});}
 async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=WB.Sheets['Config'];const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});let ui=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='users'){ui=i;break;}}const block=[['Users'],['Name','Email','Type','Role','Client','Active'],...appUsers.map(u=>[u.name,u.email,u.type||'internal',u.role,u.client||'',u.active?'Y':'N'])];if(ui>=0){let ei=ui+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(ui,ei-ui,...block);}else{all.push([],...block);}WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);await saveWB('Saving users...',true,['Config']);}catch(e){toast('err','Save Failed',e.message);}}
 
 // ══════════════════════════════════════════════════════
@@ -3044,6 +3055,7 @@ function goPanel(name){
   }
   if(name==='invoice'){renderInvoices();updateInvStats();}
   if(name==='screen'){fillScreenVacDrop();}
+  if(name==='pool'){loadTalentPool();}
 }
 
 // ══════════════════════════════════════════════════════
@@ -3944,7 +3956,7 @@ const vis=VD.filter(v=>{
     if(fTat==='green'&&age>30)return false;if(fTat==='amber'&&(age<=30||age>60))return false;if(fTat==='red'&&age<=60)return false;}
   return true;
 });
-if(!vis.length){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies — add from Admin')+'</td></tr>';return;}
+if(!vis.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies — add from Admin')+'</td></tr>';return;}
 tb.innerHTML=vis.map(v=>{
   const i=VD.indexOf(v);const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';const pri=v['Priority']||'';const priCol=pri==='High'?'#ff6b6b':pri==='Medium'?'var(--gold)':'var(--teal)';
   // Count active candidates tagged to this vacancy
@@ -3957,7 +3969,7 @@ tb.innerHTML=vis.map(v=>{
   let tatHtml='<td class="m">—</td>';
   const vd=v['Date of Vacancy'],tfd=v['Target Fill Date'];
   if(vd&&tfd){const age=Math.floor((todayMs-new Date(vd).getTime())/86400000);const span=Math.floor((new Date(tfd)-new Date(vd))/86400000);const ico=age<=30?'🟢':age<=60?'🟡':'🔴';const col=age<=30?'var(--teal)':age<=60?'var(--gold)':'#ff6b6b';tatHtml='<td class="m"><span style="color:'+col+';font-size:11px">'+ico+' '+age+'d</span><span style="font-size:9px;color:var(--w60)"> /'+span+'d</span></td>';}
-  return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong>'+(v['Positions Count']&&v['Positions Count']!=='1'?'<span style="font-size:10px;color:var(--teal);margin-left:5px">(×'+v['Positions Count']+')</span>':'')+candBadge+'</td><td class="m">'+v['Department']+'</td><td class="m">'+(v['Location']||'—')+'</td><td class="m">'+(v['Monthly Budget']?'₹'+v['Monthly Budget']:'—')+'</td><td class="m">'+(v['Recruiter']||'—')+'</td>'+(pri?'<td><span style="font-size:10px;font-weight:700;color:'+priCol+'">'+pri+'</span></td>':'<td class="m">—</td>')+tatHtml+'<td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="viewVacModal('+i+')" style="padding:3px 8px;font-size:10px">View</button></div></td></tr>';
+  return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong>'+(v['Positions Count']&&v['Positions Count']!=='1'?'<span style="font-size:10px;color:var(--teal);margin-left:5px">(×'+v['Positions Count']+')</span>':'')+candBadge+'</td><td class="m">'+v['Department']+'</td><td class="m">'+(v['Location']||'—')+'</td><td class="m">'+(v['Monthly Budget']?'₹'+v['Monthly Budget']:'—')+'</td><td class="m">'+(v['Recruiter']||'—')+'</td>'+(pri?'<td><span style="font-size:10px;font-weight:700;color:'+priCol+'">'+pri+'</span></td>':'<td class="m">—</td>')+tatHtml+'<td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="viewVacModal('+i+')" style="padding:3px 8px;font-size:10px">View</button></div></td><td><button class="btn btn-ghost btn-sm" onclick="viewVacMatches('+i+')" style="padding:3px 8px;font-size:10px">🎯 Matches</button></td></tr>';
 }).join('');}
 
 function viewVacModal(idx){
@@ -4174,7 +4186,7 @@ if(_bulkFailed.length){
 // ══════════════════════════════════════════════════════
 let admInited=false;
 function initAdmin(){if(!admInited){admInited=true;switchATab('backup');}}
-function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo','repository','remap','pool'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}if(tab==='repository'){console.log('Repository migration tab active');}if(tab==='remap'){loadRemapRequests();}if(tab==='pool'){loadTalentPool();}}
+function switchATab(tab){['backup','changelog','config','vacancies','billing','dashconfig','users','commonrepo','repository','remap'].forEach(t=>{const el=document.getElementById('ap-'+t);const at=document.getElementById('at-'+t);if(el)el.classList.toggle('hidden',t!==tab);if(at){at.classList.toggle('on',t===tab);}});if(tab==='backup')loadBKList();if(tab==='changelog')loadCL();if(tab==='config'){loadCfg();initMastersGrid();initAIKeyUI();initNotifyKeyUI();}if(tab==='vacancies'){renderAVacs();fillDrops();}if(tab==='billing'){loadBillingConfigUI();}if(tab==='users'){loadUsersCfg();renderUsers();}if(tab==='commonrepo'){renderCommonRepoAdmin();}if(tab==='repository'){console.log('Repository migration tab active');}if(tab==='remap'){loadRemapRequests();}}
 // BACKUP
 async function doBackup(){showLoad('Creating backup...');try{
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
@@ -10967,7 +10979,7 @@ async function triggerPoolMatchForVacancy(vd){
   const pool=await loadPoolFromList().catch(e=>{console.warn('triggerPoolMatchForVacancy: pool load failed',e.message);return[];});
   const openPool=pool.filter(p=>p.status==='New'||p.status==='Reviewed');
   const resurfaceCands=MD.filter(r=>POOL_RESURFACE_STATUSES.has(r[C.status]));
-  if(!openPool.length&&!resurfaceCands.length)return;
+  if(!openPool.length&&!resurfaceCands.length){toast('info','Nothing to Match Against','The talent pool is empty and there are no resurfaceable past candidates right now.');return;}
   // Safety cap for future pool growth — not needed at today's scale, but
   // keeps a single call bounded rather than silently ballooning in size/cost.
   const profiles=[
@@ -11004,14 +11016,57 @@ Return the top matches (at most 10, fewer if fewer are genuinely relevant — do
       const itemId=await resolveVacSpItemId(vd);
       if(itemId)await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields`,{MatchResults:vd.MatchResults});
     }catch(e){console.warn('triggerPoolMatchForVacancy: MatchResults List write failed',e.message);}
-    if(!matches.length)return;
-    const rows=matches.map(m=>'<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+escHtml(m.name||m.ref||'—')+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td></tr>').join('');
-    showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role.',
-      '<div class="tw"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
-      '<button class="btn btn-t" onclick="closeModal()">Close</button>');
+    if(!matches.length){toast('info','No Matches Found','Nothing in the talent pool or resurfaceable candidates looked like a fit for '+vacCode+'.');return;}
+    renderMatchResultsModal(vacCode,matches);
   }catch(e){
     console.warn('triggerPoolMatchForVacancy failed:',e.message);
   }
+}
+// Shared by the automatic popup above (right after a new vacancy is saved)
+// and viewVacMatches() below (on-demand, from the Vacancies table) — same
+// rendering either way, so "just computed" and "revisited later" always
+// look identical.
+function renderMatchResultsModal(vacCode,matches){
+  const rows=matches.map(m=>'<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+escHtml(m.name||m.ref||'—')+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td></tr>').join('');
+  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role.',
+    '<div class="tw"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
+    '<button class="btn btn-t" onclick="closeModal()">Close</button>');
+}
+// On-demand "View Matches" from the Vacancies table (19 Sep 2026) — reads
+// back the MatchResults already saved to the Vacancy's SharePoint List item
+// by triggerPoolMatchForVacancy() above, rather than a fresh AI call every
+// time someone just wants to look. Fetches only this one vacancy's field
+// (not a bulk load into VD on every page render), matching how RemapRequests/
+// TalentPool stay List-only rather than mirrored into the Excel sheet.
+async function viewVacMatches(idx){
+  const v=VD[idx];if(!v)return;
+  const vacCode=v['Vacancy code']||v['Vacancy Code']||'';
+  showModal('🎯 Suggested Matches for '+vacCode,'Loading…','','<button class="btn btn-ghost" onclick="closeModal()">Close</button>');
+  try{
+    const itemId=await resolveVacSpItemId(v);
+    let raw=null;
+    if(itemId){
+      const res=await graphGet(`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields?$select=MatchResults`);
+      raw=res&&res.MatchResults?res.MatchResults:null;
+    }
+    const parsed=raw?JSON.parse(raw):null;
+    const matches=parsed&&parsed.matches?parsed.matches:[];
+    closeModal();
+    if(!matches.length){
+      showModal('🎯 Suggested Matches for '+vacCode,'No matches computed for this vacancy yet — either it predates this feature, or the automatic run found nothing worth surfacing. You can run it now.',
+        '','<button class="btn btn-t" onclick="closeModal();runVacMatchingNow('+idx+')">▶ Run Matching Now</button><button class="btn btn-ghost" onclick="closeModal()">Close</button>');
+      return;
+    }
+    renderMatchResultsModal(vacCode,matches);
+  }catch(e){
+    closeModal();
+    toast('err','Could Not Load Matches',e.message);
+  }
+}
+async function runVacMatchingNow(idx){
+  const v=VD[idx];if(!v)return;
+  toast('info','Running Matching…','This can take a few seconds.');
+  await triggerPoolMatchForVacancy(v);
 }
 // One-time migration: Excel Vacancies sheet -> Vacancies List. Safe to re-run
 // (adds missing, updates changed) — same idempotent pattern as
