@@ -1269,7 +1269,8 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <select id="vf-dept" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All Departments</option></select>
   <select id="vf-loc" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All Locations</option></select>
   <select id="vf-tat" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All TAT</option><option value="green">On Track</option><option value="amber">At Risk</option><option value="red">Overdue</option></select>
-  <button class="btn btn-ghost btn-sm" onclick="['vf-rec','vf-cli','vf-dept','vf-loc','vf-tat'].forEach(function(id){var e=document.getElementById(id);if(e)e.selectedIndex=0;});renderVac()">✕ Clear</button>
+  <select id="vf-stat" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All Statuses</option><option>Open</option><option>On Hold</option><option>Shortlisted</option><option>Selected</option><option>Offered</option><option>Closed</option><option>Cancelled</option></select>
+  <button class="btn btn-ghost btn-sm" onclick="['vf-rec','vf-cli','vf-dept','vf-loc','vf-tat','vf-stat'].forEach(function(id){var e=document.getElementById(id);if(e)e.selectedIndex=0;});renderVac()">✕ Clear</button>
 </div>
 <div class="tw"><table id="vacTable"><thead><tr><th onclick="sortVac(0)">Code</th><th onclick="sortVac(1)">Client</th><th onclick="sortVac(2)">Role</th><th onclick="sortVac(3)">Dept</th><th onclick="sortVac(4)">Location</th><th onclick="sortVac(5)">Budget</th><th onclick="sortVac(6)">Recruiter</th><th onclick="sortVac(7)">Priority</th><th onclick="sortVac(8)">TAT</th><th onclick="sortVac(9)">Status</th><th>View</th><th>Matches</th></tr></thead><tbody id="vBody"></tbody></table></div>
 </div>
@@ -3946,12 +3947,14 @@ const fCli=document.getElementById('vf-cli')&&document.getElementById('vf-cli').
 const fDept=document.getElementById('vf-dept')&&document.getElementById('vf-dept').value||'';
 const fLoc=document.getElementById('vf-loc')&&document.getElementById('vf-loc').value||'';
 const fTat=document.getElementById('vf-tat')&&document.getElementById('vf-tat').value||'';
+const fStat=document.getElementById('vf-stat')&&document.getElementById('vf-stat').value||'';
 const todayMs=new Date().getTime();
 const vis=VD.filter(v=>{
   if(fRec&&(v['Recruiter']||'')!==fRec)return false;
   if(fCli&&(v['Company']||'')!==fCli)return false;
   if(fDept&&(v['Department']||'')!==fDept)return false;
   if(fLoc&&(v['Location']||'')!==fLoc)return false;
+  if(fStat&&(v['Current Status']||'Open')!==fStat)return false;
   if(fTat){const vd=v['Date of Vacancy'],tfd=v['Target Fill Date'];if(!vd||!tfd)return false;
     const age=Math.floor((todayMs-new Date(vd).getTime())/86400000);
     if(fTat==='green'&&age>30)return false;if(fTat==='amber'&&(age<=30||age>60))return false;if(fTat==='red'&&age<=60)return false;}
@@ -9648,8 +9651,14 @@ async function viewPoolModal(code){
 // status Anne is adding via Admin > Config masters — since leaving it as
 // e.g. "Not Interested" after re-linking to a brand-new active vacancy
 // would misrepresent where this candidate actually stands.
+// Deliberately does NOT close the Suggested Matches modal (19 Sep 2026,
+// Anne's explicit call) — tagging is a quick, one-click action, and closing
+// the whole list every time meant a recruiter working through several
+// matches got dropped back onto the vacancy after each one instead of
+// continuing down the list. On success it re-renders the same modal with
+// this row removed via _currentMatchModal; the Close button remains the
+// way back whenever they're actually done.
 async function tagCandidateToVacancy(candCode,vacCode){
-  closeModal();
   const r=MD.find(x=>x[C.code]===candCode);
   if(!r){toast('err','Not Found','Candidate '+candCode+' could not be found.');return;}
   const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
@@ -9673,6 +9682,14 @@ async function tagCandidateToVacancy(candCode,vacCode){
     if(clRows.length)await xlAppendRows('Change Log',clRows);
     toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+' and marked Reassigned — remarks and history unchanged.');
     renderRec();loadDash();
+    if(_currentMatchModal&&_currentMatchModal.vacCode===vacCode){
+      _currentMatchModal.matches=_currentMatchModal.matches.filter(m=>m.ref!==candCode);
+      if(_currentMatchModal.matches.length){
+        renderMatchResultsModal(vacCode,_currentMatchModal.matches);
+      }else{
+        showModal('🎯 Suggested Matches for '+vacCode,'All matches for this vacancy have been actioned.','','<button class="btn btn-t" onclick="closeModal()">Close</button>');
+      }
+    }
   }catch(e){
     toast('err','Tag Failed',e.message);
   }
@@ -11038,6 +11055,12 @@ const SPLIST_POOL_FIELD_MAP={code:'Title',name:'Name',mobile:'Mobile',email:'Ema
 // in THP — genuinely worth a second look, not dead ends.
 const POOL_RESURFACE_STATUSES=new Set(['Not Interested','On Hold','Rejected by Client','Not Contactable']);
 let POOL_ENTRIES=[];
+// Tracks whichever Suggested Matches list is currently open ({vacCode,
+// matches}) so tagCandidateToVacancy() can re-render the SAME modal minus
+// the row just actioned, instead of closing it — Anne's explicit call (19
+// Sep 2026): tagging shouldn't kick the recruiter out to the vacancy when
+// there are other matches left worth reviewing in the same list.
+let _currentMatchModal=null;
 function listItemToPoolRecord(item){
   const p={_spItemId:item.id};
   const f=item.fields||{};
@@ -11128,6 +11151,7 @@ Return the top matches (at most 10, fewer if fewer are genuinely relevant — do
 // rendering either way, so "just computed" and "revisited later" always
 // look identical.
 function renderMatchResultsModal(vacCode,matches){
+  _currentMatchModal={vacCode,matches};
   // Per-row action (19 Sep 2026): a "pool" match promotes into a real
   // candidate pre-filled against this vacancy; a "candidate" match is an
   // EXISTING record, so it only gets re-linked to this vacancy (Vacancy
