@@ -11028,8 +11028,12 @@ Return the top matches (at most 10, fewer if fewer are genuinely relevant — do
 // look identical.
 function renderMatchResultsModal(vacCode,matches){
   const rows=matches.map(m=>'<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+escHtml(m.name||m.ref||'—')+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td></tr>').join('');
+  // max-height+overflow-y matches viewVacModal()'s convention for long modal
+  // content (index.html ~line 3994) — the .tw class alone only scrolls
+  // horizontally, so a longer match list had no way to scroll to see
+  // remaining rows or reach the Close button. Same fix, same pattern.
   showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role.',
-    '<div class="tw"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
+    '<div class="tw" style="max-height:360px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
     '<button class="btn btn-t" onclick="closeModal()">Close</button>');
 }
 // On-demand "View Matches" from the Vacancies table (19 Sep 2026) — reads
