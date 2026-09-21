@@ -201,6 +201,7 @@ display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px)
 .mc{background:rgba(5,0,15,.98);border:1px solid rgba(233,152,43,.3);
 border-radius:var(--r);padding:26px 30px;max-width:460px;width:90vw;
 box-shadow:var(--sh);animation:fadeUp .3s ease}
+.mc.mc-wide{max-width:760px}
 .mc h3{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--gold);margin-bottom:6px}
 .mc p{font-size:13px;color:var(--w60);margin-bottom:14px;line-height:1.6}
 .mc-rec{background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);
@@ -651,7 +652,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- MODAL -->
 <div id="modal">
-  <div class="mc">
+  <div class="mc" id="mc">
     <h3 id="modal-title">—</h3>
     <p id="modal-msg">—</p>
     <div class="mc-rec" id="modal-rec"></div>
@@ -4593,7 +4594,7 @@ function showLoad(msg){document.getElementById('loading').classList.add('show');
 function hideLoad(){document.getElementById('loading').classList.remove('show');}
 let _tt;function toast(type,title,sub){const i={ok:'✅',err:'❌',warn:'⚠️',info:'ℹ️'};sv('ti',i[type]||'ℹ️');const tt=document.getElementById('tt');if(tt)tt.textContent=title;const ts=document.getElementById('ts');if(ts)ts.textContent=sub||'';const t=document.getElementById('toast');t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),4500);}
 function showAlert(id,type,msg){const el=document.getElementById(id);if(!el)return;if(!type||!msg){el.innerHTML='';return;}el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>{if(el)el.innerHTML=''},6000);}
-function showModal(title,msg,rec,btns){document.getElementById('modal-title').textContent=title;const mp=document.getElementById('modal-msg');if(mp)mp.innerHTML=msg;const mr=document.getElementById('modal-rec');if(mr)mr.innerHTML=rec||'';const mb=document.getElementById('modal-btns');if(mb)mb.innerHTML=btns||'';document.getElementById('modal').classList.add('show');}
+function showModal(title,msg,rec,btns,wide){document.getElementById('modal-title').textContent=title;const mp=document.getElementById('modal-msg');if(mp)mp.innerHTML=msg;const mr=document.getElementById('modal-rec');if(mr)mr.innerHTML=rec||'';const mb=document.getElementById('modal-btns');if(mb)mb.innerHTML=btns||'';const mc=document.getElementById('mc');if(mc)mc.classList.toggle('mc-wide',!!wide);document.getElementById('modal').classList.add('show');}
 function closeModal(){document.getElementById('modal').classList.remove('show');}
 function copyCode(){const code=document.getElementById('nCodeVal').textContent;navigator.clipboard.writeText(code).then(()=>toast('ok','Copied!',code));}
 
@@ -9586,6 +9587,7 @@ function promotePoolEntry(itemId,vacCode){
   sv('nNm',p.name);sv('nMob',(p.mobile||'').replace(/\D/g,'').slice(-10));sv('nEm',p.email);sv('nCo',p.company);
   if(p.salaryPA)sv('nSPA',p.salaryPA);
   sv('nRem','Promoted from Talent Pool '+(p.code||'')+' — Desired role: '+(p.desiredRole||'—')+', Preferred location: '+(p.location||'—')+'. Profile summary: '+(p.summary||'—'));
+  sv('nStat','WIP');
   calcSal();
   if(vacCode){
     const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
@@ -9614,30 +9616,37 @@ async function promotePoolMatchForVacancy(poolCode,vacCode){
 // Rejected by Client/Not Contactable) to a brand-new vacancy. Anne's explicit
 // requirement (19 Sep 2026): only the vacancy linkage changes — Vacancy Code,
 // Client, Department, Position, Recruiter (the fields THP's own vacancy
-// auto-tag logic elsewhere already treats as "vacancy-derived") — Status,
-// Remark, and every other field on the record are left completely untouched,
-// so prior history is never overwritten.
+// auto-tag logic elsewhere already treats as "vacancy-derived") — Remark
+// and every other field on the record are left completely untouched, so
+// prior history is never overwritten. Status is the one deliberate
+// exception (refined same day): it moves to 'Reassigned' — a new master
+// status Anne is adding via Admin > Config masters — since leaving it as
+// e.g. "Not Interested" after re-linking to a brand-new active vacancy
+// would misrepresent where this candidate actually stands.
 async function tagCandidateToVacancy(candCode,vacCode){
   closeModal();
   const r=MD.find(x=>x[C.code]===candCode);
   if(!r){toast('err','Not Found','Candidate '+candCode+' could not be found.');return;}
   const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
   if(!vac){toast('err','Not Found','Vacancy '+vacCode+' could not be found.');return;}
-  const oldVacCode=r[C.vacCode]||'';
+  const oldVacCode=r[C.vacCode]||'',oldStatus=r[C.status]||'';
   const clRows=[
     writeCL('Tagged to New Vacancy',r[C.code],C.vacCode,oldVacCode,vacCode,r[C.name]),
-    writeCL('Tagged to New Vacancy',r[C.code],C.position,r[C.position],vac['Designation']||'',r[C.name])
+    writeCL('Tagged to New Vacancy',r[C.code],C.position,r[C.position],vac['Designation']||'',r[C.name]),
+    writeCL('Tagged to New Vacancy',r[C.code],C.status,oldStatus,'Reassigned',r[C.name])
   ].filter(Boolean);
   r[C.vacCode]=vacCode;
   r[C.client]=vac['Company']||r[C.client];
   r[C.dept]=vac['Department']||r[C.dept];
   r[C.position]=vac['Designation']||r[C.position];
   if(vac['Recruiter'])r[C.recruiter]=vac['Recruiter'];
+  r[C.status]='Reassigned';
+  r[C.dm]=STATUS_DM['Reassigned']||'';
   r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
   try{
     await xlPatchRow(r);
     if(clRows.length)await xlAppendRows('Change Log',clRows);
-    toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+' — status and history unchanged.');
+    toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+' and marked Reassigned — remarks and history unchanged.');
     renderRec();loadDash();
   }catch(e){
     toast('err','Tag Failed',e.message);
@@ -11039,12 +11048,19 @@ async function triggerPoolMatchForVacancy(vd){
   if(!openPool.length&&!resurfaceCands.length){toast('info','Nothing to Match Against','The talent pool is empty and there are no resurfaceable past candidates right now.');return;}
   // Safety cap for future pool growth — not needed at today's scale, but
   // keeps a single call bounded rather than silently ballooning in size/cost.
+  // Salary now factored in (19 Sep 2026, Anne's request) — every figure
+  // here is annual (₹ PA), matching the salary-annualization change: vacancy
+  // Budget Min/Max, a pool entry's current salary, and an existing
+  // candidate's current AND expected salary (expected is the better signal
+  // for what they'd accept next, current gives scale/context — both given
+  // so the AI can judge rather than guess which one to trust).
   const profiles=[
-    ...openPool.map(p=>({ref:p.code,kind:'pool',name:p.name,company:p.company,desiredRole:p.desiredRole,location:p.location,summary:p.summary})),
-    ...resurfaceCands.map(r=>({ref:r[C.code],kind:'candidate',name:r[C.name],company:r[C.company],desiredRole:r[C.position]||r[C.roleInterested],location:r[C.location],status:r[C.status],remark:r[C.remark]}))
+    ...openPool.map(p=>({ref:p.code,kind:'pool',name:p.name,company:p.company,desiredRole:p.desiredRole,location:p.location,summary:p.summary,currentSalaryPA:p.salaryPA||''})),
+    ...resurfaceCands.map(r=>({ref:r[C.code],kind:'candidate',name:r[C.name],company:r[C.company],desiredRole:r[C.position]||r[C.roleInterested],location:r[C.location],status:r[C.status],remark:r[C.remark],currentSalaryPA:r[C.salaryPA]||'',expectedSalaryPA:r[C.expectedSalary]||''}))
   ].slice(0,300);
   const{jdEntry}=resolveJDFromVac(vacCode);
   const coreQs=[];if(jdEntry)for(let i=1;i<=10;i++){if(jdEntry['q'+i])coreQs.push(jdEntry['q'+i]);}
+  const budgetLine=(vd['Budget Min']||vd['Budget Max'])?`Budget (₹ PA): ${vd['Budget Min']||'?'} – ${vd['Budget Max']||'?'}`:'Budget (₹ PA): not specified';
   const header=`You rank candidates from a recruiter's talent pool + past candidates against a brand-new vacancy at WithAWill HR Consultancy Services.
 
 VACANCY:
@@ -11052,8 +11068,11 @@ Role: ${vd['Designation']||''}
 Department: ${vd['Department']||''}
 Location: ${vd['Location']||''}
 Experience required: ${vd['Experience']||''}
-${jdEntry?`ROLE CONTEXT:\n${jdEntry.rolecontext||''}\n\nWHAT THE ROLE REQUIRES:\n${coreQs.join('\n')}`:''}`;
-  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering):
+${budgetLine}
+${jdEntry?`ROLE CONTEXT:\n${jdEntry.rolecontext||''}\n\nWHAT THE ROLE REQUIRES:\n${coreQs.join('\n')}`:''}
+
+Weigh salary fit as a real factor, not just role/experience/location: a profile whose current or expected salary sits well above the vacancy's budget is a weaker match even if the role itself lines up, and it's worth saying so plainly in the rationale when salary is the limiting factor (e.g. "strong role fit, but expected salary is above budget"). Don't discard a profile purely for a salary gap if nothing else is known, but don't ignore a clear mismatch either — use judgment, and only comment on salary in the rationale when it's actually known and relevant.`;
+  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering; salary fields are annual (₹ PA) and may be blank if not on file):
 ${JSON.stringify(profiles)}
 
 Return the top matches (at most 10, fewer if fewer are genuinely relevant — don't pad the list), ranked best first. Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","rationale":"<1-2 sentence specific reason this profile fits this vacancy>"}]}`;
@@ -11101,9 +11120,9 @@ function renderMatchResultsModal(vacCode,matches){
   // content (index.html ~line 3994) — the .tw class alone only scrolls
   // horizontally, so a longer match list had no way to scroll to see
   // remaining rows or reach the Close button. Same fix, same pattern.
-  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role. 🌊 = talent pool (Promote creates a new candidate); 👤 = existing candidate (Tag re-links them to this vacancy only — status and history are untouched).',
+  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role. 🌊 = talent pool (Promote creates a new candidate, status WIP); 👤 = existing candidate (Tag re-links them to this vacancy and sets status to Reassigned — remarks and prior history are untouched).',
     '<div class="tw" style="max-height:360px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>',
-    '<button class="btn btn-t" onclick="closeModal()">Close</button>');
+    '<button class="btn btn-t" onclick="closeModal()">Close</button>',true);
 }
 // On-demand "View Matches" from the Vacancies table (19 Sep 2026) — reads
 // back the MatchResults already saved to the Vacancy's SharePoint List item
@@ -11114,7 +11133,7 @@ function renderMatchResultsModal(vacCode,matches){
 async function viewVacMatches(idx){
   const v=VD[idx];if(!v)return;
   const vacCode=v['Vacancy code']||v['Vacancy Code']||'';
-  showModal('🎯 Suggested Matches for '+vacCode,'Loading…','','<button class="btn btn-ghost" onclick="closeModal()">Close</button>');
+  showModal('🎯 Suggested Matches for '+vacCode,'Loading…','','<button class="btn btn-ghost" onclick="closeModal()">Close</button>',true);
   try{
     const itemId=await resolveVacSpItemId(v);
     let raw=null;
