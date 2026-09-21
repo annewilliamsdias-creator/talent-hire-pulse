@@ -9634,7 +9634,8 @@ async function viewPoolModal(code){
   ];
   const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]).map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+escHtml(x[1])+'</td></tr>').join('')+'</table></div>';
   const resumeBtn=p.resumeLink?'<a class="btn btn-t btn-sm" href="'+p.resumeLink+'" target="_blank">📄 View Resume</a>&nbsp;':'';
-  showModal('🌊 '+(p.name||code),'Talent Pool entry '+code,tableHtml,resumeBtn+'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+  const dismissBtn='<button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="closeModal();dismissPoolEntry(\''+p._spItemId+'\')">✕ Dismiss</button>&nbsp;';
+  showModal('🌊 '+(p.name||code),'Talent Pool entry '+code,tableHtml,resumeBtn+dismissBtn+'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
 // Tags an EXISTING candidate (a resurfaced match — Not Interested/On Hold/
 // Rejected by Client/Not Contactable) to a brand-new vacancy. Anne's explicit
