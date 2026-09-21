@@ -9575,7 +9575,11 @@ function renderTalentPool(){
 // department attached yet and needs a recruiter to complete those. Marks
 // the pool entry Promoted optimistically (best-effort, non-fatal) on click,
 // same convention as every other secondary write in this file.
-function promotePoolEntry(itemId){
+// vacCode optional (19 Sep 2026) — set when promoting straight from a
+// vacancy's Suggested Matches list, so the New Candidate form also lands
+// pre-filled with that vacancy's Client/Department/Position, not just the
+// pool entry's own contact details.
+function promotePoolEntry(itemId,vacCode){
   const p=POOL_ENTRIES.find(x=>x._spItemId===itemId);if(!p)return;
   goPanel('new');
   clearNew();
@@ -9583,8 +9587,61 @@ function promotePoolEntry(itemId){
   if(p.salaryPA)sv('nSPA',p.salaryPA);
   sv('nRem','Promoted from Talent Pool '+(p.code||'')+' — Desired role: '+(p.desiredRole||'—')+', Preferred location: '+(p.location||'—')+'. Profile summary: '+(p.summary||'—'));
   calcSal();
+  if(vacCode){
+    const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
+    if(vac){
+      sv('nCli',vac['Company']||'');sv('nDept',vac['Department']||'');sv('nVacC',vacCode);
+      fillPosDrop();
+      const posSel=document.getElementById('nPos');
+      if(posSel){const opt=[...posSel.options].find(o=>o.dataset.code===vacCode);if(opt){posSel.value=opt.value;onPosSel();}}
+    }
+  }
   toast('info','Ready to Review','Pool entry pre-filled. Complete client/department and click Add Candidate to save '+(p.name||'this candidate')+'.');
   patchPoolEntry(itemId,{[SPLIST_POOL_FIELD_MAP.status]:'Promoted'}).then(()=>{loadTalentPool();}).catch(e=>console.warn('promotePoolEntry: status update failed',e.message));
+}
+// Promote directly from the Suggested Matches modal, where we only have the
+// pool entry's reference code (the match's "ref"), not its SharePoint item
+// id — ensures POOL_ENTRIES is loaded first, then delegates to
+// promotePoolEntry() above with the vacancy context attached.
+async function promotePoolMatchForVacancy(poolCode,vacCode){
+  closeModal();
+  if(!POOL_ENTRIES.some(x=>x.code===poolCode)){await loadTalentPool().catch(()=>{});}
+  const p=POOL_ENTRIES.find(x=>x.code===poolCode);
+  if(!p){toast('err','Not Found','This pool entry could not be found — it may have already been promoted or dismissed.');return;}
+  promotePoolEntry(p._spItemId,vacCode);
+}
+// Tags an EXISTING candidate (a resurfaced match — Not Interested/On Hold/
+// Rejected by Client/Not Contactable) to a brand-new vacancy. Anne's explicit
+// requirement (19 Sep 2026): only the vacancy linkage changes — Vacancy Code,
+// Client, Department, Position, Recruiter (the fields THP's own vacancy
+// auto-tag logic elsewhere already treats as "vacancy-derived") — Status,
+// Remark, and every other field on the record are left completely untouched,
+// so prior history is never overwritten.
+async function tagCandidateToVacancy(candCode,vacCode){
+  closeModal();
+  const r=MD.find(x=>x[C.code]===candCode);
+  if(!r){toast('err','Not Found','Candidate '+candCode+' could not be found.');return;}
+  const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
+  if(!vac){toast('err','Not Found','Vacancy '+vacCode+' could not be found.');return;}
+  const oldVacCode=r[C.vacCode]||'';
+  const clRows=[
+    writeCL('Tagged to New Vacancy',r[C.code],C.vacCode,oldVacCode,vacCode,r[C.name]),
+    writeCL('Tagged to New Vacancy',r[C.code],C.position,r[C.position],vac['Designation']||'',r[C.name])
+  ].filter(Boolean);
+  r[C.vacCode]=vacCode;
+  r[C.client]=vac['Company']||r[C.client];
+  r[C.dept]=vac['Department']||r[C.dept];
+  r[C.position]=vac['Designation']||r[C.position];
+  if(vac['Recruiter'])r[C.recruiter]=vac['Recruiter'];
+  r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
+  try{
+    await xlPatchRow(r);
+    if(clRows.length)await xlAppendRows('Change Log',clRows);
+    toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+' — status and history unchanged.');
+    renderRec();loadDash();
+  }catch(e){
+    toast('err','Tag Failed',e.message);
+  }
 }
 function dismissPoolEntry(itemId){
   patchPoolEntry(itemId,{[SPLIST_POOL_FIELD_MAP.status]:'Dismissed'}).then(()=>{toast('ok','Dismissed','Pool entry dismissed.');loadTalentPool();}).catch(e=>toast('err','Dismiss Failed',e.message));
@@ -11027,13 +11084,25 @@ Return the top matches (at most 10, fewer if fewer are genuinely relevant — do
 // rendering either way, so "just computed" and "revisited later" always
 // look identical.
 function renderMatchResultsModal(vacCode,matches){
-  const rows=matches.map(m=>'<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+escHtml(m.name||m.ref||'—')+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td></tr>').join('');
+  // Per-row action (19 Sep 2026): a "pool" match promotes into a real
+  // candidate pre-filled against this vacancy; a "candidate" match is an
+  // EXISTING record, so it only gets re-linked to this vacancy (Vacancy
+  // Code/Client/Department/Position/Recruiter) — Status, Remark and every
+  // other field stay exactly as they are. See tagCandidateToVacancy()'s own
+  // comment for why: Anne's explicit requirement that prior history is
+  // never overwritten by a match.
+  const rows=matches.map(m=>{
+    const action=m.kind==='pool'
+      ?'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="promotePoolMatchForVacancy(\''+m.ref+'\',\''+vacCode+'\')">✓ Promote</button>'
+      :'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="tagCandidateToVacancy(\''+m.ref+'\',\''+vacCode+'\')">🔗 Tag to Vacancy</button>';
+    return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+escHtml(m.name||m.ref||'—')+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
+  }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
   // content (index.html ~line 3994) — the .tw class alone only scrolls
   // horizontally, so a longer match list had no way to scroll to see
   // remaining rows or reach the Close button. Same fix, same pattern.
-  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role.',
-    '<div class="tw" style="max-height:360px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
+  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role. 🌊 = talent pool (Promote creates a new candidate); 👤 = existing candidate (Tag re-links them to this vacancy only — status and history are untouched).',
+    '<div class="tw" style="max-height:360px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>',
     '<button class="btn btn-t" onclick="closeModal()">Close</button>');
 }
 // On-demand "View Matches" from the Vacancies table (19 Sep 2026) — reads
