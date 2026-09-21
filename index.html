@@ -2009,7 +2009,12 @@ const DATE_FIELDS=[C.sourcingDate,C.screeningDate,C.followupDate,C.updatedOn,C.i
 
 const TERMINAL=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
 // Statuses where follow-up date is NOT mandatory
-const NO_FOLLOWUP=new Set(['On Hold','Dropped','Rejected by Consultant','Rejected by Client','Not Interested','Joined','Reassigned']);
+// Reassigned deliberately NOT in this set (19->21 Sep 2026, Anne's
+// amendment) — a re-tagged candidate is exactly the kind of record that
+// needs an actual follow-up chase, unlike On Hold/Not Interested/etc, which
+// are genuinely parked. Also drives the Action Queue's own exclusion filter
+// below (allAQItems), so Reassigned candidates show up there too.
+const NO_FOLLOWUP=new Set(['On Hold','Dropped','Rejected by Consultant','Rejected by Client','Not Interested','Joined']);
 // Active pipeline statuses (for dashboard Active count)
 // 13 Aug 2026: added 'WIP' — was missing, so a WIP candidate counted as
 // "active" in Insights (which used !TERMINAL.has(status)) but NOT active on
@@ -3074,19 +3079,9 @@ const hfFrom=(document.getElementById('hf-from')&&document.getElementById('hf-fr
 const hfTo=(document.getElementById('hf-to')&&document.getElementById('hf-to').value)||'';
 const hfMD=MD.filter(r=>(!hfRec||r[C.recruiter]===hfRec)&&(!hfCli||r[C.client]===hfCli)&&(!hfVac||r[C.vacCode]===hfVac)&&(!hfFrom||!r[C.followupDate]||r[C.followupDate]>=hfFrom)&&(!hfTo||!r[C.followupDate]||r[C.followupDate]<=hfTo));
 const td=today(),tm=td.slice(0,7),in3=addDays(td,3);
-const pend=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&r[C.followupDate]<=td);
-// Update both KPI row and topbar
-const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-const scopeMD=myRecName?MD.filter(r=>r[C.recruiter]===myRecName):MD;
-sv2('kpi-total', scopeMD.length);
-sv2('kpi-active', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
-sv2('kpi-joined', scopeMD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length);
-sv2('ds-pen', pend.length);
-sv2('pendBadge', pend.length);
-sv2('tbTot', scopeMD.length);
-sv2('tbAct', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
-const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
-// Action queue — accordion view
+// Action queue — accordion view. Computed before the KPI row/badge now
+// (21 Sep 2026) so the Home icon's badge can share this exact set instead
+// of its own looser one — see the badge assignment below.
 const _nc7=new Date();_nc7.setDate(_nc7.getDate()-7);const _nc7s=_nc7.toISOString().slice(0,10);
 const allAQItems=hfMD.filter(r=>r[C.followupDate]&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])&&!(r[C.status]==='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<_nc7s))).map(r=>{
   const fd=r[C.followupDate];
@@ -3099,6 +3094,23 @@ const aqAfter=allAQItems.filter(x=>x.u==='up');
 const aqWIP=hfMD.filter(r=>r[C.status]==='WIP'&&!r[C.followupDate]).map(r=>({r,fd:'',u:'wip'}));
 const aq=document.getElementById('aq-list');
 if(aq)aq.innerHTML=buildAQAccordion(aqBefore,aqToday,aqAfter,aqWIP);
+// Update both KPI row and topbar
+const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+const scopeMD=myRecName?MD.filter(r=>r[C.recruiter]===myRecName):MD;
+sv2('kpi-total', scopeMD.length);
+sv2('kpi-active', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+sv2('kpi-joined', scopeMD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length);
+// Badge now matches the Action Queue's own overdue+today count exactly
+// (21 Sep 2026, Anne's call) — was previously a looser count (any non-
+// terminal status with a due/overdue date, including On Hold/stale Not
+// Contactable/etc) that didn't line up with what the accordion actually
+// showed as needing action.
+const pendCount=aqBefore.length+aqToday.length;
+sv2('ds-pen', pendCount);
+sv2('pendBadge', pendCount);
+sv2('tbTot', scopeMD.length);
+sv2('tbAct', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
+const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
 // Interviews
 const in7=addDays(td,7);
 const ivs=hfMD.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=td&&r[C.interviewDate]<=in7).sort((a,b)=>a[C.interviewDate].localeCompare(b[C.interviewDate])).slice(0,10);
@@ -9663,11 +9675,13 @@ async function tagCandidateToVacancy(candCode,vacCode){
   if(!r){toast('err','Not Found','Candidate '+candCode+' could not be found.');return;}
   const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
   if(!vac){toast('err','Not Found','Vacancy '+vacCode+' could not be found.');return;}
-  const oldVacCode=r[C.vacCode]||'',oldStatus=r[C.status]||'';
+  const oldVacCode=r[C.vacCode]||'',oldStatus=r[C.status]||'',oldFU=r[C.followupDate]||'';
+  const newFU=addDays(today(),1);
   const clRows=[
     writeCL('Tagged to New Vacancy',r[C.code],C.vacCode,oldVacCode,vacCode,r[C.name]),
     writeCL('Tagged to New Vacancy',r[C.code],C.position,r[C.position],vac['Designation']||'',r[C.name]),
-    writeCL('Tagged to New Vacancy',r[C.code],C.status,oldStatus,'Reassigned',r[C.name])
+    writeCL('Tagged to New Vacancy',r[C.code],C.status,oldStatus,'Reassigned',r[C.name]),
+    writeCL('Tagged to New Vacancy',r[C.code],C.followupDate,oldFU,newFU,r[C.name])
   ].filter(Boolean);
   r[C.vacCode]=vacCode;
   r[C.client]=vac['Company']||r[C.client];
@@ -9676,11 +9690,19 @@ async function tagCandidateToVacancy(candCode,vacCode){
   if(vac['Recruiter'])r[C.recruiter]=vac['Recruiter'];
   r[C.status]='Reassigned';
   r[C.dm]=STATUS_DM['Reassigned']||'';
+  // Reassigned needs an actual follow-up chase (21 Sep 2026, Anne's
+  // amendment) — set to tomorrow, same "sourcing/tag date + 1 day"
+  // convention used everywhere else a fresh follow-up gets its first date
+  // (e.g. the Candidate Portal's own createCandidateListItem). Old
+  // follow-up date is intentionally overwritten here — it's the one field
+  // Anne's "don't touch history" rule doesn't apply to, since without a
+  // fresh date this candidate would never surface in the Action Queue at all.
+  r[C.followupDate]=newFU;
   r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
   try{
     await xlPatchRow(r);
     if(clRows.length)await xlAppendRows('Change Log',clRows);
-    toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+' and marked Reassigned — remarks and history unchanged.');
+    toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+', marked Reassigned, and follow-up set for '+fmtD(newFU)+' — remarks and other history unchanged.');
     renderRec();loadDash();
     if(_currentMatchModal&&_currentMatchModal.vacCode===vacCode){
       _currentMatchModal.matches=_currentMatchModal.matches.filter(m=>m.ref!==candCode);
@@ -11170,7 +11192,7 @@ function renderMatchResultsModal(vacCode,matches){
   // content (index.html ~line 3994) — the .tw class alone only scrolls
   // horizontally, so a longer match list had no way to scroll to see
   // remaining rows or reach the Close button. Same fix, same pattern.
-  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role. 🌊 = talent pool (Promote creates a new candidate, status WIP); 👤 = existing candidate (Tag re-links them to this vacancy and sets status to Reassigned — remarks and prior history are untouched).',
+  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role. 🌊 = talent pool (Promote creates a new candidate, status WIP); 👤 = existing candidate (Tag re-links them to this vacancy, sets status to Reassigned, and schedules a follow-up for tomorrow — remarks and other history are untouched).',
     '<div class="tw" style="max-height:360px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>',
     '<button class="btn btn-t" onclick="closeModal()">Close</button>',true);
 }
