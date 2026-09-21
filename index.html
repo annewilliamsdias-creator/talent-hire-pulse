@@ -9612,6 +9612,30 @@ async function promotePoolMatchForVacancy(poolCode,vacCode){
   if(!p){toast('err','Not Found','This pool entry could not be found — it may have already been promoted or dismissed.');return;}
   promotePoolEntry(p._spItemId,vacCode);
 }
+// Quick-view for a Talent Pool entry (19 Sep 2026) — the pool-side
+// equivalent of viewCandModal(), since a pool entry isn't a real candidate
+// yet and has no candidate-detail record to open. Read-only, same
+// key-value-table pattern as viewVacModal() (index.html ~line 3994).
+// Values are escHtml'd here (unlike viewVacModal/viewCandModal, which don't)
+// because pool fields come straight from an anonymous public portal
+// submission — real external input, not just admin/recruiter-entered data.
+async function viewPoolModal(code){
+  showModal('🌊 '+code,'Loading…','','<button class="btn btn-ghost" onclick="closeModal()">Close</button>');
+  if(!POOL_ENTRIES.some(x=>x.code===code)){await loadTalentPool().catch(()=>{});}
+  const p=POOL_ENTRIES.find(x=>x.code===code);
+  if(!p){closeModal();toast('err','Not Found','This pool entry could not be found — it may have already been promoted or dismissed.');return;}
+  const rows=[
+    ['Name',p.name],['Mobile',p.mobile],['Email',p.email],
+    ['Current Company',p.company],['Desired Role',p.desiredRole],
+    ['Preferred Location',p.location],
+    ['Current Salary (₹ PA)',p.salaryPA?'₹'+p.salaryPA:''],
+    ['Submitted',fmtD(p.submittedOn)],['Status',p.status],
+    ['Profile Summary',p.summary],
+  ];
+  const tableHtml='<div style="max-height:360px;overflow-y:auto"><table style="width:100%">'+rows.filter(x=>x[1]).map(x=>'<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 8px;font-size:10px;color:var(--w60);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:38%">'+x[0]+'</td><td style="padding:5px 8px;font-size:12px;color:var(--ow)">'+escHtml(x[1])+'</td></tr>').join('')+'</table></div>';
+  const resumeBtn=p.resumeLink?'<a class="btn btn-t btn-sm" href="'+p.resumeLink+'" target="_blank">📄 View Resume</a>&nbsp;':'';
+  showModal('🌊 '+(p.name||code),'Talent Pool entry '+code,tableHtml,resumeBtn+'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
+}
 // Tags an EXISTING candidate (a resurfaced match — Not Interested/On Hold/
 // Rejected by Client/Not Contactable) to a brand-new vacancy. Anne's explicit
 // requirement (19 Sep 2026): only the vacancy linkage changes — Vacancy Code,
@@ -11114,12 +11138,7 @@ function renderMatchResultsModal(vacCode,matches){
     const action=m.kind==='pool'
       ?'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="promotePoolMatchForVacancy(\''+m.ref+'\',\''+vacCode+'\')">✓ Promote</button>'
       :'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="tagCandidateToVacancy(\''+m.ref+'\',\''+vacCode+'\')">🔗 Tag to Vacancy</button>';
-    // Only existing-candidate matches have a full record to open — a pool
-    // entry isn't a candidate yet (see Talent Pool tab for its own detail
-    // instead), so its name stays plain text.
-    const nameHtml=m.kind==='candidate'
-      ?'<a href="javascript:void(0)" onclick="viewCandModal(\''+m.ref+'\')" style="color:var(--teal);text-decoration:underline;cursor:pointer">'+escHtml(m.name||m.ref||'—')+'</a>'
-      :escHtml(m.name||m.ref||'—');
+    const nameHtml='<a href="javascript:void(0)" onclick="'+(m.kind==='candidate'?'viewCandModal':'viewPoolModal')+'(\''+m.ref+'\')" style="color:var(--teal);text-decoration:underline;cursor:pointer">'+escHtml(m.name||m.ref||'—')+'</a>';
     return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
   }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
