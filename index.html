@@ -2008,13 +2008,13 @@ const DATE_FIELDS=[C.sourcingDate,C.screeningDate,C.followupDate,C.updatedOn,C.i
 
 const TERMINAL=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
 // Statuses where follow-up date is NOT mandatory
-const NO_FOLLOWUP=new Set(['On Hold','Dropped','Rejected by Consultant','Rejected by Client','Not Interested','Joined']);
+const NO_FOLLOWUP=new Set(['On Hold','Dropped','Rejected by Consultant','Rejected by Client','Not Interested','Joined','Reassigned']);
 // Active pipeline statuses (for dashboard Active count)
 // 13 Aug 2026: added 'WIP' — was missing, so a WIP candidate counted as
 // "active" in Insights (which used !TERMINAL.has(status)) but NOT active on
 // the Home Dashboard (which uses this explicit set) — two screens disagreeing
 // on the same candidate. Confirmed WIP is meant to count as active.
-const ACTIVE_STATUSES=new Set(['WIP','Active','Not Contactable','Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress','On Hold','Selected','Offered','Joining in Progress']);
+const ACTIVE_STATUSES=new Set(['WIP','Active','Not Contactable','Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress','On Hold','Selected','Offered','Joining in Progress','Reassigned']);
 // Inactive statuses (can be re-approached)
 const INACTIVE_STATUSES=new Set(['Rejected by Consultant','Rejected by Client','Not Interested','Offer Declined','Offer Revoked','Joined','Dropped']);
 const STATUS_DM={'Consultant Interview in Progress':'Consultant','Rejected by Consultant':'Consultant','Shortlisted for Client I/W':'Consultant','Client I/W in Progress':'Client','Rejected by Client':'Client','Selected':'Client','Offered':'Client','Offer Revoked':'Client','Offer Declined':'Client','Joining in Progress':'Client','Joined':'Client'};
