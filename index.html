@@ -11114,7 +11114,13 @@ function renderMatchResultsModal(vacCode,matches){
     const action=m.kind==='pool'
       ?'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="promotePoolMatchForVacancy(\''+m.ref+'\',\''+vacCode+'\')">✓ Promote</button>'
       :'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="tagCandidateToVacancy(\''+m.ref+'\',\''+vacCode+'\')">🔗 Tag to Vacancy</button>';
-    return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+escHtml(m.name||m.ref||'—')+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
+    // Only existing-candidate matches have a full record to open — a pool
+    // entry isn't a candidate yet (see Talent Pool tab for its own detail
+    // instead), so its name stays plain text.
+    const nameHtml=m.kind==='candidate'
+      ?'<a href="javascript:void(0)" onclick="viewCandModal(\''+m.ref+'\')" style="color:var(--teal);text-decoration:underline;cursor:pointer">'+escHtml(m.name||m.ref||'—')+'</a>'
+      :escHtml(m.name||m.ref||'—');
+    return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
   }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
   // content (index.html ~line 3994) — the .tw class alone only scrolls
