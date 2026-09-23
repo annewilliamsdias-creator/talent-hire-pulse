@@ -5304,13 +5304,23 @@ async function exportDashPDF(){
     const origDatalabels = chartObj.options.plugins.datalabels;
     try{
       if(typeof ChartDataLabels !== 'undefined'){
+        // 23 Sep 2026: the previous version did {...origDatalabels, ...} —
+        // spreading chart.options.plugins.datalabels directly, which at
+        // runtime is Chart.js's own live option-resolver object, not a
+        // plain object. Enumerating/spreading it re-triggers Chart.js's
+        // scriptable-option resolution (the global default's `display` is
+        // itself a function) from inside that same resolution pass, which
+        // Chart.js detects as a cycle and throws "Recursion detected:
+        // display->display" for. Reading just the one function we actually
+        // need (a plain property access, not a spread/enumeration) avoids
+        // re-entering the resolver at all.
+        const origFormatter = origDatalabels && typeof origDatalabels.formatter === 'function' ? origDatalabels.formatter : null;
         chartObj.options.plugins.datalabels = {
-          ...(origDatalabels||{}),
           display: true,
           color: '#1e293b',
           font: {size:9, weight:'bold'},
           anchor:'end', align:'end', offset:2,
-          formatter: (origDatalabels&&origDatalabels.formatter) || ((v)=>v>0?v:''),
+          formatter: origFormatter || ((v)=>v>0?v:''),
           clamp:true, clip:false
         };
       }
