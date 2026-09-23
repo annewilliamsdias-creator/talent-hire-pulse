@@ -4997,7 +4997,16 @@ function renderStatusDist(data) {
           // mirroring that avoids depending on `ctx.chart` at all.
           formatter: (v) => {
             const total = values.reduce((a,b)=>a+b,0);
-            return v>0 ? v+' ('+Math.round(v/total*100)+'%)' : '';
+            if(v<=0) return '';
+            const pct = v/total*100;
+            // 23 Sep 2026: slices under ~2% render as a sliver a couple
+            // degrees wide — "count (percent%)" text doesn't fit and just
+            // overlaps whatever's next to it (WIP/Not Contactable/In
+            // Interview were an illegible cluster on the live dashboard and
+            // in the PDF). The colour + legend + tooltip still identify
+            // them; only the printed label is dropped for slices this thin.
+            if(pct < 2) return '';
+            return v+' ('+Math.round(pct)+'%)';
           }
         }
       }
