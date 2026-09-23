@@ -4987,8 +4987,16 @@ function renderStatusDist(data) {
         // same "count (percent%)" the tooltip already shows, computed the
         // same way, so nothing here is hover-exclusive information anymore.
         datalabels: {
-          formatter: (v,ctx) => {
-            const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+          // 23 Sep 2026: was `ctx.chart.data.datasets[0].data...` — during
+          // exportDashPDF()'s forced re-render for capture, the datalabels
+          // plugin calls this formatter with a context whose `.chart` isn't
+          // populated ("undefined is not an object (evaluating
+          // 'ctx.chart.data')"), so this chart alone failed to export. The
+          // tooltip callback just above computes the same percentage from
+          // `values` (this function's own closure, not the live context) —
+          // mirroring that avoids depending on `ctx.chart` at all.
+          formatter: (v) => {
+            const total = values.reduce((a,b)=>a+b,0);
             return v>0 ? v+' ('+Math.round(v/total*100)+'%)' : '';
           }
         }
