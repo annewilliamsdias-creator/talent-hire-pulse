@@ -4699,7 +4699,17 @@ function initChartDefaults() {
   // counts on every chart were invisible until you downloaded a report.
   if (typeof ChartDataLabels !== 'undefined') {
     Chart.defaults.plugins.datalabels = {
-      display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
+      // 23 Sep 2026: guarded against ctx.dataset being undefined — hit in
+      // production as "undefined is not an object (evaluating
+      // 'ctx.dataset.data')" when exportDashPDF() restores a chart's
+      // datalabels config after PDF capture and re-renders it; Chart.js can
+      // call this resolver with a context that doesn't carry a resolved
+      // dataset at that point. Missing/malformed data now just hides the
+      // label instead of throwing.
+      display: (ctx) => {
+        const d = ctx && ctx.dataset && ctx.dataset.data;
+        return !!(d && typeof d[ctx.dataIndex] === 'number' && d[ctx.dataIndex] > 0);
+      },
       color: 'rgba(251,251,250,0.85)',
       font: { size: 10, weight: '600' },
       formatter: (v) => v
@@ -5345,16 +5355,33 @@ async function exportDashPDF(){
       // since datalabels are on by default on-screen since 13 Aug 2026 —
       // meant every PDF export (or a failed one) could turn the live
       // dashboard's always-visible labels off until the next full render.
-      if(typeof ChartDataLabels !== 'undefined'){
-        chartObj.options.plugins.datalabels = origDatalabels;
+      // Wrapped in its own try/catch: a `finally` block's own exception is
+      // NEVER caught by the `catch` right above it (JS semantics) — it
+      // escapes straight past all the per-chart error handling and takes
+      // the whole PDF down with it. That's how a bad restore here turned
+      // into a hard "PDF Failed" toast instead of a per-chart skip.
+      try{
+        if(typeof ChartDataLabels !== 'undefined'){
+          chartObj.options.plugins.datalabels = origDatalabels;
+        }
+        chartObj.update('none');
+      }catch(restoreChErr){
+        console.warn('exportDashPDF: post-capture restore failed for',ch.id,restoreChErr.message);
       }
-      chartObj.update('none');
     }
   }
   // Restore global chart theme
   Chart.defaults.color = origColor;
   if(Chart.defaults.scale && origGridClr !== undefined) Chart.defaults.scale.grid.color = origGridClr;
-  Object.values(CHARTS).forEach(ch=>ch&&ch.update&&ch.update('none'));
+  // 23 Sep 2026: by this point every chart image is already captured and
+  // the PDF is otherwise ready to build — a stray update() error here (same
+  // Chart.js resolver class of bug as the per-chart restore above) shouldn't
+  // throw away a PDF that's already done. Each chart restores independently
+  // so one bad one doesn't stop the rest from refreshing.
+  Object.values(CHARTS).forEach(ch=>{
+    if(!ch||!ch.update) return;
+    try{ ch.update('none'); }catch(themeRestoreErr){ console.warn('exportDashPDF: theme restore update failed',themeRestoreErr.message); }
+  });
 
   // ── Header band (dark navy as before) ──
   doc.setFillColor(...NAVY);
