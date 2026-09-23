@@ -5331,7 +5331,30 @@ async function exportDashPDF(){
     // own formatter if it has one.
     const origDatalabels = chartObj.options.plugins.datalabels;
     let origDlColor, origDlFont;
+    const savedScales = {};
     try{
+      // 23 Sep 2026: axis tick labels (category names, scale numbers) were
+      // invisible in the PDF — each chart's `scales.x`/`scales.y` config is
+      // set explicitly at chart-creation time (see e.g. renderClientChart()
+      // etc.), so it doesn't reliably re-inherit the Chart.defaults.color
+      // flip to dark done above for this capture; it just kept the
+      // near-white colour meant for the dark on-screen theme, invisible on
+      // the PDF's white background. Set directly per scale, mutating the
+      // existing ticks/grid objects rather than replacing them (same
+      // reasoning as the datalabels object above).
+      if(chartObj.options.scales){
+        Object.keys(chartObj.options.scales).forEach(scaleId=>{
+          const sc = chartObj.options.scales[scaleId];
+          if(!sc) return;
+          savedScales[scaleId] = {
+            tickColor: sc.ticks && sc.ticks.color,
+            gridColor: sc.grid && sc.grid.color
+          };
+          if(!sc.ticks) sc.ticks = {};
+          sc.ticks.color = '#334155';
+          if(sc.grid) sc.grid.color = 'rgba(0,0,0,.08)';
+        });
+      }
       if(typeof ChartDataLabels !== 'undefined'){
         // 23 Sep 2026: the previous version did {...origDatalabels, ...} —
         // spreading chart.options.plugins.datalabels directly, which at
@@ -5415,6 +5438,15 @@ async function exportDashPDF(){
           } else {
             chartObj.options.plugins.datalabels = origDatalabels;
           }
+        }
+        if(chartObj.options.scales){
+          Object.keys(chartObj.options.scales).forEach(scaleId=>{
+            const sc = chartObj.options.scales[scaleId];
+            const saved = savedScales[scaleId];
+            if(!sc||!saved) return;
+            if(sc.ticks) sc.ticks.color = saved.tickColor;
+            if(sc.grid) sc.grid.color = saved.gridColor;
+          });
         }
         chartObj.update('none');
       }catch(restoreChErr){
