@@ -5298,6 +5298,7 @@ async function exportDashPDF(){
 
   // Capture all chart images with datalabels + dark text
   const chartImages = {};
+  const chartErrors = {};
   for(const ch of CHARTS_PDF){
     const canvas = document.getElementById(ch.id);
     const chartObj = CHARTS[ch.id];
@@ -5325,7 +5326,21 @@ async function exportDashPDF(){
         // need (a plain property access, not a spread/enumeration) avoids
         // re-entering the resolver at all.
         const origFormatter = origDatalabels && typeof origDatalabels.formatter === 'function' ? origDatalabels.formatter : null;
-        chartObj.options.plugins.datalabels = {
+        // 23 Sep 2026: anchor/align/clamp/clip are bar/line-element concepts
+        // (position the label relative to a bar's tip). Status Distribution
+        // is a doughnut — arc elements don't have a "tip" the same way, and
+        // forcing those options on it is what made the doughnut the one
+        // chart that failed to capture ("Chart not available") once every
+        // other chart started succeeding. Arc-type charts get the plain,
+        // Chart.js-default-anchored label instead.
+        const chartType = chartObj.config && chartObj.config.type;
+        const isArc = chartType==='doughnut' || chartType==='pie' || chartType==='polarArea';
+        chartObj.options.plugins.datalabels = isArc ? {
+          display: true,
+          color: '#1e293b',
+          font: {size:9, weight:'bold'},
+          formatter: origFormatter || ((v)=>v>0?v:'')
+        } : {
           display: true,
           color: '#1e293b',
           font: {size:9, weight:'bold'},
@@ -5347,8 +5362,12 @@ async function exportDashPDF(){
       // One bad chart (e.g. a tainted-canvas error) shouldn't take the
       // whole PDF down — log it, skip its image (exportDashPDF's chart
       // loop below already has a "Chart not available" fallback), and keep
-      // going so the rest of the report still generates.
+      // going so the rest of the report still generates. 23 Sep 2026: also
+      // stash the message so the PDF itself shows *why*, not just *that* —
+      // console.warn alone meant the only way to diagnose a skipped chart
+      // was asking whoever hit it to open devtools.
       console.warn('exportDashPDF: chart capture failed for',ch.id,chErr.message);
+      chartErrors[ch.id] = chErr.message;
     }finally{
       // Always restore, even if the chart above threw — 23 Sep 2026:
       // previously hard-set to {display:false} on success only, which —
@@ -5467,6 +5486,11 @@ async function exportDashPDF(){
         doc.rect(x,y+7,chartW,chartH,'F');
         doc.setFontSize(8);doc.setTextColor(150,160,175);
         doc.text('Chart not available',x+chartW/2,y+7+chartH/2,{align:'center'});
+        const errMsg = chartErrors[ch.id];
+        if(errMsg){
+          doc.setFontSize(6.5);
+          doc.text(String(errMsg).slice(0,90),x+chartW/2,y+7+chartH/2+5,{align:'center'});
+        }
       }
     });
     y += chartH + 10;
