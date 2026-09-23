@@ -5247,6 +5247,17 @@ async function exportDashPDF(){
   // Small delay so toast renders
   await new Promise(r=>setTimeout(r,80));
 
+  // 23 Sep 2026: the whole body used to run with no try/catch at all — any
+  // thrown error (jsPDF/Chart.js/whatever) left the "Preparing charts..."
+  // toast as the last thing anyone saw, no download, no error message, and
+  // — since the global chart-theme restore only ran at the very end — the
+  // live dashboard's charts could be left switched to PDF's light-theme
+  // dark-text styling too. Wrapped so a failure is always visible and the
+  // chart theme always gets put back regardless of where it broke.
+  // origColor/origGridClr declared here (not inside try{}) specifically so
+  // the catch block below can still reach them to restore the theme.
+  let origColor, origGridClr;
+  try{
   const {jsPDF: JSPDF} = window.jspdf;
   const doc = new JSPDF({orientation:'portrait', unit:'mm', format:'a4'});
   const dates = getDashDates();
@@ -5258,8 +5269,8 @@ async function exportDashPDF(){
   const WHITE=[255,255,255], LGREY=[245,247,250], DGREY=[50,62,80];
 
   // ── Step 1: switch all charts to light theme for PDF capture ──
-  const origColor    = Chart.defaults.color;
-  const origGridClr  = Chart.defaults.scale?.grid?.color;
+  origColor    = Chart.defaults.color;
+  origGridClr  = Chart.defaults.scale?.grid?.color;
   Chart.defaults.color = '#334155';
   if(Chart.defaults.scale) Chart.defaults.scale.grid = {...(Chart.defaults.scale.grid||{}), color:'rgba(0,0,0,.08)'};
 
@@ -5291,35 +5302,44 @@ async function exportDashPDF(){
     // of whatever datalabels config the chart already has, keeping its
     // own formatter if it has one.
     const origDatalabels = chartObj.options.plugins.datalabels;
-    if(typeof ChartDataLabels !== 'undefined'){
-      chartObj.options.plugins.datalabels = {
-        ...(origDatalabels||{}),
-        display: true,
-        color: '#1e293b',
-        font: {size:9, weight:'bold'},
-        anchor:'end', align:'end', offset:2,
-        formatter: (origDatalabels&&origDatalabels.formatter) || ((v)=>v>0?v:''),
-        clamp:true, clip:false
-      };
+    try{
+      if(typeof ChartDataLabels !== 'undefined'){
+        chartObj.options.plugins.datalabels = {
+          ...(origDatalabels||{}),
+          display: true,
+          color: '#1e293b',
+          font: {size:9, weight:'bold'},
+          anchor:'end', align:'end', offset:2,
+          formatter: (origDatalabels&&origDatalabels.formatter) || ((v)=>v>0?v:''),
+          clamp:true, clip:false
+        };
+      }
+      chartObj.update('none');
+      // Composite: white bg + chart on new canvas
+      const tmp = document.createElement('canvas');
+      tmp.width = canvas.width; tmp.height = canvas.height;
+      const ctx = tmp.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,tmp.width,tmp.height);
+      ctx.drawImage(canvas,0,0);
+      chartImages[ch.id] = tmp.toDataURL('image/png',0.92);
+    }catch(chErr){
+      // One bad chart (e.g. a tainted-canvas error) shouldn't take the
+      // whole PDF down — log it, skip its image (exportDashPDF's chart
+      // loop below already has a "Chart not available" fallback), and keep
+      // going so the rest of the report still generates.
+      console.warn('exportDashPDF: chart capture failed for',ch.id,chErr.message);
+    }finally{
+      // Always restore, even if the chart above threw — 23 Sep 2026:
+      // previously hard-set to {display:false} on success only, which —
+      // since datalabels are on by default on-screen since 13 Aug 2026 —
+      // meant every PDF export (or a failed one) could turn the live
+      // dashboard's always-visible labels off until the next full render.
+      if(typeof ChartDataLabels !== 'undefined'){
+        chartObj.options.plugins.datalabels = origDatalabels;
+      }
+      chartObj.update('none');
     }
-    chartObj.update('none');
-    // Composite: white bg + chart on new canvas
-    const tmp = document.createElement('canvas');
-    tmp.width = canvas.width; tmp.height = canvas.height;
-    const ctx = tmp.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0,0,tmp.width,tmp.height);
-    ctx.drawImage(canvas,0,0);
-    chartImages[ch.id] = tmp.toDataURL('image/png',0.92);
-    // Restore exactly what was there before (23 Sep 2026: previously hard-
-    // set to {display:false}, which — since datalabels are on by default
-    // on-screen since 13 Aug 2026 — meant every PDF export silently turned
-    // the live dashboard's always-visible labels off until the next full
-    // re-render).
-    if(typeof ChartDataLabels !== 'undefined'){
-      chartObj.options.plugins.datalabels = origDatalabels;
-    }
-    chartObj.update('none');
   }
   // Restore global chart theme
   Chart.defaults.color = origColor;
@@ -5428,6 +5448,24 @@ async function exportDashPDF(){
 
   doc.save('THP_Dashboard_'+today()+'.pdf');
   toast('ok','PDF Downloaded','Dashboard with charts saved as PDF.');
+  }catch(e){
+    // 23 Sep 2026: previously nothing caught a failure here at all — the
+    // "Preparing charts..." toast was the last thing anyone saw, no
+    // download, no error, no way to tell what went wrong.
+    console.error('exportDashPDF failed:',e);
+    // Best-effort theme restore in case the failure happened before the
+    // normal restore step (inside the chart-capture loop, which now also
+    // has its own finally — this is a second safety net, not the primary
+    // fix).
+    try{
+      if(typeof Chart!=='undefined'&&typeof origColor!=='undefined'){
+        Chart.defaults.color = origColor;
+        if(Chart.defaults.scale && typeof origGridClr!=='undefined' && origGridClr!==undefined) Chart.defaults.scale.grid.color = origGridClr;
+        Object.values(CHARTS).forEach(ch=>ch&&ch.update&&ch.update('none'));
+      }
+    }catch(restoreErr){console.warn('exportDashPDF: theme restore after failure also failed',restoreErr.message);}
+    toast('err','PDF Failed','Could not generate the PDF: '+e.message);
+  }
 }
 // Dashboard render triggered from goPanel and initUI directly
 
