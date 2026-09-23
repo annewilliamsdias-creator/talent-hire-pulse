@@ -5321,6 +5321,7 @@ async function exportDashPDF(){
     // of whatever datalabels config the chart already has, keeping its
     // own formatter if it has one.
     const origDatalabels = chartObj.options.plugins.datalabels;
+    let origDlColor, origDlFont;
     try{
       if(typeof ChartDataLabels !== 'undefined'){
         // 23 Sep 2026: the previous version did {...origDatalabels, ...} —
@@ -5333,29 +5334,36 @@ async function exportDashPDF(){
         // display->display" for. Reading just the one function we actually
         // need (a plain property access, not a spread/enumeration) avoids
         // re-entering the resolver at all.
-        const origFormatter = origDatalabels && typeof origDatalabels.formatter === 'function' ? origDatalabels.formatter : null;
-        // 23 Sep 2026: anchor/align/clamp/clip are bar/line-element concepts
-        // (position the label relative to a bar's tip). Status Distribution
-        // is a doughnut — arc elements don't have a "tip" the same way, and
-        // forcing those options on it is what made the doughnut the one
-        // chart that failed to capture ("Chart not available") once every
-        // other chart started succeeding. Arc-type charts get the plain,
-        // Chart.js-default-anchored label instead.
         const chartType = chartObj.config && chartObj.config.type;
         const isArc = chartType==='doughnut' || chartType==='pie' || chartType==='polarArea';
-        chartObj.options.plugins.datalabels = isArc ? {
-          display: true,
-          color: '#1e293b',
-          font: {size:9, weight:'bold'},
-          formatter: origFormatter || ((v)=>v>0?v:'')
-        } : {
-          display: true,
-          color: '#1e293b',
-          font: {size:9, weight:'bold'},
-          anchor:'end', align:'end', offset:2,
-          formatter: origFormatter || ((v)=>v>0?v:''),
-          clamp:true, clip:false
-        };
+        // 23 Sep 2026: Status Distribution (the one arc/doughnut chart) is
+        // the only one of the 8 that defines its own per-chart `datalabels`
+        // config at creation time (see renderStatusDist()) — for the other
+        // 7, chartObj.options.plugins.datalabels was inherited purely from
+        // Chart.defaults, so replacing the reference wholesale (below) is
+        // harmless. For this one, Chart.js/the plugin appear to attach some
+        // internal resolver state to that SPECIFIC object at creation time:
+        // replacing the reference broke it ("No default value"), and
+        // spreading it to read/copy its properties broke it a different way
+        // ("Recursion detected: display->display"). Mutating its existing
+        // properties in place — never replacing or spreading the object —
+        // leaves that resolver state alone.
+        if(isArc && origDatalabels){
+          origDlColor = origDatalabels.color;
+          origDlFont = origDatalabels.font;
+          origDatalabels.color = '#1e293b';
+          origDatalabels.font = {size:9, weight:'bold'};
+        } else {
+          const origFormatter = origDatalabels && typeof origDatalabels.formatter === 'function' ? origDatalabels.formatter : null;
+          chartObj.options.plugins.datalabels = {
+            display: true,
+            color: '#1e293b',
+            font: {size:9, weight:'bold'},
+            anchor:'end', align:'end', offset:2,
+            formatter: origFormatter || ((v)=>v>0?v:''),
+            clamp:true, clip:false
+          };
+        }
       }
       chartObj.update('none');
       // Composite: white bg + chart on new canvas
@@ -5389,7 +5397,15 @@ async function exportDashPDF(){
       // into a hard "PDF Failed" toast instead of a per-chart skip.
       try{
         if(typeof ChartDataLabels !== 'undefined'){
-          chartObj.options.plugins.datalabels = origDatalabels;
+          const chartType = chartObj.config && chartObj.config.type;
+          const isArc = chartType==='doughnut' || chartType==='pie' || chartType==='polarArea';
+          if(isArc && origDatalabels){
+            // Mutate back in place — same reasoning as the override above.
+            origDatalabels.color = origDlColor;
+            origDatalabels.font = origDlFont;
+          } else {
+            chartObj.options.plugins.datalabels = origDatalabels;
+          }
         }
         chartObj.update('none');
       }catch(restoreChErr){
