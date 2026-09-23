@@ -3094,12 +3094,19 @@ const aqAfter=allAQItems.filter(x=>x.u==='up');
 const aqWIP=hfMD.filter(r=>r[C.status]==='WIP'&&!r[C.followupDate]).map(r=>({r,fd:'',u:'wip'}));
 const aq=document.getElementById('aq-list');
 if(aq)aq.innerHTML=buildAQAccordion(aqBefore,aqToday,aqAfter,aqWIP);
-// Update both KPI row and topbar
+// Update topbar only — 23 Sep 2026: this used to ALSO write kpi-total/
+// kpi-active/kpi-joined here, but those elements only exist on the Talent
+// Insights panel (p-analytics), not Home (p-home has no KPI row of its
+// own at all) — a leftover from before the two panels were split apart.
+// Since loadDash() fires constantly (after nearly every save, not just on
+// Home navigation) and scopeMD is recruiter-restricted for non-admin
+// logins, those 3 of Insights' 5 KPI cards kept getting silently
+// overwritten with "my own data only" moments after renderKPIs() (Insights'
+// own function, never login-scoped) had just set them correctly — exactly
+// what looked like "recruiter sees only their own data" on that report.
+// Removing this cross-panel write lets renderKPIs() be the sole owner.
 const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
 const scopeMD=myRecName?MD.filter(r=>r[C.recruiter]===myRecName):MD;
-sv2('kpi-total', scopeMD.length);
-sv2('kpi-active', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
-sv2('kpi-joined', scopeMD.filter(r=>r[C.status]==='Joined'&&String(r[C.updatedOn]||'').startsWith(tm)).length);
 // Badge now matches the Action Queue's own overdue+today count exactly
 // (21 Sep 2026, Anne's call) — was previously a looser count (any non-
 // terminal status with a due/overdue date, including On Hold/stale Not
@@ -4963,7 +4970,18 @@ function renderStatusDist(data) {
       cutout: '60%',
       plugins: {
         legend: { position: 'right', labels: { font: { size: 10 } } },
-        tooltip: { callbacks: { label: ctx => ' '+ctx.label+': '+ctx.parsed+' ('+Math.round(ctx.parsed/values.reduce((a,b)=>a+b,0)*100)+'%)' } }
+        tooltip: { callbacks: { label: ctx => ' '+ctx.label+': '+ctx.parsed+' ('+Math.round(ctx.parsed/values.reduce((a,b)=>a+b,0)*100)+'%)' } },
+        // 23 Sep 2026: the percentage was only ever visible on hover (the
+        // tooltip callback above) — the global datalabels default just
+        // prints the raw count. Printed/on-screen segments now carry the
+        // same "count (percent%)" the tooltip already shows, computed the
+        // same way, so nothing here is hover-exclusive information anymore.
+        datalabels: {
+          formatter: (v,ctx) => {
+            const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+            return v>0 ? v+' ('+Math.round(v/total*100)+'%)' : '';
+          }
+        }
       }
     }
   });
@@ -5263,14 +5281,25 @@ async function exportDashPDF(){
     const canvas = document.getElementById(ch.id);
     const chartObj = CHARTS[ch.id];
     if(!canvas||!chartObj) continue;
-    // Enable datalabels with dark text for PDF
+    // Enable datalabels with dark text for PDF. 23 Sep 2026: this used to
+    // wholesale REPLACE options.plugins.datalabels, which silently dropped
+    // any chart-specific formatter (e.g. Status Distribution's "count
+    // (percent%)" — see renderStatusDist()) back down to a bare count in
+    // the PDF, even though the live chart showed the richer label. Now
+    // merges just the PDF-legibility overrides (dark text readable on
+    // white, not the near-white default meant for the dark theme) on top
+    // of whatever datalabels config the chart already has, keeping its
+    // own formatter if it has one.
+    const origDatalabels = chartObj.options.plugins.datalabels;
     if(typeof ChartDataLabels !== 'undefined'){
       chartObj.options.plugins.datalabels = {
+        ...(origDatalabels||{}),
         display: true,
         color: '#1e293b',
         font: {size:9, weight:'bold'},
         anchor:'end', align:'end', offset:2,
-        formatter:(v)=>v>0?v:'', clamp:true, clip:false
+        formatter: (origDatalabels&&origDatalabels.formatter) || ((v)=>v>0?v:''),
+        clamp:true, clip:false
       };
     }
     chartObj.update('none');
@@ -5282,9 +5311,13 @@ async function exportDashPDF(){
     ctx.fillRect(0,0,tmp.width,tmp.height);
     ctx.drawImage(canvas,0,0);
     chartImages[ch.id] = tmp.toDataURL('image/png',0.92);
-    // Restore datalabels off
+    // Restore exactly what was there before (23 Sep 2026: previously hard-
+    // set to {display:false}, which — since datalabels are on by default
+    // on-screen since 13 Aug 2026 — meant every PDF export silently turned
+    // the live dashboard's always-visible labels off until the next full
+    // re-render).
     if(typeof ChartDataLabels !== 'undefined'){
-      chartObj.options.plugins.datalabels = {display:false};
+      chartObj.options.plugins.datalabels = origDatalabels;
     }
     chartObj.update('none');
   }
@@ -5320,17 +5353,25 @@ async function exportDashPDF(){
 
   let y = 40;
 
-  // ── KPI row (5 boxes) ──
+  // ── KPI row (5 boxes) — matches renderKPIs() exactly (23 Sep 2026: this
+  // previously showed a "Rejected" figure that doesn't exist as a KPI card
+  // on the live dashboard at all, and DROPPED "Avg TAT (Days)" which does —
+  // so the PDF's own headline numbers didn't match what the screen shows,
+  // the opposite of a replica). ──
   const active  = data.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length;
   const joined  = data.filter(r=>r[C.status]==='Joined').length;
   const offered = data.filter(r=>r[C.status]==='Offered').length;
-  const rejected= data.filter(r=>['Rejected by Consultant','Rejected by Client'].includes(r[C.status])).length;
+  const tats = data
+    .filter(r => r[C.status] === 'Joined' && r[C.sourcingDate] && r[C.updatedOn])
+    .map(r => Math.round((new Date(r[C.updatedOn]) - new Date(r[C.sourcingDate])) / 86400000))
+    .filter(n => n > 0 && n < 365);
+  const avgTAT = tats.length ? Math.round(tats.reduce((a,b)=>a+b,0)/tats.length) : '—';
   const kpis=[
     {label:'Total',  val:data.length, col:TEAL},
     {label:'Active', val:active,      col:[34,197,94]},
     {label:'Joined', val:joined,      col:[...GOLD]},
     {label:'Offered',val:offered,     col:[100,140,220]},
-    {label:'Rejected',val:rejected,   col:[239,68,68]},
+    {label:'Avg TAT (Days)',val:avgTAT, col:[155,114,212]},
   ];
   const kW=(W-M*2)/5;
   kpis.forEach((k,i)=>{
