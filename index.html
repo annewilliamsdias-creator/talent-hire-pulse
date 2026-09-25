@@ -3503,7 +3503,16 @@ nr[C.client]=fv.cli;nr[C.vacCode]=fv.vacC||'';nr[C.status]=fv.stat;nr[C.dm]=STAT
 nr[C.followupDate]=fv.fu||'';nr[C.followupNotes]=fv.fun||'';nr[C.followupCount]='0';
 nr[C.remark]=fv.rem||'';nr[C.consent]='Y';
 nr[C.updatedBy]=acct&&acct.name?acct.name:'';nr[C.updatedOn]=today();
-nr[C.reportingDate]=today();nr[C.recruiter]=fv.rec;nr[C.sNo]=MD.length+1;
+nr[C.reportingDate]=today();
+// Anne's decision #4 (25 Sep 2026, Effort+Incentive Metrics Audit): default
+// candidate attribution to the logged-in recruiter, enforced here (not just
+// the New Candidate form's disabled dropdown in clearNew(), which is a
+// client-side attribute a determined user could bypass via devtools) — a
+// Recruiter-role login can never actually create a candidate attributed to
+// someone else, regardless of what fv.rec claims. Admin/Super Admin logins
+// (myRecName null) are unrestricted, as intended — that's the override.
+nr[C.recruiter]=(myRecName&&fv.rec!==myRecName)?myRecName:fv.rec;
+nr[C.sNo]=MD.length+1;
 // Resume Fitment Screening (22 Aug 2026): carries forward the resume + AI
 // fitment score from a Push to THP action in the Resume Screening panel —
 // see screenPushToTHP(). Untouched for any candidate added the normal way.
@@ -3514,6 +3523,14 @@ if(fv.screenPush){
 if(fv.prevCode)nr[C.prevCode]=fv.prevCode;
 MD.push(nr);
 const _clEN=writeCL('New Entry',code,'All','','',fv.nm);
+// Anne's decision #4, "the override audit logged": a dedicated entry for
+// every new candidate's recruiter attribution (not folded into the generic
+// 'New Entry' row above) — whether self-attributed by a Recruiter login or
+// assigned by Admin to someone else, it's always here, keyed by the actual
+// assigned recruiter (newV) with the acting user captured by writeCL()
+// itself (column 1) — no separate "was this an override" heuristic needed,
+// since every assignment is simply always recorded.
+const _clRecAttr=writeCL('Recruiter Attribution Set',code,C.recruiter,'',nr[C.recruiter],fv.nm);
 // Phase 1.8 (10 Aug 2026): Excel retired as candidate source of truth — the
 // Candidates List is now the only write. Unlike the 1.7 dual-write, a failure
 // here is fatal (no Excel fallback left) — roll back MD and report the error
@@ -3528,7 +3545,8 @@ try{
   const idx=MD.indexOf(nr);if(idx>=0)MD.splice(idx,1);
   return{ok:false,error:e.message};
 }
-if(_clEN)await xlAppendRows('Change Log',[_clEN]);
+const _clNewRows=[_clEN,_clRecAttr].filter(Boolean);
+if(_clNewRows.length)await xlAppendRows('Change Log',_clNewRows);
 // CR-DUP-002: verify no collision occurred despite the live check above —
 // catches the rare case of two submissions computing the same code at
 // nearly the same instant. Never auto-corrects; surfaces a visible warning
