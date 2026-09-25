@@ -806,15 +806,16 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="card">
   <div class="card-hdr">
     <div class="card-title"><span class="ac">⚡</span> My Action Queue</div>
+    <button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('My Action Queue','','aq-list')">🖨 Print / PDF</button>
   </div>
   <div id="aq-list"></div>
 </div>
 <div class="card">
-  <div class="card-hdr"><div class="card-title"><span class="ac">📅</span> Upcoming Interviews</div></div>
+  <div class="card-hdr"><div class="card-title"><span class="ac">📅</span> Upcoming Interviews</div><button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Upcoming Interviews','','iv-list')">🖨 Print / PDF</button></div>
   <div id="iv-list"></div>
 </div>
 <div class="card">
-  <div class="card-hdr"><div class="card-title"><span class="ac">🚪</span> Joining in Progress</div></div>
+  <div class="card-hdr"><div class="card-title"><span class="ac">🚪</span> Joining in Progress</div><button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Joining in Progress','','jp-list')">🖨 Print / PDF</button></div>
   <div id="jp-list"></div>
 </div>
 
@@ -1250,6 +1251,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <select id="rRec" onchange="renderRec(true)" style="width:120px"><option value="">All Recruiters</option></select>
 <button class="btn btn-ghost btn-sm" id="refreshRecBtn" onclick="refreshAllRecords()" title="Reload latest data">⟳ Refresh</button>
 <button class="btn btn-ghost btn-sm" onclick="dlAllRecords()">⬇ Download</button>
+<button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('All Candidates','','recTable')">🖨 Print / PDF</button>
 </div>
 </div>
 <div class="tw"><table id="recTable"><thead><tr><th onclick="sortRec(0,'code')">Code</th><th onclick="sortRec(1,'name')">Name</th><th onclick="sortRec(2,'position')">Position</th><th onclick="sortRec(3,'client')">Client</th><th onclick="sortRec(4,'status')">Status</th><th onclick="sortRec(5,'followupDate')">Follow-up</th><th onclick="sortRec(6,'recruiter')">Recruiter</th><th onclick="sortRec(7,'sourcingDate')">Sourced</th><th>Actions</th></tr></thead><tbody id="rBody"></tbody></table></div>
@@ -1265,7 +1267,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="card">
 <div class="card-hdr">
   <div class="card-title"><span class="ac">◆</span> Vacancies</div>
-  <button class="btn btn-ghost btn-sm" onclick="renderVac()">↺ Refresh</button>
+  <div class="flex gap8">
+    <button class="btn btn-ghost btn-sm" onclick="renderVac()">↺ Refresh</button>
+    <button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Vacancies','','vacTable')">🖨 Print / PDF</button>
+  </div>
 </div>
 <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
   <select id="vf-rec" onchange="renderVac()" style="flex:1;min-width:120px;max-width:160px;font-size:11px"><option value="">All Recruiters</option></select>
@@ -1471,7 +1476,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="card">
 <div class="card-hdr">
   <div class="card-title"><span class="ac">🎯</span> Effort</div>
-  <div id="effort-rec-picker" style="display:flex;align-items:center;gap:8px"></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div id="effort-rec-picker" style="display:flex;align-items:center;gap:8px"></div>
+    <button class="btn btn-ghost btn-sm" onclick="printEffortTab()">🖨 Print / PDF</button>
+  </div>
 </div>
 <div class="atabs">
   <div class="atab on" id="et-portfolio" onclick="switchEffortTab('portfolio')">📋 My Portfolio</div>
@@ -1652,7 +1660,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="card">
 <div class="card-hdr">
   <div class="card-title"><span class="ac">🧾</span> Invoices</div>
-  <button class="btn btn-t btn-sm" onclick="toggleInvCandPicker()">+ Create Invoice</button>
+  <div class="flex gap8">
+    <button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Invoices','','invTable')">🖨 Print / PDF</button>
+    <button class="btn btn-t btn-sm" onclick="toggleInvCandPicker()">+ Create Invoice</button>
+  </div>
 </div>
 
 <!-- Joined candidate picker (replaces manual code entry) -->
@@ -1696,7 +1707,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div class="btn-row"><button class="btn btn-t" onclick="createInvoice()">✓ Generate Invoice</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-create-form').classList.add('hidden')">← Back to Candidate List</button></div>
 </div>
 
-<div class="tw"><table><thead><tr><th>Invoice #</th><th>Candidate</th><th>Client</th><th>Position</th><th>Amount</th><th>GST</th><th>Total</th><th>Date</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inv-body"></tbody></table></div>
+<div class="tw"><table id="invTable"><thead><tr><th>Invoice #</th><th>Candidate</th><th>Client</th><th>Position</th><th>Amount</th><th>GST</th><th>Total</th><th>Date</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inv-body"></tbody></table></div>
 <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="inv-count"></div>
 </div>
 </div>
@@ -7569,6 +7580,17 @@ function incentivePrintWindow(title, subtitle, bodyHtml){
     td.m{color:#5f6470;font-size:11px}
     td.mono{font-family:'DM Mono',monospace;font-size:11px;color:#1f5c93}
     .footer{padding:12px 32px;font-size:10px;color:#9ca3af;text-align:center;border-top:1px solid #e8ecf0;margin-top:20px}
+    /* 25 Sep 2026: added when print rolled out beyond Incentive (Home,
+       Effort, All Records, Vacancies, Invoicing) — .sg/.stat/.sn/.sl are the
+       stat-card classes those pages already use live; without these rules
+       here they'd print as unstyled text, since this window has none of the
+       main app's stylesheet. */
+    .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+    .sg3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+    .stat{background:#fbfbfa;border:1px solid #d6dbe3;border-radius:6px;padding:10px 12px}
+    .sn{font-size:22px;font-weight:700;color:#1f5c93;line-height:1.1}
+    .sl{font-size:10px;color:#5f6470;margin-top:4px}
+    @media print{ .sg,.sg3{grid-template-columns:repeat(2,1fr)} }
     @media print{
       @page{margin:10mm 12mm}
       body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -7585,6 +7607,29 @@ function incentivePrintWindow(title, subtitle, bodyHtml){
   const win=window.open('','_blank','width=900,height=700');
   if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);}
   else{toast('warn','Popup blocked','Please allow popups for PDF export.');}
+}
+
+// 25 Sep 2026: "Enable pdf print for all pages" (Anne) — generic wrapper
+// reusing incentivePrintWindow() for pages that don't need bespoke
+// composition (Home, All Records, Vacancies, Invoicing, Effort). If the
+// target element is a plain <table>, wraps it in the same .tw class the
+// live app already uses around every table, so print styling matches;
+// otherwise (a Div full of already-composed report markup, e.g. an Effort
+// tab) its innerHTML is used as-is.
+function printPanelAsPDF(title, subtitle, containerId){
+  const el = document.getElementById(containerId);
+  if(!el){toast('warn','Nothing to Print','No content found for '+title+'.');return;}
+  const body = el.tagName==='TABLE' ? '<div class="tw">'+el.outerHTML+'</div>' : el.innerHTML;
+  incentivePrintWindow(title, subtitle, body);
+}
+
+// Effort's 4 tabs share one print button in the card header (rather than
+// one per tab) since only one tab is ever visible at a time — prints
+// whichever tab is currently active, per effortTab.
+function printEffortTab(){
+  const M={portfolio:['My Portfolio','ef-portfolio'],focus:["Today's Focus",'ef-focus'],opp:['My Opportunity','ef-opp'],compare:['Manager Report','ef-compare']};
+  const m = M[effortTab] || M.portfolio;
+  printPanelAsPDF('Effort — '+m[0], effortRecSel||'', m[1]);
 }
 
 function exportIncentivePolicyPDF(){
