@@ -548,6 +548,20 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 #p-analytics .chart-sub { color:rgba(251,251,250,.6); }
 #p-analytics .card { background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); color:#fbfbfa; }
 
+/* 25 Sep 2026: Manager Report (#ef-compare, .light-scope) lives inside the
+   dark #p-analytics panel but is itself light-themed — the dark overrides
+   above use descendant selectors (#p-analytics label/select/.btn-ghost)
+   which reach right through it, leaving its Period label/select and Print
+   button set to near-white text on a light card = invisible. Scope these
+   back to readable light-theme colors, higher-specificity than the dark
+   rules above (and !important on label, matching the rule it overrides). */
+#p-analytics .light-scope label { color:#291b39 !important; }
+#p-analytics .light-scope input,
+#p-analytics .light-scope select { background:#ffffff; color:#291b39; border:1px solid #d6dbe3; }
+#p-analytics .light-scope select option { background:#ffffff; color:#291b39; }
+#p-analytics .light-scope .btn-ghost { color:#1f5c93; border-color:#d6dbe3; background:transparent; }
+#p-analytics .light-scope .btn-ghost:hover { background:rgba(31,92,147,.06); color:#291b39; }
+
 /* ── Action Queue Accordion — light theme (inside #p-home) ── */
 .aq-summary {
   display:flex;
