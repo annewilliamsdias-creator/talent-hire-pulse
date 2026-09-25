@@ -1716,12 +1716,25 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <div class="sl2" style="margin-bottom:10px">Client-Specific Overrides <span style="font-size:10px;color:var(--w60);font-weight:400">(leave blank to use standard slabs)</span></div>
 <div id="bp-overrides-list"></div>
-<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 14px">
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 6px">
   <div class="field" style="margin:0"><label>Client</label><select id="bp-ov-client"><option value="">— Select —</option></select></div>
   <div class="field" style="margin:0"><label>Fee Type</label><select id="bp-ov-model"><option value="pct">% of Fixed Pay</option><option value="fixed">Flat ₹ per hire</option></select></div>
   <div class="field" style="margin:0"><label>Rate / Amount</label><input type="number" id="bp-ov-rate" placeholder="e.g. 10 or 75000" step="0.01"></div>
   <div class="field" style="margin:0"><label>Recruiter Share %</label><input type="number" id="bp-ov-recshare" placeholder="e.g. 25" min="0" max="100"></div>
   <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="addClientOverride()">Add Override</button></div>
+</div>
+<!-- 25 Sep 2026: a client override was previously always all-or-nothing —
+     one rate for every hire at that client, regardless of experience. Anne
+     hit this directly trying to enter a 1-3yr-only rate for a client that
+     needed a different rate outside that band. Exp From/To are optional —
+     leave both blank for the old "applies to every hire at this client"
+     behavior; fill them in to scope the override to just that experience
+     band, and add more override rows for the same client to cover other
+     bands separately. -->
+<div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px;margin:0 0 14px;align-items:end">
+  <div class="field" style="margin:0"><label>Exp From (yrs) <span style="font-size:9px;color:var(--w60)">optional</span></label><input type="number" id="bp-ov-expfrom" placeholder="e.g. 1" step="0.5" min="0"></div>
+  <div class="field" style="margin:0"><label>Exp To (yrs) <span style="font-size:9px;color:var(--w60)">optional</span></label><input type="number" id="bp-ov-expto" placeholder="e.g. 3, blank = ∞" step="0.5" min="0"></div>
+  <div style="font-size:10px;color:var(--w60);padding-bottom:8px">Leave both blank to apply this rate to every hire at this client, regardless of experience.</div>
 </div>
 
 <div class="sl2" style="margin-bottom:10px">Revision History</div>
@@ -6317,13 +6330,24 @@ function calcFirmFee(expYears, annualFixedPay, client, onDate){
   // Same exact-match fragility class the Effort+Incentive audit already
   // found elsewhere (JD Link matching, vacancy code matching). Trimmed +
   // case-insensitive now so it survives incidental formatting differences.
+  //
+  // Also now scoped to an experience band (expFrom/expTo), not just client —
+  // Anne needed a client's rate to apply only to a specific experience range
+  // (e.g. 1-3 yrs) rather than every hire at that client, which the
+  // single-rate-per-client design couldn't express at all. An override with
+  // no band saved (expFrom/expTo undefined — every override before this
+  // change) is treated as 0–999, i.e. still applies to every experience
+  // level exactly as before.
   const clientNorm = String(client||'').trim().toLowerCase();
-  const ov = incPolicy.clientOverrides.find(o => String(o.client||'').trim().toLowerCase() === clientNorm);
+  const exp = parseFloat(expYears) || 0;
+  const ov = incPolicy.clientOverrides.find(o =>
+    String(o.client||'').trim().toLowerCase() === clientNorm &&
+    exp >= (o.expFrom||0) && exp < (o.expTo!=null?o.expTo:999)
+  );
   if(ov){
     if(ov.model === 'fixed') return ov.amount || 0;
     if(ov.model === 'pct')   return annualFixedPay * ((ov.rate || 0) / 100);
   }
-  const exp = parseFloat(expYears) || 0;
   const sortedSlabs = period.slabs.slice().sort((a,b)=>a.expFrom-b.expFrom);
   let slab = sortedSlabs.find(s => exp >= s.expFrom && exp < s.expTo);
   if(!slab){
@@ -7758,20 +7782,39 @@ function addClientOverride(){
   const model = gv('bp-ov-model');
   const rate = parseFloat(gv('bp-ov-rate'))||0;
   const share = parseFloat(gv('bp-ov-recshare'))||20;
+  // 25 Sep 2026: expFrom/expTo optional — blank means "every experience
+  // level", same open-ended convention the standard fee slabs already use
+  // (999 = no upper bound). Existing overrides saved before this change have
+  // no expFrom/expTo at all; calcFirmFee() treats that the same as 0–999,
+  // so they keep behaving exactly as before.
+  const expFromRaw = gv('bp-ov-expfrom'), expToRaw = gv('bp-ov-expto');
+  const expFrom = expFromRaw!==''? (parseFloat(expFromRaw)||0) : 0;
+  const expTo   = expToRaw!==''  ? (parseFloat(expToRaw)||999) : 999;
   if(!cli||!rate){toast('warn','Required','Select client and enter rate');return;}
-  const existing = incPolicy.clientOverrides.findIndex(o=>o.client===cli);
-  const entry = {client:cli, model, rate, amount:rate, recruiterShare:share};
+  // Matched on client + exact band now, not client alone — so the same
+  // client can have several overrides covering different experience bands
+  // without one silently overwriting another.
+  const existing = incPolicy.clientOverrides.findIndex(o=>
+    String(o.client||'').trim().toLowerCase()===String(cli).trim().toLowerCase() &&
+    (o.expFrom||0)===expFrom && (o.expTo!=null?o.expTo:999)===expTo
+  );
+  const entry = {client:cli, model, rate, amount:rate, recruiterShare:share, expFrom, expTo};
   if(existing>=0) incPolicy.clientOverrides[existing]=entry;
   else incPolicy.clientOverrides.push(entry);
   renderClientOverridesList();
-  toast('ok','Override Added',cli+' billing override saved');
+  const bandLabel = (expFrom>0||expTo<999) ? ' for '+expFrom+'–'+(expTo>=999?'∞':expTo)+' yrs' : ' (all experience levels)';
+  toast('ok','Override Added',cli+' billing override saved'+bandLabel);
 }
 
 function renderClientOverridesList(){
   const el = document.getElementById('bp-overrides-list');if(!el)return;
   if(!incPolicy.clientOverrides.length){el.innerHTML='<div style="color:var(--w60);font-size:11px;padding:6px 0">No client overrides. All clients use standard slabs.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Fee Model</th><th>Rate / Amount</th><th>Rec Share %</th><th></th></tr></thead><tbody>'+
-    incPolicy.clientOverrides.map((o,i)=>`<tr><td>${o.client}</td><td class="m">${o.model==='pct'?'% of Fixed Pay':'Flat ₹'}</td><td class="m">${o.model==='pct'?o.rate+'%':'₹'+Math.round(o.rate).toLocaleString('en-IN')}</td><td class="m">${o.recruiterShare}%</td><td><button class="btn btn-ghost btn-sm" onclick="removeClientOverride(${i})" style="color:#ff6b6b">✕</button></td></tr>`).join('')+
+  const bandLabel = o => {
+    const ef=o.expFrom||0, et=o.expTo!=null?o.expTo:999;
+    return (ef>0||et<999) ? ef+'–'+(et>=999?'∞':et)+' yrs' : 'All experience';
+  };
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Experience Band</th><th>Fee Model</th><th>Rate / Amount</th><th>Rec Share %</th><th></th></tr></thead><tbody>'+
+    incPolicy.clientOverrides.map((o,i)=>`<tr><td>${o.client}</td><td class="m">${bandLabel(o)}</td><td class="m">${o.model==='pct'?'% of Fixed Pay':'Flat ₹'}</td><td class="m">${o.model==='pct'?o.rate+'%':'₹'+Math.round(o.rate).toLocaleString('en-IN')}</td><td class="m">${o.recruiterShare}%</td><td><button class="btn btn-ghost btn-sm" onclick="removeClientOverride(${i})" style="color:#ff6b6b">✕</button></td></tr>`).join('')+
     '</tbody></table></div>';
 }
 
