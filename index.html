@@ -4438,8 +4438,22 @@ if(!cli||!role||!dept){showAlert('avAlert','err','Client, Role and Department re
 const isNew=vacEIdx===-1;
 const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudgetMin')?gv('avBudgetMin')+' - '+gv('avBudgetMax'):gv('avBudgetMax')||'','Budget Min':gv('avBudgetMin'),'Budget Max':gv('avBudgetMax'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y','Externally Visible':document.getElementById('avExtVis')?document.getElementById('avExtVis').value:'N'};
 if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{const m=String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);return m?parseInt(m[1]):0;}));vd['Vacancy code']='VC-'+yr+'-'+String(mx+1).padStart(4,'0');vd['Sr. No.']=VD.length+1;VD.push(vd);}else{// Field-level merge: only apply non-blank form values; never clear existing JD Link with blank
-const _ex=VD[vacEIdx];const _patch={};Object.entries(vd).forEach(([k,v])=>{if(k==='JD Link'){if(v)_patch[k]=v;// preserve existing if form blank
-}else if(v!==''&&v!==null&&v!==undefined){_patch[k]=v;}});Object.assign(VD[vacEIdx],_patch);}
+const _ex=VD[vacEIdx];const _oldVacStatus=_ex['Current Status'];const _patch={};Object.entries(vd).forEach(([k,v])=>{if(k==='JD Link'){if(v)_patch[k]=v;// preserve existing if form blank
+}else if(v!==''&&v!==null&&v!==undefined){_patch[k]=v;}});Object.assign(VD[vacEIdx],_patch);
+// Anne's decision #5 (25 Sep 2026, Effort+Incentive Metrics Audit): vacancy
+// status changes were never written to the Change Log at all — the audit's
+// finding was that hold duration / vacancy activity history can't be
+// reconstructed for any past period because of this. Logged with the exact
+// same writeCL()+xlAppendRows() pattern every candidate save already uses
+// (e.g. submitUpd()), keyed by Vacancy code instead of candidate code.
+// Fire-and-forget, non-fatal — matches the List dual-write above it; this is
+// supplementary audit trail, not primary vacancy data. Deliberately does
+// NOT attempt to backfill the historical gap (Anne: "must not be
+// reconstructed where data does not exist") — capture starts from here on.
+if(VD[vacEIdx]['Current Status']!==_oldVacStatus){
+  const _vcl=writeCL('Vacancy Status Update',VD[vacEIdx]['Vacancy code']||VD[vacEIdx]['Vacancy Code']||'','Current Status',_oldVacStatus,VD[vacEIdx]['Current Status'],VD[vacEIdx]['Designation']+' @ '+VD[vacEIdx]['Company']);
+  if(_vcl)xlAppendRows('Change Log',[_vcl]).catch(e=>console.warn('saveVac: vacancy status Change Log append failed',e.message));
+}}
 if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}
 await saveWB('Saving vacancy...',true,['Vacancies']);
 // 19 Aug 2026: dual-write to the Vacancies List alongside the Excel save
@@ -4499,7 +4513,14 @@ if(!isNew && vd['Recruiter']){
 renderAVacs();renderVac();fillPosDrop();renderRec();loadDash();
 toast('ok',isNew?'Vacancy Added':'Vacancy Updated',role+' @ '+cli);
 showAlert('avAlert','ok','✅ '+(isNew?'Created':'Updated')+': '+vd['Vacancy code']);}
-async function toggleVacAct(idx){VD[idx]['Active']=VD[idx]['Active']==='N'?'Y':'N';if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}await saveWB(false,true,['Vacancies']);
+async function toggleVacAct(idx){const _oldVacActive=VD[idx]['Active'];VD[idx]['Active']=VD[idx]['Active']==='N'?'Y':'N';
+// Anne's decision #5 (25 Sep 2026, Effort+Incentive Metrics Audit) — same
+// vacancy Change Log logging saveVac() now does for status changes, applied
+// here for the Active toggle too, since that's the other main vacancy-level
+// state flip this file makes outside the full save form.
+{const _vcl=writeCL('Vacancy Active Toggled',VD[idx]['Vacancy code']||VD[idx]['Vacancy Code']||'','Active',_oldVacActive,VD[idx]['Active'],VD[idx]['Designation']+' @ '+VD[idx]['Company']);
+if(_vcl)xlAppendRows('Change Log',[_vcl]).catch(e=>console.warn('toggleVacAct: Change Log append failed',e.message));}
+if(WB&&WB.Sheets['Vacancies']){const ws=WB.Sheets['Vacancies'];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const vh=rows[0];['Sr. No.','Vacancy code','Company','Designation','Department','Location','Monthly Budget','Budget Min','Budget Max','Experience','Recruiter','Hiring Manager','Manager Name','Date of Vacancy','Target Fill Date','Priority','Positions Count','Remarks','JD Link','Current Status','Active'].forEach(f=>{if(!vh.includes(f))vh.push(f);});WB.Sheets['Vacancies']=XLSX.utils.aoa_to_sheet([vh,...VD.map(v=>vh.map(h=>v[h]!==undefined?v[h]:''))]);}await saveWB(false,true,['Vacancies']);
 // 19 Aug 2026: dual-write the Active flip to the Vacancies List too, single-
 // field PATCH (no full-sheet rewrite needed on the List side — genuinely
 // simpler than the Excel logic it's running alongside during the parallel-run
@@ -6180,6 +6201,22 @@ function getActivePolicyPeriod(onDate){
       || incPolicy.periods[0];
 }
 
+// Effort+Incentive Metrics Audit, Anne's decision #4 (25 Sep 2026): "Joined
+// in period" was copy-pasted with the identical predicate in 5 places
+// (calcIncentives() x2, calcTeamEarnings(), dlTeamEarnings(),
+// genWeeklyReport()) — they only agreed because the copy was identical, with
+// nothing preventing future drift. Consolidated into this one predicate;
+// every call site below now calls it instead of re-writing the filter.
+// Deliberately just the status+date check, not the recruiter/data-source
+// selection — callers differ on those (some take an explicit recruiter name,
+// calcIncentives() takes an optional "all recruiters" case, genWeeklyReport()
+// pre-filters its own recruiter+archive-exclusion before calling this), so
+// unifying only the part that was actually duplicated avoids changing any
+// caller's existing recruiter-selection behavior.
+function isJoinedInPeriod(r, from, to){
+  return r[C.status]==='Joined' && r[C.doj] && r[C.doj]>=from && r[C.doj]<=to;
+}
+
 function calcFirmFee(expYears, annualFixedPay, client, onDate){
   const period = getActivePolicyPeriod(onDate);
   if(!period) return 0;
@@ -6824,7 +6861,7 @@ function calcIncentives(){
 
     if(hasRevenue){
       const revJoined = MD.filter(r =>
-        r[C.status]==='Joined' && r[C.doj] >= revFrom && r[C.doj] <= to &&
+        isJoinedInPeriod(r, revFrom, to) &&
         (!recSel || r[C.recruiter]===recSel)
       );
       html += _buildSectionBHTML(revJoined, monthlySalary, revFrom, to, rec.doj);
@@ -6844,7 +6881,7 @@ function calcIncentives(){
 
   // ── Get all joined candidates in period ───────────────
   const allJoined = MD.filter(r =>
-    r[C.status]==='Joined' && r[C.doj] >= from && r[C.doj] <= to &&
+    isJoinedInPeriod(r, from, to) &&
     (!recSel || r[C.recruiter]===recSel)
   );
   setEl('inc-closed', allJoined.length);
@@ -7054,7 +7091,7 @@ function calcTeamEarnings(){
   if(!recruiters.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--w60)">No recruiter data available.</div>';return;}
 
   const teamRows = recruiters.map(rec => {
-    const joined = MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=from&&r[C.doj]<=to&&r[C.recruiter]===rec);
+    const joined = MD.filter(r=>isJoinedInPeriod(r,from,to)&&r[C.recruiter]===rec);
     let firmTotal = 0;
     joined.forEach(r=>{
       const exp=parseExp(r[C.expYrs]);const ctc=(parseFloat(r[C.offeredSalary])||0);
@@ -7090,7 +7127,7 @@ function dlTeamEarnings(){
     ['Recruiter','Hires in Period','Active Pipeline','Firm Revenue Generated ₹']
   ];
   recruiters.forEach(rec=>{
-    const joined=MD.filter(r=>r[C.status]==='Joined'&&r[C.doj]>=from&&r[C.doj]<=to&&r[C.recruiter]===rec);
+    const joined=MD.filter(r=>isJoinedInPeriod(r,from,to)&&r[C.recruiter]===rec);
     let firm=0;
     joined.forEach(r=>{const e=parseExp(r[C.expYrs]);const c=(parseFloat(r[C.offeredSalary])||0);firm+=calcFirmFee(e,c,r[C.client],r[C.doj]);});
     const pipe=MD.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])&&r[C.recruiter]===rec).length;
@@ -12076,7 +12113,7 @@ async function genWeeklyReport(recName,startStr,endStr){
   // range — Joined is a terminal status that essentially never reverts, and
   // DOJ is a fixed dated fact rather than reconstructed history, so this
   // stays a safe retroactive read despite leaning on "current" status.
-  const joinedWeek=recMD.filter(r=>r[C.status]==='Joined'&&(()=>{const d=String(r[C.doj]||'').slice(0,10);return d&&d>=startStr&&d<=endStr;})());
+  const joinedWeek=recMD.filter(r=>isJoinedInPeriod(r,startStr,endStr));
 
   function eActType(action){
     const a=String(action||'').toLowerCase();
