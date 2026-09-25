@@ -2568,6 +2568,47 @@ async function fetchLiveChangeLog(){
   }
 }
 
+// Effort+Incentive Metrics Audit, Anne's decision (25 Sep 2026): "Meaningful
+// Candidate Action" — any recruiter-initiated candidate status change except
+// to Not Contactable — is the ONE shared source of truth for what the app
+// currently (mis)labels "Calls". EOD, Effort and Incentives must all read
+// this number through this one function, never re-derive their own filter —
+// that duplication is exactly what the audit found had already happened to
+// "Joined" (5 copy-pasted filters) and "Interviews" (3 disagreeing
+// implementations). Written by submitUpd() and tagCandidateToVacancy() as
+// dedicated 'Meaningful Candidate Action' Change Log rows (see those
+// functions) — a NEW event type, deliberately separate from the existing
+// 'Status Update'/'Tagged to New Vacancy' rows so nothing already reading
+// those is affected. No historical backfill: only counts activity from
+// 25 Sep 2026 onward, since that's when this event started being written —
+// matches Anne's explicit instruction not to retrospectively infer this
+// where the historical Change Log can't reliably identify it.
+async function getMeaningfulActionsInPeriod(recruiterName, from, to){
+  const all = await fetchLiveChangeLog();
+  // Same email-first, name-fallback recruiter match genWeeklyReport() already
+  // uses for attributing a Change Log row to a recruiter — reused here so
+  // both readers agree on what "performed by this recruiter" means.
+  const recUser = appUsers.find(u=>u.name===recruiterName);
+  const recEmail = recUser&&recUser.email?recUser.email.toLowerCase():'';
+  const rows = all.filter(r=>{
+    if(r[4]!=='Meaningful Candidate Action') return false;
+    if(r[7]==='Not Contactable') return false; // defensive — the writes already exclude this
+    const d=String(r[0]).slice(0,10);
+    if(d<from||d>to) return false;
+    return (recEmail && String(r[9]||'').toLowerCase()===recEmail) ||
+           (!String(r[9]||'').trim() && String(r[1]).toLowerCase()===recruiterName.toLowerCase());
+  });
+  // Max 1 meaningful action per candidate per calendar day, regardless of how
+  // many status changes happened (Anne's explicit rule).
+  const seen=new Set();
+  let count=0;
+  rows.forEach(r=>{
+    const key=r[3]+'|'+String(r[0]).slice(0,10); // candidate code + date
+    if(!seen.has(key)){seen.add(key);count++;}
+  });
+  return {count, rows};
+}
+
 // ══════════════════════════════════════════════════════
 // GRAPH + SHAREPOINT
 // ══════════════════════════════════════════════════════
@@ -3643,7 +3684,22 @@ const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 NC Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}}
 r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
 const _clEU=writeCL('Status Update',r[C.code],C.status,oldStat,stat,r[C.name]);
-try{showLoad('Updating record...');await xlPatchRow(r);if(_clEU)await xlAppendRows('Change Log',[_clEU]);hideLoad();hideSyncBanner();}catch(e){hideLoad();showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
+// Meaningful Candidate Action (25 Sep 2026, Effort+Incentive Metrics Audit,
+// Anne's decision) — a NEW event, distinct from the 'Status Update' row
+// above so nothing that already reads that row (EOD, etc.) is touched.
+// r[C.vacCode] is read here, before this function ever assigns to it (it
+// doesn't), so it's genuinely "the vacancy linked to the candidate at the
+// time of the activity". Guarded on stat!==oldStat — this form can be
+// submitted with the status unchanged (e.g. a remarks-only save), which
+// isn't a status update at all — and on stat!=='Not Contactable' per her
+// rule. getMeaningfulActionsInPeriod() (search this file) is the one shared
+// reader EOD/Effort/Incentives must all call — do not re-derive this count
+// anywhere else.
+let _clMCA=null;
+if(stat!==oldStat&&stat!=='Not Contactable'){
+  _clMCA=writeCL('Meaningful Candidate Action',r[C.code],'Vacancy Code',r[C.vacCode],stat,r[C.name]);
+}
+try{showLoad('Updating record...');await xlPatchRow(r);const _clRows=[_clEU,_clMCA].filter(Boolean);if(_clRows.length)await xlAppendRows('Change Log',_clRows);hideLoad();hideSyncBanner();}catch(e){hideLoad();showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(stat)+'">'+stat+'</span>';
 toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();
   const updCode=r[C.code];const updName=r[C.name];
@@ -10043,6 +10099,17 @@ async function tagCandidateToVacancy(candCode,vacCode){
     writeCL('Tagged to New Vacancy',r[C.code],C.status,oldStatus,'Reassigned',r[C.name]),
     writeCL('Tagged to New Vacancy',r[C.code],C.followupDate,oldFU,newFU,r[C.name])
   ].filter(Boolean);
+  // Meaningful Candidate Action (25 Sep 2026, Effort+Incentive Metrics
+  // Audit) — same new event type as submitUpd()'s. 'Reassigned' is always a
+  // genuine status change here and is never 'Not Contactable', so this
+  // always qualifies (oldStatus!=='Reassigned' guard just avoids a
+  // theoretical double-count if this ever ran on an already-Reassigned
+  // record). Vacancy attribution uses the NEW vacCode — that's the vacancy
+  // this candidate is now linked to as of this exact action.
+  if(oldStatus!=='Reassigned'){
+    const _mca=writeCL('Meaningful Candidate Action',r[C.code],'Vacancy Code',vacCode,'Reassigned',r[C.name]);
+    if(_mca)clRows.push(_mca);
+  }
   r[C.vacCode]=vacCode;
   r[C.client]=vac['Company']||r[C.client];
   r[C.dept]=vac['Department']||r[C.dept];
