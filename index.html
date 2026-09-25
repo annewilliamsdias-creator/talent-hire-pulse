@@ -1604,7 +1604,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     </div>
     <div class="field" style="margin:0"><label>Monthly Salary ₹ <span style="font-size:9px;color:var(--w60)">(for incentive calc)</span></label><input type="number" id="proj-salary" placeholder="e.g. 30000" min="0" oninput="genProjections()"></div>
     <div class="field" style="margin:0"><label>Current Firm Revenue ₹ <span style="font-size:9px;color:var(--w60)">(this month so far)</span></label><input type="number" id="proj-current-rev" placeholder="0" min="0" oninput="genProjections()"></div>
-    <div style="align-self:flex-end"><button class="btn btn-t btn-sm" onclick="genProjections()">🔄 Calculate</button></div>
+    <div style="align-self:flex-end;display:flex;gap:8px">
+      <button class="btn btn-t btn-sm" onclick="genProjections()">🔄 Calculate</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportProjectionsPDF()">🖨 Print / PDF</button>
+    </div>
   </div>
   <div id="inc-proj-list"></div>
 </div>
@@ -7300,6 +7303,20 @@ function exportMyEarningsPDF(){
   incentivePrintWindow(
     'My Earnings' + (recSel ? ' — '+recSel : ''),
     `Policy: ${p?p.title:'N/A'}<br>Period: ${fmtD(from)} – ${fmtD(to)}`,
+    el.innerHTML
+  );
+}
+
+function exportProjectionsPDF(){
+  const el = document.getElementById('inc-proj-list');
+  if(!el || !el.innerHTML.trim()){toast('warn','No Data','Calculate projections first, then print.');return;}
+  const recFilter   = gv('proj-rec') || 'All Recruiters';
+  const phaseFilter = gv('proj-phase') || 'all';
+  const phaseLabel  = phaseFilter==='ramp' ? 'Ramp-Up Only (Months 1–3)' : phaseFilter==='revenue' ? 'Revenue Only (Month 4+)' : 'All Phases';
+  const p = getActivePolicyPeriod();
+  incentivePrintWindow(
+    'Earnings Projections',
+    `Policy: ${p?p.title:'N/A'}<br>Recruiter: ${recFilter}<br>Phase: ${phaseLabel}`,
     el.innerHTML
   );
 }
