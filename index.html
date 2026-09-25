@@ -6847,6 +6847,19 @@ async function buildSectionAHTML(recSel, p, empMonthNums){
       <div style="font-size:24px;font-weight:700;color:var(--gold)">\u20b9${incTier?incTier.amount.toLocaleString('en-IN'):'0'}</div>
     </div>
   </div>`;
+  // Banked Ramp-Up Revenue (Anne's decision, retained from Phase 2 spec):
+  // a recruiter must not lose the economic benefit of a placement made
+  // during ramp-up — shown here as banked (not payable yet), and only
+  // applied into the actual incentive total at the first Month 4
+  // calculation in Section B (see _buildSectionBHTML/calcBankedRampUpRevenue).
+  const fullRampFrom = allEmpMonths[0]&&allEmpMonths[0].from, fullRampTo = allEmpMonths[allEmpMonths.length-1]&&allEmpMonths[allEmpMonths.length-1].to;
+  const bankedSoFar = (fullRampFrom && fullRampTo) ? calcBankedRampUpRevenue(recSel, fullRampFrom, fullRampTo) : 0;
+  if(bankedSoFar > 0){
+    html += `<div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-size:12px;font-weight:600">💰 Banked Ramp-Up Revenue</div><div style="font-size:10px;color:var(--w60)">Eligible realised revenue from placements during Months 1–3. Not paid now — carries into the first Month 4 revenue calculation (Section B).</div></div>
+      <div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--gold)">₹${Math.round(bankedSoFar).toLocaleString('en-IN')}</div><div style="font-size:10px;color:var(--w60)">Revenue Incentive Payable: ₹0</div></div>
+    </div>`;
+  }
   return html;
 }
 
@@ -6870,7 +6883,27 @@ function _updateKPICards(recSel){
   se('inc-potential','\u20b9'+Math.round(pot2).toLocaleString('en-IN'));
 }
 
-function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
+// Banked Ramp-Up Revenue (Anne's decision, 25 Sep 2026, Effort+Incentive
+// Metrics Audit — retained from the Phase 2 spec): a recruiter's Months 1-3
+// (ramp-up) placements currently earn zero revenue-incentive tracking
+// anywhere — Section A is activity-only, and Section B only ever looks at
+// join dates from Month 4 onward. This computes what those ramp-up joins
+// would have earned in firm revenue, so it can be carried into the first
+// Month 4 calculation rather than silently lost. Same calcFirmFee() basis
+// Section B itself uses, deliberately no source exclusion (matching Section
+// B's existing behavior — this is a revenue calc, not an activity count).
+function calcBankedRampUpRevenue(recruiterName, rampFrom, rampTo){
+  const joined = MD.filter(r => isJoinedInPeriod(r, rampFrom, rampTo) && r[C.recruiter]===recruiterName);
+  return joined.reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
+}
+
+// bankedRevenue/bankedMonthKey (25 Sep 2026): when set, bankedRevenue is
+// added to whichever calendar month bucket equals bankedMonthKey (the
+// recruiter's actual Month 4 start) — that's "the first Month 4
+// calculation" Anne's spec describes. Every other month is unaffected, and
+// since each calendar month only ever appears once per render, this can't
+// double-count no matter how many times the report is viewed.
+function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj, bankedRevenue, bankedMonthKey){
   let html = '<div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:12px 16px;margin-bottom:12px">';
   html += '<div style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:3px">\ud83d\udcb0 Section B \u2014 Revenue Incentive (Month 4+)</div>';
   html += `<div style="font-size:11px;color:var(--w60)">Candidates who joined clients during ${fmtD(from)} \u2013 ${fmtD(to)}. Incentive calculated monthly: total firm revenue \u00f7 salary = rate applied to total revenue.</div></div>`;
@@ -6887,25 +6920,30 @@ function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
   });
   const sortedMks = Object.keys(byCalMonth).sort();
   const multi = sortedMks.length > 1;
+  // Adds Banked Ramp-Up Revenue only to its own specific calendar month
+  // (the recruiter's actual Month 4 start) \u2014 see calcBankedRampUpRevenue()
+  // above for why this can't double-count.
+  const bankedFor = mk => (bankedMonthKey && mk===bankedMonthKey) ? (bankedRevenue||0) : 0;
   if(multi && monthlySalary > 0){
-    const grandFirm = joined.reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
+    const grandFirm = joined.reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0) + (bankedRevenue||0);
     const grandInc  = sortedMks.reduce((s,mk)=>{
-      const mf=byCalMonth[mk].reduce((a,r)=>a+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
+      const mf=byCalMonth[mk].reduce((a,r)=>a+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0)+bankedFor(mk);
       return s+(calcRecIncentive(mf,monthlySalary).incentive||0);
     },0);
     html += '<div class="tw"><table><thead><tr><th>Month</th><th>Hires</th><th>Firm Revenue</th><th>Multiple</th><th>Rate</th><th>Incentive</th></tr></thead><tbody>';
     sortedMks.forEach(mk=>{
       const ml=new Date(mk+'-01').toLocaleString('en-IN',{month:'short',year:'numeric'});
-      const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
+      const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0)+bankedFor(mk);
       const inc=calcRecIncentive(mf,monthlySalary);
-      html+=`<tr><td class="mono" style="font-size:11px">${ml}</td><td class="m">${byCalMonth[mk].length}</td><td class="m" style="font-weight:600">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td><td class="m">${inc.multiple}\u00d7</td><td class="m">${inc.rate}%</td><td style="color:var(--teal);font-weight:600">\u20b9${inc.incentive.toLocaleString('en-IN')}</td></tr>`;
+      html+=`<tr><td class="mono" style="font-size:11px">${ml}${bankedFor(mk)?' \ud83d\udcb0':''}</td><td class="m">${byCalMonth[mk].length}</td><td class="m" style="font-weight:600">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td><td class="m">${inc.multiple}\u00d7</td><td class="m">${inc.rate}%</td><td style="color:var(--teal);font-weight:600">\u20b9${inc.incentive.toLocaleString('en-IN')}</td></tr>`;
     });
     html+=`<tr style="background:rgba(52,186,198,.08)"><td colspan="2" style="font-weight:700;padding:8px 11px">Total</td><td style="font-weight:700;padding:8px 11px">\u20b9${Math.round(grandFirm).toLocaleString('en-IN')}</td><td colspan="2"></td><td style="color:var(--teal);font-weight:700;padding:8px 11px">\u20b9${Math.round(grandInc).toLocaleString('en-IN')}</td></tr>`;
     html += '</tbody></table></div>';
   }
   sortedMks.forEach(mk=>{
     const ml=new Date(mk+'-01').toLocaleString('en-IN',{month:'short',year:'numeric'});
-    const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0);
+    const banked=bankedFor(mk);
+    const mf=byCalMonth[mk].reduce((s,r)=>s+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]),0)+banked;
     const inc=monthlySalary>0?calcRecIncentive(mf,monthlySalary):null;
     if(multi) html+=`<div class="sl2" style="margin:12px 0 6px">${ml} \u2014 ${byCalMonth[mk].length} hire${byCalMonth[mk].length>1?'s':''}</div>`;
     html+='<div class="tw"><table><thead><tr><th>Candidate</th><th>Client</th><th>Pos</th><th>Exp</th><th>Joined</th><th>CTC \u20b9 PA</th><th>Firm Fee</th></tr></thead><tbody>';
@@ -6913,7 +6951,10 @@ function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
       const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj]);
       html+=`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.client]}</td><td class="m">${r[C.position]}</td><td class="m">${parseExp(r[C.expYrs]).toFixed(1)} yrs</td><td class="mono">${fmtD(r[C.doj])}</td><td class="m">\u20b9${((parseFloat(r[C.offeredSalary])||0)).toLocaleString('en-IN')}</td><td class="m" style="font-weight:600">\u20b9${Math.round(fee).toLocaleString('en-IN')}</td></tr>`;
     });
-    html+=`<tr style="background:rgba(80,80,80,.06)"><td colspan="6" style="padding:7px 11px;font-weight:700">Firm Revenue \u2014 ${ml}</td><td style="padding:7px 11px;font-weight:700">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td></tr></tbody></table></div>`;
+    if(banked){
+      html+=`<tr style="background:rgba(233,152,43,.08)"><td colspan="6" style="padding:7px 11px;font-weight:700;color:var(--gold)">\ud83d\udcb0 Banked Ramp-Up Revenue (Months 1\u20133, carried into this first Month 4 calculation)</td><td style="padding:7px 11px;font-weight:700;color:var(--gold)">\u20b9${Math.round(banked).toLocaleString('en-IN')}</td></tr>`;
+    }
+    html+=`<tr style="background:rgba(80,80,80,.06)"><td colspan="6" style="padding:7px 11px;font-weight:700">Firm Revenue \u2014 ${ml}${banked?' (incl. banked)':''}</td><td style="padding:7px 11px;font-weight:700">\u20b9${Math.round(mf).toLocaleString('en-IN')}</td></tr></tbody></table></div>`;
     if(!multi && inc){
       html+=`<div style="background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.2);border-radius:var(--rs);padding:12px 16px;margin-top:10px">
         <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:var(--teal)">Incentive Calculation \u2014 ${ml} (Section B)</div>
@@ -6928,6 +6969,7 @@ function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
           <span style="font-size:22px;font-weight:700;color:var(--teal)">\u20b9${inc.incentive.toLocaleString('en-IN')}</span>
         </div>
         ${inc.rate===0?'<div style="font-size:10px;color:var(--gold);margin-top:5px">\u26a0 Revenue below 1\u00d7 salary \u2014 no incentive payable.</div>':''}
+        ${banked?`<div style="font-size:10px;color:var(--gold);margin-top:5px">\ud83d\udcb0 Includes \u20b9${Math.round(banked).toLocaleString('en-IN')} Banked Ramp-Up Revenue from Months 1\u20133, carried in per policy.</div>`:''}
       </div>`;
     } else if(!multi && !inc && monthlySalary===0){
       html+=`<div style="background:rgba(255,160,0,.06);border:1px solid rgba(255,160,0,.2);border-radius:var(--rs);padding:9px 13px;margin-top:10px;font-size:11px;color:var(--gold)">\ud83d\udca1 Enter your monthly salary above to calculate Section B incentive.</div>`;
@@ -6985,7 +7027,15 @@ async function calcIncentives(){
         isJoinedInPeriod(r, revFrom, to) &&
         (!recSel || r[C.recruiter]===recSel)
       );
-      html += _buildSectionBHTML(revJoined, monthlySalary, revFrom, to, rec.doj);
+      // Banked Ramp-Up Revenue: computed over the recruiter's own FIXED
+      // ramp-up window (doj → rampEndStr) regardless of whatever date range
+      // is currently selected in the report — it's a one-time carry-forward
+      // tied to their employment timeline, not the report's view window.
+      // _buildSectionBHTML only actually applies it if revStartStr's
+      // calendar month happens to appear in the currently rendered range,
+      // so passing it unconditionally here is always safe.
+      const bankedRevenue = recSel ? calcBankedRampUpRevenue(recSel, rec.doj, rampEndStr) : 0;
+      html += _buildSectionBHTML(revJoined, monthlySalary, revFrom, to, rec.doj, bankedRevenue, revStartStr.slice(0,7));
     }
 
     if(!html) html = '<div style="text-align:center;padding:24px;color:var(--w60)">No data for this period. Check that the date range overlaps with the recruiter\'s employment dates.</div>';
