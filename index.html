@@ -6633,9 +6633,15 @@ function getRampEmploymentMonths(recruiterName){
   });
 }
 
+// Effort+Incentive Metrics Audit, Anne's decision #1 (25 Sep 2026): this is
+// the first date Meaningful Candidate Action events exist (see
+// getMeaningfulActionsInPeriod()) — nothing before it can be trusted as real
+// call/activity data, per her explicit "do not retrospectively infer" rule.
+const MCA_CUTOVER_DATE = '2026-09-25';
+
 // Section A activity calculation for one employment month
 // Returns call stats and interview count derived from ATS data
-function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthNum){
+async function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthNum){
   const p = getActivePolicyPeriod();
   const ramp = p?.rampUp || {};
   const monthCfg = (ramp.months||[
@@ -6648,25 +6654,46 @@ function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthNum){
   const excludedSrc = ['Internal Referral','Candidate Client Portal','Rehire'];
   const policyStart = '2026-03-01';
 
-  // All eligible profiles sourced in this month by this recruiter
+  // Profiles Sourced (25 Sep 2026: renamed from "Calls" per Anne's decision
+  // #1 — kept as its own honestly-labeled reference metric below, but no
+  // longer used to determine ramp-up qualification; see mcaCount/dailyAvg
+  // just below for the real driver).
   const sourced = MD.filter(r =>
     r[C.recruiter] === recruiterName &&
     r[C.sourcingDate] >= monthFrom && r[C.sourcingDate] <= monthTo &&
     r[C.sourcingDate] >= policyStart &&
     !excludedSrc.includes(r[C.source])
   );
-
-  // Daily call count: profiles sourced per day (proxy for meaningful calls)
   const byDay = {};
   sourced.forEach(r => {
     const d = r[C.sourcingDate];
     if(d){ byDay[d] = (byDay[d]||0) + 1; }
   });
-  const activeDays   = Object.keys(byDay).length;
+  const activeDays = Object.keys(byDay).length;
   const start = new Date(monthFrom+'T00:00:00');
   const end   = new Date(monthTo  +'T00:00:00');
   const calDays = Math.round((end-start)/86400000) + 1;
-  const dailyAvg = activeDays > 0 ? Math.round((sourced.length / calDays)*10)/10 : 0;
+
+  // Meaningful Candidate Actions — the real ramp-up qualification driver
+  // (Anne's decision #2). Option (b), her call 25 Sep 2026: for a month that
+  // straddles the cutover, only count days on/after MCA_CUTOVER_DATE, both
+  // in the numerator (actual actions) and the denominator (days averaged
+  // over) — a recruiter's average isn't diluted by days that simply predate
+  // real tracking. A month entirely before the cutover has no real data at
+  // all: show N/A rather than silently substituting Profiles Sourced (her
+  // decision #1, and the doc's own Phase 2 instruction).
+  const callsDataAvailable = monthTo >= MCA_CUTOVER_DATE;
+  const effectiveFrom = monthFrom < MCA_CUTOVER_DATE ? MCA_CUTOVER_DATE : monthFrom;
+  let mcaCount = 0, effectiveCalDays = 0, dailyAvg = null, callsMet = null;
+  if(callsDataAvailable){
+    const mca = await getMeaningfulActionsInPeriod(recruiterName, effectiveFrom, monthTo);
+    mcaCount = mca.count;
+    const eStart = new Date(effectiveFrom+'T00:00:00');
+    const eEnd   = new Date(monthTo+'T00:00:00');
+    effectiveCalDays = Math.round((eEnd-eStart)/86400000) + 1;
+    dailyAvg = effectiveCalDays > 0 ? Math.round((mcaCount / effectiveCalDays)*10)/10 : 0;
+    callsMet = dailyAvg >= monthCfg.minDailyCalls;
+  }
 
   // Interview count — derive from ATS status / interview date
   // 1. Most accurate: interviewDate falls in this month (candidate actually went for interview)
@@ -6699,13 +6726,18 @@ function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthNum){
   const interviewCount = interviews.length;
   const interviewMethod = byIntDate.length > 0 ? 'Interview date' : 'Derived from status';
 
-  const callsMet      = dailyAvg >= monthCfg.minDailyCalls;
   const interviewsMet = interviewCount >= monthCfg.minInterviews;
-  const qualified     = callsMet && interviewsMet;
+  // callsMet is null when call data isn't available for this month at all —
+  // qualified stays null (not false) in that case, since "does not qualify"
+  // would be a false negative for something that simply can't be determined
+  // yet, not a real failure to meet threshold. Rendering must show a
+  // "needs review" state for null, distinct from an actual fail.
+  const qualified = callsDataAvailable ? (callsMet && interviewsMet) : null;
 
   return {
     empMonthNum, monthFrom, monthTo, monthCfg,
-    totalProfiles: sourced.length, activeDays, calDays, dailyAvg, byDay,
+    totalProfiles: sourced.length, activeDays, calDays, byDay,
+    callsDataAvailable, mcaCount, effectiveFrom, effectiveCalDays, dailyAvg,
     interviewCount, interviewMethod, interviews, sourced,
     callsMet, interviewsMet, qualified
   };
@@ -6713,7 +6745,7 @@ function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthNum){
 
 // Render the full Section A activity dashboard
 // Build Section A HTML — accepts optional empMonthNums filter (e.g. [1,2] to show only months 1&2)
-function buildSectionAHTML(recSel, p, empMonthNums){
+async function buildSectionAHTML(recSel, p, empMonthNums){
   const rec = M.recruiters && M.recruiters.find(r => r.name === recSel);
   if(!rec || !rec.doj){
     return '<div style="background:rgba(255,80,80,.08);border:2px solid rgba(255,80,80,.3);border-radius:var(--rs);padding:16px 20px">'
@@ -6724,23 +6756,42 @@ function buildSectionAHTML(recSel, p, empMonthNums){
   const allEmpMonths = getRampEmploymentMonths(recSel);
   const empMonths = empMonthNums ? allEmpMonths.filter(em => empMonthNums.includes(em.empMonth)) : allEmpMonths;
   if(!empMonths.length) return '<div style="color:var(--w60);padding:20px;text-align:center">Could not compute employment months.</div>';
-  const results = empMonths.map(em => calcSectionAForMonth(recSel, em.from, em.to, em.empMonth));
-  const qualifyingCount = results.filter(r => r.qualified).length;
+  const results = await Promise.all(empMonths.map(em => calcSectionAForMonth(recSel, em.from, em.to, em.empMonth)));
+  // Only a confirmed TRUE counts toward qualifying months — null (data
+  // unavailable, needs review) must never silently count as either a pass
+  // or a fail for real incentive-tier payout purposes.
+  const qualifyingCount = results.filter(r => r.qualified === true).length;
   // For incentive tier — always evaluate against the full 3-month scale (max payable at month 3)
   const incTier = incTiers.slice().reverse().find(t => t.monthsMet <= qualifyingCount);
   let html = '';
   html += `<div style="background:rgba(255,160,0,.07);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:12px 16px;margin-bottom:14px">
     <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:3px">\ud83d\ude80 Section A \u2014 Ramp-Up Activity (Months 1\u20133 of employment)</div>
-    <div style="font-size:11px;color:var(--w60)">${recSel}\u2019s ramp-up period from ${fmtD(rec.doj)}. Activity-based \u2014 no placement required. Calls = profiles sourced/day. Interviews derived from ATS status.</div>
+    <div style="font-size:11px;color:var(--w60)">${recSel}\u2019s ramp-up period from ${fmtD(rec.doj)}. Activity-based \u2014 no placement required. Meaningful Candidate Actions = recruiter-initiated status updates (excluding Not Contactable), tracked from ${fmtD(MCA_CUTOVER_DATE)} onward. Interviews derived from ATS status.</div>
   </div>`;
   results.forEach(res => {
-    const callColor  = res.callsMet      ? 'var(--teal)' : '#ff6b6b';
+    const callColor  = res.callsMet===null ? 'var(--gold)' : (res.callsMet ? 'var(--teal)' : '#ff6b6b');
     const intvColor  = res.interviewsMet ? 'var(--teal)' : '#ff6b6b';
-    const qualBg     = res.qualified ? 'rgba(52,186,198,.06)' : 'rgba(255,80,80,.04)';
-    const qualBorder = res.qualified ? 'rgba(52,186,198,.2)' : 'rgba(255,80,80,.15)';
-    const qualBadge  = res.qualified
-      ? '<span style="background:var(--teal);color:#000;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">QUALIFIES</span>'
-      : '<span style="background:rgba(255,80,80,.2);color:#ff6b6b;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">DOES NOT QUALIFY</span>';
+    const qualBg     = res.qualified===null ? 'rgba(255,160,0,.05)' : (res.qualified ? 'rgba(52,186,198,.06)' : 'rgba(255,80,80,.04)');
+    const qualBorder = res.qualified===null ? 'rgba(255,160,0,.25)' : (res.qualified ? 'rgba(52,186,198,.2)' : 'rgba(255,80,80,.15)');
+    const qualBadge  = res.qualified===null
+      ? '<span style="background:rgba(255,160,0,.25);color:var(--gold);font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">NEEDS REVIEW — CALL DATA N/A</span>'
+      : res.qualified
+        ? '<span style="background:var(--teal);color:#000;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">QUALIFIES</span>'
+        : '<span style="background:rgba(255,80,80,.2);color:#ff6b6b;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">DOES NOT QUALIFY</span>';
+    // 25 Sep 2026: call-data-availability block — Anne's decision #6/Phase 2
+    // instruction, generalized to any month with no real Meaningful
+    // Candidate Action data rather than special-cased to specific
+    // recruiters, since the underlying reason (tracking only starts
+    // MCA_CUTOVER_DATE) applies to anyone whose ramp-up predates it.
+    const callsBlock = res.callsDataAvailable ? `
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Actions</div><div style="font-size:16px;font-weight:700">${res.mcaCount}</div></div>
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Days counted</div><div style="font-size:16px;font-weight:700">${res.effectiveCalDays}</div></div>
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Daily avg</div><div style="font-size:16px;font-weight:700;color:${callColor}">${res.dailyAvg}</div></div>
+              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Need ≥</div><div style="font-size:16px;font-weight:700">${res.monthCfg.minDailyCalls}<span style="font-size:9px;color:${callColor};margin-left:2px">${res.callsMet?'✔':'✘'}</span></div></div>
+            </div>
+            ${res.effectiveFrom>res.monthFrom?`<div style="font-size:9px;color:var(--gold);margin-bottom:4px">⚠ Counted from ${fmtD(res.effectiveFrom)} onward only — this month started before call tracking began.</div>`:''}`
+      : `<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.2);border-radius:5px;padding:8px 10px;font-size:11px;color:var(--gold);margin-bottom:6px">N/A — call activity was not captured historically. This month needs manual review rather than an automatic pass/fail.</div>`;
     html += `<div style="border:1px solid ${qualBorder};border-radius:var(--rs);margin-bottom:12px;overflow:hidden">
       <div style="background:${qualBg};padding:9px 14px;display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:12px;font-weight:700">Employment Month ${res.empMonthNum} &nbsp;<span style="font-weight:400;color:var(--w60);font-size:10px">${fmtD(res.monthFrom)} \u2013 ${fmtD(res.monthTo)}</span></div>
@@ -6749,14 +6800,10 @@ function buildSectionAHTML(recSel, p, empMonthNums){
       <div style="padding:12px 14px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div>
-            <div style="font-size:10px;font-weight:600;margin-bottom:7px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Daily Calls (Profiles Sourced)</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
-              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Total</div><div style="font-size:16px;font-weight:700">${res.totalProfiles}</div></div>
-              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Days active</div><div style="font-size:16px;font-weight:700">${res.activeDays}</div></div>
-              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Daily avg</div><div style="font-size:16px;font-weight:700;color:${callColor}">${res.dailyAvg}</div></div>
-              <div style="background:var(--w06);border-radius:5px;padding:6px 8px"><div style="color:var(--w60);font-size:9px">Need \u2265</div><div style="font-size:16px;font-weight:700">${res.monthCfg.minDailyCalls}<span style="font-size:9px;color:${callColor};margin-left:2px">${res.callsMet?'\u2714':'\u2718'}</span></div></div>
-            </div>
-            ${Object.keys(res.byDay).length?`<div style="font-size:9px;color:var(--w60)">${Object.entries(res.byDay).sort().map(([d,n])=>`<span style="margin-right:5px">${fmtD(d)}:${n}</span>`).join('')}</div>`:'<div style="font-size:10px;color:var(--w60)">No profiles sourced in this month.</div>'}
+            <div style="font-size:10px;font-weight:600;margin-bottom:7px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Meaningful Candidate Actions</div>
+            ${callsBlock}
+            <div style="font-size:9px;color:var(--w60);margin-top:4px">Profiles Sourced (reference only, not the qualification basis): ${res.totalProfiles} over ${res.activeDays} active day${res.activeDays===1?'':'s'}</div>
+            ${Object.keys(res.byDay).length?`<div style="font-size:9px;color:var(--w60);margin-top:2px">${Object.entries(res.byDay).sort().map(([d,n])=>`<span style="margin-right:5px">${fmtD(d)}:${n}</span>`).join('')}</div>`:''}
           </div>
           <div>
             <div style="font-size:10px;font-weight:600;margin-bottom:7px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Interviews Attended</div>
@@ -6774,11 +6821,11 @@ function buildSectionAHTML(recSel, p, empMonthNums){
   html += `<div style="background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px">
     <div style="font-size:11px;font-weight:700;color:var(--gold);margin-bottom:8px">Section A Incentive Summary</div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;margin-bottom:8px">
-      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:5px;padding:5px 10px;text-align:center"><div style="font-size:9px;color:var(--w60)">Month ${r.empMonthNum}</div><div style="font-weight:700;color:${r.qualified?'var(--teal)':'#ff6b6b'}">${r.qualified?'\u2714':'\u2718'}</div></div>`).join('')}
+      ${results.map(r=>`<div style="background:rgba(255,160,0,.06);border-radius:5px;padding:5px 10px;text-align:center"><div style="font-size:9px;color:var(--w60)">Month ${r.empMonthNum}</div><div style="font-weight:700;color:${r.qualified===null?'var(--gold)':(r.qualified?'var(--teal)':'#ff6b6b')}">${r.qualified===null?'?':(r.qualified?'\u2714':'\u2718')}</div></div>`).join('')}
       <div style="background:rgba(255,160,0,.1);border-radius:5px;padding:5px 10px"><div style="font-size:9px;color:var(--w60)">Qualifying</div><div style="font-weight:700">${qualifyingCount}/3 months</div></div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,160,0,.2)">
-      <div><div style="font-size:12px;font-weight:600">Ramp-Up Incentive</div><div style="font-size:10px;color:var(--w60)">Paid after Month 3. Requires BOTH thresholds met per qualifying month.</div></div>
+      <div><div style="font-size:12px;font-weight:600">Ramp-Up Incentive</div><div style="font-size:10px;color:var(--w60)">Paid after Month 3. Requires BOTH thresholds met per qualifying month.${results.some(r=>r.qualified===null)?' Some months need manual review before this total is final.':''}</div></div>
       <div style="font-size:24px;font-weight:700;color:var(--gold)">\u20b9${incTier?incTier.amount.toLocaleString('en-IN'):'0'}</div>
     </div>
   </div>`;
@@ -6786,8 +6833,8 @@ function buildSectionAHTML(recSel, p, empMonthNums){
 }
 
 // Wrapper — renders Section A for ALL 3 months directly into el
-function renderSectionAView(el, recSel, p){
-  el.innerHTML = buildSectionAHTML(recSel, p, null);
+async function renderSectionAView(el, recSel, p){
+  el.innerHTML = await buildSectionAHTML(recSel, p, null);
 }
 
 
@@ -6872,7 +6919,7 @@ function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj){
 }
 
 
-function calcIncentives(){
+async function calcIncentives(){
   const period        = gv('inc-period') || 'month';
   const recSel        = gv('inc-rec') || ((acct&&acct.name) ? acct.name.split(' ')[0] : '');
   const monthlySalary = parseFloat(document.getElementById('inc-my-salary')?.value) || 0;
@@ -6885,7 +6932,7 @@ function calcIncentives(){
 
   // ── Section A: dedicated ramp-up view ─────────────────
   if(period === 'ramp_period'){
-    renderSectionAView(el, recSel, p);
+    await renderSectionAView(el, recSel, p);
     _updateKPICards(recSel); return;
   }
 
@@ -6912,7 +6959,7 @@ function calcIncentives(){
     if(hasRamp){
       const empMonths = getRampEmploymentMonths(recSel);
       const covered   = empMonths.filter(em => em.from <= rampTo && em.to >= rampFrom);
-      if(covered.length) html += buildSectionAHTML(recSel, p, covered.map(em=>em.empMonth));
+      if(covered.length) html += await buildSectionAHTML(recSel, p, covered.map(em=>em.empMonth));
     }
 
     if(hasRevenue){
