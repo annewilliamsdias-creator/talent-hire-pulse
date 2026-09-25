@@ -12093,6 +12093,19 @@ async function genEODReport(recName){
     clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&(recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase()));
   }catch(e){console.warn('EOD CL',e);}
   const resumesScreenedToday=await fetchResumeScreenedTodayCount(recName,td);
+  // Effort+Incentive Metrics Audit, Anne's decision (25 Sep 2026): EOD now
+  // reads Meaningful Candidate Actions through the SAME shared function
+  // Incentive uses (getMeaningfulActionsInPeriod) — not a separately
+  // maintained count — and Interviews is now Interview-Date-based (the same
+  // canonical definition calcSectionAForMonth() uses), not the eActType()
+  // Change-Log string classifier below, which only ever caught interviews
+  // booked via the Schedule Interview button and silently missed anything
+  // moved into an interview stage by hand. eActType() is kept for the
+  // per-row activity-type tags further down (WA/Joining/Sourcing labels on
+  // individual log rows) — that's just descriptive labeling, not a
+  // compensation-relevant aggregate, so it's untouched.
+  const mca = await getMeaningfulActionsInPeriod(recName, td, td);
+  const totalInterviews = MD.filter(r=>r[C.recruiter]===recName&&r[C.interviewDate]===td).length;
   hideLoad();
 
   const actionedCodes=new Set(clRows.map(r=>String(r[3])));
@@ -12161,7 +12174,6 @@ async function genEODReport(recName){
   const totalActioned=s1.length+s3.length+addedToday.length;
   const totalActions=clRows.length;
   const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
-  const totalInterviews=clRows.filter(r=>eActType(r[4])==='Interview').length;
 
   // summary bar CSS
   const sumBarCss='.sb{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 18px;font-family:Calibri,sans-serif;}'+
@@ -12207,6 +12219,7 @@ async function genEODReport(recName){
     // Summary stats bar
     '<div class="sb">'+
       '<div class="sc grn"><span class="scn">'+addedToday.length+'</span><span class="scl">Sourced Today</span></div>'+
+      '<div class="sc grn"><span class="scn">'+mca.count+'</span><span class="scl">Meaningful Candidate Actions</span></div>'+
       '<div class="sc grn"><span class="scn">'+totalActioned+'</span><span class="scl">Candidates Touched</span></div>'+
       '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
       '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
@@ -12334,7 +12347,13 @@ async function genWeeklyReport(recName,startStr,endStr){
 
   const totalActions=clRows.length;
   const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
-  const totalInterviews=clRows.filter(r=>eActType(r[4])==='Interview').length;
+  // Effort+Incentive Metrics Audit, Anne's decision (25 Sep 2026): same
+  // canonical sources as genEODReport() above — Meaningful Candidate Actions
+  // via the one shared function, Interviews via Interview Date rather than
+  // the eActType() Change-Log classifier (kept here only for per-row type
+  // tags, not this aggregate).
+  const mca = await getMeaningfulActionsInPeriod(recName, startStr, endStr);
+  const totalInterviews = MD.filter(r=>r[C.recruiter]===recName&&r[C.interviewDate]&&r[C.interviewDate]>=startStr&&r[C.interviewDate]<=endStr).length;
 
   const sumBarCss='.sb{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 18px;font-family:Calibri,sans-serif;}'+
     '.sc{background:#f0f4f8;border-radius:6px;padding:10px 16px;text-align:center;min-width:90px;}'+
@@ -12387,6 +12406,7 @@ async function genWeeklyReport(recName,startStr,endStr){
 
     '<div class="sb">'+
       '<div class="sc grn"><span class="scn">'+sourcedWeek.length+'</span><span class="scl">Sourced</span></div>'+
+      '<div class="sc grn"><span class="scn">'+mca.count+'</span><span class="scl">Meaningful Candidate Actions</span></div>'+
       '<div class="sc grn"><span class="scn">'+touched.length+'</span><span class="scl">Candidates Touched</span></div>'+
       '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
       '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
