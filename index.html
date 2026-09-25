@@ -1477,7 +1477,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div class="atab on" id="et-portfolio" onclick="switchEffortTab('portfolio')">📋 My Portfolio</div>
   <div class="atab" id="et-focus" onclick="switchEffortTab('focus')">🔎 Today's Focus</div>
   <div class="atab" id="et-opp" onclick="switchEffortTab('opp')">💡 My Opportunity</div>
-  <div class="atab" id="et-compare" onclick="switchEffortTab('compare')">👥 Team Comparison</div>
+  <div class="atab" id="et-compare" onclick="switchEffortTab('compare')">👥 Manager Report</div>
 </div>
 <div id="ef-portfolio"></div>
 <div id="ef-focus" class="hidden"></div>
@@ -8019,11 +8019,28 @@ const EFFORT_SUBMIT_STAGE = ['Shortlisted for Client I/W','Client I/W in Progres
 let effortTab = 'portfolio';
 let effortRecSel = '';
 let effortDataCache = null;
+let effortReportPeriod = 'month';
+let effortReportCache = null;
 
 function effortWeekRange(){
   const d = new Date(); d.setDate(d.getDate()-6);
   return { from: d.toISOString().slice(0,10), to: today() };
 }
+
+// Manager Report period ranges (25 Sep 2026, Anne's follow-up) — the
+// Portfolio/Focus/Opportunity tabs stay on the spec's rolling 7-day window;
+// only the Manager Report needs the longer, selectable periods.
+function effortPeriodRange(period){
+  const td = today();
+  const now = new Date(td+'T00:00:00');
+  if(period==='week') return effortWeekRange();
+  if(period==='month') return {from: td.slice(0,7)+'-01', to: td};
+  if(period==='quarter'){ const qStartMonth=Math.floor(now.getMonth()/3)*3; const d=new Date(now.getFullYear(),qStartMonth,1); return {from:d.toISOString().slice(0,10), to:td}; }
+  if(period==='6m'){ const d=new Date(now); d.setMonth(d.getMonth()-6); return {from:d.toISOString().slice(0,10), to:td}; }
+  if(period==='year') return {from: now.getFullYear()+'-01-01', to: td};
+  return {from: td.slice(0,7)+'-01', to: td};
+}
+const EFFORT_PERIOD_LABELS = {week:'This Week',month:'This Month',quarter:'This Quarter','6m':'Last 6 Months',year:'This Year'};
 
 // Same list+field pattern as fetchResumeScreenedTodayCount/RangeCount
 // (search this file) — a separate fetch rather than generalizing those,
@@ -8042,6 +8059,65 @@ async function fetchScreenedRowsForRecruiter(recName){
   }catch(e){console.warn('Effort: screened fetch failed',e.message);return [];}
 }
 
+// Alternate Sourcing (25 Sep 2026) — Anne created the List (named
+// AlternateSourcingtracking), addressed by display name like
+// RemapRequests/TalentPool elsewhere in this file (no GUID needed for a
+// List Anne creates directly via the SharePoint UI). Title was renamed to
+// "Vacancy Code" in the UI only — same trick as the Feedback List — so the
+// writable/internal field name is still "Title". SourcingChannel is a plain
+// text field, not a SharePoint Choice list, per Anne's correction: its
+// dropdown here reads from mA('sources'), the SAME master candidate
+// sourcing already uses, instead of a second, driftable vocabulary.
+const ALT_SOURCING_LIST = 'AlternateSourcingtracking';
+
+async function fetchAltSourcingRows(){
+  try{
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+ALT_SOURCING_LIST+'/items?$expand=fields&$top=2000',{headers:{'Authorization':'Bearer '+tok}});
+    if(!res.ok)return [];
+    const data=await res.json();
+    return ((data&&data.value)||[]).map(it=>({
+      vacCode:(it.fields&&it.fields.Title)||'',
+      recruiter:(it.fields&&it.fields.Recruiter)||'',
+      date:(it.fields&&it.fields.ActionDate)||(it.createdDateTime||'').slice(0,10),
+      channel:(it.fields&&it.fields.SourcingChannel)||'',
+      actionTaken:(it.fields&&it.fields.ActionTaken)||'',
+      result:(it.fields&&it.fields.Result)||''
+    }));
+  }catch(e){console.warn('Effort: alt-sourcing fetch failed',e.message);return [];}
+}
+
+async function logAltSourcing(vacCode, recruiter, actionDate, channel, actionTaken, result){
+  await refreshToken();
+  const fields={Title:vacCode, Recruiter:recruiter, ActionDate:actionDate, SourcingChannel:channel, ActionTaken:actionTaken, Result:result};
+  const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+ALT_SOURCING_LIST+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+  if(!res.ok){const t=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+(t?': '+t.slice(0,150):''));}
+}
+
+function openLogAltSourcing(vacCode, client){
+  const channels = mA('sources');
+  showModal('📢 Log Alternate Sourcing — '+vacCode,
+    '<div style="font-size:11px;color:var(--w60)">'+escHtml(client)+'</div>',
+    `<div class="field" style="margin-top:8px"><label>Date</label><input type="date" id="altDate" value="${today()}"></div>
+     <div class="field" style="margin-top:8px"><label>Sourcing Channel</label><select id="altChannel"><option value="">— Select —</option>${channels.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>
+     <div class="field" style="margin-top:8px"><label>Action Taken</label><textarea id="altAction" rows="2" style="width:100%;box-sizing:border-box;font-family:inherit" placeholder="What was actually done"></textarea></div>
+     <div class="field" style="margin-top:8px"><label>Result</label><textarea id="altResult" rows="2" style="width:100%;box-sizing:border-box;font-family:inherit" placeholder="Outcome"></textarea></div>`,
+    '<button class="btn btn-t" onclick="saveAltSourcing(\''+vacCode+'\')">Save</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>'
+  );
+}
+
+async function saveAltSourcing(vacCode){
+  const date=gv('altDate'), channel=gv('altChannel'), action=gv('altAction'), result=gv('altResult');
+  if(!date||!channel||!action){toast('warn','Required','Date, channel and action taken are required.');return;}
+  try{
+    showLoad('Saving...');
+    await logAltSourcing(vacCode, effortRecSel||(myRecName||(acct&&acct.name?acct.name.split(' ')[0]:'')), date, channel, action, result);
+    hideLoad();closeModal();
+    toast('ok','Logged','Alternate sourcing action saved for '+vacCode);
+    effortDataCache=null; switchEffortTab(effortTab);
+  }catch(e){hideLoad();toast('err','Not Saved',e.message);}
+}
+
 // "Meaningful vacancy activity" (spec) explicitly excludes opening/viewing
 // a vacancy — r[C.updatedOn] only ever changes on an actual save (status
 // change, WA sent, follow-up set, etc.), never a view, so it's a safe,
@@ -8049,11 +8125,18 @@ async function fetchScreenedRowsForRecruiter(recName){
 // to keep this dashboard responsive. "Working days" in the spec is treated
 // as calendar days here — this app has no working-day calendar anywhere
 // else either, so this stays consistent with every other date calc in it.
-async function buildEffortData(recruiterName){
+// periodFrom/periodTo (25 Sep 2026): optional — default to the rolling 7-day
+// window (unchanged behavior for the Portfolio/Focus/Opportunity tabs). The
+// Manager Report tab passes an explicit range (Month/Quarter/6 Months/
+// Year) so the same function drives both, rather than a second copy of this
+// logic with its own date math.
+async function buildEffortData(recruiterName, periodFrom, periodTo){
   const vacs = VD.filter(v => v['Recruiter']===recruiterName && v['Active']!=='N');
-  const {from:weekFrom, to:weekTo} = effortWeekRange();
+  const defaultRange = effortWeekRange();
+  const weekFrom = periodFrom || defaultRange.from, weekTo = periodTo || defaultRange.to;
   const td = today();
   const screenedRows = await fetchScreenedRowsForRecruiter(recruiterName);
+  const altRows = await fetchAltSourcingRows();
 
   const portfolio = vacs.map(v=>{
     const vc = v['Vacancy code']||v['Vacancy Code']||'';
@@ -8083,11 +8166,20 @@ async function buildEffortData(recruiterName){
     else if(daysInactive===null||daysInactive>=3) status='red';
     else if(daysInactive<=2 && activePipeline.length>0) status='green';
     else status='amber';
+    // Alternate Sourcing (spec): flag when the pipeline is thin (<3 active)
+    // and no alternate-sourcing action is on record in the last 5 days —
+    // a Client Hold vacancy is exempted, same reasoning as the status model
+    // above (an on-hold role isn't meant to be actively sourced).
+    const vacAltRows = altRows.filter(a=>a.vacCode===vc).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const lastAltDate = vacAltRows.length ? vacAltRows[0].date : '';
+    const daysSinceAlt = lastAltDate ? Math.floor((new Date(td+'T00:00:00')-new Date(lastAltDate.slice(0,10)+'T00:00:00'))/86400000) : null;
+    const altSourcingRequired = !onHold && activePipeline.length<3 && (daysSinceAlt===null||daysSinceAlt>=5);
     return {
       vacCode:vc, client:v['Company']||'', priority:v['Priority']||'—', positions:v['Positions Count']||'1',
       profiles, screened, submitted, interviews, offers, joined,
       lastActivity: lastTouch||'', daysInactive, status, activityThisWeek, potentialRevenue,
-      activePipelineCount: activePipeline.length
+      activePipelineCount: activePipeline.length,
+      lastAltDate, daysSinceAlt, altSourcingRequired, altRowCount: vacAltRows.length
     };
   });
 
@@ -8193,18 +8285,22 @@ function renderEffortPortfolio(d){
     <div class="stat"><div class="sn">${s.joinedWeek}</div><div class="sl">Joined (7d)</div></div>
   </div>
   <div class="sl2">Vacancy Portfolio</div>
-  <div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Priority</th><th>Positions</th><th>Profiles</th><th>Screened</th><th>Submitted*</th><th>Interviews</th><th>Offers</th><th>Joined</th><th>Last Activity</th><th>Days Inactive</th><th>Status</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  <div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Priority</th><th>Positions</th><th>Profiles</th><th>Screened</th><th>Submitted*</th><th>Interviews</th><th>Offers</th><th>Joined</th><th>Last Activity</th><th>Days Inactive</th><th>Status</th><th>Potential Revenue</th><th>Alt. Sourcing</th></tr></thead><tbody>`;
   if(!d.portfolio.length){
-    html += '<tr><td colspan="14" style="text-align:center;color:var(--w60);padding:20px">No active vacancies assigned.</td></tr>';
+    html += '<tr><td colspan="15" style="text-align:center;color:var(--w60);padding:20px">No active vacancies assigned.</td></tr>';
   } else {
     d.portfolio.forEach(p=>{
+      const altCell = p.altSourcingRequired
+        ? `<span style="color:#ff6b6b;font-size:9px;font-weight:700">⚠ Required</span>`
+        : (p.lastAltDate?`<span style="font-size:9px;color:var(--w60)">${fmtD(p.lastAltDate)}</span>`:`<span style="font-size:9px;color:var(--w60)">—</span>`);
       html += `<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td class="m">${p.priority}</td><td class="m">${p.positions}</td>`+
         `<td class="m">${p.profiles}</td><td class="m">${p.screened}</td><td class="m">${p.submitted}</td><td class="m">${p.interviews}</td><td class="m">${p.offers}</td><td class="m">${p.joined}</td>`+
         `<td class="mono">${p.lastActivity?fmtD(p.lastActivity):'—'}</td><td class="m">${p.daysInactive===null?'—':p.daysInactive}</td>`+
-        `<td>${effortStatusBadge(p.status)}</td><td class="m" style="font-weight:600">₹${Math.round(p.potentialRevenue).toLocaleString('en-IN')}</td></tr>`;
+        `<td>${effortStatusBadge(p.status)}</td><td class="m" style="font-weight:600">₹${Math.round(p.potentialRevenue).toLocaleString('en-IN')}</td>`+
+        `<td>${altCell}<br><button class="btn btn-ghost btn-sm" style="font-size:9px;padding:2px 6px;margin-top:2px" onclick="openLogAltSourcing('${p.vacCode}','${(p.client||'').replace(/'/g,"\\'")}')">📢 Log</button></td></tr>`;
     });
   }
-  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage.</div>';
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. "Alt. Sourcing" flags a thin-pipeline vacancy (&lt;3 active candidates) with no logged alternate-sourcing action in the last 5 days.</div>';
   el.innerHTML = html;
 }
 
@@ -8213,6 +8309,7 @@ function renderEffortFocus(d){
   const td = today();
   const dormant = d.portfolio.filter(p=>p.status==='red'||p.status==='amber');
   const thin = d.portfolio.filter(p=>p.activePipelineCount<3 && p.status!=='blue');
+  const altRequired = d.portfolio.filter(p=>p.altSourcingRequired);
   const recCands = MD.filter(r=>r[C.recruiter]===d.recruiterName&&r[C.archive]!=='Y');
   const followupsDue = recCands.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]));
   const interviewsToday = recCands.filter(r=>r[C.interviewDate]===td);
@@ -8221,6 +8318,7 @@ function renderEffortFocus(d){
       :'<div style="color:var(--w60);font-size:11px;padding:8px 0">Nothing here — clear.</div>');
   let html = sec('Dormant / Needs Attention Vacancies','🚨',dormant,['Vacancy','Client','Status','Days Inactive'],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td>${effortStatusBadge(p.status)}</td><td class="m">${p.daysInactive===null?'—':p.daysInactive}</td></tr>`);
   html += sec('Thin Pipeline Vacancies (< 3 active candidates)','📉',thin,['Vacancy','Client','Active Pipeline'],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td class="m">${p.activePipelineCount}</td></tr>`);
+  html += sec('Alternate Sourcing Action Required','📢',altRequired,['Vacancy','Client','Last Alt. Sourcing','Active Pipeline',''],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td class="m">${p.lastAltDate?fmtD(p.lastAltDate):'Never'}</td><td class="m">${p.activePipelineCount}</td><td><button class="btn btn-ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="openLogAltSourcing('${p.vacCode}','${(p.client||'').replace(/'/g,"\\'")}')">📢 Log</button></td></tr>`);
   html += sec('Follow-ups Due / Overdue','⏰',followupsDue,['Candidate','Position','Client','Follow-up Date'],r=>`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.position]}</td><td class="m">${r[C.client]}</td><td class="mono">${fmtD(r[C.followupDate])}</td></tr>`);
   html += sec('Interviews Today','🎤',interviewsToday,['Candidate','Position','Client'],r=>`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.position]}</td><td class="m">${r[C.client]}</td></tr>`);
   el.innerHTML = html;
@@ -8228,12 +8326,23 @@ function renderEffortFocus(d){
 
 function renderEffortOpportunity(d){
   const el = document.getElementById('ef-opp'); if(!el) return;
+  // 25 Sep 2026 bug fix: the salary input used to live INSIDE the HTML this
+  // function rebuilds on every render — and it was wired to re-render on its
+  // own oninput, so every keystroke destroyed and recreated the input's own
+  // DOM node mid-type, losing focus/the character just typed ("does not
+  // allow salary value to be entered", Anne's exact report). Fix: the input
+  // is now a one-time static shell outside the regenerated part; only
+  // #ef-opp-results gets rebuilt on each keystroke, never the input itself.
+  if(!document.getElementById('ef-opp-salary')){
+    el.innerHTML = `<div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;margin:12px 0 16px">
+      <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="ef-opp-salary" placeholder="e.g. 30000" min="0" oninput="renderEffortOpportunity(effortDataCache)"></div>
+      <div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:10px 14px;font-size:11px;color:var(--w60)">Enter your salary to see potential incentive and how much revenue is needed to reach the next slab.</div>
+    </div>
+    <div id="ef-opp-results"></div>`;
+  }
+  const resultsEl = document.getElementById('ef-opp-results'); if(!resultsEl) return;
   const totalPotential = d.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
-  let html = `<div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;margin:12px 0 16px">
-    <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="ef-opp-salary" placeholder="e.g. 30000" min="0" oninput="renderEffortOpportunity(effortDataCache)"></div>
-    <div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:10px 14px;font-size:11px;color:var(--w60)">Enter your salary to see potential incentive and how much revenue is needed to reach the next slab.</div>
-  </div>
-  <div class="sg" style="margin-bottom:16px">
+  let html = `<div class="sg" style="margin-bottom:16px">
     <div class="stat gold"><div class="sn">₹${Math.round(totalPotential).toLocaleString('en-IN')}</div><div class="sl">Potential Firm Revenue (active pipeline)</div></div>`;
   const salary = parseFloat(gv('ef-opp-salary'))||0;
   if(salary>0){
@@ -8256,33 +8365,102 @@ function renderEffortOpportunity(d){
     }).join('<div style="align-self:center;color:var(--w60)">→</div>')}
   </div>
   <div style="font-size:9px;color:var(--w60);margin-top:6px">*Contacted/Submitted have no dedicated tracked event in THP — approximated (see Portfolio tab note).</div>`;
-  el.innerHTML = html;
+  resultsEl.innerHTML = html;
+}
+
+// Manager Report (25 Sep 2026, Anne's follow-up): "actual team effort, with
+// hits and misses... AI driven... visible by Month/Quarter/Six mths/Yearly."
+// Replaces the flat "Team Comparison" table with a period selector (same
+// buildEffortData() every other tab uses, just with an explicit range
+// instead of the default rolling 7 days) plus an on-demand AI narrative —
+// folds in the standalone "Weekly Effort Scorecard" and per-vacancy
+// "diagnostic intent" items from the original spec (Anne's call: the AI
+// report covers that interpretive layer instead of building them as
+// separate raw-number-only views).
+async function onEffortPeriodChange(){
+  effortReportPeriod = gv('effort-period')||'month';
+  effortReportCache = null;
+  await renderEffortComparison();
 }
 
 async function renderEffortComparison(){
   const el = document.getElementById('ef-compare'); if(!el) return;
-  showLoad('Loading team comparison...');
+  if(!document.getElementById('effort-period')){
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin:12px 0 8px;flex-wrap:wrap">
+      <label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Period</label>
+      <select id="effort-period" onchange="onEffortPeriodChange()">
+        <option value="week">This Week</option>
+        <option value="month" selected>This Month</option>
+        <option value="quarter">This Quarter</option>
+        <option value="6m">Last 6 Months</option>
+        <option value="year">This Year</option>
+      </select>
+      <button class="btn btn-t btn-sm" style="margin-left:auto" onclick="generateEffortAIReport()">🤖 Generate AI Report</button>
+    </div>
+    <div id="ef-compare-body"></div>`;
+  }
+  const bodyEl = document.getElementById('ef-compare-body'); if(!bodyEl) return;
+  showLoad('Loading manager report...');
+  const {from, to} = effortPeriodRange(effortReportPeriod);
   const recs = mA('recruiters');
   const rows = [];
   try{
     for(const rec of recs){
-      const dd = await buildEffortData(rec);
+      const dd = await buildEffortData(rec, from, to);
       const revenue = dd.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
       rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue});
     }
-  }catch(e){hideLoad();toast('err','Team Comparison',e.message);return;}
+  }catch(e){hideLoad();toast('err','Manager Report',e.message);return;}
   hideLoad();
+  effortReportCache = {from, to, rows};
   // Anne's explicit instruction: no calls-only leaderboard — table is
   // sorted by coverage (the effort/quality signal), not activity volume.
   rows.sort((a,b)=>b.coverage-a.coverage);
-  let html = `<div style="font-size:11px;color:var(--w60);margin:12px 0">All figures are 7-day windows except Active Vacancies/Coverage (current) and Potential Revenue (current active pipeline). Click a recruiter to view their own Portfolio tab.</div>
-  <div class="tw"><table><thead><tr><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Profiles (7d)</th><th>Meaningful Actions (7d)</th><th>Submitted (7d)*</th><th>Interviews (7d)</th><th>Joined (7d)</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
+  let html = `<div style="font-size:11px;color:var(--w60);margin:8px 0">${periodLabel} (${fmtD(from)} – ${fmtD(to)}), except Active Vacancies/Coverage (current) and Potential Revenue (current active pipeline). Click a recruiter to view their own Portfolio tab.</div>
+  <div class="tw"><table><thead><tr><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
   rows.forEach(r=>{
     const covColor = r.coverage>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
     html += `<tr style="cursor:pointer" onclick="effortRecSel='${r.rec}';document.getElementById('effort-rec-select').value='${r.rec}';effortDataCache=null;switchEffortTab('portfolio')"><td><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
   });
   html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage.</div>';
-  el.innerHTML = html;
+  html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
+  bodyEl.innerHTML = html;
+}
+
+async function generateEffortAIReport(){
+  if(!effortReportCache){toast('warn','Wait','Report data still loading — try again in a moment.');return;}
+  if(!getAIKey()){toast('warn','No AI Key','Set an AI key in Admin → Config before generating an AI report.');return;}
+  const aiEl = document.getElementById('ef-ai-report');
+  if(aiEl) aiEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--w60)">Generating…</div>';
+  const {from, to, rows} = effortReportCache;
+  const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
+  const dataText = rows.map(r=>`${r.rec}: Active Vacancies ${r.activeVac}, Coverage ${r.coverage}% (target ${EFFORT_COVERAGE_TARGET}%), Profiles Sourced ${r.profiles}, Meaningful Candidate Actions ${r.mca}, Submitted ${r.submitted} (approx), Interviews ${r.interviews}, Joined ${r.joined}, Potential Revenue ₹${Math.round(r.potential)}`).join('\n');
+  const prompt = `You are helping a recruitment manager at WithAWill HR Consultancy interpret their team's effort data for the period "${periodLabel}" (${from} to ${to}). Coverage target is ${EFFORT_COVERAGE_TARGET}%.
+
+Per-recruiter data:
+${dataText}
+
+Write a concise manager report (under 350 words) covering:
+1. Overall team health this period — is effort being applied consistently across the team?
+2. Specific hits — recruiters or patterns worth recognising, named directly.
+3. Specific misses — recruiters below the coverage target or with concerning patterns, named directly but fairly; note this is a diagnostic signal, not an automatic performance verdict on its own.
+4. One or two concrete, actionable recommendations for the manager this period.
+
+Base this only on the data given — do not invent numbers or reasons behind them. Plain text, no markdown headers, short paragraphs.`;
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:prompt}]})
+    });
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||('API error '+resp.status));}
+    const data = await resp.json();
+    const text = (data.content&&data.content[0]&&data.content[0].text)||'';
+    if(aiEl) aiEl.innerHTML = `<div class="sl2">🤖 AI Team Effort Report — ${periodLabel}</div><div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:16px 20px;font-size:12px;line-height:1.7;white-space:pre-wrap">${escHtml(text)}</div>`;
+  }catch(e){
+    if(aiEl) aiEl.innerHTML = `<div style="color:#ff6b6b;font-size:11px;padding:8px 0">AI report failed: ${escHtml(e.message)}</div>`;
+  }
 }
 
 // ══════════════════════════════════════════════════════
