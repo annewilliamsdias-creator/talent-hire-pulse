@@ -8140,13 +8140,23 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
 
   const portfolio = vacs.map(v=>{
     const vc = v['Vacancy code']||v['Vacancy Code']||'';
+    // cands stays the vacancy's FULL candidate list — needed as-is for the
+    // current-state fields below (active pipeline, potential revenue, last
+    // activity/days-inactive, status). The activity COUNTS immediately
+    // below, though, must be scoped to the same [weekFrom, weekTo] window
+    // the summary cards above them already use — 25 Sep 2026 bug fix: these
+    // were lifetime-per-vacancy totals sitting right next to cards labelled
+    // "(7d)", which read as this week's activity but weren't (Anne's exact
+    // report: "Upasana 15 interviews in the last 7 days" was actually a
+    // lifetime count for that vacancy). "While vacancy is active, if
+    // candidate action precedes 7 days, it cannot be counted."
     const cands = MD.filter(r=>r[C.vacCode]===vc);
-    const profiles = cands.length;
-    const submitted = cands.filter(r=>EFFORT_SUBMIT_STAGE.includes(r[C.status])).length;
-    const interviews = cands.filter(r=>r[C.interviewDate]).length;
-    const offers = cands.filter(r=>r[C.offerDate]).length;
-    const joined = cands.filter(r=>r[C.status]==='Joined').length;
-    const screened = screenedRows.filter(s=>s.vacCode===vc).length;
+    const profiles = cands.filter(r=>r[C.sourcingDate]>=weekFrom&&r[C.sourcingDate]<=weekTo).length;
+    const submitted = cands.filter(r=>EFFORT_SUBMIT_STAGE.includes(r[C.status])&&r[C.updatedOn]&&r[C.updatedOn].slice(0,10)>=weekFrom&&r[C.updatedOn].slice(0,10)<=weekTo).length;
+    const interviews = cands.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=weekFrom&&r[C.interviewDate]<=weekTo).length;
+    const offers = cands.filter(r=>r[C.offerDate]&&r[C.offerDate]>=weekFrom&&r[C.offerDate]<=weekTo).length;
+    const joined = cands.filter(r=>isJoinedInPeriod(r,weekFrom,weekTo)).length;
+    const screened = screenedRows.filter(s=>s.vacCode===vc&&s.date>=weekFrom&&s.date<=weekTo).length;
     const activePipeline = cands.filter(r=>ACTIVE_STATUSES.has(r[C.status]));
     let potentialRevenue = 0;
     cands.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])).forEach(r=>{
@@ -8322,7 +8332,7 @@ function renderEffortPortfolio(d){
     <div class="stat"><div class="sn">${s.joinedWeek}</div><div class="sl">Joined (7d)</div></div>
   </div>
   <div class="sl2">Vacancy Portfolio</div>
-  <div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Priority</th><th>Positions</th><th>Profiles</th><th>Screened</th><th>Submitted*</th><th>Interviews</th><th>Offers</th><th>Joined</th><th>Last Activity</th><th>Days Inactive</th><th>Status</th><th>Potential Revenue</th><th>Alt. Sourcing</th></tr></thead><tbody>`;
+  <div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Priority</th><th>Positions</th><th>Profiles (7d)</th><th>Screened (7d)</th><th>Submitted* (7d)</th><th>Interviews (7d)</th><th>Offers (7d)</th><th>Joined (7d)</th><th>Last Activity</th><th>Days Inactive</th><th>Status</th><th>Potential Revenue</th><th>Alt. Sourcing</th></tr></thead><tbody>`;
   if(!d.portfolio.length){
     html += '<tr><td colspan="15" style="text-align:center;color:var(--w60);padding:20px">No active vacancies assigned.</td></tr>';
   } else {
