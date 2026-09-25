@@ -325,7 +325,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 ───────────────────────────────────────────────────────────── */
 
 /* 1 · Re-scope CSS custom properties inside every light panel */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen){
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope){
   --ow:#291b39;
   --w60:rgba(41,27,57,.72);
   --w40:rgba(41,27,57,.55);
@@ -347,19 +347,19 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 2 · Cards, stats, chart-cards — white backgrounds on light page */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .card,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .stat,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .chart-card{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .card,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .stat,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .chart-card{
   background:#fbfbfa;
   color:#291b39;
   border:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .chart-title{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .chart-title{
   color:#291b39;
 }
 
 /* 3 · Labels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) label{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) label{
   color:#291b39;
   font-size:max(11px,1em);
   font-weight:700;
@@ -367,92 +367,92 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 4 · Helper / hint / muted text */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .fhint,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .sl,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .ss,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pdet,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .chart-sub,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .filter-label,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .kpi-lbl,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pdate{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .fhint,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .sl,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .ss,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .pdet,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .chart-sub,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .filter-label,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .kpi-lbl,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .pdate{
   color:#5f6470;
   opacity:1;
 }
 
 /* 5 · Inputs / selects / textareas */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) input,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) select,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) textarea{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) input,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) select,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) textarea{
   background:#ffffff;
   color:#291b39;
   border:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) input::placeholder,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) textarea::placeholder{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) input::placeholder,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) textarea::placeholder{
   color:rgba(41,27,57,.38);
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) select option{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) select option{
   background:#ffffff;
   color:#291b39;
 }
 
 /* 6 · Tables */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) table{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) table{
   background:#fbfbfa;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) thead tr{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) thead tr{
   background:#1f5c93;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) thead th{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) thead th{
   color:#fbfbfa;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) tbody td{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) tbody td{
   color:#291b39;
   border-bottom:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) tbody td.m{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) tbody td.m{
   color:#5f6470;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) tbody tr:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) tbody tr:hover{
   background:rgba(31,92,147,.06);
 }
 
 /* 7 · Mono / code values */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .mono,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) code{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .mono,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) code{
   color:#1f5c93;
 }
 
 /* 8 · Section labels .sl2 */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .sl2{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .sl2{
   color:#1f5c93;
   font-size:max(11px,1em);
   font-weight:800;
   opacity:1;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .sl2::after{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .sl2::after{
   background:rgba(31,92,147,.20);
 }
 
 /* 9 · Action queue cards: .pi, .lbar, .uz */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pi{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .pi{
   background:rgba(31,92,147,.06);
   color:#291b39;
   border-color:#d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pi:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .pi:hover{
   background:rgba(31,92,147,.10);
   border-color:rgba(52,186,198,.35);
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .lbar{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .lbar{
   background:rgba(31,92,147,.06);
   border-color:#d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .uz{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .uz{
   border-color:#d6dbe3;
   color:#5f6470;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .uz:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .uz:hover{
   border-color:var(--teal);
   background:rgba(52,186,198,.06);
 }
@@ -476,44 +476,44 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 13 · .btn-ghost inside light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .btn-ghost{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .btn-ghost{
   color:rgba(41,27,57,.75);
   border-color:#d6dbe3;
   background:transparent;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .btn-ghost:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .btn-ghost:hover{
   background:rgba(31,92,147,.08);
   color:#291b39;
   border-color:#b0bec5;
 }
 
 /* 14 · .b-grey / .b-inactive badges inside light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .b-grey,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .b-inactive{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .b-grey,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .b-inactive{
   background:rgba(31,92,147,.08);
   color:#5f6470;
   border-color:#d6dbe3;
 }
 
 /* 15 · Semantic colours — remain consistent in light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .b-err,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pi.ov{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .b-err,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .pi.ov{
   border-left-color:#9f4a47;
 }
 
 /* 16 · Card header text */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .card-title,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .card-hdr{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .card-title,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .card-hdr{
   color:#291b39;
 }
 
 /* 17 · Inline note / info strips (tdim, gdim, bdim) */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .ci p{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope) .ci p{
   color:#5f6470;
 }
 
 /* 18 · Scrollbar styling for light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen)::-webkit-scrollbar-thumb{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen,.light-scope)::-webkit-scrollbar-thumb{
   background:rgba(31,92,147,.25);
 }
 
@@ -737,10 +737,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
       <span class="nav-label">Bulk Upload</span>
     </div>
-    <div class="nav-item" onclick="goPanel('effort')" title="Effort">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
-      <span class="nav-label">Effort</span>
-    </div>
     <div class="nav-item" id="navIncentive" onclick="goPanel('incentive')" title="Incentives">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></span>
       <span class="nav-label">Incentives</span>
@@ -788,6 +784,19 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- DASHBOARD -->
 <div class="panel active" id="p-home">
 
+<!-- 25 Sep 2026: Home is now 3 pages — Action Queue (daily to-dos, as
+     before), Today's Effort and My Portfolio (moved in from the retired
+     standalone Effort panel — see note by #p-incentive). All three answer
+     "what do I do" for a recruiter, so they live together. -->
+<div class="atabs" style="margin-bottom:12px;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+  <div class="atab on" id="ht-queue" onclick="switchHomeTab('queue')">⚡ My Action Queue</div>
+  <div class="atab" id="ht-focus" onclick="switchHomeTab('focus')">🔎 Today's Effort</div>
+  <div class="atab" id="ht-portfolio" onclick="switchHomeTab('portfolio')">📋 My Portfolio</div>
+  <div id="effort-rec-picker" style="display:none;align-items:center;gap:8px;margin-left:auto"></div>
+  <button class="btn btn-ghost btn-sm" id="ht-print" style="display:none" onclick="printHomeEffortTab()">🖨 Print / PDF</button>
+</div>
+
+<div id="hp-queue">
 
 <!-- HOME FILTERS -->
 <div class="card mb0" style="margin-bottom:10px">
@@ -842,6 +851,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <tbody id="statListBody"></tbody></table></div>
   <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="statListCount"></div>
 </div>
+
+</div>
+<div id="ef-focus" class="hidden"></div>
+<div id="ef-portfolio" class="hidden"></div>
 
 </div>
 
@@ -952,6 +965,16 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- ANALYTICS DASHBOARD -->
 <div class="panel" id="p-analytics">
+<!-- 25 Sep 2026: page 2 (Manager Report) moved in from the retired Effort
+     panel — both pages are manager-facing team views, so they now live
+     together. Kept as its own page rather than merged into the charts
+     below since it's table+AI-narrative, not chart data, and keeps its
+     own period selector independent of the REFINE INSIGHTS filters. -->
+<div class="atabs" style="margin-bottom:12px">
+  <div class="atab on" id="ait-insights" onclick="switchAnalyticsTab('insights')">📊 Insights</div>
+  <div class="atab" id="ait-manager" onclick="switchAnalyticsTab('manager')">👥 Manager Report</div>
+</div>
+<div id="ai-insights">
 <!-- FILTERS -->
 <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:14px 16px;margin-bottom:16px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -1101,6 +1124,8 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <tbody id="statListBody2"></tbody></table></div>
   <div style="margin-top:8px;font-size:11px;color:var(--w60)" id="statListCount2"></div>
 </div>
+</div>
+<div id="ef-compare" class="hidden light-scope"></div>
 </div>
 
 
@@ -1467,32 +1492,17 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 
 <!-- INCENTIVES -->
-<!-- INCENTIVES -->
-<!-- EFFORT (Phase 3, Effort+Incentive Metrics Audit — 25 Sep 2026): "Am I
-     applying enough effort across my portfolio?" — deliberately separate
-     from Incentive/My Earnings ("what have I earned"), per Anne's explicit
-     instruction not to merge them. -->
-<div class="panel" id="p-effort">
-<div class="card">
-<div class="card-hdr">
-  <div class="card-title"><span class="ac">🎯</span> Effort</div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <div id="effort-rec-picker" style="display:flex;align-items:center;gap:8px"></div>
-    <button class="btn btn-ghost btn-sm" onclick="printEffortTab()">🖨 Print / PDF</button>
-  </div>
-</div>
-<div class="atabs">
-  <div class="atab on" id="et-portfolio" onclick="switchEffortTab('portfolio')">📋 My Portfolio</div>
-  <div class="atab" id="et-focus" onclick="switchEffortTab('focus')">🔎 Today's Focus</div>
-  <div class="atab" id="et-opp" onclick="switchEffortTab('opp')">💡 My Opportunity</div>
-  <div class="atab" id="et-compare" onclick="switchEffortTab('compare')">👥 Manager Report</div>
-</div>
-<div id="ef-portfolio"></div>
-<div id="ef-focus" class="hidden"></div>
-<div id="ef-opp" class="hidden"></div>
-<div id="ef-compare" class="hidden"></div>
-</div>
-</div>
+<!-- 25 Sep 2026: Effort (built as Phase 3 of the Effort+Incentive Metrics
+     Audit) started life as its own standalone panel with 4 tabs
+     (Portfolio/Focus/Opportunity/Manager Report). Per Anne's follow-up
+     decision, it has been split across the pages recruiters/managers
+     actually use for each of those jobs instead of living on its own:
+     My Portfolio + Today's Focus -> Home (pages 2/3, next to Action
+     Queue — all "what do I do" views); My Opportunity -> Incentive,
+     next to My Earnings (both "what will I earn" views); Manager
+     Report -> Talent Insights, page 2 (both manager-facing views). The
+     underlying data functions (buildEffortData etc.) and the #ef-*
+     container ids are unchanged — only where they're mounted moved. -->
 
 <div class="panel" id="p-incentive">
 <div class="sg3" style="margin-bottom:16px">
@@ -1508,10 +1518,17 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div class="atabs">
   <div class="atab on" id="it-calc" onclick="switchIncTab('calc')">🧮 My Earnings</div>
+  <div class="atab" id="it-opp" onclick="switchIncTab('opp')">💡 My Opportunity</div>
   <div class="atab" id="it-plan" onclick="switchIncTab('plan')">🎯 Plan Earnings</div>
   <div class="atab" id="it-team" onclick="switchIncTab('team')">👥 Team Earnings</div>
   <div class="atab" id="it-policy" onclick="switchIncTab('policy')">📋 Policy</div>
   <div class="atab" id="it-proj" onclick="switchIncTab('proj')">💡 Projections</div>
+</div>
+
+<!-- MY OPPORTUNITY (moved in from the retired Effort panel, 25 Sep 2026) -->
+<div id="ip-opp" class="hidden">
+  <div id="opp-rec-picker" style="display:flex;align-items:center;gap:8px;margin:12px 0"></div>
+  <div id="ef-opp"></div>
 </div>
 
 <!-- MY EARNINGS -->
@@ -3152,7 +3169,12 @@ function goPanel(name){
   if(['new','upd','bulk','repos','incentive','rec','vac'].includes(name))fillDrops();
   if(name==='adm')initAdmin();
   if(name==='home'){loadDash();}
-  if(name==='analytics'){setTimeout(renderDash,200);}
+  if(name==='analytics'){
+    setTimeout(renderDash,200);
+    const isAdmin = curRole==='Admin'||curRole==='Super Admin';
+    const mgrTab = document.getElementById('ait-manager');
+    if(mgrTab) mgrTab.style.display = isAdmin ? '' : 'none';
+  }
   if(name==='repos'){
     // Silently refresh from SP (rate-limited to 90s) then render
     refreshRepoFromSP().then(()=>{ switchRepoTab('jd'); }).catch(()=>{ switchRepoTab('jd'); });
@@ -3167,7 +3189,6 @@ function goPanel(name){
   if(name==='invoice'){renderInvoices();updateInvStats();}
   if(name==='screen'){fillScreenVacDrop();}
   if(name==='pool'){loadTalentPool();}
-  if(name==='effort'){initEffortPanel();}
 }
 
 // ══════════════════════════════════════════════════════
@@ -6580,17 +6601,64 @@ function getMonthsInRange(from, to){
 
 // ── Tab switching ──────────────────────────────────────
 function switchIncTab(tab){
-  ['calc','plan','team','policy','proj'].forEach(t=>{
+  ['calc','opp','plan','team','policy','proj'].forEach(t=>{
     const el=document.getElementById('ip-'+t);const at=document.getElementById('it-'+t);
     if(el)el.classList.toggle('hidden',t!==tab);
     if(at)at.classList.toggle('on',t===tab);
   });
   renderPolicyBadge();
   if(tab==='calc')calcIncentives();
+  if(tab==='opp')initIncOpportunity();
   if(tab==='plan')initPlanEarnings();
   if(tab==='team')calcTeamEarnings();
   if(tab==='policy')renderPolicyView();
   if(tab==='proj')genProjections();
+}
+
+// My Opportunity — moved in from the retired Effort panel (25 Sep 2026),
+// keeps its own independent recruiter picker/cache (oppRecSel/oppDataCache)
+// rather than sharing state with Home's Portfolio/Focus pages, since an
+// Admin could reasonably be viewing a different recruiter in each.
+let oppRecSel = '';
+let oppDataCache = null;
+
+function initIncOpportunity(){
+  const isAdmin = curRole==='Admin'||curRole==='Super Admin';
+  if(!oppRecSel) oppRecSel = myRecName || '';
+  const picker = document.getElementById('opp-rec-picker');
+  if(picker){
+    const printBtn = '<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="printPanelAsPDF(\'My Opportunity\',oppRecSel||\'\',\'ef-opp\')">🖨 Print / PDF</button>';
+    if(isAdmin){
+      const recs = mA('recruiters');
+      if(!oppRecSel && recs.length) oppRecSel = recs[0];
+      picker.innerHTML = '<label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Viewing</label>'+
+        '<select id="opp-rec-select" onchange="onOppRecChange()" style="width:auto">'+
+        recs.map(r=>`<option value="${r}" ${r===oppRecSel?'selected':''}>${r}</option>`).join('')+'</select>'+printBtn;
+    } else {
+      picker.innerHTML = '<span style="font-size:11px;color:var(--w60)">'+(oppRecSel||'—')+'</span>'+printBtn;
+    }
+  }
+  loadIncOpportunity();
+}
+
+function onOppRecChange(){
+  oppRecSel = gv('opp-rec-select')||oppRecSel;
+  oppDataCache = null;
+  loadIncOpportunity();
+}
+
+async function loadIncOpportunity(){
+  const el = document.getElementById('ef-opp');
+  if(!oppRecSel){
+    if(el)el.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">⚠ No recruiter selected, or your own recruiter record has no DOJ/assignment set.</div>';
+    return;
+  }
+  showLoad('Loading opportunity data...');
+  try{
+    if(!oppDataCache) oppDataCache = await buildEffortData(oppRecSel);
+  }catch(e){ hideLoad(); toast('err','My Opportunity',e.message); return; }
+  hideLoad();
+  renderEffortOpportunity(oppDataCache);
 }
 
 // ── Plan My Earnings ───────────────────────────────────
@@ -7623,13 +7691,13 @@ function printPanelAsPDF(title, subtitle, containerId){
   incentivePrintWindow(title, subtitle, body);
 }
 
-// Effort's 4 tabs share one print button in the card header (rather than
-// one per tab) since only one tab is ever visible at a time — prints
-// whichever tab is currently active, per effortTab.
-function printEffortTab(){
-  const M={portfolio:['My Portfolio','ef-portfolio'],focus:["Today's Focus",'ef-focus'],opp:['My Opportunity','ef-opp'],compare:['Manager Report','ef-compare']};
+// Home's Focus/Portfolio pages share one print button in the tab bar
+// (rather than one per page) since only one is ever visible at a time —
+// prints whichever is currently active, per effortTab.
+function printHomeEffortTab(){
+  const M={focus:["Today's Effort",'ef-focus'],portfolio:['My Portfolio','ef-portfolio']};
   const m = M[effortTab] || M.portfolio;
-  printPanelAsPDF('Effort — '+m[0], effortRecSel||'', m[1]);
+  printPanelAsPDF(m[0], effortRecSel||'', m[1]);
 }
 
 function exportIncentivePolicyPDF(){
@@ -8159,7 +8227,7 @@ async function saveAltSourcing(vacCode){
     await logAltSourcing(vacCode, effortRecSel||(myRecName||(acct&&acct.name?acct.name.split(' ')[0]:'')), date, channel, action, result);
     hideLoad();closeModal();
     toast('ok','Logged','Alternate sourcing action saved for '+vacCode);
-    effortDataCache=null; switchEffortTab(effortTab);
+    effortDataCache=null; loadHomeEffortTab(effortTab);
   }catch(e){hideLoad();toast('err','Not Saved',e.message);}
 }
 
@@ -8300,50 +8368,58 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
   };
 }
 
-function initEffortPanel(){
+// Home's "Today's Effort" (focus) and "My Portfolio" pages — moved in from
+// the retired Effort panel (25 Sep 2026). Same effortRecSel/effortDataCache
+// globals and #ef-focus/#ef-portfolio render targets as before; only the
+// trigger (switchHomeTab, from Home's tab bar) and the picker's host
+// container changed.
+function switchHomeTab(tab, recOverride){
+  if(recOverride){ effortRecSel = recOverride; effortDataCache = null; }
+  ['queue','focus','portfolio'].forEach(t=>{
+    const btn=document.getElementById('ht-'+t); if(btn)btn.classList.toggle('on',t===tab);
+  });
+  const qEl=document.getElementById('hp-queue'); if(qEl)qEl.classList.toggle('hidden',tab!=='queue');
+  const fEl=document.getElementById('ef-focus'); if(fEl)fEl.classList.toggle('hidden',tab!=='focus');
+  const pEl=document.getElementById('ef-portfolio'); if(pEl)pEl.classList.toggle('hidden',tab!=='portfolio');
+  const picker = document.getElementById('effort-rec-picker');
+  const printBtn = document.getElementById('ht-print');
+  const showEffortChrome = tab==='focus' || tab==='portfolio';
+  if(picker) picker.style.display = showEffortChrome ? 'flex' : 'none';
+  if(printBtn) printBtn.style.display = showEffortChrome ? '' : 'none';
+  if(!showEffortChrome) return;
+  effortTab = tab;
+  initHomeEffortPicker();
+  loadHomeEffortTab(tab);
+}
+
+function initHomeEffortPicker(){
   const isAdmin = curRole==='Admin'||curRole==='Super Admin';
   effortRecSel = myRecName || effortRecSel || '';
   const picker = document.getElementById('effort-rec-picker');
-  const compareTab = document.getElementById('et-compare');
-  if(compareTab) compareTab.style.display = isAdmin ? '' : 'none';
-  if(picker){
-    if(isAdmin){
-      const recs = mA('recruiters');
-      if(!effortRecSel && recs.length) effortRecSel = recs[0];
-      picker.innerHTML = '<label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Viewing</label>'+
-        '<select id="effort-rec-select" onchange="onEffortRecChange()" style="width:auto">'+
-        recs.map(r=>`<option value="${r}" ${r===effortRecSel?'selected':''}>${r}</option>`).join('')+'</select>';
-    } else {
-      picker.innerHTML = '<span style="font-size:11px;color:var(--w60)">'+(effortRecSel||'—')+'</span>';
-    }
+  if(!picker) return;
+  if(isAdmin){
+    const recs = mA('recruiters');
+    if(!effortRecSel && recs.length) effortRecSel = recs[0];
+    picker.innerHTML = '<label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Viewing</label>'+
+      '<select id="effort-rec-select" onchange="onEffortRecChange()" style="width:auto">'+
+      recs.map(r=>`<option value="${r}" ${r===effortRecSel?'selected':''}>${r}</option>`).join('')+'</select>';
+  } else {
+    picker.innerHTML = '<span style="font-size:11px;color:var(--w60)">'+(effortRecSel||'—')+'</span>';
   }
-  effortDataCache = null;
-  switchEffortTab(effortTab||'portfolio');
 }
 
 function onEffortRecChange(){
   effortRecSel = gv('effort-rec-select')||effortRecSel;
   effortDataCache = null;
-  switchEffortTab(effortTab);
+  loadHomeEffortTab(effortTab);
 }
 
-async function switchEffortTab(tab){
-  effortTab = tab;
-  ['portfolio','focus','opp','compare'].forEach(t=>{
-    const btn=document.getElementById('et-'+t); if(btn)btn.classList.toggle('on',t===tab);
-    const pane=document.getElementById('ef-'+t); if(pane)pane.classList.toggle('hidden',t!==tab);
-  });
-  // 25 Sep 2026: the "Viewing: [recruiter]" picker is meaningless on
-  // Manager Report — that tab already covers every recruiter at once — so
-  // it's hidden there instead of sitting in the header unused/confusing.
-  const picker = document.getElementById('effort-rec-picker');
-  if(picker) picker.style.display = tab==='compare' ? 'none' : '';
-  if(!effortRecSel && tab!=='compare'){
+async function loadHomeEffortTab(tab){
+  if(!effortRecSel){
     const el=document.getElementById('ef-'+tab);
     if(el)el.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">⚠ No recruiter selected, or your own recruiter record has no DOJ/assignment set.</div>';
     return;
   }
-  if(tab==='compare'){ renderEffortComparison(); return; }
   showLoad('Loading effort data...');
   try{
     if(!effortDataCache) effortDataCache = await buildEffortData(effortRecSel);
@@ -8351,7 +8427,19 @@ async function switchEffortTab(tab){
   hideLoad();
   if(tab==='portfolio') renderEffortPortfolio(effortDataCache);
   else if(tab==='focus') renderEffortFocus(effortDataCache);
-  else if(tab==='opp') renderEffortOpportunity(effortDataCache);
+}
+
+// Talent Insights page 2 — Manager Report, moved in from the retired
+// Effort panel (25 Sep 2026). Admin/Super Admin only, same as before.
+function switchAnalyticsTab(tab){
+  const isAdmin = curRole==='Admin'||curRole==='Super Admin';
+  if(tab==='manager' && !isAdmin){ toast('warn','Manager Report','Admin access only.'); tab='insights'; }
+  ['insights','manager'].forEach(t=>{
+    const btn=document.getElementById('ait-'+t); if(btn)btn.classList.toggle('on',t===tab);
+  });
+  const iEl=document.getElementById('ai-insights'); if(iEl)iEl.classList.toggle('hidden',tab!=='insights');
+  const cEl=document.getElementById('ef-compare'); if(cEl)cEl.classList.toggle('hidden',tab!=='manager');
+  if(tab==='manager') renderEffortComparison();
 }
 
 function effortStatusBadge(status){
@@ -8429,7 +8517,7 @@ function renderEffortOpportunity(d){
   // #ef-opp-results gets rebuilt on each keystroke, never the input itself.
   if(!document.getElementById('ef-opp-salary')){
     el.innerHTML = `<div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;margin:12px 0 16px">
-      <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="ef-opp-salary" placeholder="e.g. 30000" min="0" oninput="renderEffortOpportunity(effortDataCache)"></div>
+      <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="ef-opp-salary" placeholder="e.g. 30000" min="0" oninput="renderEffortOpportunity(oppDataCache)"></div>
       <div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:10px 14px;font-size:11px;color:var(--w60)">Enter your salary to see potential incentive and how much revenue is needed to reach the next slab.</div>
     </div>
     <div id="ef-opp-results"></div>`;
@@ -8490,6 +8578,7 @@ async function renderEffortComparison(){
         <option value="year">This Year</option>
       </select>
       <button class="btn btn-t btn-sm" style="margin-left:auto" onclick="generateEffortAIReport()">🤖 Generate AI Report</button>
+      <button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Manager Report','','ef-compare-body')">🖨 Print / PDF</button>
     </div>
     <div id="ef-compare-body"></div>`;
   }
@@ -8515,7 +8604,7 @@ async function renderEffortComparison(){
   <div class="tw"><table><thead><tr><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
   rows.forEach(r=>{
     const covColor = r.coverage>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
-    html += `<tr style="cursor:pointer" onclick="effortRecSel='${r.rec}';document.getElementById('effort-rec-select').value='${r.rec}';effortDataCache=null;switchEffortTab('portfolio')"><td><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><td><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
   });
   html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage.</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
