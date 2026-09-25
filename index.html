@@ -325,7 +325,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 ───────────────────────────────────────────────────────────── */
 
 /* 1 · Re-scope CSS custom properties inside every light panel */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen){
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen){
   --ow:#291b39;
   --w60:rgba(41,27,57,.72);
   --w40:rgba(41,27,57,.55);
@@ -347,19 +347,19 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 2 · Cards, stats, chart-cards — white backgrounds on light page */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .card,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .stat,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .chart-card{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .card,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .stat,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .chart-card{
   background:#fbfbfa;
   color:#291b39;
   border:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .chart-title{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .chart-title{
   color:#291b39;
 }
 
 /* 3 · Labels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) label{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) label{
   color:#291b39;
   font-size:max(11px,1em);
   font-weight:700;
@@ -367,92 +367,92 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 4 · Helper / hint / muted text */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .fhint,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .sl,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .ss,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pdet,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .chart-sub,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .filter-label,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .kpi-lbl,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pdate{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .fhint,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .sl,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .ss,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pdet,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .chart-sub,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .filter-label,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .kpi-lbl,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pdate{
   color:#5f6470;
   opacity:1;
 }
 
 /* 5 · Inputs / selects / textareas */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) input,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) select,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) textarea{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) input,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) select,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) textarea{
   background:#ffffff;
   color:#291b39;
   border:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) input::placeholder,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) textarea::placeholder{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) input::placeholder,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) textarea::placeholder{
   color:rgba(41,27,57,.38);
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) select option{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) select option{
   background:#ffffff;
   color:#291b39;
 }
 
 /* 6 · Tables */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) table{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) table{
   background:#fbfbfa;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) thead tr{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) thead tr{
   background:#1f5c93;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) thead th{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) thead th{
   color:#fbfbfa;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) tbody td{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) tbody td{
   color:#291b39;
   border-bottom:1px solid #d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) tbody td.m{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) tbody td.m{
   color:#5f6470;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) tbody tr:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) tbody tr:hover{
   background:rgba(31,92,147,.06);
 }
 
 /* 7 · Mono / code values */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .mono,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) code{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .mono,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) code{
   color:#1f5c93;
 }
 
 /* 8 · Section labels .sl2 */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .sl2{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .sl2{
   color:#1f5c93;
   font-size:max(11px,1em);
   font-weight:800;
   opacity:1;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .sl2::after{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .sl2::after{
   background:rgba(31,92,147,.20);
 }
 
 /* 9 · Action queue cards: .pi, .lbar, .uz */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pi{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pi{
   background:rgba(31,92,147,.06);
   color:#291b39;
   border-color:#d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pi:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pi:hover{
   background:rgba(31,92,147,.10);
   border-color:rgba(52,186,198,.35);
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .lbar{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .lbar{
   background:rgba(31,92,147,.06);
   border-color:#d6dbe3;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .uz{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .uz{
   border-color:#d6dbe3;
   color:#5f6470;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .uz:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .uz:hover{
   border-color:var(--teal);
   background:rgba(52,186,198,.06);
 }
@@ -476,44 +476,44 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 }
 
 /* 13 · .btn-ghost inside light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .btn-ghost{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .btn-ghost{
   color:rgba(41,27,57,.75);
   border-color:#d6dbe3;
   background:transparent;
 }
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .btn-ghost:hover{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .btn-ghost:hover{
   background:rgba(31,92,147,.08);
   color:#291b39;
   border-color:#b0bec5;
 }
 
 /* 14 · .b-grey / .b-inactive badges inside light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .b-grey,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .b-inactive{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .b-grey,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .b-inactive{
   background:rgba(31,92,147,.08);
   color:#5f6470;
   border-color:#d6dbe3;
 }
 
 /* 15 · Semantic colours — remain consistent in light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .b-err,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .pi.ov{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .b-err,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .pi.ov{
   border-left-color:#9f4a47;
 }
 
 /* 16 · Card header text */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .card-title,
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .card-hdr{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .card-title,
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .card-hdr{
   color:#291b39;
 }
 
 /* 17 · Inline note / info strips (tdim, gdim, bdim) */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen) .ci p{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen) .ci p{
   color:#5f6470;
 }
 
 /* 18 · Scrollbar styling for light panels */
-:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-invoice,#p-bulk,#p-screen)::-webkit-scrollbar-thumb{
+:is(#p-home,#p-new,#p-upd,#p-ep,#p-rec,#p-vac,#p-repos,#p-adm,#p-incentive,#p-effort,#p-invoice,#p-bulk,#p-screen)::-webkit-scrollbar-thumb{
   background:rgba(31,92,147,.25);
 }
 
@@ -736,6 +736,10 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     <div class="nav-item" id="navBulk" onclick="goPanel('bulk')" title="Bulk Upload">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
       <span class="nav-label">Bulk Upload</span>
+    </div>
+    <div class="nav-item" onclick="goPanel('effort')" title="Effort">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+      <span class="nav-label">Effort</span>
     </div>
     <div class="nav-item" id="navIncentive" onclick="goPanel('incentive')" title="Incentives">
       <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></span>
@@ -1459,6 +1463,29 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- INCENTIVES -->
 <!-- INCENTIVES -->
+<!-- EFFORT (Phase 3, Effort+Incentive Metrics Audit — 25 Sep 2026): "Am I
+     applying enough effort across my portfolio?" — deliberately separate
+     from Incentive/My Earnings ("what have I earned"), per Anne's explicit
+     instruction not to merge them. -->
+<div class="panel" id="p-effort">
+<div class="card">
+<div class="card-hdr">
+  <div class="card-title"><span class="ac">🎯</span> Effort</div>
+  <div id="effort-rec-picker" style="display:flex;align-items:center;gap:8px"></div>
+</div>
+<div class="atabs">
+  <div class="atab on" id="et-portfolio" onclick="switchEffortTab('portfolio')">📋 My Portfolio</div>
+  <div class="atab" id="et-focus" onclick="switchEffortTab('focus')">🔎 Today's Focus</div>
+  <div class="atab" id="et-opp" onclick="switchEffortTab('opp')">💡 My Opportunity</div>
+  <div class="atab" id="et-compare" onclick="switchEffortTab('compare')">👥 Team Comparison</div>
+</div>
+<div id="ef-portfolio"></div>
+<div id="ef-focus" class="hidden"></div>
+<div id="ef-opp" class="hidden"></div>
+<div id="ef-compare" class="hidden"></div>
+</div>
+</div>
+
 <div class="panel" id="p-incentive">
 <div class="sg3" style="margin-bottom:16px">
   <div class="stat blue"><div class="sn" id="inc-earned">₹0</div><div class="sl">Earned This Month</div></div>
@@ -3129,6 +3156,7 @@ function goPanel(name){
   if(name==='invoice'){renderInvoices();updateInvStats();}
   if(name==='screen'){fillScreenVacDrop();}
   if(name==='pool'){loadTalentPool();}
+  if(name==='effort'){initEffortPanel();}
 }
 
 // ══════════════════════════════════════════════════════
@@ -7959,6 +7987,303 @@ function loadIncPolicyFromSP(){
 
 function saveIncentiveData(){}
 function loadIncentiveData(){}
+
+// ══════════════════════════════════════════════════════
+// EFFORT (Phase 3, Effort+Incentive Metrics Audit — 25 Sep 2026)
+// ══════════════════════════════════════════════════════
+// "Am I applying enough effort across my portfolio?" — deliberately a
+// separate feature from Incentive/My Earnings ("what have I earned"), per
+// Anne's explicit instruction not to merge them. Reads through the SAME
+// shared functions EOD/Incentive already use (isJoinedInPeriod,
+// getMeaningfulActionsInPeriod, calcFirmFee) rather than its own separate
+// filters — that's the whole point of the shared metrics engine items 1-7
+// of this audit built. Two pieces of the original spec are NOT built here:
+// Alternate Sourcing tracking (needs a new SharePoint List — same
+// constraint as every other new-List feature this session; ask Anne to
+// create it before this can be wired up) and a fully nested drill-down
+// (built instead as a recruiter picker showing that recruiter's own
+// portfolio — the same view they'd see for themselves).
+//
+// "Submitted"/"Contacted" have no dedicated tracked event anywhere in THP
+// (confirmed in the Phase 1 audit) — approximated below (status reached the
+// client-facing pipeline stage; any status change beyond the initial
+// sourced state) and labelled "approx" in the UI rather than presented as
+// exact. Every other figure here (Sourced, Screened via the Resume
+// Screening List, Interviews via Interview Date, Offers via Offer Date,
+// Joined via isJoinedInPeriod, Meaningful Candidate Actions via the shared
+// function) is exact, reading the same stored fields/functions as
+// EOD/Incentive.
+
+const EFFORT_COVERAGE_TARGET = 75; // Anne's spec: minimum 75% weekly coverage
+const EFFORT_SUBMIT_STAGE = ['Shortlisted for Client I/W','Client I/W in Progress','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined','Rejected by Client'];
+let effortTab = 'portfolio';
+let effortRecSel = '';
+let effortDataCache = null;
+
+function effortWeekRange(){
+  const d = new Date(); d.setDate(d.getDate()-6);
+  return { from: d.toISOString().slice(0,10), to: today() };
+}
+
+// Same list+field pattern as fetchResumeScreenedTodayCount/RangeCount
+// (search this file) — a separate fetch rather than generalizing those,
+// same reasoning noted there: don't disturb their existing call sites.
+// Pulls VacancyCode too (those two don't), needed for the per-vacancy
+// Screened column in the portfolio table below.
+async function fetchScreenedRowsForRecruiter(recName){
+  try{
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items?$expand=fields($select=Recruiter,VacancyCode)&$top=2000',{headers:{'Authorization':'Bearer '+tok}});
+    if(!res.ok)return [];
+    const data=await res.json();
+    const items=(data&&data.value)||[];
+    return items.filter(it=>((it.fields&&it.fields.Recruiter)||'')===recName)
+      .map(it=>({vacCode:(it.fields&&it.fields.VacancyCode)||'', date:(it.createdDateTime||'').slice(0,10)}));
+  }catch(e){console.warn('Effort: screened fetch failed',e.message);return [];}
+}
+
+// "Meaningful vacancy activity" (spec) explicitly excludes opening/viewing
+// a vacancy — r[C.updatedOn] only ever changes on an actual save (status
+// change, WA sent, follow-up set, etc.), never a view, so it's a safe,
+// already-available proxy without a full Change Log scan per vacancy just
+// to keep this dashboard responsive. "Working days" in the spec is treated
+// as calendar days here — this app has no working-day calendar anywhere
+// else either, so this stays consistent with every other date calc in it.
+async function buildEffortData(recruiterName){
+  const vacs = VD.filter(v => v['Recruiter']===recruiterName && v['Active']!=='N');
+  const {from:weekFrom, to:weekTo} = effortWeekRange();
+  const td = today();
+  const screenedRows = await fetchScreenedRowsForRecruiter(recruiterName);
+
+  const portfolio = vacs.map(v=>{
+    const vc = v['Vacancy code']||v['Vacancy Code']||'';
+    const cands = MD.filter(r=>r[C.vacCode]===vc);
+    const profiles = cands.length;
+    const submitted = cands.filter(r=>EFFORT_SUBMIT_STAGE.includes(r[C.status])).length;
+    const interviews = cands.filter(r=>r[C.interviewDate]).length;
+    const offers = cands.filter(r=>r[C.offerDate]).length;
+    const joined = cands.filter(r=>r[C.status]==='Joined').length;
+    const screened = screenedRows.filter(s=>s.vacCode===vc).length;
+    const activePipeline = cands.filter(r=>ACTIVE_STATUSES.has(r[C.status]));
+    let potentialRevenue = 0;
+    cands.filter(r=>['Selected','Offered','Joining in Progress'].includes(r[C.status])).forEach(r=>{
+      potentialRevenue += calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||0),r[C.client],undefined,r[C.code]);
+    });
+    const lastTouch = cands.reduce((max,r)=>{const d=r[C.updatedOn]||'';return (d&&d>max)?d:max;},'');
+    const daysInactive = lastTouch ? Math.floor((new Date(td+'T00:00:00')-new Date(lastTouch.slice(0,10)+'T00:00:00'))/86400000) : null;
+    const activityThisWeek = cands.some(r=>r[C.updatedOn] && r[C.updatedOn].slice(0,10)>=weekFrom && r[C.updatedOn].slice(0,10)<=weekTo);
+    const onHold = v['Current Status']==='On Hold';
+    // Green: touched within 2 days AND has active pipeline. Amber: touched
+    // but thin/no active pipeline, or right at the 2-day edge. Red: 3+ days
+    // with no activity (or never touched). Blue: Client/External Hold —
+    // deliberately excluded from the coverage denominator below, per spec
+    // ("Client Hold should not unfairly reduce Vacancy Coverage").
+    let status;
+    if(onHold) status='blue';
+    else if(daysInactive===null||daysInactive>=3) status='red';
+    else if(daysInactive<=2 && activePipeline.length>0) status='green';
+    else status='amber';
+    return {
+      vacCode:vc, client:v['Company']||'', priority:v['Priority']||'—', positions:v['Positions Count']||'1',
+      profiles, screened, submitted, interviews, offers, joined,
+      lastActivity: lastTouch||'', daysInactive, status, activityThisWeek, potentialRevenue,
+      activePipelineCount: activePipeline.length
+    };
+  });
+
+  const coverageEligible = portfolio.filter(p=>p.status!=='blue');
+  const coveredCount = coverageEligible.filter(p=>p.activityThisWeek).length;
+  const coveragePct = coverageEligible.length ? Math.round((coveredCount/coverageEligible.length)*100) : 0;
+
+  const sourcedWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.archive]!=='Y'&&r[C.sourcingDate]>=weekFrom&&r[C.sourcingDate]<=weekTo);
+  const mcaWeek = await getMeaningfulActionsInPeriod(recruiterName, weekFrom, weekTo);
+  const screenedWeek = screenedRows.filter(s=>s.date>=weekFrom&&s.date<=weekTo).length;
+  const submittedWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&EFFORT_SUBMIT_STAGE.includes(r[C.status])&&r[C.updatedOn]&&r[C.updatedOn].slice(0,10)>=weekFrom&&r[C.updatedOn].slice(0,10)<=weekTo).length;
+  const interviewsWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.interviewDate]&&r[C.interviewDate]>=weekFrom&&r[C.interviewDate]<=weekTo).length;
+  const offersWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.offerDate]&&r[C.offerDate]>=weekFrom&&r[C.offerDate]<=weekTo).length;
+  const joinedWeek = MD.filter(r=>isJoinedInPeriod(r,weekFrom,weekTo)&&r[C.recruiter]===recruiterName).length;
+
+  const allMine = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.archive]!=='Y');
+  const funnel = {
+    sourced: allMine.length,
+    contacted: allMine.filter(r=>r[C.status]!=='WIP'||(parseInt(r[C.followupCount])||0)>0).length,
+    screened: screenedRows.length,
+    submitted: allMine.filter(r=>EFFORT_SUBMIT_STAGE.includes(r[C.status])).length,
+    interviewed: allMine.filter(r=>r[C.interviewDate]).length,
+    offered: allMine.filter(r=>r[C.offerDate]).length,
+    joined: allMine.filter(r=>r[C.status]==='Joined').length
+  };
+
+  return {
+    recruiterName, weekFrom, weekTo, portfolio, coveragePct, coveredCount, coverageTotal: coverageEligible.length,
+    summary: { sourcedWeek: sourcedWeek.length, mcaWeek: mcaWeek.count, screenedWeek, submittedWeek, interviewsWeek, offersWeek, joinedWeek, activeVacancies: vacs.length },
+    funnel
+  };
+}
+
+function initEffortPanel(){
+  const isAdmin = curRole==='Admin'||curRole==='Super Admin';
+  effortRecSel = myRecName || effortRecSel || '';
+  const picker = document.getElementById('effort-rec-picker');
+  const compareTab = document.getElementById('et-compare');
+  if(compareTab) compareTab.style.display = isAdmin ? '' : 'none';
+  if(picker){
+    if(isAdmin){
+      const recs = mA('recruiters');
+      if(!effortRecSel && recs.length) effortRecSel = recs[0];
+      picker.innerHTML = '<label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Viewing</label>'+
+        '<select id="effort-rec-select" onchange="onEffortRecChange()" style="width:auto">'+
+        recs.map(r=>`<option value="${r}" ${r===effortRecSel?'selected':''}>${r}</option>`).join('')+'</select>';
+    } else {
+      picker.innerHTML = '<span style="font-size:11px;color:var(--w60)">'+(effortRecSel||'—')+'</span>';
+    }
+  }
+  effortDataCache = null;
+  switchEffortTab(effortTab||'portfolio');
+}
+
+function onEffortRecChange(){
+  effortRecSel = gv('effort-rec-select')||effortRecSel;
+  effortDataCache = null;
+  switchEffortTab(effortTab);
+}
+
+async function switchEffortTab(tab){
+  effortTab = tab;
+  ['portfolio','focus','opp','compare'].forEach(t=>{
+    const btn=document.getElementById('et-'+t); if(btn)btn.classList.toggle('on',t===tab);
+    const pane=document.getElementById('ef-'+t); if(pane)pane.classList.toggle('hidden',t!==tab);
+  });
+  if(!effortRecSel && tab!=='compare'){
+    const el=document.getElementById('ef-'+tab);
+    if(el)el.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">⚠ No recruiter selected, or your own recruiter record has no DOJ/assignment set.</div>';
+    return;
+  }
+  if(tab==='compare'){ renderEffortComparison(); return; }
+  showLoad('Loading effort data...');
+  try{
+    if(!effortDataCache) effortDataCache = await buildEffortData(effortRecSel);
+  }catch(e){ hideLoad(); toast('err','Effort',e.message); return; }
+  hideLoad();
+  if(tab==='portfolio') renderEffortPortfolio(effortDataCache);
+  else if(tab==='focus') renderEffortFocus(effortDataCache);
+  else if(tab==='opp') renderEffortOpportunity(effortDataCache);
+}
+
+function effortStatusBadge(status){
+  const M2={green:['#34BAC6','Active'],amber:['#E9982B','Needs Attention'],red:['#ff6b6b','Dormant'],blue:['#5B9FD4','Client Hold']}[status]||['#5f6470','—'];
+  return `<span style="background:${M2[0]}22;color:${M2[0]};font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">${M2[1]}</span>`;
+}
+
+function renderEffortPortfolio(d){
+  const el = document.getElementById('ef-portfolio'); if(!el) return;
+  const s = d.summary;
+  const covColor = d.coveragePct>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
+  let html = `<div class="sg" style="margin:12px 0 16px">
+    <div class="stat blue"><div class="sn">${s.activeVacancies}</div><div class="sl">Active Vacancies</div></div>
+    <div class="stat teal"><div class="sn" style="color:${covColor}">${d.coveragePct}%</div><div class="sl">Vacancy Coverage (${d.coveredCount}/${d.coverageTotal}, target ${EFFORT_COVERAGE_TARGET}%)</div></div>
+    <div class="stat gold"><div class="sn">${s.sourcedWeek}</div><div class="sl">Profiles Sourced (7d)</div></div>
+    <div class="stat purple"><div class="sn">${s.mcaWeek}</div><div class="sl">Meaningful Candidate Actions (7d)</div></div>
+  </div>
+  <div class="sg" style="margin:0 0 16px">
+    <div class="stat"><div class="sn">${s.screenedWeek}</div><div class="sl">Screened (7d)</div></div>
+    <div class="stat"><div class="sn">${s.submittedWeek}</div><div class="sl">Submitted (7d, approx)</div></div>
+    <div class="stat"><div class="sn">${s.interviewsWeek}</div><div class="sl">Interviews (7d)</div></div>
+    <div class="stat"><div class="sn">${s.offersWeek}</div><div class="sl">Offers (7d)</div></div>
+    <div class="stat"><div class="sn">${s.joinedWeek}</div><div class="sl">Joined (7d)</div></div>
+  </div>
+  <div class="sl2">Vacancy Portfolio</div>
+  <div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Priority</th><th>Positions</th><th>Profiles</th><th>Screened</th><th>Submitted*</th><th>Interviews</th><th>Offers</th><th>Joined</th><th>Last Activity</th><th>Days Inactive</th><th>Status</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  if(!d.portfolio.length){
+    html += '<tr><td colspan="14" style="text-align:center;color:var(--w60);padding:20px">No active vacancies assigned.</td></tr>';
+  } else {
+    d.portfolio.forEach(p=>{
+      html += `<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td class="m">${p.priority}</td><td class="m">${p.positions}</td>`+
+        `<td class="m">${p.profiles}</td><td class="m">${p.screened}</td><td class="m">${p.submitted}</td><td class="m">${p.interviews}</td><td class="m">${p.offers}</td><td class="m">${p.joined}</td>`+
+        `<td class="mono">${p.lastActivity?fmtD(p.lastActivity):'—'}</td><td class="m">${p.daysInactive===null?'—':p.daysInactive}</td>`+
+        `<td>${effortStatusBadge(p.status)}</td><td class="m" style="font-weight:600">₹${Math.round(p.potentialRevenue).toLocaleString('en-IN')}</td></tr>`;
+    });
+  }
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage.</div>';
+  el.innerHTML = html;
+}
+
+function renderEffortFocus(d){
+  const el = document.getElementById('ef-focus'); if(!el) return;
+  const td = today();
+  const dormant = d.portfolio.filter(p=>p.status==='red'||p.status==='amber');
+  const thin = d.portfolio.filter(p=>p.activePipelineCount<3 && p.status!=='blue');
+  const recCands = MD.filter(r=>r[C.recruiter]===d.recruiterName&&r[C.archive]!=='Y');
+  const followupsDue = recCands.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]));
+  const interviewsToday = recCands.filter(r=>r[C.interviewDate]===td);
+  const sec = (title,icon,rows,cols,mapper) => `<div class="sl2" style="margin-top:16px">${icon} ${title} (${rows.length})</div>`+
+    (rows.length?`<div class="tw"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(mapper).join('')}</tbody></table></div>`
+      :'<div style="color:var(--w60);font-size:11px;padding:8px 0">Nothing here — clear.</div>');
+  let html = sec('Dormant / Needs Attention Vacancies','🚨',dormant,['Vacancy','Client','Status','Days Inactive'],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td>${effortStatusBadge(p.status)}</td><td class="m">${p.daysInactive===null?'—':p.daysInactive}</td></tr>`);
+  html += sec('Thin Pipeline Vacancies (< 3 active candidates)','📉',thin,['Vacancy','Client','Active Pipeline'],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td class="m">${p.activePipelineCount}</td></tr>`);
+  html += sec('Follow-ups Due / Overdue','⏰',followupsDue,['Candidate','Position','Client','Follow-up Date'],r=>`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.position]}</td><td class="m">${r[C.client]}</td><td class="mono">${fmtD(r[C.followupDate])}</td></tr>`);
+  html += sec('Interviews Today','🎤',interviewsToday,['Candidate','Position','Client'],r=>`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.position]}</td><td class="m">${r[C.client]}</td></tr>`);
+  el.innerHTML = html;
+}
+
+function renderEffortOpportunity(d){
+  const el = document.getElementById('ef-opp'); if(!el) return;
+  const totalPotential = d.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
+  let html = `<div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;margin:12px 0 16px">
+    <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="ef-opp-salary" placeholder="e.g. 30000" min="0" oninput="renderEffortOpportunity(effortDataCache)"></div>
+    <div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:10px 14px;font-size:11px;color:var(--w60)">Enter your salary to see potential incentive and how much revenue is needed to reach the next slab.</div>
+  </div>
+  <div class="sg" style="margin-bottom:16px">
+    <div class="stat gold"><div class="sn">₹${Math.round(totalPotential).toLocaleString('en-IN')}</div><div class="sl">Potential Firm Revenue (active pipeline)</div></div>`;
+  const salary = parseFloat(gv('ef-opp-salary'))||0;
+  if(salary>0){
+    const inc = calcRecIncentive(totalPotential, salary);
+    html += `<div class="stat teal"><div class="sn">₹${inc.incentive.toLocaleString('en-IN')}</div><div class="sl">Potential Incentive (${inc.multiple}× · ${inc.rate}%)</div></div>`;
+    const p = getActivePolicyPeriod();
+    const slabs = (p&&p.incentiveSlabs)||[{multipleFrom:0,multipleTo:1,rate:0},{multipleFrom:1,multipleTo:2,rate:10},{multipleFrom:2,multipleTo:3,rate:15},{multipleFrom:3,multipleTo:4,rate:20},{multipleFrom:4,multipleTo:999,rate:25}];
+    const nextSlab = slabs.find(s=>s.multipleFrom*salary > totalPotential);
+    if(nextSlab){
+      const needed = (nextSlab.multipleFrom*salary) - totalPotential;
+      html += `<div class="stat"><div class="sn">₹${Math.round(needed).toLocaleString('en-IN')}</div><div class="sl">Revenue to Next Slab (${nextSlab.rate}%)</div></div>`;
+    }
+  }
+  html += `</div>
+  <div class="sl2">Pipeline Funnel — lifetime, current portfolio</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 4px">
+    ${[['Sourced',d.funnel.sourced],['Contacted*',d.funnel.contacted],['Screened',d.funnel.screened],['Submitted*',d.funnel.submitted],['Interviewed',d.funnel.interviewed],['Offered',d.funnel.offered],['Joined',d.funnel.joined]].map(([lbl,val],i,arr)=>{
+      const pct = arr[0][1]>0 ? Math.round(val/arr[0][1]*100) : 0;
+      return `<div style="background:var(--w06);border-radius:var(--rs);padding:10px 16px;text-align:center;min-width:90px"><div style="font-size:20px;font-weight:700;color:var(--teal)">${val}</div><div style="font-size:9px;color:var(--w60);margin-top:2px">${lbl}</div><div style="font-size:9px;color:var(--w60)">${pct}%</div></div>`;
+    }).join('<div style="align-self:center;color:var(--w60)">→</div>')}
+  </div>
+  <div style="font-size:9px;color:var(--w60);margin-top:6px">*Contacted/Submitted have no dedicated tracked event in THP — approximated (see Portfolio tab note).</div>`;
+  el.innerHTML = html;
+}
+
+async function renderEffortComparison(){
+  const el = document.getElementById('ef-compare'); if(!el) return;
+  showLoad('Loading team comparison...');
+  const recs = mA('recruiters');
+  const rows = [];
+  try{
+    for(const rec of recs){
+      const dd = await buildEffortData(rec);
+      const revenue = dd.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
+      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue});
+    }
+  }catch(e){hideLoad();toast('err','Team Comparison',e.message);return;}
+  hideLoad();
+  // Anne's explicit instruction: no calls-only leaderboard — table is
+  // sorted by coverage (the effort/quality signal), not activity volume.
+  rows.sort((a,b)=>b.coverage-a.coverage);
+  let html = `<div style="font-size:11px;color:var(--w60);margin:12px 0">All figures are 7-day windows except Active Vacancies/Coverage (current) and Potential Revenue (current active pipeline). Click a recruiter to view their own Portfolio tab.</div>
+  <div class="tw"><table><thead><tr><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Profiles (7d)</th><th>Meaningful Actions (7d)</th><th>Submitted (7d)*</th><th>Interviews (7d)</th><th>Joined (7d)</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const covColor = r.coverage>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
+    html += `<tr style="cursor:pointer" onclick="effortRecSel='${r.rec}';document.getElementById('effort-rec-select').value='${r.rec}';effortDataCache=null;switchEffortTab('portfolio')"><td><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
+  });
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage.</div>';
+  el.innerHTML = html;
+}
 
 // ══════════════════════════════════════════════════════
 // INVOICING (Item 20)
