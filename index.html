@@ -6307,14 +6307,40 @@ function isJoinedInPeriod(r, from, to){
 function calcFirmFee(expYears, annualFixedPay, client, onDate){
   const period = getActivePolicyPeriod(onDate);
   if(!period) return 0;
-  const ov = incPolicy.clientOverrides.find(o => o.client === client);
+  // 25 Sep 2026: found live — a candidate genuinely billed at a flat ₹5,000
+  // client override came out as ₹25,200 instead, because this was an exact
+  // string match (`o.client === client`) between the candidate's Client Name
+  // field and whatever string the override was saved under (picked from
+  // Masters → Clients in Admin → Billing Config) — any whitespace/case
+  // difference between the two breaks the match silently, with no warning,
+  // and falls straight through to the experience-slab calculation instead.
+  // Same exact-match fragility class the Effort+Incentive audit already
+  // found elsewhere (JD Link matching, vacancy code matching). Trimmed +
+  // case-insensitive now so it survives incidental formatting differences.
+  const clientNorm = String(client||'').trim().toLowerCase();
+  const ov = incPolicy.clientOverrides.find(o => String(o.client||'').trim().toLowerCase() === clientNorm);
   if(ov){
     if(ov.model === 'fixed') return ov.amount || 0;
     if(ov.model === 'pct')   return annualFixedPay * ((ov.rate || 0) / 100);
   }
   const exp = parseFloat(expYears) || 0;
-  const slab = period.slabs.find(s => exp >= s.expFrom && exp < s.expTo)
-             || period.slabs[period.slabs.length - 1];
+  const sortedSlabs = period.slabs.slice().sort((a,b)=>a.expFrom-b.expFrom);
+  let slab = sortedSlabs.find(s => exp >= s.expFrom && exp < s.expTo);
+  if(!slab){
+    // No configured slab actually covers this experience value — a genuine
+    // gap between bands, not "no data available". The old fallback
+    // (`period.slabs[period.slabs.length - 1]`) always silently jumped to
+    // the LAST slab in the array regardless of how far off it was —
+    // typically the highest experience band, i.e. the most expensive
+    // possible misfire for a low-experience candidate landing in a gap.
+    // This instead uses the nearest slab whose band the candidate has
+    // actually entered (closest expFrom at or below their experience),
+    // falling back to the lowest slab only if they're below all of them —
+    // and logs it, since a real gap here means Admin → Billing Config's
+    // slabs need fixing, not that this should keep happening quietly.
+    slab = sortedSlabs.slice().reverse().find(s => exp >= s.expFrom) || sortedSlabs[0];
+    console.warn('calcFirmFee: experience',exp,'years does not fall inside any configured fee slab range — used the nearest slab as a fallback. Check Admin → Billing Config for a gap between slabs.');
+  }
   if(!slab) return 0;
   if(slab.model === 'fixed') return slab.amount || 5000;
   if(slab.model === 'pct')   return annualFixedPay * ((slab.rate || 0) / 100);
