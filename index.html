@@ -6887,7 +6887,7 @@ async function buildSectionAHTML(recSel, p, empMonthNums){
           <div>
             <div style="font-size:10px;font-weight:600;margin-bottom:7px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Meaningful Candidate Actions</div>
             ${callsBlock}
-            <div style="font-size:9px;color:var(--w60);margin-top:4px">Profiles Sourced (reference only, not the qualification basis): ${res.totalProfiles} over ${res.activeDays} active day${res.activeDays===1?'':'s'}</div>
+            <div style="font-size:9px;color:var(--w60);margin-top:4px">Profiles Sourced (reference only, not the qualification basis): ${res.totalProfiles} over ${res.activeDays} active day${res.activeDays===1?'':'s'} — ${res.calDays>0?Math.round((res.totalProfiles/res.calDays)*10)/10:0}/day avg vs Calls Target ${res.monthCfg.minDailyCalls}/day</div>
             ${Object.keys(res.byDay).length?`<div style="font-size:9px;color:var(--w60);margin-top:2px">${Object.entries(res.byDay).sort().map(([d,n])=>`<span style="margin-right:5px">${fmtD(d)}:${n}</span>`).join('')}</div>`:''}
           </div>
           <div>
