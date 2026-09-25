@@ -8187,29 +8187,61 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
   const coveredCount = coverageEligible.filter(p=>p.activityThisWeek).length;
   const coveragePct = coverageEligible.length ? Math.round((coveredCount/coverageEligible.length)*100) : 0;
 
-  const sourcedWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.archive]!=='Y'&&r[C.sourcingDate]>=weekFrom&&r[C.sourcingDate]<=weekTo);
-  const mcaWeek = await getMeaningfulActionsInPeriod(recruiterName, weekFrom, weekTo);
-  const screenedWeek = screenedRows.filter(s=>s.date>=weekFrom&&s.date<=weekTo).length;
-  const submittedWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&EFFORT_SUBMIT_STAGE.includes(r[C.status])&&r[C.updatedOn]&&r[C.updatedOn].slice(0,10)>=weekFrom&&r[C.updatedOn].slice(0,10)<=weekTo).length;
-  const interviewsWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.interviewDate]&&r[C.interviewDate]>=weekFrom&&r[C.interviewDate]<=weekTo).length;
-  const offersWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.offerDate]&&r[C.offerDate]>=weekFrom&&r[C.offerDate]<=weekTo).length;
-  const joinedWeek = MD.filter(r=>isJoinedInPeriod(r,weekFrom,weekTo)&&r[C.recruiter]===recruiterName).length;
+  // Anne's decisions (25 Sep 2026), scoping every recruiter-facing Effort
+  // number to real, vacancy-tied work:
+  // - "If not tagged to [a vacancy] it cannot become part of effort" — a
+  //   candidate with no Vacancy Code at all is dropped everywhere below,
+  //   full stop, regardless of backward- or forward-looking.
+  // - Outcomes that already happened this week stay counted for that week
+  //   even if the vacancy has since gone inactive ("keep the outcome
+  //   counted on for the week when being assessed, move out in subsequent
+  //   week") — the rolling 7-day window itself handles the "move out" part
+  //   once that week is no longer "this week", so these just need hasVac(),
+  //   not a currently-active-vacancy check.
+  // - Forward-looking/actionable items (what to DO next: follow-ups,
+  //   interviews coming up, the pipeline funnel) require the vacancy to be
+  //   CURRENTLY active — chasing a candidate on a closed role isn't
+  //   meaningful effort. myVacCodes is this recruiter's active portfolio,
+  //   already built above.
+  const hasVac = r => !!(r[C.vacCode] && String(r[C.vacCode]).trim());
+  const myVacCodes = new Set(portfolio.map(p=>p.vacCode));
 
-  const allMine = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.archive]!=='Y');
+  const sourcedWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.archive]!=='Y'&&hasVac(r)&&r[C.sourcingDate]>=weekFrom&&r[C.sourcingDate]<=weekTo);
+  // getMeaningfulActionsInPeriod() is the shared function EOD/Incentive also
+  // read — deliberately NOT re-filtered by vacancy here, since narrowing it
+  // just for Effort would make this one card disagree with the same number
+  // shown elsewhere, which is exactly the kind of drift this whole audit
+  // was built to remove. Flagged to Anne as a conscious call, not an
+  // oversight, if she wants it scoped differently.
+  const mcaWeek = await getMeaningfulActionsInPeriod(recruiterName, weekFrom, weekTo);
+  const screenedWeek = screenedRows.filter(s=>s.vacCode&&s.date>=weekFrom&&s.date<=weekTo).length;
+  const submittedWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&hasVac(r)&&EFFORT_SUBMIT_STAGE.includes(r[C.status])&&r[C.updatedOn]&&r[C.updatedOn].slice(0,10)>=weekFrom&&r[C.updatedOn].slice(0,10)<=weekTo).length;
+  const interviewsWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&hasVac(r)&&r[C.interviewDate]&&r[C.interviewDate]>=weekFrom&&r[C.interviewDate]<=weekTo).length;
+  const offersWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&hasVac(r)&&r[C.offerDate]&&r[C.offerDate]>=weekFrom&&r[C.offerDate]<=weekTo).length;
+  const joinedWeek = MD.filter(r=>isJoinedInPeriod(r,weekFrom,weekTo)&&r[C.recruiter]===recruiterName&&hasVac(r)).length;
+
+  // Forward-looking: today's actionable items, strictly on the CURRENT
+  // active portfolio — moved in here (from what used to be a separate query
+  // inside renderEffortFocus) so there's one source of truth for this
+  // filtering instead of two places that could drift apart.
+  const activeMine = MD.filter(r=>r[C.recruiter]===recruiterName&&r[C.archive]!=='Y'&&myVacCodes.has(r[C.vacCode]));
+  const followupsDue = activeMine.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]));
+  const interviewsToday = activeMine.filter(r=>r[C.interviewDate]===td);
+
   const funnel = {
-    sourced: allMine.length,
-    contacted: allMine.filter(r=>r[C.status]!=='WIP'||(parseInt(r[C.followupCount])||0)>0).length,
-    screened: screenedRows.length,
-    submitted: allMine.filter(r=>EFFORT_SUBMIT_STAGE.includes(r[C.status])).length,
-    interviewed: allMine.filter(r=>r[C.interviewDate]).length,
-    offered: allMine.filter(r=>r[C.offerDate]).length,
-    joined: allMine.filter(r=>r[C.status]==='Joined').length
+    sourced: activeMine.length,
+    contacted: activeMine.filter(r=>r[C.status]!=='WIP'||(parseInt(r[C.followupCount])||0)>0).length,
+    screened: screenedRows.filter(s=>myVacCodes.has(s.vacCode)).length,
+    submitted: activeMine.filter(r=>EFFORT_SUBMIT_STAGE.includes(r[C.status])).length,
+    interviewed: activeMine.filter(r=>r[C.interviewDate]).length,
+    offered: activeMine.filter(r=>r[C.offerDate]).length,
+    joined: activeMine.filter(r=>r[C.status]==='Joined').length
   };
 
   return {
     recruiterName, weekFrom, weekTo, portfolio, coveragePct, coveredCount, coverageTotal: coverageEligible.length,
     summary: { sourcedWeek: sourcedWeek.length, mcaWeek: mcaWeek.count, screenedWeek, submittedWeek, interviewsWeek, offersWeek, joinedWeek, activeVacancies: vacs.length },
-    funnel
+    funnel, followupsDue, interviewsToday
   };
 }
 
@@ -8246,6 +8278,11 @@ async function switchEffortTab(tab){
     const btn=document.getElementById('et-'+t); if(btn)btn.classList.toggle('on',t===tab);
     const pane=document.getElementById('ef-'+t); if(pane)pane.classList.toggle('hidden',t!==tab);
   });
+  // 25 Sep 2026: the "Viewing: [recruiter]" picker is meaningless on
+  // Manager Report — that tab already covers every recruiter at once — so
+  // it's hidden there instead of sitting in the header unused/confusing.
+  const picker = document.getElementById('effort-rec-picker');
+  if(picker) picker.style.display = tab==='compare' ? 'none' : '';
   if(!effortRecSel && tab!=='compare'){
     const el=document.getElementById('ef-'+tab);
     if(el)el.innerHTML='<div style="text-align:center;padding:24px;color:var(--w60)">⚠ No recruiter selected, or your own recruiter record has no DOJ/assignment set.</div>';
@@ -8306,13 +8343,15 @@ function renderEffortPortfolio(d){
 
 function renderEffortFocus(d){
   const el = document.getElementById('ef-focus'); if(!el) return;
-  const td = today();
   const dormant = d.portfolio.filter(p=>p.status==='red'||p.status==='amber');
   const thin = d.portfolio.filter(p=>p.activePipelineCount<3 && p.status!=='blue');
   const altRequired = d.portfolio.filter(p=>p.altSourcingRequired);
-  const recCands = MD.filter(r=>r[C.recruiter]===d.recruiterName&&r[C.archive]!=='Y');
-  const followupsDue = recCands.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]));
-  const interviewsToday = recCands.filter(r=>r[C.interviewDate]===td);
+  // 25 Sep 2026: followupsDue/interviewsToday now come straight from
+  // buildEffortData() (d.followupsDue/d.interviewsToday), already scoped to
+  // candidates tagged to a currently-active vacancy in this recruiter's own
+  // portfolio — per Anne's decision, an unassigned candidate or one tied to
+  // a closed vacancy isn't actionable effort, so it no longer appears here.
+  const followupsDue = d.followupsDue, interviewsToday = d.interviewsToday;
   const sec = (title,icon,rows,cols,mapper) => `<div class="sl2" style="margin-top:16px">${icon} ${title} (${rows.length})</div>`+
     (rows.length?`<div class="tw"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(mapper).join('')}</tbody></table></div>`
       :'<div style="color:var(--w60);font-size:11px;padding:8px 0">Nothing here — clear.</div>');
