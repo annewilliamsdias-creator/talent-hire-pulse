@@ -8489,6 +8489,14 @@ const FUNNEL_GAP_CLIENT_IW_PER_MA = FUNNEL_GAP_CLIENT_IW_PER_SELECTION / FUNNEL_
 const FUNNEL_GAP_RATE_CONSULTANT_TO_CLIENT = FUNNEL_GAP_CLIENT_IW_PER_SELECTION / FUNNEL_GAP_CONSULTANT_IW_PER_SELECTION; // 0.5
 const FUNNEL_GAP_RATE_RECRUITER_TO_CLIENT = FUNNEL_GAP_CLIENT_IW_PER_SELECTION / FUNNEL_GAP_RECRUITER_IW_PER_SELECTION; // 4/15 ≈ 0.267
 
+// Shared column widths (29 Sep 2026, Anne): narrow the number-only columns,
+// widen the remark column, so a table full of 1-2 digit counts doesn't sit
+// as tall as its longest remark forces the last column to wrap across
+// multiple lines. Same 12-column layout in both _funnelGapTbl() (EOD/
+// Weekly/Action Report) and _liveFunnelGapTbl() (Today's Effort/Manager
+// Report), so one shared <colgroup> covers both.
+const FUNNEL_GAP_COLGROUP = '<colgroup><col style="width:9%"><col style="width:11%"><col style="width:9%"><col style="width:6%"><col style="width:4%"><col style="width:5%"><col style="width:5%"><col style="width:5%"><col style="width:5%"><col style="width:6%"><col style="width:6%"><col style="width:29%"></colgroup>';
+
 function _funnelStageCounts(statuses){
   const total = statuses.length;
   const nc = statuses.filter(s=>s==='Not Contactable').length;
@@ -8763,7 +8771,6 @@ function renderEffortPortfolio(d){
 function renderEffortFocus(d){
   const el = document.getElementById('ef-focus'); if(!el) return;
   const dormant = d.portfolio.filter(p=>p.status==='red'||p.status==='amber');
-  const thin = d.portfolio.filter(p=>p.activePipelineCount<3 && p.status!=='blue');
   const altRequired = d.portfolio.filter(p=>p.altSourcingRequired);
   // 25 Sep 2026: followupsDue/interviewsToday now come straight from
   // buildEffortData() (d.followupsDue/d.interviewsToday), already scoped to
@@ -8775,7 +8782,13 @@ function renderEffortFocus(d){
     (rows.length?`<div class="tw"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(mapper).join('')}</tbody></table></div>`
       :'<div style="color:var(--w60);font-size:11px;padding:8px 0">Nothing here — clear.</div>');
   let html = sec('Dormant / Needs Attention Vacancies','🚨',dormant,['Vacancy','Client','Status','Days Inactive'],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td>${effortStatusBadge(p.status)}</td><td class="m">${p.daysInactive===null?'—':p.daysInactive}</td></tr>`);
-  html += sec('Thin Pipeline Vacancies (< 3 active candidates)','📉',thin,['Vacancy','Client','Active Pipeline'],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td class="m">${p.activePipelineCount}</td></tr>`);
+  // 29 Sep 2026, Anne: replaces Thin Pipeline Vacancies — Funnel Gap is the
+  // same underlying signal (is this vacancy getting enough sourcing/
+  // engagement) but weighted against her real benchmark instead of a flat
+  // "<3 active candidates" cutoff, so it's the more accurate version of
+  // the same question.
+  const vacGaps = calcRecruiterFunnelGaps(d.recruiterName);
+  html += `<div class="sl2" style="margin-top:16px">🎯 Funnel Gap — My Active Vacancies (${vacGaps.length})</div>` + _liveFunnelGapTbl(vacGaps);
   html += sec('Alternate Sourcing Action Required','📢',altRequired,['Vacancy','Client','Last Alt. Sourcing','Active Pipeline',''],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td class="m">${p.lastAltDate?fmtD(p.lastAltDate):'Never'}</td><td class="m">${p.activePipelineCount}</td><td><button class="btn btn-ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="openLogAltSourcing('${p.vacCode}','${(p.client||'').replace(/'/g,"\\'")}')">📢 Log</button></td></tr>`);
   html += sec('Follow-ups Due / Overdue','⏰',followupsDue,['Candidate','Position','Client','Follow-up Date'],r=>`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.position]}</td><td class="m">${r[C.client]}</td><td class="mono">${fmtD(r[C.followupDate])}</td></tr>`);
   html += sec('Interviews Today','🎤',interviewsToday,['Candidate','Position','Client'],r=>`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.position]}</td><td class="m">${r[C.client]}</td></tr>`);
@@ -8878,7 +8891,9 @@ function toggleFunnelGapExpand(i){
 // as the EOD/Weekly Funnel Gap table (see _funnelGapTbl()), just styled
 // for the live app UI instead of a downloadable report.
 function _ragDot(status){
-  const colors = {green:'#5e7855', amber:'#e9982b', red:'#9f4a47'};
+  // 29 Sep 2026: red was #9f4a47 (muted red) — read as brown at dot size,
+  // per Anne — switched to THP's existing bright-red alert colour.
+  const colors = {green:'#5e7855', amber:'#e9982b', red:'#ff6b6b'};
   return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colors[status]||'#5f6470'};margin-right:3px;vertical-align:middle"></span>`;
 }
 
@@ -8893,10 +8908,10 @@ function _ragCountSummary(vacGaps){
 // for the live light-themed app UI instead of a downloadable report.
 function _liveFunnelGapTbl(vacGaps){
   if(!vacGaps.length) return '<div style="padding:8px;color:var(--w60);font-size:11px">No active vacancies.</div>';
-  let html = '<div class="tw"><table><thead><tr><th>Vacancy</th><th>Role</th><th>Client</th><th>Since</th><th>Profiles</th><th>Meaningful Action</th><th>Recruiter I/W</th><th>Consultant I/W</th><th>Client I/W</th><th>MA Required</th><th>Client I/W Pred.</th><th></th></tr></thead><tbody>';
+  let html = '<div class="tw"><table style="table-layout:fixed">'+FUNNEL_GAP_COLGROUP+'<thead><tr><th>Vacancy</th><th>Role</th><th>Client</th><th>Since</th><th>Profiles</th><th>Meaningful Action</th><th>Recruiter I/W</th><th>Consultant I/W</th><th>Client I/W</th><th>MA Required</th><th>Client I/W Pred.</th><th></th></tr></thead><tbody>';
   vacGaps.forEach(g=>{
     const since = g.sinceDate ? fmtD(g.sinceDate) : 'All-time';
-    html += `<tr><td class="mono">${g.vacCode}</td><td class="m">${g.designation}</td><td class="m">${g.client}</td><td class="m">${since}</td><td class="m">${g.total}</td><td class="m">${g.meaningful}</td><td class="m">${g.recruiterIW}</td><td class="m">${g.consultant}</td><td class="m">${g.clientIW}</td><td class="m">${g.meaningfulActionsRequired}</td><td class="m">${g.clientIWPrediction}</td><td style="font-size:10px">${_ragDot(g.ragStatus)}${g.remark}</td></tr>`;
+    html += `<tr><td class="mono">${g.vacCode}</td><td class="m">${g.designation}</td><td class="m">${g.client}</td><td class="m">${since}</td><td class="m">${g.total}</td><td class="m">${g.meaningful}</td><td class="m">${g.recruiterIW}</td><td class="m">${g.consultant}</td><td class="m">${g.clientIW}</td><td class="m">${g.meaningfulActionsRequired}</td><td class="m">${g.clientIWPrediction}</td><td style="font-size:10px;white-space:normal">${_ragDot(g.ragStatus)}${g.remark}</td></tr>`;
   });
   html += '</tbody></table></div>';
   return html;
@@ -13178,7 +13193,11 @@ function _rptCss(){
     '.frdot{display:inline-block;width:8pt;height:8pt;border-radius:50%;vertical-align:middle;margin-right:5pt;flex-shrink:0}'+
     '.frdot-green{background:#3a6b30}'+
     '.frdot-amber{background:#b76320}'+
-    '.frdot-red{background:#9f4a47}'+
+    // 29 Sep 2026: was #9f4a47 ("Muted red" in the brand palette) — reads as
+    // brown at this small dot size, per Anne. Switched to THP's existing
+    // bright-red alert colour (same one effortStatusBadge()'s red status
+    // already uses) for an unambiguous red instead.
+    '.frdot-red{background:#ff6b6b}'+
     // Funnel Gap table only — its header labels are long enough (e.g.
     // "Meaningful Actions Required") that the generic nowrap th above
     // would either truncate them or force the whole table too wide.
@@ -13203,7 +13222,7 @@ function _funnelGapTbl(gaps){
   // benchmark (28 Sep 2026): positions × 30, and 3% of actual Meaningful
   // Action, respectively. See calcVacancyFunnelGap().
   const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','Meaningful Actions Required','Client I/W Prediction',''];
-  let t='<table class="fgtbl"><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
+  let t='<table class="fgtbl">'+FUNNEL_GAP_COLGROUP+'<thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
   gaps.forEach(g=>{
     // "Since" shows the reopen/open date candidates are scoped from — see
     // _funnelEligibleCandidates(). "All-time" means the vacancy has no Date
@@ -13253,7 +13272,7 @@ function genActionReport(recName){
   const s3=recMD.filter(r=>r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress');
   const s4=recMD.filter(r=>r[C.status]==='Joining in Progress');
   const s5=recMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])&&r[C.status]!=='On Hold'&&r[C.status]!=='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<threeStr));
-  const s6=VD.filter(v=>v['Active']==='Y'&&v['Recruiter']===recName);
+  const funnelGaps=calcRecruiterFunnelGaps(recName);
 
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Action Report '+dateStr+'</title>'+
     '<style>'+_rptCss()+'</style></head><body>'+
@@ -13281,9 +13300,8 @@ function genActionReport(recName){
     _rptTbl(['Code','Name','Position','Client','Status','Last Updated','Days Since'],
       s5.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],_fDMY(r[C.updatedOn]),_dSince(r[C.updatedOn])]))+
 
-    '<div class="sh">6. Open Vacancies — TAT ('+s6.length+')</div>'+
-    _rptTbl(['Vac Code','Role','Client','Open Since','TAT Days','Priority','Total Cands','Active Cands','Stale >2d'],
-      s6.map(v=>{const vc=v['Vacancy code']||'';const vcMD=MD.filter(r=>r[C.vacCode]===vc);const twoAgo=new Date();twoAgo.setDate(twoAgo.getDate()-2);const twoStr=twoAgo.toISOString().slice(0,10);const actMD=vcMD.filter(r=>ACTIVE_STATUSES.has(r[C.status]));const staleMD=actMD.filter(r=>!r[C.updatedOn]||r[C.updatedOn]<twoStr);return[vc,v['Designation']||'',v['Company']||'',_fDMY(v['Date of Vacancy']),_dSince(v['Date of Vacancy']),v['Priority']||'—',String(vcMD.length),String(actMD.length),String(staleMD.length)];}))+
+    '<div class="sh">6. Funnel Gap — My Active Vacancies ('+funnelGaps.length+')</div>'+
+    _funnelGapTbl(funnelGaps)+
 
     '</body></html>';
 
