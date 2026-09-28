@@ -6635,6 +6635,7 @@ function switchIncTab(tab){
 // Admin could reasonably be viewing a different recruiter in each.
 let oppRecSel = '';
 let oppDataCache = null;
+let oppPredictionCache = null;
 
 function initIncOpportunity(){
   const isAdmin = curRole==='Admin'||curRole==='Super Admin';
@@ -6658,6 +6659,7 @@ function initIncOpportunity(){
 function onOppRecChange(){
   oppRecSel = gv('opp-rec-select')||oppRecSel;
   oppDataCache = null;
+  oppPredictionCache = null;
   loadIncOpportunity();
 }
 
@@ -6670,9 +6672,10 @@ async function loadIncOpportunity(){
   showLoad('Loading opportunity data...');
   try{
     if(!oppDataCache) oppDataCache = await buildEffortData(oppRecSel);
+    if(!oppPredictionCache) oppPredictionCache = await calcFunnelPrediction(oppRecSel);
   }catch(e){ hideLoad(); toast('err','My Opportunity',e.message); return; }
   hideLoad();
-  renderEffortOpportunity(oppDataCache);
+  renderEffortOpportunity(oppDataCache, oppPredictionCache);
 }
 
 // ── Plan My Earnings ───────────────────────────────────
@@ -8382,6 +8385,57 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
   };
 }
 
+// Funnel Prediction (28 Sep 2026, Anne's request — built directly from
+// real THP candidate records, no separate diagnose pass). Weights the
+// recruiter's CURRENT live pipeline by their OWN historical stage-to-
+// outcome conversion rates — the same idea as sales-pipeline forecasting,
+// where an open deal is valued at its stage's historical win rate rather
+// than a flat guess. Deliberately stops at candidate COUNTS (Predicted
+// Offers / Predicted Joins) and never converts to a predicted ₹ figure —
+// the Effort+Incentive Metrics Audit spec explicitly prohibits ever
+// showing projected incentive as if it were earned.
+//
+// Only Sourced -> Interviewed -> Offered -> Joined are used as stage
+// markers. Screened and Submitted are deliberately left out of the model:
+// Screened has no per-candidate join key (fetchScreenedRowsForRecruiter
+// returns an event log, not a candidate reference), and Submitted is a
+// CURRENT-status check that can revert (a rejected-after-Selected
+// candidate stops counting as ever-submitted) — neither is a reliable,
+// monotonic per-candidate flag the way interviewDate/offerDate/status are.
+const FUNNEL_PREDICTION_MIN_SAMPLE = 10;
+
+async function calcFunnelPrediction(recruiterName){
+  const rows = MD.filter(r=>r[C.recruiter]===recruiterName && r[C.archive]!=='Y' && r[C.vacCode] && String(r[C.vacCode]).trim());
+  const H = {
+    sourced: rows.length,
+    interviewed: rows.filter(r=>r[C.interviewDate]).length,
+    offered: rows.filter(r=>r[C.offerDate]).length,
+    joined: rows.filter(r=>r[C.status]==='Joined').length
+  };
+  if(H.sourced < FUNNEL_PREDICTION_MIN_SAMPLE){
+    return { enough:false, historical:H, needed:FUNNEL_PREDICTION_MIN_SAMPLE };
+  }
+  const rate = (num,den) => den>0 ? num/den : 0;
+  const winRate = { sourced: rate(H.joined,H.sourced), interviewed: rate(H.joined,H.interviewed), offered: rate(H.joined,H.offered) };
+  const offerRate = { sourced: rate(H.offered,H.sourced), interviewed: rate(H.offered,H.interviewed) };
+
+  const live = rows.filter(r=>!TERMINAL.has(r[C.status]));
+  const stageOf = r => r[C.offerDate] ? 'offered' : (r[C.interviewDate] ? 'interviewed' : 'sourced');
+  const liveByStage = { sourced:0, interviewed:0, offered:0 };
+  live.forEach(r=>{ liveByStage[stageOf(r)]++; });
+
+  const predictedOffers = liveByStage.sourced*offerRate.sourced + liveByStage.interviewed*offerRate.interviewed + liveByStage.offered*1;
+  const predictedJoins = liveByStage.sourced*winRate.sourced + liveByStage.interviewed*winRate.interviewed + liveByStage.offered*winRate.offered;
+
+  return {
+    enough:true, historical:H, winRate, offerRate, liveByStage,
+    livePipelineCount: live.length,
+    predictedOffers: Math.round(predictedOffers*10)/10,
+    predictedJoins: Math.round(predictedJoins*10)/10,
+    overallSourcedToJoinRate: Math.round(winRate.sourced*1000)/10
+  };
+}
+
 // Home's "Today's Effort" (focus) and "My Portfolio" pages — moved in from
 // the retired Effort panel (25 Sep 2026). Same effortRecSel/effortDataCache
 // globals and #ef-focus/#ef-portfolio render targets as before; only the
@@ -8520,7 +8574,7 @@ function renderEffortFocus(d){
   el.innerHTML = html;
 }
 
-function renderEffortOpportunity(d){
+function renderEffortOpportunity(d, prediction){
   const el = document.getElementById('ef-opp'); if(!el) return;
   // 25 Sep 2026 bug fix: the salary input used to live INSIDE the HTML this
   // function rebuilds on every render — and it was wired to re-render on its
@@ -8531,7 +8585,7 @@ function renderEffortOpportunity(d){
   // #ef-opp-results gets rebuilt on each keystroke, never the input itself.
   if(!document.getElementById('ef-opp-salary')){
     el.innerHTML = `<div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;margin:12px 0 16px">
-      <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="ef-opp-salary" placeholder="e.g. 30000" min="0" oninput="renderEffortOpportunity(oppDataCache)"></div>
+      <div class="field" style="margin:0"><label>My Monthly Salary ₹</label><input type="number" id="ef-opp-salary" placeholder="e.g. 30000" min="0" oninput="renderEffortOpportunity(oppDataCache,oppPredictionCache)"></div>
       <div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:10px 14px;font-size:11px;color:var(--w60)">Enter your salary to see potential incentive and how much revenue is needed to reach the next slab.</div>
     </div>
     <div id="ef-opp-results"></div>`;
@@ -8561,7 +8615,29 @@ function renderEffortOpportunity(d){
     }).join('<div style="align-self:center;color:var(--w60)">→</div>')}
   </div>
   <div style="font-size:9px;color:var(--w60);margin-top:6px">*Contacted/Submitted have no dedicated tracked event in THP — approximated (see Portfolio tab note).</div>`;
+  html += renderFunnelPredictionHTML(prediction);
   resultsEl.innerHTML = html;
+}
+
+// 28 Sep 2026 — see calcFunnelPrediction() for the model. Rendered as its
+// own function since it needs no salary input and shouldn't be tangled
+// into the salary-driven incentive math above it.
+function renderFunnelPredictionHTML(prediction){
+  if(!prediction) return '';
+  if(!prediction.enough){
+    return `<div class="sl2" style="margin-top:20px">🔮 Funnel Prediction</div>
+    <div style="font-size:11px;color:var(--w60);padding:10px 0">Not enough historical data yet for a reliable prediction — this recruiter has ${prediction.historical.sourced} sourced candidate(s) on record, need at least ${prediction.needed}.</div>`;
+  }
+  const s = prediction.liveByStage;
+  return `<div class="sl2" style="margin-top:20px">🔮 Funnel Prediction — from current live pipeline</div>
+  <div style="font-size:11px;color:var(--w60);margin:4px 0 10px">Weights each live candidate by this recruiter's own historical conversion rate at their current stage (Sourced → Interviewed → Offered → Joined), based on ${prediction.historical.sourced} candidates on record overall. Not a guaranteed outcome — an estimate from past performance.</div>
+  <div class="sg" style="margin-bottom:10px">
+    <div class="stat teal"><div class="sn">${prediction.predictedOffers}</div><div class="sl">Predicted Offers</div></div>
+    <div class="stat gold"><div class="sn">${prediction.predictedJoins}</div><div class="sl">Predicted Joins</div></div>
+    <div class="stat"><div class="sn">${prediction.livePipelineCount}</div><div class="sl">Live Candidates in Pipeline</div></div>
+    <div class="stat"><div class="sn">${prediction.overallSourcedToJoinRate}%</div><div class="sl">Historical Sourced → Joined Rate</div></div>
+  </div>
+  <div style="font-size:9px;color:var(--w60)">Live pipeline by stage: ${s.sourced} not yet interviewed, ${s.interviewed} interviewed, ${s.offered} offered. Each is weighted by this recruiter's historical win-rate at that same stage.</div>`;
 }
 
 // Manager Report (25 Sep 2026, Anne's follow-up): "actual team effort, with
