@@ -8561,17 +8561,35 @@ function _funnelEligibleCandidates(vacCode, dateOfVacancy){
 //     check: how many Client I/Ws this MA volume should normally have
 //     produced by now, independent of whether enough total volume exists.
 //
-// Status ("On Track"/"Needs More Effort") is a live override, not a static
-// threshold: any candidate CURRENTLY at Selected/Offered/Joining in
-// Progress/Joined means the position is filled or being filled — always On
-// Track, regardless of the numbers above. If that candidate later drops
-// (Offer Declined/Offer Revoked), they no longer hold FUNNEL_GAP_LIVE_SELECTED
-// status, so the override lifts and gap-tracking resumes automatically —
-// Anne's exact words: "Selection means status on Track, unless the
-// candidate drops then track gap again." Falling back to the Meaningful
-// Actions Required check also correctly flags a vacancy with ZERO profiles
-// sourced (a positive remaining requirement is never satisfied by zero),
-// unlike the earlier ratio-based version which mishandled that case.
+// Status is a 3-state Red/Amber/Green, not a binary flag (29 Sep 2026,
+// Anne — a flat "Needs More Effort" on most open vacancies, given how far
+// ahead the benchmark sets the bar, would just be noise). Priority order,
+// first match wins:
+//   1. Live Selected/Offered/Joining in Progress/Joined candidate -> GREEN
+//      ("Position filled or in final stages"). If that candidate later
+//      drops (Offer Declined/Offer Revoked), they leave FUNNEL_GAP_LIVE_SELECTED
+//      and this stops matching — gap-tracking resumes automatically, per
+//      Anne: "Selection means status on Track, unless the candidate drops
+//      then track gap again."
+//   2. Client I/W target already met (remainingClientIW<=0) -> GREEN
+//      ("Pipeline sufficient for expected selection").
+//   3. Vacancy under 1 week old (from Date of Vacancy) -> AMBER ("New
+//      vacancy — within first week grace period") — a new vacancy hasn't
+//      had time to build pipeline yet, so it shouldn't red-flag on day 2.
+//   4. Gap exists but touched within the last 2 days -> AMBER ("Pipeline
+//      behind target, actively being worked") — same 2-day/3-day fresh/
+//      stale convention Effort's own Portfolio status already uses, for
+//      consistency across the app.
+//   5. Gap exists, untouched 3+ days (or never touched), pipeline volume
+//      already ≥50% of target -> RED ("Candidate count sufficient but
+//      vacancy not actioned in 3+ days") — the fix here is follow-through,
+//      not more sourcing.
+//   6. Gap exists, untouched 3+ days, pipeline volume <50% of target ->
+//      RED ("Candidate volume insufficient and vacancy not actioned in
+//      3+ days") — needs both more sourcing and more follow-through.
+// The remark is a small FIXED set of system-generated strings (one per
+// branch above), not free text — deterministic and scannable across a
+// report table, per Anne's "radio button, not text" instruction.
 function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
   const eligible = _funnelEligibleCandidates(vacCode, dateOfVacancy);
   const statuses = eligible.map(r=>r[C.status]||'');
@@ -8591,11 +8609,28 @@ function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
   const remainingClientIW = Math.max(0, targetClientIW - expectedClientIWFromPipeline);
   const meaningfulActionsRequired = Math.round(remainingClientIW * FUNNEL_GAP_MA_PER_CLIENT_IW * 10)/10;
   const clientIWPrediction = Math.round(f.meaningful * FUNNEL_GAP_CLIENT_IW_PER_MA * 100)/100;
+  const pctMet = targetClientIW>0 ? expectedClientIWFromPipeline/targetClientIW : 1;
 
   const hasLiveSelection = eligible.some(r=>FUNNEL_GAP_LIVE_SELECTED.has(r[C.status]));
-  const hasGap = !hasLiveSelection && remainingClientIW > 0;
+  const gapMet = remainingClientIW <= 0;
 
-  return {vacCode, ...f, meaningfulActionsRequired, clientIWPrediction, hasLiveSelection, hasGap, sinceDate:dateOfVacancy||''};
+  const td = today();
+  const vacAgeDays = dateOfVacancy ? Math.floor((new Date(td+'T00:00:00')-new Date(dateOfVacancy.slice(0,10)+'T00:00:00'))/86400000) : null;
+  const isNewVacancy = vacAgeDays!==null && vacAgeDays<7;
+  const lastTouch = eligible.reduce((max,r)=>{const d=r[C.updatedOn]||'';return (d&&d>max)?d:max;},'');
+  const daysInactive = lastTouch ? Math.floor((new Date(td+'T00:00:00')-new Date(lastTouch.slice(0,10)+'T00:00:00'))/86400000) : null;
+  const isFresh = daysInactive!==null && daysInactive<=2;
+
+  let ragStatus, remark;
+  if(hasLiveSelection){ ragStatus='green'; remark='Position filled or in final stages'; }
+  else if(gapMet){ ragStatus='green'; remark='Pipeline sufficient for expected selection'; }
+  else if(isNewVacancy){ ragStatus='amber'; remark='New vacancy — within first week grace period'; }
+  else if(isFresh){ ragStatus='amber'; remark='Pipeline behind target, actively being worked'; }
+  else if(pctMet>=0.5){ ragStatus='red'; remark='Candidate count sufficient but vacancy not actioned in 3+ days'; }
+  else { ragStatus='red'; remark='Candidate volume insufficient and vacancy not actioned in 3+ days'; }
+  const hasGap = ragStatus!=='green';
+
+  return {vacCode, ...f, meaningfulActionsRequired, clientIWPrediction, hasLiveSelection, hasGap, ragStatus, remark, sinceDate:dateOfVacancy||''};
 }
 
 // All of a recruiter's ACTIVE vacancies with their funnel gap — the form
@@ -8828,6 +8863,45 @@ async function onEffortPeriodChange(){
   await renderEffortComparison();
 }
 
+// Manager Report expand/collapse (29 Sep 2026, Anne's instruction: "enable
+// expand to see vacancy against recruiter vs only total") — the per-vacancy
+// rows are already rendered (hidden) alongside the collapsed summary row,
+// so this is just a visibility + caret toggle, no re-fetch.
+function toggleFunnelGapExpand(i){
+  const row = document.getElementById('fg-expand-'+i);
+  const caret = document.getElementById('fg-caret-'+i);
+  if(row) row.classList.toggle('hidden');
+  if(caret) caret.textContent = row && !row.classList.contains('hidden') ? '▼' : '▶';
+}
+
+// Coloured dot, no text label — same "radio button, not text" instruction
+// as the EOD/Weekly Funnel Gap table (see _funnelGapTbl()), just styled
+// for the live app UI instead of a downloadable report.
+function _ragDot(status){
+  const colors = {green:'#5e7855', amber:'#e9982b', red:'#9f4a47'};
+  return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colors[status]||'#5f6470'};margin-right:3px;vertical-align:middle"></span>`;
+}
+
+function _ragCountSummary(vacGaps){
+  const counts = {green:0, amber:0, red:0};
+  vacGaps.forEach(g=>{ counts[g.ragStatus] = (counts[g.ragStatus]||0)+1; });
+  return `${_ragDot('red')}${counts.red}&nbsp;&nbsp;${_ragDot('amber')}${counts.amber}&nbsp;&nbsp;${_ragDot('green')}${counts.green}`;
+}
+
+// Vacancy-level Funnel Gap table for a Manager Report row's expand — same
+// data/columns as _funnelGapTbl() (the EOD/Weekly report version), styled
+// for the live light-themed app UI instead of a downloadable report.
+function _liveFunnelGapTbl(vacGaps){
+  if(!vacGaps.length) return '<div style="padding:8px;color:var(--w60);font-size:11px">No active vacancies.</div>';
+  let html = '<div class="tw"><table><thead><tr><th>Vacancy</th><th>Role</th><th>Client</th><th>Since</th><th>Profiles</th><th>Meaningful Action</th><th>Recruiter I/W</th><th>Consultant I/W</th><th>Client I/W</th><th>MA Required</th><th>Client I/W Pred.</th><th></th></tr></thead><tbody>';
+  vacGaps.forEach(g=>{
+    const since = g.sinceDate ? fmtD(g.sinceDate) : 'All-time';
+    html += `<tr><td class="mono">${g.vacCode}</td><td class="m">${g.designation}</td><td class="m">${g.client}</td><td class="m">${since}</td><td class="m">${g.total}</td><td class="m">${g.meaningful}</td><td class="m">${g.recruiterIW}</td><td class="m">${g.consultant}</td><td class="m">${g.clientIW}</td><td class="m">${g.meaningfulActionsRequired}</td><td class="m">${g.clientIWPrediction}</td><td style="font-size:10px">${_ragDot(g.ragStatus)}${g.remark}</td></tr>`;
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
 async function renderEffortComparison(){
   const el = document.getElementById('ef-compare'); if(!el) return;
   if(!document.getElementById('effort-period')){
@@ -8857,8 +8931,7 @@ async function renderEffortComparison(){
       const vacGaps = VD.filter(v=>v['Recruiter']===rec && v['Active']!=='N')
         .map(v=>calcVacancyFunnelGap(v['Vacancy code']||v['Vacancy Code']||'', v['Date of Vacancy']||'', v['Positions Count']))
         .filter(g=>g.vacCode);
-      const gapCount = vacGaps.filter(g=>g.hasGap).length;
-      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, gapCount, vacTotal:vacGaps.length});
+      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, vacGaps});
     }
   }catch(e){hideLoad();toast('err','Manager Report',e.message);return;}
   hideLoad();
@@ -8867,14 +8940,14 @@ async function renderEffortComparison(){
   // sorted by coverage (the effort/quality signal), not activity volume.
   rows.sort((a,b)=>b.coverage-a.coverage);
   const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
-  let html = `<div style="font-size:11px;color:var(--w60);margin:8px 0">${periodLabel} (${fmtD(from)} – ${fmtD(to)}), except Active Vacancies/Coverage/Funnel Gap (current) and Potential Revenue (current active pipeline). Click a recruiter to view their own Portfolio tab.</div>
-  <div class="tw"><table><thead><tr><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
-  rows.forEach(r=>{
+  let html = `<div style="font-size:11px;color:var(--w60);margin:8px 0">${periodLabel} (${fmtD(from)} – ${fmtD(to)}), except Active Vacancies/Coverage/Funnel Gap (current) and Potential Revenue (current active pipeline). Click ▶ to see the vacancy-level Funnel Gap breakdown; click a recruiter's name to view their own Portfolio tab.</div>
+  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
     const covColor = r.coverage>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
-    const gapColor = r.gapCount>0?'#ff6b6b':'var(--teal)';
-    html += `<tr style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><td><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m" style="color:${gapColor};font-weight:600">${r.gapCount}/${r.vacTotal}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr><td style="cursor:pointer;text-align:center" onclick="toggleFunnelGapExpand(${i})"><span id="fg-caret-${i}">▶</span></td><td style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${_ragCountSummary(r.vacGaps)}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr id="fg-expand-${i}" class="hidden"><td colspan="11" style="padding:8px 8px 14px">${_liveFunnelGapTbl(r.vacGaps)}</td></tr>`;
   });
-  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap = vacancies not currently filled (no live Selected/Offered/Joining/Joined candidate) that also haven\'t reached enough Client I/W volume yet, per Anne\'s benchmark (4 Client I/Ws per selection) — see that recruiter\'s EOD/Weekly Report for the per-vacancy breakdown.</div>';
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag.</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
 }
@@ -13100,15 +13173,23 @@ function _rptCss(){
     '.nil{font-size:11pt;color:#5f6470;font-style:italic;padding:2pt 0 8pt}'+
     '.nl{font-size:12pt;font-weight:bold;color:#1f5c93;margin:14pt 0 4pt}'+
     '.nb{border:1pt solid #d6dbe3;min-height:50pt;padding:6pt;font-size:11pt;white-space:pre-wrap}'+
-    '.fgap{display:inline-block;font-size:9pt;padding:2pt 6pt;border-radius:3pt;font-weight:600}'+
-    '.fgap-y{background:#ffd0d0;color:#9f4a47}'+
-    '.fgap-n{background:#d0f0e0;color:#3a6b30}'+
+    // 29 Sep 2026: coloured dot, no text label — Anne's instruction, the
+    // remark string next to it already says what the colour means.
+    '.frdot{display:inline-block;width:8pt;height:8pt;border-radius:50%;vertical-align:middle;margin-right:5pt;flex-shrink:0}'+
+    '.frdot-green{background:#3a6b30}'+
+    '.frdot-amber{background:#b76320}'+
+    '.frdot-red{background:#9f4a47}'+
     // Funnel Gap table only — its header labels are long enough (e.g.
     // "Meaningful Actions Required") that the generic nowrap th above
     // would either truncate them or force the whole table too wide.
     // Scoped to .fgtbl rather than changing th globally, so the other
     // report tables (Action Summary, etc.) keep their existing nowrap.
-    '.fgtbl th{white-space:normal;line-height:1.2}';
+    '.fgtbl th{white-space:normal;line-height:1.2}'+
+    // Remark cell (last column) needs to wrap too — the longest remarks
+    // ("Candidate volume insufficient and vacancy not actioned in 3+
+    // days") would otherwise get ellipsis-truncated by the generic nowrap
+    // td rule above, defeating the point of the remark.
+    '.fgtbl td:last-child{white-space:normal;display:flex;align-items:flex-start}';
 }
 
 // Shared by EOD/Weekly/Manager Report — see calcRecruiterFunnelGaps().
@@ -13121,7 +13202,7 @@ function _funnelGapTbl(gaps){
   // Meaningful Actions Required / Client I/W Prediction — Anne's fixed
   // benchmark (28 Sep 2026): positions × 30, and 3% of actual Meaningful
   // Action, respectively. See calcVacancyFunnelGap().
-  const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','Meaningful Actions Required','Client I/W Prediction','Status'];
+  const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','Meaningful Actions Required','Client I/W Prediction',''];
   let t='<table class="fgtbl"><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
   gaps.forEach(g=>{
     // "Since" shows the reopen/open date candidates are scoped from — see
@@ -13129,11 +13210,14 @@ function _funnelGapTbl(gaps){
     // of Vacancy on record, so these counts may still include pre-reopen
     // history (28 Sep 2026, Anne's diagnosis).
     const since = g.sinceDate ? _fDMY(g.sinceDate) : 'All-time';
+    // Coloured dot + system-generated remark, no Red/Amber/Green text label
+    // — see calcVacancyFunnelGap() for the fixed remark set.
+    const statusCell = '<span class="frdot frdot-'+g.ragStatus+'"></span>'+g.remark;
     const cells=[
       g.vacCode, g.designation, g.client, since, g.total,
       g.meaningful, g.recruiterIW, g.consultant, g.clientIW,
       g.meaningfulActionsRequired, g.clientIWPrediction,
-      g.hasGap ? '<span class="fgap fgap-y">⚠ Needs More Effort</span>' : '<span class="fgap fgap-n">On Track</span>'
+      statusCell
     ];
     t+='<tr>'+cells.map(c=>'<td>'+c+'</td>').join('')+'</tr>';
   });
