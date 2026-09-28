@@ -8464,8 +8464,17 @@ async function calcFunnelPrediction(recruiterName){
 const FUNNEL_GAP_CONSULTANT_PLUS = new Set(['Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','Selected','Offered','Offer Declined','Offer Revoked','Joining in Progress','Joined']);
 const FUNNEL_GAP_CLIENT_PLUS = new Set(['Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','Selected','Offered','Offer Declined','Offer Revoked','Joining in Progress','Joined']);
 const FUNNEL_GAP_SELECTION_PLUS = new Set(['Selected','Offered','Offer Declined','Offer Revoked','Joining in Progress','Joined']);
+// A CURRENT-status set, distinct from FUNNEL_GAP_SELECTION_PLUS above (which
+// is "ever reached Selected", used for the historical Selection count).
+// This one drives the live On Track override (29 Sep 2026, Anne): a
+// candidate whose status has moved on to Offer Declined/Offer Revoked
+// "ever reached" Selected too, but the position isn't actually filled any
+// more, so it must NOT hold the override — gap-tracking must resume for it.
+const FUNNEL_GAP_LIVE_SELECTED = new Set(['Selected','Offered','Joining in Progress','Joined']);
 const FUNNEL_GAP_MA_PER_SELECTION = 30; // Meaningful Actions needed, per Anne's benchmark, to produce 1 selection
-const FUNNEL_GAP_SELECTION_RATE = 0.03; // 1 selection ≈ 3% of Meaningful Actions (her benchmark: 1 of 30)
+const FUNNEL_GAP_CLIENT_IW_PER_SELECTION = 4; // Client I/Ws needed, per Anne's benchmark, to produce 1 selection
+const FUNNEL_GAP_MA_PER_CLIENT_IW = FUNNEL_GAP_MA_PER_SELECTION / FUNNEL_GAP_CLIENT_IW_PER_SELECTION; // 7.5
+const FUNNEL_GAP_CLIENT_IW_PER_MA = FUNNEL_GAP_CLIENT_IW_PER_SELECTION / FUNNEL_GAP_MA_PER_SELECTION; // pace-check rate, 4/30
 
 function _funnelStageCounts(statuses){
   const total = statuses.length;
@@ -8503,24 +8512,48 @@ function _funnelEligibleCandidates(vacCode, dateOfVacancy){
 
 // Per-vacancy funnel against Anne's fixed benchmark. `dateOfVacancy` scopes
 // which candidates count (see _funnelEligibleCandidates()). `positionsCount`
-// drives Meaningful Actions Required (positions × 30) — a vacancy with
-// multiple openings needs proportionally more sourcing.
+// scales the Client I/W target (positions × 4) — a vacancy with multiple
+// openings needs proportionally more.
 //
-// hasGap fires whenever actual Meaningful Action falls short of what the
-// benchmark says is needed — this alone also correctly catches a vacancy
-// with ZERO profiles sourced (0 is always short of a positive requirement),
-// which the previous version's benchmark-ratio approach mishandled: with
-// no profiles to compute an expected value from, it skipped the check
-// entirely and defaulted to "On Track" — exactly backwards, since zero
-// sourcing on an open vacancy is the most urgent case, not a neutral one.
+// 29 Sep 2026, Anne's correction: both new columns must factor in progress
+// ALREADY made, not assume the vacancy is starting from zero. Worked
+// example she gave (VC-2026-0040): 6 Meaningful Actions already produced 1
+// Client I/W; her benchmark needs 4 Client I/Ws for 1 selection, so 3 MORE
+// are needed; each Client I/W costs 7.5 Meaningful Actions (30÷4), so 3×7.5
+// = 22.5 MORE Meaningful Actions are needed from here — not 30 from scratch.
+//
+//   Meaningful Actions Required = remaining Client I/Ws needed × 7.5
+//     (remaining = max(0, Positions×4 − actual Client I/W))
+//   Client I/W Prediction = actual Meaningful Action × (4/30) — a pace
+//     check: how many Client I/Ws this MA volume should normally have
+//     produced by now, independent of whether enough total volume exists.
+//
+// Status ("On Track"/"Needs More Effort") is a live override, not a static
+// threshold: any candidate CURRENTLY at Selected/Offered/Joining in
+// Progress/Joined means the position is filled or being filled — always On
+// Track, regardless of the numbers above. If that candidate later drops
+// (Offer Declined/Offer Revoked), they no longer hold FUNNEL_GAP_LIVE_SELECTED
+// status, so the override lifts and gap-tracking resumes automatically —
+// Anne's exact words: "Selection means status on Track, unless the
+// candidate drops then track gap again." Falling back to the Meaningful
+// Actions Required check also correctly flags a vacancy with ZERO profiles
+// sourced (a positive remaining requirement is never satisfied by zero),
+// unlike the earlier ratio-based version which mishandled that case.
 function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
-  const statuses = _funnelEligibleCandidates(vacCode, dateOfVacancy).map(r=>r[C.status]||'');
+  const eligible = _funnelEligibleCandidates(vacCode, dateOfVacancy);
+  const statuses = eligible.map(r=>r[C.status]||'');
   const f = _funnelStageCounts(statuses);
   const positions = parseInt(positionsCount)||1;
-  const meaningfulActionsRequired = positions * FUNNEL_GAP_MA_PER_SELECTION;
-  const clientIWPrediction = Math.round(f.meaningful * FUNNEL_GAP_SELECTION_RATE * 100)/100;
-  const hasGap = f.meaningful < meaningfulActionsRequired;
-  return {vacCode, ...f, meaningfulActionsRequired, clientIWPrediction, hasGap, sinceDate:dateOfVacancy||''};
+
+  const targetClientIW = positions * FUNNEL_GAP_CLIENT_IW_PER_SELECTION;
+  const remainingClientIW = Math.max(0, targetClientIW - f.clientIW);
+  const meaningfulActionsRequired = Math.round(remainingClientIW * FUNNEL_GAP_MA_PER_CLIENT_IW * 10)/10;
+  const clientIWPrediction = Math.round(f.meaningful * FUNNEL_GAP_CLIENT_IW_PER_MA * 100)/100;
+
+  const hasLiveSelection = eligible.some(r=>FUNNEL_GAP_LIVE_SELECTED.has(r[C.status]));
+  const hasGap = !hasLiveSelection && remainingClientIW > 0;
+
+  return {vacCode, ...f, meaningfulActionsRequired, clientIWPrediction, hasLiveSelection, hasGap, sinceDate:dateOfVacancy||''};
 }
 
 // All of a recruiter's ACTIVE vacancies with their funnel gap — the form
@@ -8799,7 +8832,7 @@ async function renderEffortComparison(){
     const gapColor = r.gapCount>0?'#ff6b6b':'var(--teal)';
     html += `<tr style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><td><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m" style="color:${gapColor};font-weight:600">${r.gapCount}/${r.vacTotal}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
   });
-  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap = vacancies where actual Meaningful Action is below what Anne\'s benchmark says is required (positions × 30) — see that recruiter\'s EOD/Weekly Report for the per-vacancy breakdown.</div>';
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap = vacancies not currently filled (no live Selected/Offered/Joining/Joined candidate) that also haven\'t reached enough Client I/W volume yet, per Anne\'s benchmark (4 Client I/Ws per selection) — see that recruiter\'s EOD/Weekly Report for the per-vacancy breakdown.</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
 }
