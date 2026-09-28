@@ -8482,19 +8482,44 @@ function _funnelStageCounts(statuses){
   return {total, meaningful, recruiterIW, consultant, clientIW, selection};
 }
 
+// 28 Sep 2026, Anne's decision: a reopened vacancy's "Date of Vacancy" gets
+// revised to the reopen date (confirmed a consistent practice — already the
+// field Vacancies' own TAT/aging calculations treat as the vacancy's cycle
+// start). Candidates sourced before a reopen and never touched since are
+// stale history, not current recruiter effort, and must not count toward
+// this cycle's funnel. A candidate counts if EITHER they were sourced since
+// the reopen (their Last Updated On is then also on/after it, set at
+// creation) OR they're an older profile the recruiter has actively worked
+// again since reopening (Last Updated On has moved forward). Falls back to
+// no date scoping when the vacancy has no Date of Vacancy on record — can't
+// apply a cutoff that isn't there, so those vacancies' numbers may still
+// blend in pre-reopen history.
+function _funnelEligibleCandidates(vacCode, dateOfVacancy){
+  const cands = MD.filter(r=>r[C.vacCode]===vacCode && r[C.archive]!=='Y');
+  if(!dateOfVacancy) return cands;
+  return cands.filter(r=>r[C.updatedOn] && r[C.updatedOn]>=dateOfVacancy);
+}
+
 // Company-wide historical ratios (relative to All Profiles), pooled across
 // every vacancy ever run — self-computing from live data rather than a
 // hardcoded snapshot, so it stays accurate as more real selections
-// accumulate instead of going stale like a fixed benchmark would.
+// accumulate instead of going stale like a fixed benchmark would. Each
+// vacancy's own candidate pool is date-scoped the same way the per-vacancy
+// display is, so a reopened vacancy's stale history doesn't skew the
+// benchmark either.
 function calcFunnelBenchmark(){
+  const vacDates = {};
+  VD.forEach(v=>{ const vc=v['Vacancy code']||v['Vacancy Code']||''; if(vc) vacDates[vc]=v['Date of Vacancy']||''; });
   const rows = MD.filter(r=>r[C.archive]!=='Y' && r[C.vacCode] && String(r[C.vacCode]).trim());
   const byVac = {};
-  rows.forEach(r=>{ (byVac[r[C.vacCode]] = byVac[r[C.vacCode]]||[]).push(r[C.status]||''); });
+  rows.forEach(r=>{ (byVac[r[C.vacCode]] = byVac[r[C.vacCode]]||[]).push(r); });
   const vacCodes = Object.keys(byVac);
   if(vacCodes.length < FUNNEL_GAP_MIN_SAMPLE_VACS) return null;
   const totals = {total:0, meaningful:0, recruiterIW:0, consultant:0};
   vacCodes.forEach(vc=>{
-    const c = _funnelStageCounts(byVac[vc]);
+    const dateOfVacancy = vacDates[vc]||'';
+    const eligible = dateOfVacancy ? byVac[vc].filter(r=>r[C.updatedOn] && r[C.updatedOn]>=dateOfVacancy) : byVac[vc];
+    const c = _funnelStageCounts(eligible.map(r=>r[C.status]||''));
     totals.total += c.total; totals.meaningful += c.meaningful; totals.recruiterIW += c.recruiterIW; totals.consultant += c.consultant;
   });
   if(!totals.total) return null;
@@ -8509,11 +8534,12 @@ function calcFunnelBenchmark(){
 // Per-vacancy funnel + gap-vs-benchmark. `benchmark` is calcFunnelBenchmark()'s
 // result, passed in so callers computing this for many vacancies (Manager
 // Report) don't recompute the company-wide benchmark per vacancy.
-function calcVacancyFunnelGap(vacCode, benchmark){
-  const statuses = MD.filter(r=>r[C.vacCode]===vacCode && r[C.archive]!=='Y').map(r=>r[C.status]||'');
+// `dateOfVacancy` scopes which candidates count — see _funnelEligibleCandidates().
+function calcVacancyFunnelGap(vacCode, benchmark, dateOfVacancy){
+  const statuses = _funnelEligibleCandidates(vacCode, dateOfVacancy).map(r=>r[C.status]||'');
   const f = _funnelStageCounts(statuses);
   if(!benchmark || !f.total){
-    return {vacCode, ...f, expectedMeaningful:null, expectedRecruiterIW:null, gapMeaningful:false, gapRecruiterIW:false, hasGap:false};
+    return {vacCode, ...f, expectedMeaningful:null, expectedRecruiterIW:null, gapMeaningful:false, gapRecruiterIW:false, hasGap:false, sinceDate:dateOfVacancy||''};
   }
   const expectedMeaningful = f.total * benchmark.meaningfulRatio;
   const expectedRecruiterIW = f.total * benchmark.recruiterIWRatio;
@@ -8522,7 +8548,7 @@ function calcVacancyFunnelGap(vacCode, benchmark){
   // gap) — flag to Anne if this reads too sensitive or too lax once live.
   const gapMeaningful = f.meaningful < expectedMeaningful*0.7;
   const gapRecruiterIW = f.recruiterIW < expectedRecruiterIW*0.7;
-  return {vacCode, ...f, expectedMeaningful, expectedRecruiterIW, gapMeaningful, gapRecruiterIW, hasGap: gapMeaningful||gapRecruiterIW};
+  return {vacCode, ...f, expectedMeaningful, expectedRecruiterIW, gapMeaningful, gapRecruiterIW, hasGap: gapMeaningful||gapRecruiterIW, sinceDate:dateOfVacancy||''};
 }
 
 // All of a recruiter's ACTIVE vacancies with their funnel gap — the form
@@ -8532,7 +8558,7 @@ function calcRecruiterFunnelGaps(recruiterName){
   const vacs = VD.filter(v=>v['Recruiter']===recruiterName && v['Active']!=='N');
   return vacs.map(v=>{
     const vacCode = v['Vacancy code']||v['Vacancy Code']||'';
-    const gap = calcVacancyFunnelGap(vacCode, benchmark);
+    const gap = calcVacancyFunnelGap(vacCode, benchmark, v['Date of Vacancy']||'');
     return {...gap, client:v['Company']||'', designation:v['Designation']||vacCode};
   }).filter(g=>g.vacCode);
 }
@@ -8788,7 +8814,7 @@ async function renderEffortComparison(){
       const dd = await buildEffortData(rec, from, to);
       const revenue = dd.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
       const vacGaps = VD.filter(v=>v['Recruiter']===rec && v['Active']!=='N')
-        .map(v=>calcVacancyFunnelGap(v['Vacancy code']||v['Vacancy Code']||'', funnelBenchmark))
+        .map(v=>calcVacancyFunnelGap(v['Vacancy code']||v['Vacancy Code']||'', funnelBenchmark, v['Date of Vacancy']||''))
         .filter(g=>g.vacCode);
       const gapCount = vacGaps.filter(g=>g.hasGap).length;
       rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, gapCount, vacTotal:vacGaps.length});
@@ -13045,11 +13071,16 @@ function _rptCss(){
 // can't reach either copy).
 function _funnelGapTbl(gaps){
   if(!gaps.length) return '<div class="nil">No active vacancies.</div>';
-  const hdrs=['Vacancy','Role','Client','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','Status'];
+  const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','Status'];
   let t='<table><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
   gaps.forEach(g=>{
+    // "Since" shows the reopen/open date candidates are scoped from — see
+    // _funnelEligibleCandidates(). "All-time" means the vacancy has no Date
+    // of Vacancy on record, so these counts may still include pre-reopen
+    // history (28 Sep 2026, Anne's diagnosis).
+    const since = g.sinceDate ? _fDMY(g.sinceDate) : 'All-time';
     const cells=[
-      g.vacCode, g.designation, g.client, g.total,
+      g.vacCode, g.designation, g.client, since, g.total,
       g.expectedMeaningful!=null ? g.meaningful+' (expect ~'+Math.round(g.expectedMeaningful)+')' : String(g.meaningful),
       g.expectedRecruiterIW!=null ? g.recruiterIW+' (expect ~'+Math.round(g.expectedRecruiterIW)+')' : String(g.recruiterIW),
       g.consultant, g.clientIW,
