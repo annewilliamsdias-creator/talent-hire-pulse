@@ -8436,35 +8436,36 @@ async function calcFunnelPrediction(recruiterName){
   };
 }
 
-// Funnel Gap (28 Sep 2026, Anne's decision — validated against her own
-// benchmark, moved to production): "for each vacancy, are we sourcing/
-// engaging enough relative to what it normally takes to reach a
-// selection?" — a per-vacancy sourcing-effort nudge, distinct from
-// calcFunnelPrediction() above (which forecasts outcomes from the CURRENT
-// pipeline; this compares actual funnel shape against the company's own
-// historical norm). Surfaced in EOD Report, Weekly Report, and Manager
-// Report per her instruction.
+// Funnel Gap (28 Sep 2026, Anne's decision, simplified 28 Sep 2026 later
+// same day): "for each vacancy, are we sourcing/engaging enough to
+// realistically produce a selection?" — a per-vacancy sourcing-effort
+// nudge, distinct from calcFunnelPrediction() above (which forecasts
+// outcomes from the CURRENT pipeline for a recruiter; this compares actual
+// per-vacancy funnel shape against Anne's own stated benchmark). Surfaced
+// in EOD Report, Weekly Report, and Manager Report per her instruction.
 //
-// Stage definitions (validated 28 Sep 2026 against Anne's stated
-// experience — Meaningful Action ~31/selection, Recruiter I/W ~14/
-// selection, Consultant I/W ~8/selection, all within a point once
-// 'Dropped' is excluded the same way 'Not Contactable' is):
+// Stage definitions (Profiles through Client I/W are always actual counts,
+// per Anne — no adjustment/annotation):
 //   All Profiles     = every candidate tagged to the vacancy
 //   Meaningful Action = All Profiles minus Not Contactable minus Dropped
 //   Recruiter I/W     = Meaningful Action minus Not Interested
 //   Consultant I/W    = ever reached Consultant Interview or later
 //   Client I/W        = ever reached Client Interview or later
-//   Selection         = ever reached Selected or later
-// Client I/W and Selection are deliberately excluded from the "gap" flag —
-// Anne's explicit call (28 Sep 2026): those stages depend on client-side
-// timing/closures the recruiter doesn't control ("some vacancies were
-// closed by client"), so flagging a low number there would nudge effort
-// that can't actually move it. Only the two stages a recruiter's own
-// sourcing/engagement effort directly drives are flagged.
+//
+// Benchmark: Anne's own stated experience, used as a FIXED reference
+// rather than a self-computing ratio — 28 Sep 2026, her explicit call:
+// "use my benchmark as the funnel trend, we will relook at it in the next
+// 6 months when we have substantial data and client selections" (THP has
+// only 12 lifetime selections total as of this build — nowhere near enough
+// to trust a live-computed ratio yet). An earlier version of this feature
+// self-computed the benchmark from live data (calcFunnelBenchmark(),
+// removed here) — worth reintroducing at that 6-month revisit once there's
+// real volume to validate against.
 const FUNNEL_GAP_CONSULTANT_PLUS = new Set(['Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','Selected','Offered','Offer Declined','Offer Revoked','Joining in Progress','Joined']);
 const FUNNEL_GAP_CLIENT_PLUS = new Set(['Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','Selected','Offered','Offer Declined','Offer Revoked','Joining in Progress','Joined']);
 const FUNNEL_GAP_SELECTION_PLUS = new Set(['Selected','Offered','Offer Declined','Offer Revoked','Joining in Progress','Joined']);
-const FUNNEL_GAP_MIN_SAMPLE_VACS = 10; // below this many historical vacancies, the benchmark ratios aren't trustworthy
+const FUNNEL_GAP_MA_PER_SELECTION = 30; // Meaningful Actions needed, per Anne's benchmark, to produce 1 selection
+const FUNNEL_GAP_SELECTION_RATE = 0.03; // 1 selection ≈ 3% of Meaningful Actions (her benchmark: 1 of 30)
 
 function _funnelStageCounts(statuses){
   const total = statuses.length;
@@ -8500,65 +8501,35 @@ function _funnelEligibleCandidates(vacCode, dateOfVacancy){
   return cands.filter(r=>r[C.updatedOn] && r[C.updatedOn]>=dateOfVacancy);
 }
 
-// Company-wide historical ratios (relative to All Profiles), pooled across
-// every vacancy ever run — self-computing from live data rather than a
-// hardcoded snapshot, so it stays accurate as more real selections
-// accumulate instead of going stale like a fixed benchmark would. Each
-// vacancy's own candidate pool is date-scoped the same way the per-vacancy
-// display is, so a reopened vacancy's stale history doesn't skew the
-// benchmark either.
-function calcFunnelBenchmark(){
-  const vacDates = {};
-  VD.forEach(v=>{ const vc=v['Vacancy code']||v['Vacancy Code']||''; if(vc) vacDates[vc]=v['Date of Vacancy']||''; });
-  const rows = MD.filter(r=>r[C.archive]!=='Y' && r[C.vacCode] && String(r[C.vacCode]).trim());
-  const byVac = {};
-  rows.forEach(r=>{ (byVac[r[C.vacCode]] = byVac[r[C.vacCode]]||[]).push(r); });
-  const vacCodes = Object.keys(byVac);
-  if(vacCodes.length < FUNNEL_GAP_MIN_SAMPLE_VACS) return null;
-  const totals = {total:0, meaningful:0, recruiterIW:0, consultant:0};
-  vacCodes.forEach(vc=>{
-    const dateOfVacancy = vacDates[vc]||'';
-    const eligible = dateOfVacancy ? byVac[vc].filter(r=>r[C.updatedOn] && r[C.updatedOn]>=dateOfVacancy) : byVac[vc];
-    const c = _funnelStageCounts(eligible.map(r=>r[C.status]||''));
-    totals.total += c.total; totals.meaningful += c.meaningful; totals.recruiterIW += c.recruiterIW; totals.consultant += c.consultant;
-  });
-  if(!totals.total) return null;
-  return {
-    meaningfulRatio: totals.meaningful/totals.total,
-    recruiterIWRatio: totals.recruiterIW/totals.total,
-    consultantRatio: totals.consultant/totals.total,
-    sampleVacancies: vacCodes.length
-  };
-}
-
-// Per-vacancy funnel + gap-vs-benchmark. `benchmark` is calcFunnelBenchmark()'s
-// result, passed in so callers computing this for many vacancies (Manager
-// Report) don't recompute the company-wide benchmark per vacancy.
-// `dateOfVacancy` scopes which candidates count — see _funnelEligibleCandidates().
-function calcVacancyFunnelGap(vacCode, benchmark, dateOfVacancy){
+// Per-vacancy funnel against Anne's fixed benchmark. `dateOfVacancy` scopes
+// which candidates count (see _funnelEligibleCandidates()). `positionsCount`
+// drives Meaningful Actions Required (positions × 30) — a vacancy with
+// multiple openings needs proportionally more sourcing.
+//
+// hasGap fires whenever actual Meaningful Action falls short of what the
+// benchmark says is needed — this alone also correctly catches a vacancy
+// with ZERO profiles sourced (0 is always short of a positive requirement),
+// which the previous version's benchmark-ratio approach mishandled: with
+// no profiles to compute an expected value from, it skipped the check
+// entirely and defaulted to "On Track" — exactly backwards, since zero
+// sourcing on an open vacancy is the most urgent case, not a neutral one.
+function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
   const statuses = _funnelEligibleCandidates(vacCode, dateOfVacancy).map(r=>r[C.status]||'');
   const f = _funnelStageCounts(statuses);
-  if(!benchmark || !f.total){
-    return {vacCode, ...f, expectedMeaningful:null, expectedRecruiterIW:null, gapMeaningful:false, gapRecruiterIW:false, hasGap:false, sinceDate:dateOfVacancy||''};
-  }
-  const expectedMeaningful = f.total * benchmark.meaningfulRatio;
-  const expectedRecruiterIW = f.total * benchmark.recruiterIWRatio;
-  // 70% of expected — a working threshold, not itself validated against a
-  // benchmark (there's no "correct" cutoff for how far behind counts as a
-  // gap) — flag to Anne if this reads too sensitive or too lax once live.
-  const gapMeaningful = f.meaningful < expectedMeaningful*0.7;
-  const gapRecruiterIW = f.recruiterIW < expectedRecruiterIW*0.7;
-  return {vacCode, ...f, expectedMeaningful, expectedRecruiterIW, gapMeaningful, gapRecruiterIW, hasGap: gapMeaningful||gapRecruiterIW, sinceDate:dateOfVacancy||''};
+  const positions = parseInt(positionsCount)||1;
+  const meaningfulActionsRequired = positions * FUNNEL_GAP_MA_PER_SELECTION;
+  const clientIWPrediction = Math.round(f.meaningful * FUNNEL_GAP_SELECTION_RATE * 100)/100;
+  const hasGap = f.meaningful < meaningfulActionsRequired;
+  return {vacCode, ...f, meaningfulActionsRequired, clientIWPrediction, hasGap, sinceDate:dateOfVacancy||''};
 }
 
 // All of a recruiter's ACTIVE vacancies with their funnel gap — the form
 // EOD/Weekly/Manager reports actually consume.
 function calcRecruiterFunnelGaps(recruiterName){
-  const benchmark = calcFunnelBenchmark();
   const vacs = VD.filter(v=>v['Recruiter']===recruiterName && v['Active']!=='N');
   return vacs.map(v=>{
     const vacCode = v['Vacancy code']||v['Vacancy Code']||'';
-    const gap = calcVacancyFunnelGap(vacCode, benchmark, v['Date of Vacancy']||'');
+    const gap = calcVacancyFunnelGap(vacCode, v['Date of Vacancy']||'', v['Positions Count']);
     return {...gap, client:v['Company']||'', designation:v['Designation']||vacCode};
   }).filter(g=>g.vacCode);
 }
@@ -8804,17 +8775,12 @@ async function renderEffortComparison(){
   const {from, to} = effortPeriodRange(effortReportPeriod);
   const recs = mA('recruiters');
   const rows = [];
-  // Funnel Gap (28 Sep 2026, Anne's decision) — benchmark computed once
-  // here, outside the per-recruiter loop, since it's a company-wide scan
-  // (calcRecruiterFunnelGaps() would otherwise recompute it once per
-  // recruiter for no benefit).
-  const funnelBenchmark = calcFunnelBenchmark();
   try{
     for(const rec of recs){
       const dd = await buildEffortData(rec, from, to);
       const revenue = dd.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
       const vacGaps = VD.filter(v=>v['Recruiter']===rec && v['Active']!=='N')
-        .map(v=>calcVacancyFunnelGap(v['Vacancy code']||v['Vacancy Code']||'', funnelBenchmark, v['Date of Vacancy']||''))
+        .map(v=>calcVacancyFunnelGap(v['Vacancy code']||v['Vacancy Code']||'', v['Date of Vacancy']||'', v['Positions Count']))
         .filter(g=>g.vacCode);
       const gapCount = vacGaps.filter(g=>g.hasGap).length;
       rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, gapCount, vacTotal:vacGaps.length});
@@ -8833,7 +8799,7 @@ async function renderEffortComparison(){
     const gapColor = r.gapCount>0?'#ff6b6b':'var(--teal)';
     html += `<tr style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><td><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m" style="color:${gapColor};font-weight:600">${r.gapCount}/${r.vacTotal}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
   });
-  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap = vacancies where Meaningful Action or Recruiter I/W-Screening is running behind the company\'s historical norm for profiles sourced so far — see that recruiter\'s EOD/Weekly Report for the per-vacancy breakdown.</div>';
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap = vacancies where actual Meaningful Action is below what Anne\'s benchmark says is required (positions × 30) — see that recruiter\'s EOD/Weekly Report for the per-vacancy breakdown.</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
 }
@@ -13071,7 +13037,10 @@ function _rptCss(){
 // can't reach either copy).
 function _funnelGapTbl(gaps){
   if(!gaps.length) return '<div class="nil">No active vacancies.</div>';
-  const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','Status'];
+  // Meaningful Actions Required / Client I/W Prediction — Anne's fixed
+  // benchmark (28 Sep 2026): positions × 30, and 3% of actual Meaningful
+  // Action, respectively. See calcVacancyFunnelGap().
+  const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Meaningful Actions Required','Recruiter I/W','Consultant I/W','Client I/W','Client I/W Prediction','Status'];
   let t='<table><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
   gaps.forEach(g=>{
     // "Since" shows the reopen/open date candidates are scoped from — see
@@ -13081,9 +13050,8 @@ function _funnelGapTbl(gaps){
     const since = g.sinceDate ? _fDMY(g.sinceDate) : 'All-time';
     const cells=[
       g.vacCode, g.designation, g.client, since, g.total,
-      g.expectedMeaningful!=null ? g.meaningful+' (expect ~'+Math.round(g.expectedMeaningful)+')' : String(g.meaningful),
-      g.expectedRecruiterIW!=null ? g.recruiterIW+' (expect ~'+Math.round(g.expectedRecruiterIW)+')' : String(g.recruiterIW),
-      g.consultant, g.clientIW,
+      g.meaningful, g.meaningfulActionsRequired,
+      g.recruiterIW, g.consultant, g.clientIW, g.clientIWPrediction,
       g.hasGap ? '<span class="fgap fgap-y">⚠ Needs More Effort</span>' : '<span class="fgap fgap-n">On Track</span>'
     ];
     t+='<tr>'+cells.map(c=>'<td>'+c+'</td>').join('')+'</tr>';
