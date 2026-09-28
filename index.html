@@ -13027,7 +13027,13 @@ function _rptCss(){
     '.nb{border:1pt solid #d6dbe3;min-height:50pt;padding:6pt;font-size:11pt;white-space:pre-wrap}'+
     '.fgap{display:inline-block;font-size:9pt;padding:2pt 6pt;border-radius:3pt;font-weight:600}'+
     '.fgap-y{background:#ffd0d0;color:#9f4a47}'+
-    '.fgap-n{background:#d0f0e0;color:#3a6b30}';
+    '.fgap-n{background:#d0f0e0;color:#3a6b30}'+
+    // Funnel Gap table only — its header labels are long enough (e.g.
+    // "Meaningful Actions Required") that the generic nowrap th above
+    // would either truncate them or force the whole table too wide.
+    // Scoped to .fgtbl rather than changing th globally, so the other
+    // report tables (Action Summary, etc.) keep their existing nowrap.
+    '.fgtbl th{white-space:normal;line-height:1.2}';
 }
 
 // Shared by EOD/Weekly/Manager Report — see calcRecruiterFunnelGaps().
@@ -13040,8 +13046,8 @@ function _funnelGapTbl(gaps){
   // Meaningful Actions Required / Client I/W Prediction — Anne's fixed
   // benchmark (28 Sep 2026): positions × 30, and 3% of actual Meaningful
   // Action, respectively. See calcVacancyFunnelGap().
-  const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Meaningful Actions Required','Recruiter I/W','Consultant I/W','Client I/W','Client I/W Prediction','Status'];
-  let t='<table><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
+  const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','Meaningful Actions Required','Client I/W Prediction','Status'];
+  let t='<table class="fgtbl"><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
   gaps.forEach(g=>{
     // "Since" shows the reopen/open date candidates are scoped from — see
     // _funnelEligibleCandidates(). "All-time" means the vacancy has no Date
@@ -13050,8 +13056,8 @@ function _funnelGapTbl(gaps){
     const since = g.sinceDate ? _fDMY(g.sinceDate) : 'All-time';
     const cells=[
       g.vacCode, g.designation, g.client, since, g.total,
-      g.meaningful, g.meaningfulActionsRequired,
-      g.recruiterIW, g.consultant, g.clientIW, g.clientIWPrediction,
+      g.meaningful, g.recruiterIW, g.consultant, g.clientIW,
+      g.meaningfulActionsRequired, g.clientIWPrediction,
       g.hasGap ? '<span class="fgap fgap-y">⚠ Needs More Effort</span>' : '<span class="fgap fgap-n">On Track</span>'
     ];
     t+='<tr>'+cells.map(c=>'<td>'+c+'</td>').join('')+'</tr>';
