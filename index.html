@@ -13071,11 +13071,17 @@ function renderMatchResultsModal(vacCode,runs){
     // fit-only, without reading every rationale line.
     // 30 Sep 2026, Anne: every row needs an explicit tag either way — an
     // absent badge read as "wasn't checked" rather than "checked, no
-    // industry fit", so industryMatch:false now gets its own muted label
-    // instead of showing nothing.
+    // industry fit", so industryMatch:false now gets its own label instead
+    // of showing nothing. First version used var(--w60) text on var(--w06)
+    // — the same low-opacity combo CLAUDE.md's own readability rules flag
+    // ("No opacity: 0.3–0.6 on data, labels, or explanatory content") —
+    // and it genuinely got lost against the surrounding text, per Anne.
+    // Switched to the same solid, bordered badge style as this app's own
+    // .b-progress status pill (full-opacity text, real background, a
+    // border for definition) instead of a translucent one.
     const industryTag=m.industryMatch
-      ?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(52,186,198,.15);color:var(--teal);font-weight:600;margin-right:5px;white-space:nowrap">Same industry</span>'
-      :'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--w06);color:var(--w60);font-weight:600;margin-right:5px;white-space:nowrap">Role fit only</span>';
+      ?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(52,186,198,.15);color:var(--teal);font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid rgba(52,186,198,.35)">Same industry</span>'
+      :'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(91,159,212,.15);color:#5b9fd4;font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid rgba(91,159,212,.35)">Role fit only</span>';
     return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
   }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
