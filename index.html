@@ -13069,7 +13069,13 @@ function renderMatchResultsModal(vacCode,runs){
     // triggerPoolMatchForVacancy()) — a small badge so the recruiter can
     // see at a glance which matches are same/adjacent-industry vs. role-
     // fit-only, without reading every rationale line.
-    const industryTag=m.industryMatch?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(52,186,198,.15);color:var(--teal);font-weight:600;margin-right:5px;white-space:nowrap">Same industry</span>':'';
+    // 30 Sep 2026, Anne: every row needs an explicit tag either way — an
+    // absent badge read as "wasn't checked" rather than "checked, no
+    // industry fit", so industryMatch:false now gets its own muted label
+    // instead of showing nothing.
+    const industryTag=m.industryMatch
+      ?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(52,186,198,.15);color:var(--teal);font-weight:600;margin-right:5px;white-space:nowrap">Same industry</span>'
+      :'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--w06);color:var(--w60);font-weight:600;margin-right:5px;white-space:nowrap">Role fit only</span>';
     return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
   }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
