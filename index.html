@@ -11493,9 +11493,14 @@ async function tagCandidateToVacancy(candCode,vacCode){
     toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+', marked Reassigned, and follow-up set for '+fmtD(newFU)+' — remarks and other history unchanged.');
     renderRec();loadDash();
     if(_currentMatchModal&&_currentMatchModal.vacCode===vacCode){
-      _currentMatchModal.matches=_currentMatchModal.matches.filter(m=>m.ref!==candCode);
-      if(_currentMatchModal.matches.length){
-        renderMatchResultsModal(vacCode,_currentMatchModal.matches);
+      // 30 Sep 2026: _currentMatchModal now holds `runs` (one entry per
+      // match run), not a flat `matches` array — remove the actioned ref
+      // from whichever run it's in, and drop any run left empty.
+      _currentMatchModal.runs=_currentMatchModal.runs
+        .map(run=>({...run,matches:run.matches.filter(m=>m.ref!==candCode)}))
+        .filter(run=>run.matches.length);
+      if(_currentMatchModal.runs.length){
+        renderMatchResultsModal(vacCode,_currentMatchModal.runs);
       }else{
         showModal('🎯 Suggested Matches for '+vacCode,'All matches for this vacancy have been actioned.','','<button class="btn btn-t" onclick="closeModal()">Close</button>');
       }
@@ -12894,10 +12899,12 @@ const SPLIST_POOL_FIELD_MAP={code:'Title',name:'Name',mobile:'Mobile',email:'Ema
 const POOL_RESURFACE_STATUSES=new Set(['Not Interested','On Hold','Rejected by Client','Not Contactable']);
 let POOL_ENTRIES=[];
 // Tracks whichever Suggested Matches list is currently open ({vacCode,
-// matches}) so tagCandidateToVacancy() can re-render the SAME modal minus
-// the row just actioned, instead of closing it — Anne's explicit call (19
-// Sep 2026): tagging shouldn't kick the recruiter out to the vacancy when
-// there are other matches left worth reviewing in the same list.
+// runs} — runs is an array of {matches,computedAt}, one per match run, see
+// triggerPoolMatchForVacancy()) so tagCandidateToVacancy() can re-render
+// the SAME modal minus the row just actioned, instead of closing it —
+// Anne's explicit call (19 Sep 2026): tagging shouldn't kick the recruiter
+// out to the vacancy when there are other matches left worth reviewing in
+// the same list.
 let _currentMatchModal=null;
 function listItemToPoolRecord(item){
   const p={_spItemId:item.id};
@@ -12925,6 +12932,41 @@ async function patchPoolEntry(itemId,fields){
 // cached JD/role context in `system`, the pool + resurfaceable-candidate
 // summaries in `messages`. Fire-and-forget from saveVac(): a slow or failed
 // call here must never block or break the vacancy save itself.
+// Reads back accumulated match runs for a vacancy. Handles both the new
+// multi-run shape ({runs:[{matches,computedAt}...]}) and the old
+// single-run shape from before 30 Sep 2026 ({matches,computedAt}), so a
+// vacancy matched before this change still displays correctly as one
+// "Run 1" instead of breaking.
+function _parseMatchRuns(raw){
+  if(!raw)return[];
+  try{
+    const parsed=JSON.parse(raw);
+    if(parsed.runs)return parsed.runs;
+    if(parsed.matches)return[{matches:parsed.matches,computedAt:parsed.computedAt||''}];
+  }catch(e){}
+  return[];
+}
+async function _loadMatchRuns(vd){
+  if(vd.MatchResults)return _parseMatchRuns(vd.MatchResults);
+  try{
+    const itemId=await resolveVacSpItemId(vd);
+    if(!itemId)return[];
+    const res=await graphGet(`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields?$select=MatchResults`);
+    return _parseMatchRuns(res&&res.MatchResults);
+  }catch(e){console.warn('_loadMatchRuns failed',e.message);return[];}
+}
+// 30 Sep 2026, Anne: multi-run matching — a recruiter can re-run matching
+// for the same vacancy as many times as they like (unlimited), each run
+// returning up to 20 NEW candidates, never repeating anyone already
+// surfaced in an earlier run for this vacancy. Also folds in her "related
+// business" request: every run's ranking now weighs industry/business-
+// domain adjacency (inferred at match time from the candidate's company
+// history + the vacancy's client/JD — THP has no stored "industry" field
+// anywhere, so this is the AI's judgment call, never a hardcoded mapping)
+// ALONGSIDE the existing role/department/location/experience/budget
+// criteria, on every run — not as a separate mode. Each match is tagged
+// with whether it's a same/adjacent-industry fit, so both kinds can
+// surface in the same run and the recruiter can see why.
 async function triggerPoolMatchForVacancy(vd){
   const vacCode=vd['Vacancy code'];
   if(!vacCode)return;
@@ -12932,6 +12974,11 @@ async function triggerPoolMatchForVacancy(vd){
   const openPool=pool.filter(p=>p.status==='New'||p.status==='Reviewed');
   const resurfaceCands=MD.filter(r=>POOL_RESURFACE_STATUSES.has(r[C.status]));
   if(!openPool.length&&!resurfaceCands.length){toast('info','Nothing to Match Against','The talent pool is empty and there are no resurfaceable past candidates right now.');return;}
+
+  // "The previous match should not be repeated" — Anne, 30 Sep 2026.
+  const existingRuns=await _loadMatchRuns(vd);
+  const excludeRefs=new Set(existingRuns.flatMap(r=>r.matches.map(m=>m.ref)));
+
   // Safety cap for future pool growth — not needed at today's scale, but
   // keeps a single call bounded rather than silently ballooning in size/cost.
   // Salary now factored in (19 Sep 2026, Anne's request) — every figure
@@ -12943,7 +12990,13 @@ async function triggerPoolMatchForVacancy(vd){
   const profiles=[
     ...openPool.map(p=>({ref:p.code,kind:'pool',name:p.name,company:p.company,desiredRole:p.desiredRole,location:p.location,summary:p.summary,currentSalaryPA:p.salaryPA||''})),
     ...resurfaceCands.map(r=>({ref:r[C.code],kind:'candidate',name:r[C.name],company:r[C.company],desiredRole:r[C.position]||r[C.roleInterested],location:r[C.location],status:r[C.status],remark:r[C.remark],currentSalaryPA:r[C.salaryPA]||'',expectedSalaryPA:r[C.expectedSalary]||''}))
-  ].slice(0,300);
+  ].filter(p=>!excludeRefs.has(p.ref)).slice(0,300);
+
+  if(!profiles.length){
+    toast('info','Nothing New Left','Every eligible profile in the talent pool and resurfaceable candidates has already been surfaced in an earlier run for '+vacCode+'.');
+    return;
+  }
+
   const{jdEntry}=resolveJDFromVac(vacCode);
   const coreQs=[];if(jdEntry)for(let i=1;i<=10;i++){if(jdEntry['q'+i])coreQs.push(jdEntry['q'+i]);}
   const budgetLine=(vd['Budget Min']||vd['Budget Max'])?`Budget (₹ PA): ${vd['Budget Min']||'?'} – ${vd['Budget Max']||'?'}`:'Budget (₹ PA): not specified';
@@ -12951,45 +13004,55 @@ async function triggerPoolMatchForVacancy(vd){
 
 VACANCY:
 Role: ${vd['Designation']||''}
+Client: ${vd['Company']||''}
 Department: ${vd['Department']||''}
 Location: ${vd['Location']||''}
 Experience required: ${vd['Experience']||''}
 ${budgetLine}
 ${jdEntry?`ROLE CONTEXT:\n${jdEntry.rolecontext||''}\n\nWHAT THE ROLE REQUIRES:\n${coreQs.join('\n')}`:''}
 
-Weigh salary fit as a real factor, not just role/experience/location: a profile whose current or expected salary sits well above the vacancy's budget is a weaker match even if the role itself lines up, and it's worth saying so plainly in the rationale when salary is the limiting factor (e.g. "strong role fit, but expected salary is above budget"). Don't discard a profile purely for a salary gap if nothing else is known, but don't ignore a clear mismatch either — use judgment, and only comment on salary in the rationale when it's actually known and relevant.`;
-  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering; salary fields are annual (₹ PA) and may be blank if not on file):
+Weigh TWO things together, neither as a hard cutoff:
+1. Role fit — experience, location, department, and salary vs budget. A profile whose current or expected salary sits well above the vacancy's budget is a weaker match even if the role itself lines up — say so plainly in the rationale when salary is the limiting factor (e.g. "strong role fit, but expected salary is above budget"). Don't discard a profile purely for a salary gap if nothing else is known, but don't ignore a clear mismatch either.
+2. Business/industry adjacency — judge from the candidate's current/past company name and role whether they've worked in the same or a genuinely adjacent business domain to this vacancy's client. Use your own knowledge of what that company does — there's no industry lookup provided, this is your judgment call. Only mark a match's industryMatch true when you can name a real, specific adjacency, not a vague guess.
+A profile can be a strong match on role fit alone even with no industry adjacency, or vice versa — surface both kinds and let the industryMatch flag and rationale tell the recruiter which is which. Don't require both.`;
+  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering; salary fields are annual (₹ PA) and may be blank if not on file). This list already excludes everyone surfaced in an earlier run for this vacancy — every profile here is new:
 ${JSON.stringify(profiles)}
 
-Return the top matches (at most 10, fewer if fewer are genuinely relevant — don't pad the list), ranked best first. Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","rationale":"<1-2 sentence specific reason this profile fits this vacancy>"}]}`;
+Return up to 20 matches, ranked best first — fewer if fewer are genuinely relevant, don't pad the list. Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","industryMatch":true|false,"rationale":"<1-2 sentence specific reason — name the industry adjacency if industryMatch is true>"}]}`;
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:body}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2500,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:body}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
     const parsed=parseAIJsonResponse(raw);
-    const matches=parsed.matches||[];
-    vd.MatchResults=JSON.stringify({matches,computedAt:new Date().toISOString()});
+    const matches=(parsed.matches||[]).slice(0,20);
+    if(!matches.length){toast('info','No New Matches Found','Nothing new in the talent pool or resurfaceable candidates looked like a fit for '+vacCode+'.');return;}
+
+    const runs=[...existingRuns,{matches,computedAt:new Date().toISOString()}];
+    vd.MatchResults=JSON.stringify({runs});
     try{
       const itemId=await resolveVacSpItemId(vd);
       if(itemId)await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields`,{MatchResults:vd.MatchResults});
     }catch(e){console.warn('triggerPoolMatchForVacancy: MatchResults List write failed',e.message);}
-    if(!matches.length){toast('info','No Matches Found','Nothing in the talent pool or resurfaceable candidates looked like a fit for '+vacCode+'.');return;}
-    renderMatchResultsModal(vacCode,matches);
+    renderMatchResultsModal(vacCode,runs);
   }catch(e){
     console.warn('triggerPoolMatchForVacancy failed:',e.message);
+    toast('err','Matching Failed',e.message);
   }
 }
 // Shared by the automatic popup above (right after a new vacancy is saved)
 // and viewVacMatches() below (on-demand, from the Vacancies table) — same
 // rendering either way, so "just computed" and "revisited later" always
-// look identical.
-function renderMatchResultsModal(vacCode,matches){
-  _currentMatchModal={vacCode,matches};
+// look identical. `runs` (30 Sep 2026) is now an array of {matches,
+// computedAt} — one entry per time matching has been run for this vacancy
+// — shown newest-first, each labeled "Run N" by chronological order so
+// the numbering stays stable regardless of display order.
+function renderMatchResultsModal(vacCode,runs){
+  _currentMatchModal={vacCode,runs};
   // Per-row action (19 Sep 2026): a "pool" match promotes into a real
   // candidate pre-filled against this vacancy; a "candidate" match is an
   // EXISTING record, so it only gets re-linked to this vacancy (Vacancy
@@ -12997,20 +13060,31 @@ function renderMatchResultsModal(vacCode,matches){
   // other field stay exactly as they are. See tagCandidateToVacancy()'s own
   // comment for why: Anne's explicit requirement that prior history is
   // never overwritten by a match.
-  const rows=matches.map(m=>{
+  const rowsForRun=(matches)=>matches.map(m=>{
     const action=m.kind==='pool'
       ?'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="promotePoolMatchForVacancy(\''+m.ref+'\',\''+vacCode+'\')">✓ Promote</button>'
       :'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="tagCandidateToVacancy(\''+m.ref+'\',\''+vacCode+'\')">🔗 Tag to Vacancy</button>';
     const nameHtml='<a href="javascript:void(0)" onclick="'+(m.kind==='candidate'?'viewCandModal':'viewPoolModal')+'(\''+m.ref+'\')" style="color:var(--teal);text-decoration:underline;cursor:pointer">'+escHtml(m.name||m.ref||'—')+'</a>';
-    return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
+    // 30 Sep 2026: industryMatch is a NEW per-match flag (see
+    // triggerPoolMatchForVacancy()) — a small badge so the recruiter can
+    // see at a glance which matches are same/adjacent-industry vs. role-
+    // fit-only, without reading every rationale line.
+    const industryTag=m.industryMatch?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(52,186,198,.15);color:var(--teal);font-weight:600;margin-right:5px;white-space:nowrap">Same industry</span>':'';
+    return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
   }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
   // content (index.html ~line 3994) — the .tw class alone only scrolls
   // horizontally, so a longer match list had no way to scroll to see
   // remaining rows or reach the Close button. Same fix, same pattern.
-  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates worth reconsidering for this role. 🌊 = talent pool (Promote creates a new candidate, status WIP); 👤 = existing candidate (Tag re-links them to this vacancy, sets status to Reassigned, and schedules a follow-up for tomorrow — remarks and other history are untouched).',
-    '<div class="tw" style="max-height:360px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>',
-    '<button class="btn btn-t" onclick="closeModal()">Close</button>',true);
+  const runsHtml=runs.map((run,i)=>{
+    const runNum=i+1;
+    const when=run.computedAt?fmtD(run.computedAt):'';
+    return '<div class="sl2" style="margin-top:'+(i===0?'0':'14px')+'">Run '+runNum+(when?' — '+when:'')+' ('+run.matches.length+')</div>'+
+      '<div class="tw" style="max-height:260px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th><th></th></tr></thead><tbody>'+rowsForRun(run.matches)+'</tbody></table></div>';
+  }).reverse().join(''); // newest run first
+  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates, weighing role fit AND business/industry background together. 🌊 = talent pool (Promote creates a new candidate, status WIP); 👤 = existing candidate (Tag re-links them to this vacancy, sets status to Reassigned, and schedules a follow-up for tomorrow — remarks and other history are untouched). Run it again anytime — each run only surfaces people not already shown above.',
+    runsHtml,
+    '<button class="btn btn-ghost" onclick="closeModal();runVacMatchingNowForCode(\''+vacCode.replace(/'/g,"\\'")+'\')">🔄 Run Another Match</button><button class="btn btn-t" onclick="closeModal()">Close</button>',true);
 }
 // On-demand "View Matches" from the Vacancies table (19 Sep 2026) — reads
 // back the MatchResults already saved to the Vacancy's SharePoint List item
@@ -13023,21 +13097,14 @@ async function viewVacMatches(idx){
   const vacCode=v['Vacancy code']||v['Vacancy Code']||'';
   showModal('🎯 Suggested Matches for '+vacCode,'Loading…','','<button class="btn btn-ghost" onclick="closeModal()">Close</button>',true);
   try{
-    const itemId=await resolveVacSpItemId(v);
-    let raw=null;
-    if(itemId){
-      const res=await graphGet(`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields?$select=MatchResults`);
-      raw=res&&res.MatchResults?res.MatchResults:null;
-    }
-    const parsed=raw?JSON.parse(raw):null;
-    const matches=parsed&&parsed.matches?parsed.matches:[];
+    const runs=await _loadMatchRuns(v);
     closeModal();
-    if(!matches.length){
+    if(!runs.length){
       showModal('🎯 Suggested Matches for '+vacCode,'No matches computed for this vacancy yet — either it predates this feature, or the automatic run found nothing worth surfacing. You can run it now.',
         '','<button class="btn btn-t" onclick="closeModal();runVacMatchingNow('+idx+')">▶ Run Matching Now</button><button class="btn btn-ghost" onclick="closeModal()">Close</button>');
       return;
     }
-    renderMatchResultsModal(vacCode,matches);
+    renderMatchResultsModal(vacCode,runs);
   }catch(e){
     closeModal();
     toast('err','Could Not Load Matches',e.message);
@@ -13045,6 +13112,15 @@ async function viewVacMatches(idx){
 }
 async function runVacMatchingNow(idx){
   const v=VD[idx];if(!v)return;
+  toast('info','Running Matching…','This can take a few seconds.');
+  await triggerPoolMatchForVacancy(v);
+}
+// vacCode-based variant of runVacMatchingNow() — used by the "Run Another
+// Match" button inside the matches modal itself, which only has vacCode in
+// scope, not a VD array index.
+async function runVacMatchingNowForCode(vacCode){
+  const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===vacCode);
+  if(!v){toast('err','Not Found','Vacancy '+vacCode+' could not be found.');return;}
   toast('info','Running Matching…','This can take a few seconds.');
   await triggerPoolMatchForVacancy(v);
 }
