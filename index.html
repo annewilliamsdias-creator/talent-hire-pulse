@@ -10696,6 +10696,42 @@ async function extractResumeText(resumeUrl){
   return text.trim();
 }
 
+// 30 Sep 2026, Anne: the JD Repository's AI Generate button needs the
+// ACTUAL JD document text (Pre-Read/Role Context can't be genuine without
+// it — see aiGenerateJDQuestions()), not just the role title. fetchResumeArrayBuffer()
+// above is already generic despite its name (resolves any SharePoint
+// sharing link via Graph's /shares endpoint, or fetches directly for a
+// non-SharePoint URL) — reused here unchanged. Extraction mirrors
+// extractResumeContent() further down (mammoth for docx, pdf.js for pdf),
+// just starting from an already-fetched ArrayBuffer + a URL-derived
+// extension instead of a local File object, since a JD link points at a
+// remote document, not a file picker upload.
+async function extractJDText(jdLink){
+  const url=(jdLink||'').trim();
+  if(!url)throw new Error('No JD link on file.');
+  const extMatch=url.split('?')[0].match(/\.([a-zA-Z0-9]+)$/);
+  const ext=extMatch?extMatch[1].toLowerCase():'';
+  if(!['pdf','docx','txt'].includes(ext)){
+    throw new Error('link isn\'t a PDF, DOCX or TXT file (found .'+(ext||'unknown')+') — can\'t read this format automatically.');
+  }
+  const buf=await fetchResumeArrayBuffer(url);
+  if(ext==='txt')return new TextDecoder().decode(buf).trim();
+  if(ext==='docx'){
+    if(typeof mammoth==='undefined')throw new Error('DOCX reader failed to load — check your connection and retry.');
+    const result=await mammoth.extractRawText({arrayBuffer:buf});
+    return(result.value||'').trim();
+  }
+  ensurePdfWorker();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let text='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    text+=content.items.map(it=>it.str).join(' ')+'\n';
+  }
+  return text.trim();
+}
+
 // 22 Aug 2026 (v7.12.2): recruiter-side resume upload — counterpart to the
 // Portal's own upload for candidates who never went through the Gateway.
 // Files land in the same SharePoint site THP already has Sites.ReadWrite.All
@@ -12178,22 +12214,47 @@ function editJDFromAdmin(idx){
 }
 
 // ===== AI GENERATE JD QUESTIONS =====
+// 30 Sep 2026, Anne: extended to also generate Pre-Read and Role Context —
+// previously manual-only fields — but ONLY from the actual JD document
+// text (extractJDText() above), never guessed from just the role title.
+// Her explicit call after I flagged the risk: "Cannot be generic. Let's
+// fetch the actual JD text from the linked SharePoint file." If the link
+// is missing or can't be read, this still generates questions/indicators
+// exactly as the original tool did (unregressed) but leaves Pre-Read/Role
+// Context untouched rather than fill them with content that isn't
+// actually grounded in the real JD.
 async function aiGenerateJDQuestions() {
-  const title=gv('jd-title'); const dept=gv('jd-dept'); const exp=gv('jd-exp'); const wm=gv('jd-workmodel');
-  const preread=gv('jd-preread'); const context=gv('jd-rolecontext');
+  const title=gv('jd-title'); const client=gv('jd-client'); const dept=gv('jd-dept'); const exp=gv('jd-exp'); const wm=gv('jd-workmodel');
+  const link=gv('jd-link');
   if(!title){toast('warn','Title Required','Enter JD Title first.');return;}
-  toast('info','AI','Generating interview questions...');
-  const prompt=`You are an expert HR recruiter. Generate interview questions for this role.
+
+  let jdText='';
+  if(link){
+    toast('info','AI','Reading JD document...');
+    try{
+      jdText=await extractJDText(link);
+      if(!jdText)throw new Error('JD document appears to be empty.');
+    }catch(e){
+      toast('warn','Could Not Read JD','Pre-Read/Role Context need the actual JD text — '+e.message+' Generating questions from role details only.');
+    }
+  }else{
+    toast('warn','No JD Link','Add the SharePoint/Drive link first so Pre-Read and Role Context can be generated from the real JD — generating questions from role details only.');
+  }
+
+  toast('info','AI','Generating interview guide content...');
+  const prompt=`You are an expert HR recruiter. Generate interview guide content for this role.
 
 ROLE: ${title}
+CLIENT: ${client||'—'}
 DEPARTMENT: ${dept||'—'}
 EXPERIENCE: ${exp||'—'}
 WORK MODEL: ${wm||'—'}
-PRE-READ: ${preread||'Not provided'}
-ROLE CONTEXT: ${context||'Not provided'}
+${jdText?'FULL JOB DESCRIPTION (from the linked JD document):\n'+jdText.slice(0,12000):'No JD document text is available for this role.'}
 
 Generate ONLY valid JSON in this exact format, no extra text:
 {
+  "preread": "2-3 sentence brief for the recruiter on the CLIENT and anything specific/notable in the JD (requirements, must-haves, deal-breakers) — empty string if no JD document text was provided above, since it can't be written without one",
+  "roleContext": "2-3 sentence pitch a recruiter can read out to introduce this role to a candidate, based on what the JD actually says — empty string if no JD document text was provided above",
   "coreQuestions": ["Q1","Q2","Q3","Q4","Q5","Q6","Q7","Q8","Q9","Q10"],
   "additionalQuestions": ["AQ1","AQ2","AQ3","AQ4","AQ5"],
   "shortlistIndicators": "bullet list of 4-5 positive signals",
@@ -12201,6 +12262,7 @@ Generate ONLY valid JSON in this exact format, no extra text:
 }
 
 Rules:
+- preread and roleContext must be based ONLY on the JD document text provided above — never invent facts about the client company that aren't stated there
 - Mix practical and BEI questions
 - Include tools/systems questions if relevant
 - Include team/client handling if applicable
@@ -12211,18 +12273,20 @@ Rules:
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const txt=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
     const clean=txt.replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(clean);
+    if(parsed.preread){const el=document.getElementById('jd-preread');if(el)el.value=parsed.preread;}
+    if(parsed.roleContext){const el=document.getElementById('jd-rolecontext');if(el)el.value=parsed.roleContext;}
     if(parsed.coreQuestions){parsed.coreQuestions.slice(0,10).forEach((q,i)=>{const el=document.getElementById('jd-q'+(i+1));if(el)el.value=q;});}
     if(parsed.additionalQuestions){parsed.additionalQuestions.slice(0,5).forEach((q,i)=>{const el=document.getElementById('jd-aq'+(i+1));if(el)el.value=q;});}
     if(parsed.shortlistIndicators){const el=document.getElementById('jd-shortlist');if(el)el.value=parsed.shortlistIndicators;}
     if(parsed.redFlagIndicators){const el=document.getElementById('jd-redflag');if(el)el.value=parsed.redFlagIndicators;}
-    toast('ok','AI Questions','Questions generated. Review and edit before saving.');
+    toast('ok','AI Generated',jdText?'Pre-Read, Role Context, and questions generated from the JD. Review and edit before saving.':'Questions generated from role details. Add the JD link and regenerate to get Pre-Read/Role Context too.');
   }catch(e){toast('err','AI','Failed to generate: '+e.message);}
 }
 
