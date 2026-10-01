@@ -1377,6 +1377,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
     <div style="display:grid;gap:10px">
       <div class="field" style="margin:0"><label>Pre-Read for Recruiter <span style="font-size:10px;color:var(--w60)">(key context before the call)</span></label><textarea id="jd-preread" style="min-height:70px" placeholder="e.g. This role is a replacement hire. Client is very particular about notice period under 30 days. Profile must have B2B sales experience, not retail."></textarea></div>
       <div class="field" style="margin:0"><label>Role Context / Pitch <span style="font-size:10px;color:var(--w60)">(what recruiter says to introduce the role)</span></label><textarea id="jd-rolecontext" style="min-height:70px" placeholder="e.g. The role is with a leading logistics firm based in Pune. It's a senior operations role managing a team of 12, reporting directly to the COO."></textarea></div>
+      <div class="field" style="margin:0"><label>Detailed Summary for Job Match <span style="font-size:10px;color:var(--w60)">(for AI matching only — not shown to candidates or read aloud; covers responsibilities, required skills, and business/industry so differently-titled roles can be matched on actual function)</span></label><textarea id="jd-matchsummary" style="min-height:100px" placeholder="e.g. Field sales role selling wellness memberships door-to-door/B2C, quota-driven, requires cold-calling and in-person closing, prior experience in any direct/field sales role (insurance, FMCG, telecom) is relevant regardless of title."></textarea></div>
       <div class="field" style="margin:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <label>10 Core Interview Questions</label>
@@ -4235,13 +4236,25 @@ function viewJDLink(){
   if(!jdLink){toast('warn','No JD Linked','No JD linked to this vacancy. Set via Vacancies → Edit → JD SharePoint Link.');return;}
   window.open(jdLink,'_blank');
 }
-// Helper: resolve jd entry from VD['JD Link'] URL (used by showWAMenu + igGetJD)
+// Helper: resolve jd entry from VD['JD Link'] URL (used by showWAMenu + igGetJD,
+// and now triggerPoolMatchForVacancy() for JD-to-JD matching — a candidate's
+// tagged vacancy gets resolved through this same function per candidate, so
+// a brittle match here now silently drops matching context, not just the
+// "View JD" button).
+// 1 Oct 2026: link comparison now normalized (trim/lowercase/strip trailing
+// slash and query string) instead of exact string equality — two links
+// pointing at the same document but differing by http vs https, a trailing
+// slash, or a tracking query param used to silently fail to resolve.
+function _normJdUrl(u){
+  return String(u||'').trim().toLowerCase().replace(/\?.*$/,'').replace(/\/+$/,'');
+}
 function resolveJDFromVac(vacCode){
   const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code']||'').trim()===vacCode);
   const jdLink=vac&&vac['JD Link']?vac['JD Link'].trim():'';
   if(!jdLink)return{jdLink:'',jdEntry:null};
-  // Match repo entry by link URL (primary) or title (legacy fallback)
-  const jdEntry=repoData.jds.find(j=>(j.link||'').trim()===jdLink||(j.title||'').trim()===jdLink)||null;
+  // Match repo entry by link URL (primary, normalized) or title (legacy fallback)
+  const jdLinkNorm=_normJdUrl(jdLink);
+  const jdEntry=repoData.jds.find(j=>_normJdUrl(j.link)===jdLinkNorm||(j.title||'').trim()===jdLink)||null;
   return{jdLink,jdEntry};
 }
 
@@ -9235,7 +9248,7 @@ function loadInvTemplateData(){
 function openAddJD(){
   if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}
   const eiEl=document.getElementById('jd-edit-idx');if(eiEl)eiEl.value='-1';
-  ['jd-title','jd-link','jd-tags','jd-exp','jd-preread','jd-rolecontext','jd-shortlist','jd-redflag'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['jd-title','jd-link','jd-tags','jd-exp','jd-preread','jd-rolecontext','jd-matchsummary','jd-shortlist','jd-redflag'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   for(let i=1;i<=10;i++){const e=document.getElementById('jd-q'+i);if(e)e.value='';}
   for(let i=1;i<=5;i++){const e=document.getElementById('jd-aq'+i);if(e)e.value='';}
   const wm=document.getElementById('jd-workmodel');if(wm)wm.selectedIndex=0;
@@ -9250,7 +9263,7 @@ function editJD(idx){
   const eiEl=document.getElementById('jd-edit-idx');if(eiEl)eiEl.value=idx;
   const sv2=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
   sv2('jd-title',j.title);sv2('jd-link',j.link);sv2('jd-tags',j.tags);sv2('jd-exp',j.exp);
-  sv2('jd-preread',j.preread);sv2('jd-rolecontext',j.rolecontext);sv2('jd-shortlist',j.shortlist);sv2('jd-redflag',j.redflag);
+  sv2('jd-preread',j.preread);sv2('jd-rolecontext',j.rolecontext);sv2('jd-matchsummary',j.matchSummary);sv2('jd-shortlist',j.shortlist);sv2('jd-redflag',j.redflag);
   const c=document.getElementById('jd-client');if(c)c.value=j.client||'';
   const d=document.getElementById('jd-dept');if(d)d.value=j.dept||'';
   const wm=document.getElementById('jd-workmodel');if(wm)wm.value=j.workmodel||'';
@@ -9270,7 +9283,7 @@ function editJD(idx){
 // articles are NOT part of this migration — they stay on the Excel sheet.
 const JD_LIST_ID='5dfe852c-6a3b-4d16-8f02-94a3c09e7e4b';
 function jdToListFields(jd){
-  return {'Title':jd.title||'','field_1':jd.client||'','field_2':jd.dept||'','field_3':jd.exp||'','field_4':jd.workmodel||'','field_5':jd.link||'','field_6':jd.tags||'','field_7':jd.preread||'','field_8':jd.rolecontext||'','field_9':jd.shortlist||'','field_10':jd.redflag||'','field_11':jd.q1||'','field_12':jd.q2||'','field_13':jd.q3||'','field_14':jd.q4||'','field_15':jd.q5||'','field_16':jd.q6||'','field_17':jd.q7||'','field_18':jd.q8||'','field_19':jd.q9||'','field_20':jd.q10||'','field_21':jd.aq1||'','field_22':jd.aq2||'','field_23':jd.aq3||'','field_24':jd.aq4||'','field_25':jd.aq5||''};
+  return {'Title':jd.title||'','field_1':jd.client||'','field_2':jd.dept||'','field_3':jd.exp||'','field_4':jd.workmodel||'','field_5':jd.link||'','field_6':jd.tags||'','field_7':jd.preread||'','field_8':jd.rolecontext||'','field_9':jd.shortlist||'','field_10':jd.redflag||'','field_11':jd.q1||'','field_12':jd.q2||'','field_13':jd.q3||'','field_14':jd.q4||'','field_15':jd.q5||'','field_16':jd.q6||'','field_17':jd.q7||'','field_18':jd.q8||'','field_19':jd.q9||'','field_20':jd.q10||'','field_21':jd.aq1||'','field_22':jd.aq2||'','field_23':jd.aq3||'','field_24':jd.aq4||'','field_25':jd.aq5||'','DetailedSummaryforJobMatch':jd.matchSummary||''};
 }
 function listItemToJDRecord(item){
   const f=item.fields||{};
@@ -9279,6 +9292,12 @@ function listItemToJDRecord(item){
     title:f.Title||'',client:f.field_1||'',dept:f.field_2||'',exp:f.field_3||'',workmodel:f.field_4||'',
     link:f.field_5||'',tags:f.field_6||'',preread:f.field_7||'',rolecontext:f.field_8||'',
     shortlist:f.field_9||'',redflag:f.field_10||'',
+    // 1 Oct 2026: AI-generated, not recruiter-facing — the summary
+    // triggerPoolMatchForVacancy() actually compares JD-to-JD on, kept
+    // separate from rolecontext (the short recruiter pitch) so neither is
+    // compromised by the other's length/purpose. See the field's own
+    // label in the JD form for the full reasoning.
+    matchSummary:f.DetailedSummaryforJobMatch||'',
     q1:f.field_11||'',q2:f.field_12||'',q3:f.field_13||'',q4:f.field_14||'',q5:f.field_15||'',
     q6:f.field_16||'',q7:f.field_17||'',q8:f.field_18||'',q9:f.field_19||'',q10:f.field_20||'',
     aq1:f.field_21||'',aq2:f.field_22||'',aq3:f.field_23||'',aq4:f.field_24||'',aq5:f.field_25||''
@@ -9320,7 +9339,7 @@ function saveJD(){
   const qs={};
   for(let i=1;i<=10;i++){const v=gv('jd-q'+i);if(v&&v.trim())qs['q'+i]=v.trim();}
   for(let i=1;i<=5;i++){const v=gv('jd-aq'+i);if(v&&v.trim())qs['aq'+i]=v.trim();}
-  const obj={title,client:gv('jd-client'),dept:gv('jd-dept'),exp:gv('jd-exp'),workmodel:gv('jd-workmodel'),link,tags:gv('jd-tags'),preread:gv('jd-preread'),rolecontext:gv('jd-rolecontext'),shortlist:gv('jd-shortlist'),redflag:gv('jd-redflag'),...qs};
+  const obj={title,client:gv('jd-client'),dept:gv('jd-dept'),exp:gv('jd-exp'),workmodel:gv('jd-workmodel'),link,tags:gv('jd-tags'),preread:gv('jd-preread'),rolecontext:gv('jd-rolecontext'),matchSummary:gv('jd-matchsummary'),shortlist:gv('jd-shortlist'),redflag:gv('jd-redflag'),...qs};
   const eiEl=document.getElementById('jd-edit-idx');
   const editIdx=eiEl?parseInt(eiEl.value):-1;
   if(editIdx>=0&&repoData.jds[editIdx]){
@@ -12260,6 +12279,7 @@ Generate ONLY valid JSON in this exact format, no extra text:
 {
   "preread": "2-3 sentence brief for the recruiter on the CLIENT and anything specific/notable in the JD (requirements, must-haves, deal-breakers) — empty string if no JD document text was provided above, since it can't be written without one",
   "roleContext": "2-3 sentence pitch a recruiter can read out to introduce this role to a candidate, based on what the JD actually says — empty string if no JD document text was provided above",
+  "matchSummary": "4-6 sentence detailed summary written ONLY for matching this role against OTHER JDs and candidates later — not to be read aloud, length doesn't matter the way it does for roleContext. Cover: the core day-to-day responsibilities, required skills/experience, and what business/industry function this role actually performs. Write it so a role at a different company with a completely different job title, but the same real function, would clearly match against this description — e.g. a field-sales role should say so explicitly even if its official title is something else entirely. Empty string if no JD document text was provided above",
   "coreQuestions": ["Q1","Q2","Q3","Q4","Q5","Q6","Q7","Q8","Q9","Q10"],
   "additionalQuestions": ["AQ1","AQ2","AQ3","AQ4","AQ5"],
   "shortlistIndicators": "bullet list of 4-5 positive signals",
@@ -12267,7 +12287,7 @@ Generate ONLY valid JSON in this exact format, no extra text:
 }
 
 Rules:
-- preread and roleContext must be based ONLY on the JD document text provided above — never invent facts about the client company that aren't stated there
+- preread, roleContext, and matchSummary must be based ONLY on the JD document text provided above — never invent facts about the client company that aren't stated there
 - Mix practical and BEI questions
 - Include tools/systems questions if relevant
 - Include team/client handling if applicable
@@ -12278,7 +12298,7 @@ Rules:
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1800,messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
@@ -12287,11 +12307,12 @@ Rules:
     const parsed=JSON.parse(clean);
     if(parsed.preread){const el=document.getElementById('jd-preread');if(el)el.value=parsed.preread;}
     if(parsed.roleContext){const el=document.getElementById('jd-rolecontext');if(el)el.value=parsed.roleContext;}
+    if(parsed.matchSummary){const el=document.getElementById('jd-matchsummary');if(el)el.value=parsed.matchSummary;}
     if(parsed.coreQuestions){parsed.coreQuestions.slice(0,10).forEach((q,i)=>{const el=document.getElementById('jd-q'+(i+1));if(el)el.value=q;});}
     if(parsed.additionalQuestions){parsed.additionalQuestions.slice(0,5).forEach((q,i)=>{const el=document.getElementById('jd-aq'+(i+1));if(el)el.value=q;});}
     if(parsed.shortlistIndicators){const el=document.getElementById('jd-shortlist');if(el)el.value=parsed.shortlistIndicators;}
     if(parsed.redFlagIndicators){const el=document.getElementById('jd-redflag');if(el)el.value=parsed.redFlagIndicators;}
-    toast('ok','AI Generated',jdText?'Pre-Read, Role Context, and questions generated from the JD. Review and edit before saving.':'Questions generated from role details. Add the JD link and regenerate to get Pre-Read/Role Context too.');
+    toast('ok','AI Generated',jdText?'Pre-Read, Role Context, Match Summary, and questions generated from the JD. Review and edit before saving.':'Questions generated from role details. Add the JD link and regenerate to get Pre-Read/Role Context/Match Summary too.');
   }catch(e){toast('err','AI','Failed to generate: '+e.message);}
 }
 
@@ -12987,9 +13008,42 @@ async function triggerPoolMatchForVacancy(vd){
   // candidate's current AND expected salary (expected is the better signal
   // for what they'd accept next, current gives scale/context — both given
   // so the AI can judge rather than guess which one to trust).
+  // JD-to-JD matching (30 Sep/1 Oct 2026, Anne's design): a candidate who
+  // already has a vacancy tagged carries THAT vacancy's own JD match-summary
+  // along as `priorRoleSummary` — comparing it against the target vacancy's
+  // own match-summary is the PRIMARY signal, because it compares actual role
+  // function/content and is immune to companies calling the same job two
+  // different titles (Anne's example: Wellness Advisor vs Sales Executive at
+  // Atmann). Designation+company is kept only as the fallback signal for
+  // candidates with NO vacancy tagged (Talent Pool entries, and legacy
+  // candidates sourced Apr 2025–Jun 2026 before THP existed) — Anne: "this is
+  // a smaller problem that will resolve over the years... will in any case
+  // become stale in a year." A small in-memory cache avoids resolving the same
+  // prior vacancy's JD twice when many resurfaced candidates share one.
+  const _priorSummaryCache=new Map();
+  const priorRoleSummaryFor=(priorVacCode)=>{
+    if(!priorVacCode)return'';
+    if(_priorSummaryCache.has(priorVacCode))return _priorSummaryCache.get(priorVacCode);
+    let summary='';
+    try{
+      const{jdEntry}=resolveJDFromVac(priorVacCode);
+      summary=(jdEntry&&jdEntry.matchSummary)||'';
+    }catch(e){/* no-op — fall back to designation-based matching below */}
+    _priorSummaryCache.set(priorVacCode,summary);
+    return summary;
+  };
+
   const profiles=[
     ...openPool.map(p=>({ref:p.code,kind:'pool',name:p.name,company:p.company,desiredRole:p.desiredRole,location:p.location,summary:p.summary,currentSalaryPA:p.salaryPA||''})),
-    ...resurfaceCands.map(r=>({ref:r[C.code],kind:'candidate',name:r[C.name],company:r[C.company],desiredRole:r[C.position]||r[C.roleInterested],location:r[C.location],status:r[C.status],remark:r[C.remark],currentSalaryPA:r[C.salaryPA]||'',expectedSalaryPA:r[C.expectedSalary]||''}))
+    ...resurfaceCands.map(r=>{
+      const prof={ref:r[C.code],kind:'candidate',name:r[C.name],company:r[C.company],designation:r[C.designation]||'',desiredRole:r[C.position]||r[C.roleInterested],location:r[C.location],status:r[C.status],remark:r[C.remark],currentSalaryPA:r[C.salaryPA]||'',expectedSalaryPA:r[C.expectedSalary]||''};
+      const priorVacCode=r[C.vacCode];
+      if(priorVacCode){
+        const priorRoleSummary=priorRoleSummaryFor(priorVacCode);
+        if(priorRoleSummary)prof.priorRoleSummary=priorRoleSummary;
+      }
+      return prof;
+    })
   ].filter(p=>!excludeRefs.has(p.ref)).slice(0,300);
 
   if(!profiles.length){
@@ -13009,16 +13063,18 @@ Department: ${vd['Department']||''}
 Location: ${vd['Location']||''}
 Experience required: ${vd['Experience']||''}
 ${budgetLine}
-${jdEntry?`ROLE CONTEXT:\n${jdEntry.rolecontext||''}\n\nWHAT THE ROLE REQUIRES:\n${coreQs.join('\n')}`:''}
+${jdEntry?`DETAILED ROLE SUMMARY (for matching — use this as the primary description of what this role actually does):\n${jdEntry.matchSummary||jdEntry.rolecontext||''}\n\nWHAT THE ROLE REQUIRES:\n${coreQs.join('\n')}`:''}
 
-Weigh TWO things together, neither as a hard cutoff:
+Weigh these together, none as a hard cutoff:
 1. Role fit — experience, location, department, and salary vs budget. A profile whose current or expected salary sits well above the vacancy's budget is a weaker match even if the role itself lines up — say so plainly in the rationale when salary is the limiting factor (e.g. "strong role fit, but expected salary is above budget"). Don't discard a profile purely for a salary gap if nothing else is known, but don't ignore a clear mismatch either.
-2. Business/industry adjacency — judge from the candidate's current/past company name and role whether they've worked in the same or a genuinely adjacent business domain to this vacancy's client. Use your own knowledge of what that company does — there's no industry lookup provided, this is your judgment call. Only mark a match's industryMatch true when you can name a real, specific adjacency, not a vague guess.
-A profile can be a strong match on role fit alone even with no industry adjacency, or vice versa — surface both kinds and let the industryMatch flag and rationale tell the recruiter which is which. Don't require both.`;
-  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering; salary fields are annual (₹ PA) and may be blank if not on file). This list already excludes everyone surfaced in an earlier run for this vacancy — every profile here is new:
+2. Function match, judged two different ways depending on what's known about the profile:
+   - If a profile carries a "priorRoleSummary" field, that is a detailed summary of the ACTUAL role they were previously sourced for — compare it against this vacancy's DETAILED ROLE SUMMARY above on real function and content (responsibilities, skills, business domain), completely ignoring job-title vocabulary. Two roles can be the same real job under different titles at different companies (e.g. a "Wellness Advisor" and a "Sales Executive" can both be the same field-sales role) — judge on substance, not label. This JD-to-JD comparison is the stronger signal whenever it's available.
+   - If a profile has no "priorRoleSummary" (talent pool entries, and candidates sourced before this system existed), fall back to judging business/industry adjacency from their designation/current-or-past company and role — use your own knowledge of what that company does, there's no lookup provided, this is your judgment call. This fallback signal is weaker than a direct JD-to-JD comparison, so don't claim an industryMatch here unless you can name a real, specific adjacency.
+Only set industryMatch true when the function/industry match is real and specific (from either method above) — not a vague guess. A profile can be a strong match on role fit alone even with no function/industry adjacency, or vice versa — surface both kinds and let the industryMatch flag and rationale tell the recruiter which is which. Don't require both.`;
+  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering; salary fields are annual (₹ PA) and may be blank if not on file; "priorRoleSummary" when present is the detailed JD summary of the vacancy they were previously sourced against — see method 2 above). This list already excludes everyone surfaced in an earlier run for this vacancy — every profile here is new:
 ${JSON.stringify(profiles)}
 
-Return up to 20 matches, ranked best first — fewer if fewer are genuinely relevant, don't pad the list. Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","industryMatch":true|false,"rationale":"<1-2 sentence specific reason — name the industry adjacency if industryMatch is true>"}]}`;
+Return up to 20 matches, ranked best first — fewer if fewer are genuinely relevant, don't pad the list. Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","industryMatch":true|false,"rationale":"<1-2 sentence specific reason — name the function/industry adjacency if industryMatch is true, and say whether it came from their prior role's JD or from designation/company judgment>"}]}`;
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
