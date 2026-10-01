@@ -8743,6 +8743,47 @@ async function annotateMatchingStatus(gaps){
   return gaps;
 }
 
+// 1 Oct 2026, Anne's decision: "Total Actions" (and the per-candidate
+// "Actions" column) in EOD/Weekly Report were counting raw Change Log ROWS,
+// not actual recruiter actions — three write sites each log multiple rows
+// for what's genuinely one action: saveEP() writes one row per field
+// changed in a single Edit Profile save, tagCandidateToVacancy() writes up
+// to 5 rows for one tag/reassign click, and igSaveEval() logs a new row on
+// every "Save Notes" click even when reviewing/scoring the same interview
+// progressively across many saves in one sitting (this is the "interview
+// feedback gets multiple counts" complaint — the 25 Aug fix only stopped a
+// trivial re-save from being miscounted as a NEW interview in the
+// Interviews-Conducted metric; it never touched this raw row count).
+// Anne's call: fix the report/count side only — the Change Log itself stays
+// exactly as granular as it is today (full field-level detail intact for
+// anyone who wants it), this just changes how a report COUNTS "one action":
+// same candidate + same action category (eActType()) + same calendar day
+// collapses to one logical action, no matter how many underlying rows
+// produced it. A genuinely different action the same day (e.g. a WhatsApp
+// send alongside a status update) still counts separately, and the same
+// action repeated on a LATER day (Weekly Report's multi-day window) still
+// counts separately too. Shared by both reports so they can never drift
+// apart on this again — see calcRecruiterFunnelGaps()'s own history for
+// why duplicated copies of the same logic are worth avoiding here.
+function countDistinctActions(rows,typeClassifier){
+  const seen=new Set();
+  rows.forEach(r=>{
+    const day=String(r[0]).slice(0,10);
+    const type=typeClassifier(r[4]);
+    seen.add(day+'|'+type);
+  });
+  return seen.size;
+}
+// Groups rows by candidate code first, then applies countDistinctActions()
+// per candidate and sums — summing a GLOBAL dedup across all candidates
+// would wrongly merge two different candidates' same-day same-type actions
+// into one.
+function totalDistinctActions(rows,typeClassifier){
+  const byCode={};
+  rows.forEach(r=>{const code=String(r[3]||'');(byCode[code]=byCode[code]||[]).push(r);});
+  return Object.values(byCode).reduce((sum,codeRows)=>sum+countDistinctActions(codeRows,typeClassifier),0);
+}
+
 // Home's "Today's Effort" (focus) and "My Portfolio" pages — moved in from
 // the retired Effort panel (25 Sep 2026). Same effortRecSel/effortDataCache
 // globals and #ef-focus/#ef-portfolio render targets as before; only the
@@ -13865,7 +13906,12 @@ async function genEODReport(recName){
     const all=await fetchLiveChangeLog();
     const recUser=appUsers.find(u=>u.name===recName);
     const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
-    clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&(recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase()));
+    // 1 Oct 2026: excludes 'EOD Notes' rows — same exclusion genWeeklyReport()
+    // already applies (that free-text box is administrative, not a candidate
+    // action). EOD never had this exclusion, so submitting notes before
+    // downloading inflated that same day's own Total Actions by 1 — found
+    // while fixing the raw-row-count issue below.
+    clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&r[4]!=='EOD Notes'&&(recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase()));
   }catch(e){console.warn('EOD CL',e);}
   const resumesScreenedToday=await fetchResumeScreenedTodayCount(recName,td);
   // Funnel Gap (28 Sep 2026, Anne's decision) — see calcRecruiterFunnelGaps()
@@ -13905,10 +13951,15 @@ async function genEODReport(recName){
   function eReason(r){if(r[C.followupDate]&&r[C.followupDate]<td)return'Overdue FU';if(r[C.followupDate]&&r[C.followupDate]===td)return'Due Today';if(r[C.status]==='WIP')return'WIP — No FU';if(r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress')return'Interview';if(r[C.status]==='Joining in Progress')return'Joining';return'Not Actioned 3d+';}
 
   // helper: classify a CL action string into a display type
+  // 1 Oct 2026: added 'eval' — 'Eval Notes Updated' (igSaveEval()'s trivial-
+  // resave label) fell through to the 'Follow-up' default before, so it
+  // never grouped with 'Interview Eval Saved' for either the type badge or
+  // the new countDistinctActions() dedup below. Both labels are the same
+  // underlying activity (working on one candidate's interview feedback).
   function eActType(action){
     const a=String(action||'').toLowerCase();
     if(a.includes('whatsapp')||a.includes('wa '))return'WA';
-    if(a.includes('interview')||a.includes('i/w'))return'Interview';
+    if(a.includes('interview')||a.includes('i/w')||a.includes('eval'))return'Interview';
     if(a.includes('joining'))return'Joining';
     if(a.includes('sourced')||a.includes('added'))return'Sourcing';
     return'Follow-up';
@@ -13922,7 +13973,11 @@ async function genEODReport(recName){
       return String(r[4]||'')+(r[5]?' — '+r[5]:'')+' ['+t+']';
     }).join('; ');
   }
-  function candActCount(code){return candClRows(code).length;}
+  // 1 Oct 2026: was candClRows(code).length — a raw row count, inflated by
+  // multi-row-per-click writes (saveEP's per-field rows, tagCandidateToVacancy's
+  // up to 5 rows, igSaveEval's one row per "Save Notes" click). Now counts
+  // distinct logical actions — see countDistinctActions() for the rule.
+  function candActCount(code){return countDistinctActions(candClRows(code),eActType);}
   function candWACount(code){return candClRows(code).filter(r=>eActType(r[4])==='WA').length;}
   function candFirstAct(code){
     const rows=candClRows(code);if(!rows.length)return'—';
@@ -13952,7 +14007,8 @@ async function genEODReport(recName){
 
   // summary stats
   const totalActioned=s1.length+s3.length+addedToday.length;
-  const totalActions=clRows.length;
+  // 1 Oct 2026: was clRows.length — see countDistinctActions()'s comment.
+  const totalActions=totalDistinctActions(clRows,eActType);
   const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
 
   // summary bar CSS
@@ -14095,10 +14151,11 @@ async function genWeeklyReport(recName,startStr,endStr){
   // stays a safe retroactive read despite leaning on "current" status.
   const joinedWeek=recMD.filter(r=>isJoinedInPeriod(r,startStr,endStr));
 
+  // 1 Oct 2026: added 'eval' — see genEODReport()'s eActType() for why.
   function eActType(action){
     const a=String(action||'').toLowerCase();
     if(a.includes('whatsapp')||a.includes('wa '))return'WA';
-    if(a.includes('interview')||a.includes('i/w'))return'Interview';
+    if(a.includes('interview')||a.includes('i/w')||a.includes('eval'))return'Interview';
     if(a.includes('joining'))return'Joining';
     if(a.includes('sourced')||a.includes('added'))return'Sourcing';
     return'Follow-up';
@@ -14111,7 +14168,9 @@ async function genWeeklyReport(recName,startStr,endStr){
     return'<span class="ttype tt-fu">Follow-up</span>';
   }
   function candClRows(code){return clRows.filter(r=>String(r[3])===code);}
-  function candActCount(code){return candClRows(code).length;}
+  // 1 Oct 2026: distinct logical actions, not raw rows — see
+  // countDistinctActions()'s comment (same fix as genEODReport()).
+  function candActCount(code){return countDistinctActions(candClRows(code),eActType);}
   function candWACount(code){return candClRows(code).filter(r=>eActType(r[4])==='WA').length;}
   function fmtDT(ts){return new Date(ts).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});}
   function candFirstAct(code){const rows=candClRows(code);return rows.length?fmtDT(rows[0][0]):'—';}
@@ -14130,7 +14189,8 @@ async function genWeeklyReport(recName,startStr,endStr){
             :{code,name:(clSample&&clSample[8])||'—',position:'—',client:'—',status:'—'};
   });
 
-  const totalActions=clRows.length;
+  // 1 Oct 2026: was clRows.length — see countDistinctActions()'s comment.
+  const totalActions=totalDistinctActions(clRows,eActType);
   const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
   // Effort+Incentive Metrics Audit, Anne's decision (25 Sep 2026): same
   // canonical sources as genEODReport() above — Meaningful Candidate Actions
