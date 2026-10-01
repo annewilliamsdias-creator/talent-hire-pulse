@@ -2173,6 +2173,12 @@ send_jd:'Hi {N}, please find the Job Description for the *{P}* role with *{C}* a
 // candidate record) and passes it in as fillWA()'s third argument.
 ai_interview_invite:'Hi {N}, please complete a short AI video interview for the *{P}* role with *{C}* using the link below:\n\n{IL}\n\nVerify with the same email address you applied with.\n\n- {R}, WithAWill HR',
 resume_upload_invite:'Hi {N}, please upload your resume for the *{P}* role with *{C}* using the link below:\n\n{IL}\n\nThis helps us take your application forward.\n\n- {R}, WithAWill HR',
+// 1 Oct 2026, Anne: used by "Reassign & WA" in Profile Matches — deliberately
+// status-agnostic (never names Not Interested/On Hold/Rejected/Not
+// Contactable), since it's resurfacing someone regardless of why they went
+// quiet last time. {P}/{C} are the NEW vacancy's role/client, not whatever
+// they were last tagged to.
+reassign_resurface:'Hi {N}, {R} here from WithAWill HR. Hope you are doing well. We\'ve connected before. A new role just opened up that looked like a strong match for your background: *{P}* with *{C}*. Let us know if you\'d like to hear more.',
 general:'Hi {N}, '};
 function fillWA(tpl,r,extraLink){
 const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
@@ -11535,6 +11541,55 @@ async function tagCandidateToVacancy(candCode,vacCode){
     toast('err','Tag Failed',e.message);
   }
 }
+// 1 Oct 2026, Anne: "Reassign & WA" in Profile Matches — same tag as
+// tagCandidateToVacancy() above, plus a WhatsApp message re-establishing
+// contact (status-agnostic — never names why they went quiet last time).
+// window.open() fires synchronously, BEFORE any await, same as sendWA()
+// does elsewhere (index.html ~line 4308) — a popup blocker can kill
+// window.open() once the user-gesture context has expired across an
+// awaited network round trip, so the WA tab has to open first. The
+// message is built from `vac` directly (its Designation/Company), not
+// from the candidate record, since r[C.position]/r[C.client] only pick up
+// the new vacancy's values AFTER tagCandidateToVacancy() mutates them below.
+function reassignAndWA(candCode,vacCode){
+  const r=MD.find(x=>x[C.code]===candCode);
+  if(!r){toast('err','Not Found','Candidate '+candCode+' could not be found.');return;}
+  const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
+  if(!vac){toast('err','Not Found','Vacancy '+vacCode+' could not be found.');return;}
+  const mob=r[C.contact];
+  const hasMobile=!!(mob&&/^\d{10}$/.test(mob));
+  if(hasMobile){
+    const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
+    const msg=WA.reassign_resurface.replace(/{N}/g,r[C.name]||'').replace(/{R}/g,rn).replace(/{P}/g,vac['Designation']||'').replace(/{C}/g,vac['Company']||'');
+    window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');
+  }
+  _reassignAndWAFollowup(candCode,vacCode,hasMobile);
+}
+async function _reassignAndWAFollowup(candCode,vacCode,hasMobile){
+  await tagCandidateToVacancy(candCode,vacCode);
+  if(!hasMobile){
+    toast('warn','No Mobile on File',candCode+' was tagged to '+vacCode+', but no WhatsApp message was sent — no valid mobile on record.');
+    return;
+  }
+  // Same WA-tracking convention as sendWA() (index.html ~line 4308): bump
+  // followupCount and log a 'WhatsApp Sent' Change Log row, so Manager
+  // Report WA counts stay accurate for this action too. Re-reads `r` since
+  // tagCandidateToVacancy() already mutated and persisted it once above —
+  // this is a second, separate patch for just the follow-up count.
+  const r=MD.find(x=>x[C.code]===candCode);
+  if(!r)return;
+  const cnt=parseInt(r[C.followupCount]||'0')+1;
+  r[C.followupCount]=String(cnt);
+  r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
+  const _clWA=writeCL('WhatsApp Sent',r[C.code],'followupCount',String(cnt-1),String(cnt),r[C.name]);
+  try{
+    await xlPatchRow(r);
+    if(_clWA)await xlAppendRows('Change Log',[_clWA]);
+  }catch(e){
+    console.warn('reassignAndWA followup patch',e.message);
+    toast('warn','Not Fully Saved','WhatsApp sent and candidate tagged, but the follow-up count could not be saved to SharePoint: '+e.message);
+  }
+}
 function dismissPoolEntry(itemId){
   patchPoolEntry(itemId,{[SPLIST_POOL_FIELD_MAP.status]:'Dismissed'}).then(()=>{toast('ok','Dismissed','Pool entry dismissed.');loadTalentPool();}).catch(e=>toast('err','Dismiss Failed',e.message));
 }
@@ -13164,7 +13219,7 @@ ${budgetLine}
 ${jdEntry?`DETAILED ROLE SUMMARY (for matching — use this as the primary description of what this role actually does):\n${jdEntry.matchSummary||jdEntry.rolecontext||''}\n\nWHAT THE ROLE REQUIRES:\n${coreQs.join('\n')}`:''}
 
 Weigh these together, none as a hard cutoff:
-1. Role fit — experience, location, department, and salary vs budget. A profile whose current or expected salary sits well above the vacancy's budget is a weaker match even if the role itself lines up — say so plainly in the rationale when salary is the limiting factor (e.g. "strong role fit, but expected salary is above budget"). Don't discard a profile purely for a salary gap if nothing else is known, but don't ignore a clear mismatch either.
+1. Role fit — experience, location, department, and salary vs budget. A profile whose current or expected salary sits well above the vacancy's budget is a weaker match even if the role itself lines up — say so plainly in the rationale when salary is the limiting factor (e.g. "strong role fit, but expected salary is above budget"). Don't discard a profile purely for a salary gap if nothing else is known, but don't ignore a clear mismatch either. Give this dimension a fitmentScore from 0 (poor fit) to 10 (excellent fit) — an integer, reflecting ONLY role fit (experience/location/department/salary vs budget) as described here. Do NOT factor function/industry adjacency into this number — that stays entirely separate, below.
 2. Function match, judged two different ways depending on what's known about the profile:
    - If a profile carries a "priorRoleSummary" field, that is a detailed summary of the ACTUAL role they were previously sourced for — compare it against this vacancy's DETAILED ROLE SUMMARY above on real function and content (responsibilities, skills, business domain), completely ignoring job-title vocabulary. Two roles can be the same real job under different titles at different companies (e.g. a "Wellness Advisor" and a "Sales Executive" can both be the same field-sales role) — judge on substance, not label. This JD-to-JD comparison is the stronger signal whenever it's available.
    - If a profile has no "priorRoleSummary" (talent pool entries, and candidates sourced before this system existed), fall back to judging business/industry adjacency from their designation/current-or-past company and role — use your own knowledge of what that company does, there's no lookup provided, this is your judgment call. This fallback signal is weaker than a direct JD-to-JD comparison, so don't claim an industryMatch here unless you can name a real, specific adjacency.
@@ -13172,7 +13227,7 @@ Only set industryMatch true when the function/industry match is real and specifi
   const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering; salary fields are annual (₹ PA) and may be blank if not on file; "priorRoleSummary" when present is the detailed JD summary of the vacancy they were previously sourced against — see method 2 above). This list already excludes everyone surfaced in an earlier run for this vacancy — every profile here is new:
 ${JSON.stringify(profiles)}
 
-Return up to 20 matches, ranked best first — fewer if fewer are genuinely relevant, don't pad the list. Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","industryMatch":true|false,"rationale":"<1-2 sentence specific reason — name the function/industry adjacency if industryMatch is true, and say whether it came from their prior role's JD or from designation/company judgment>"}]}`;
+Return up to 20 matches — fewer if fewer are genuinely relevant, don't pad the list (they'll be sorted by fitmentScore afterward, so list order here doesn't matter). Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","fitmentScore":0-10,"industryMatch":true|false,"rationale":"<1-2 sentence specific reason — name the function/industry adjacency if industryMatch is true, and say whether it came from their prior role's JD or from designation/company judgment>"}]}`;
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -13183,7 +13238,10 @@ Return up to 20 matches, ranked best first — fewer if fewer are genuinely rele
     const data=await resp.json();
     const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
     const parsed=parseAIJsonResponse(raw);
-    const matches=(parsed.matches||[]).slice(0,20);
+    // 1 Oct 2026, Anne: sort by fitmentScore descending so the strongest
+    // role fit always surfaces first — the AI's own list order is no
+    // longer relied on for ranking.
+    const matches=(parsed.matches||[]).sort((a,b)=>(b.fitmentScore||0)-(a.fitmentScore||0)).slice(0,20);
     if(!matches.length){toast('info','No New Matches Found','Nothing new in the talent pool or resurfaceable candidates looked like a fit for '+vacCode+'.');return;}
 
     const runs=[...existingRuns,{matches,computedAt:new Date().toISOString()}];
@@ -13217,8 +13275,20 @@ function renderMatchResultsModal(vacCode,runs){
   const rowsForRun=(matches)=>matches.map(m=>{
     const action=m.kind==='pool'
       ?'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="promotePoolMatchForVacancy(\''+m.ref+'\',\''+vacCode+'\')">✓ Promote</button>'
-      :'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="tagCandidateToVacancy(\''+m.ref+'\',\''+vacCode+'\')">🔗 Tag to Vacancy</button>';
+      :'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="tagCandidateToVacancy(\''+m.ref+'\',\''+vacCode+'\')">🔗 Tag to Vacancy</button>'+
+        '<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;margin-left:4px" onclick="reassignAndWA(\''+m.ref+'\',\''+vacCode+'\')" title="Tags to this vacancy AND sends a WhatsApp reconnect message">📲 Reassign & WA</button>';
     const nameHtml='<a href="javascript:void(0)" onclick="'+(m.kind==='candidate'?'viewCandModal':'viewPoolModal')+'(\''+m.ref+'\')" style="color:var(--teal);text-decoration:underline;cursor:pointer">'+escHtml(m.name||m.ref||'—')+'</a>';
+    // 1 Oct 2026, Anne: a 0-10 fitment score, role-fit ONLY (deliberately
+    // separate from industryMatch below, so a high score can't quietly mean
+    // "same industry" and vice versa) — same brand-palette thresholds as
+    // the Interview Guide's own Final Recruiter Interview Score badge
+    // (index.html ~line 3750) for a consistent "X/10" visual language
+    // across the app. Older stored runs predate this field, so it's
+    // omitted (not a misleading "0/10") when absent.
+    const scoreColor=m.fitmentScore>=8?'#5e7855':m.fitmentScore>=5?'#34bac6':'#e9982b';
+    const scoreTag=(typeof m.fitmentScore==='number')
+      ?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+scoreColor+'18;color:'+scoreColor+';font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid '+scoreColor+'44">'+m.fitmentScore+'/10 Fit</span>'
+      :'';
     // 30 Sep 2026: industryMatch is a NEW per-match flag (see
     // triggerPoolMatchForVacancy()) — a small badge so the recruiter can
     // see at a glance which matches are same/adjacent-industry vs. role-
@@ -13236,7 +13306,7 @@ function renderMatchResultsModal(vacCode,runs){
     const industryTag=m.industryMatch
       ?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(52,186,198,.15);color:var(--teal);font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid rgba(52,186,198,.35)">Same industry</span>'
       :'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(91,159,212,.15);color:#5b9fd4;font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid rgba(91,159,212,.35)">Role fit only</span>';
-    return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
+    return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+scoreTag+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
   }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
   // content (index.html ~line 3994) — the .tw class alone only scrolls
@@ -13248,7 +13318,7 @@ function renderMatchResultsModal(vacCode,runs){
     return '<div class="sl2" style="margin-top:'+(i===0?'0':'14px')+'">Run '+runNum+(when?' — '+when:'')+' ('+run.matches.length+')</div>'+
       '<div class="tw" style="max-height:260px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th><th></th></tr></thead><tbody>'+rowsForRun(run.matches)+'</tbody></table></div>';
   }).reverse().join(''); // newest run first
-  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates, weighing role fit AND business/industry background together. 🌊 = talent pool (Promote creates a new candidate, status WIP); 👤 = existing candidate (Tag re-links them to this vacancy, sets status to Reassigned, and schedules a follow-up for tomorrow — remarks and other history are untouched). Run it again anytime — each run only surfaces people not already shown above.',
+  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates, weighing role fit AND business/industry background together — sorted by fitment score, highest first. 🌊 = talent pool (Promote creates a new candidate, status WIP); 👤 = existing candidate — Tag to Vacancy re-links them (status Reassigned, follow-up set for tomorrow, remarks and other history untouched); Reassign & WA does the same and also opens a WhatsApp message re-establishing contact about this new role. Run it again anytime — each run only surfaces people not already shown above.',
     runsHtml,
     '<button class="btn btn-ghost" onclick="closeModal();runVacMatchingNowForCode(\''+vacCode.replace(/'/g,"\\'")+'\')">🔄 Run Another Match</button><button class="btn btn-t" onclick="closeModal()">Close</button>',true);
 }
