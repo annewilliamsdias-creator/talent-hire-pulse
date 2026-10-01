@@ -1360,6 +1360,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div id="rp-jd">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
     <input type="text" id="jd-search" placeholder="Search JDs by role, client, keyword..." style="flex:1" oninput="renderJDList()">
+    <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 9px" onclick="backfillJDMatchSummaries()" title="One-time: AI-generate Match Summary for JDs that don't have one yet, without touching anything else already filled in">🔄 Backfill Match Summaries</button>
     <button class="btn btn-t btn-sm" onclick="openAddJD()">+ Add JD</button>
   </div>
   <div id="jd-add-form" class="hidden" style="background:var(--w06);border:1px solid var(--w08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px">
@@ -12314,6 +12315,72 @@ Rules:
     if(parsed.redFlagIndicators){const el=document.getElementById('jd-redflag');if(el)el.value=parsed.redFlagIndicators;}
     toast('ok','AI Generated',jdText?'Pre-Read, Role Context, Match Summary, and questions generated from the JD. Review and edit before saving.':'Questions generated from role details. Add the JD link and regenerate to get Pre-Read/Role Context/Match Summary too.');
   }catch(e){toast('err','AI','Failed to generate: '+e.message);}
+}
+// 1 Oct 2026 — one-time backfill for JD Repository entries created before
+// Match Summary existed. Reads each JD's own linked document exactly like
+// aiGenerateJDQuestions() does, but asks the AI for ONLY a Match Summary and
+// writes back ONLY that field via saveJDToList() (which PATCHes the full
+// field set, but every field other than matchSummary is read unchanged from
+// the in-memory record) — core questions, Pre-Read, Role Context, shortlist/
+// red-flag indicators etc. on each entry are never touched. Admin-only, same
+// gate as the rest of the JD Repository.
+async function backfillJDMatchSummaries(){
+  if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}
+  const targets=repoData.jds.filter(j=>!j.matchSummary&&j.link);
+  const skippedNoLink=repoData.jds.filter(j=>!j.matchSummary&&!j.link).length;
+  if(!targets.length){
+    toast('info','Nothing to Backfill',skippedNoLink?('Every JD with a link already has a Match Summary. '+skippedNoLink+' JD(s) have no link on file, so they can\'t be processed automatically.'):'Every JD already has a Match Summary.');
+    return;
+  }
+  if(!confirm('Generate Match Summary for '+targets.length+' JD(s) that don\'t have one yet'+(skippedNoLink?' ('+skippedNoLink+' more have no JD link and will be skipped)':'')+'? This reads each linked JD document and writes ONLY the Match Summary field — core questions, Pre-Read, Role Context and everything else already filled in stays exactly as is.'))return;
+
+  const log=[];
+  const renderProgress=(statusLine)=>{
+    const mp=document.getElementById('modal-msg');
+    if(mp)mp.innerHTML=escHtml(statusLine)+'<div style="max-height:280px;overflow-y:auto;margin-top:10px;font-size:12px">'+log.slice().reverse().join('')+'</div>';
+  };
+  showModal('🔄 Backfilling Match Summaries','Starting…','','<button class="btn btn-ghost" onclick="closeModal()">Run in Background</button>',true);
+  let ok=0,failed=0;
+  for(let i=0;i<targets.length;i++){
+    const jd=targets[i];
+    renderProgress('Processing '+(i+1)+' of '+targets.length+'…');
+    try{
+      const jdText=await extractJDText(jd.link);
+      if(!jdText)throw new Error('JD document is empty.');
+      const prompt=`You are an expert HR recruiter. Write a detailed summary of this role written ONLY for matching it against OTHER job descriptions later — never read aloud to a candidate.
+
+ROLE: ${jd.title||''}
+CLIENT: ${jd.client||''}
+DEPARTMENT: ${jd.dept||''}
+EXPERIENCE: ${jd.exp||''}
+FULL JOB DESCRIPTION:
+${jdText.slice(0,12000)}
+
+Write a 4-6 sentence summary covering: the core day-to-day responsibilities, required skills/experience, and what business/industry function this role actually performs. Write it so a role at a different company with a completely different job title, but the same real function, would clearly match against this description — e.g. a field-sales role should say so explicitly even if its official title is something else entirely. Base it ONLY on the job description text above — never invent facts.
+
+Respond with ONLY the summary text — no preamble, no quotes, no markdown.`;
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,messages:[{role:'user',content:prompt}]})
+      });
+      if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
+      const data=await resp.json();
+      const summary=(data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'').trim();
+      if(!summary)throw new Error('AI returned an empty summary.');
+      jd.matchSummary=summary;
+      await saveJDToList(jd,false);
+      ok++;
+      log.push('<div style="color:var(--teal);padding:2px 0">✓ '+escHtml(jd.title)+'</div>');
+    }catch(e){
+      failed++;
+      log.push('<div style="color:#9f4a47;padding:2px 0">✕ '+escHtml(jd.title)+' — '+escHtml(e.message)+'</div>');
+    }
+  }
+  renderJDList();
+  showModal('🔄 Backfill Complete',
+    ok+' Match Summary generated, '+failed+' failed'+(skippedNoLink?', '+skippedNoLink+' skipped (no JD link on file)':'')+'. Everything else on each JD — questions, Pre-Read, Role Context, shortlist/red-flag indicators — was left untouched.<div style="max-height:280px;overflow-y:auto;margin-top:10px;font-size:12px">'+log.slice().reverse().join('')+'</div>',
+    '','<button class="btn btn-t" onclick="closeModal()">Close</button>',true);
 }
 
 // ===== HOOK INTO switchATab for commonrepo =====
