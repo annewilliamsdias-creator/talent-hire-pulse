@@ -13232,12 +13232,22 @@ Return up to 20 matches — fewer if fewer are genuinely relevant, don't pad the
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2500,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:body}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4500,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:body}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
-    const parsed=parseAIJsonResponse(raw);
+    // 1 Oct 2026: adding fitmentScore to every match (20 matches max) pushed
+    // full-size responses past the old 2500-token cap, truncating the JSON
+    // mid-array and failing to parse ("Expected ']'") — raised the cap and
+    // surface stop_reason explicitly if it still happens, rather than a
+    // bare JSON.parse error that doesn't say why.
+    let parsed;
+    try{parsed=parseAIJsonResponse(raw);}
+    catch(pe){
+      if(data.stop_reason==='max_tokens')throw new Error('AI response was cut off (hit the token limit) before finishing — try again with fewer candidates in the pool, or report this if it keeps happening.');
+      throw pe;
+    }
     // 1 Oct 2026, Anne: sort by fitmentScore descending so the strongest
     // role fit always surfaces first — the AI's own list order is no
     // longer relied on for ranking.
