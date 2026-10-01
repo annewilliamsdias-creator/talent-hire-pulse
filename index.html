@@ -9322,7 +9322,13 @@ async function saveJDToList(jd,isNew=false){
       const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
       if(res.ok){const item=await res.json();jd._spItemId=item.id;}
     }else if(jd._spItemId){
-      await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items/'+jd._spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      // PATCH to .../items/{id}/fields takes the flat field map directly —
+      // unlike POST to .../items (above), which needs it wrapped in
+      // {fields:{...}}. This was wrapped the same way here too (copy-paste
+      // from the POST branch) and Graph silently 400'd on every JD edit as
+      // a result — found 1 Oct 2026 chasing an unrelated backfill failure.
+      const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items/'+jd._spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(fields)});
+      if(!res.ok)console.warn('JD List PATCH failed:',res.status,await res.text().catch(()=>''));
     }
   }catch(e){console.warn('JD List save failed:',e.message);}
 }
@@ -12324,17 +12330,22 @@ Rules:
 // on each entry are never sent, so they can't be touched even accidentally.
 // Deliberately does NOT reuse saveJDToList(): that helper swallows write
 // failures (console.warn only, never throws) for its own fire-and-forget
-// callers, which silently turned a real SharePoint write failure
-// (InvalidAuthenticationToken: Access token is empty) into a reported
-// success here on first use — this does its own PATCH with a single retry
-// through a fresh token on an auth error, and actually throws on failure so
-// the per-row try/catch below reports it instead of hiding it.
+// callers, which silently turned a real SharePoint write failure into a
+// reported success here on first use — this does its own PATCH with a
+// single retry through a fresh token on a transient auth error, and
+// actually throws on failure so the per-row try/catch below reports it
+// instead of hiding it. Body is the flat field map, NOT wrapped in
+// {fields:{...}} — that wrapper is only correct for POST to .../items
+// (item creation); PATCH to .../items/{id}/fields takes the field map
+// directly. saveJDToList's own PATCH branch had this exact bug too (fixed
+// alongside this), which is what actually caused every "success" to not
+// persist, not the token error this surfaced as on the first attempt.
 async function _patchJDMatchSummaryField(jd,attempt){
   await refreshToken();
   const resp=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items/'+jd._spItemId+'/fields',{
     method:'PATCH',
     headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
-    body:JSON.stringify({fields:{DetailedSummaryforJobMatch:jd.matchSummary||''}})
+    body:JSON.stringify({DetailedSummaryforJobMatch:jd.matchSummary||''})
   });
   if(!resp.ok){
     const errText=await resp.text().catch(()=>'');
