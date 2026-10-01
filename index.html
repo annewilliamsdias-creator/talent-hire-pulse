@@ -9072,9 +9072,15 @@ async function renderEffortComparison(){
     for(const rec of recs){
       const dd = await buildEffortData(rec, from, to);
       const revenue = dd.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
-      const vacGaps = VD.filter(v=>v['Recruiter']===rec && v['Active']!=='N')
-        .map(v=>calcVacancyFunnelGap(v['Vacancy code']||v['Vacancy Code']||'', v['Date of Vacancy']||'', v['Positions Count']))
-        .filter(g=>g.vacCode);
+      // 1 Oct 2026 fix: this used to call calcVacancyFunnelGap() directly,
+      // which returns no `client`/`designation` — those are only added by
+      // calcRecruiterFunnelGaps()'s own wrapper around the same call. The
+      // Manager Report's expand view was rendering both as "undefined" as
+      // a result (found reviewing the Candidate Match nudge just added
+      // alongside it). calcRecruiterFunnelGaps() already does this exact
+      // filter+map+enrich, so this just reuses it instead of duplicating
+      // (and under-enriching) the same logic.
+      const vacGaps = calcRecruiterFunnelGaps(rec);
       await annotateMatchingStatus(vacGaps);
       const matchNudgeCount=vacGaps.filter(g=>g.matchingNudge).length;
       rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, vacGaps, matchNudgeCount});
