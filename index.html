@@ -12319,11 +12319,29 @@ Rules:
 // 1 Oct 2026 — one-time backfill for JD Repository entries created before
 // Match Summary existed. Reads each JD's own linked document exactly like
 // aiGenerateJDQuestions() does, but asks the AI for ONLY a Match Summary and
-// writes back ONLY that field via saveJDToList() (which PATCHes the full
-// field set, but every field other than matchSummary is read unchanged from
-// the in-memory record) — core questions, Pre-Read, Role Context, shortlist/
-// red-flag indicators etc. on each entry are never touched. Admin-only, same
-// gate as the rest of the JD Repository.
+// writes back ONLY that one SharePoint field (DetailedSummaryforJobMatch) —
+// core questions, Pre-Read, Role Context, shortlist/red-flag indicators etc.
+// on each entry are never sent, so they can't be touched even accidentally.
+// Deliberately does NOT reuse saveJDToList(): that helper swallows write
+// failures (console.warn only, never throws) for its own fire-and-forget
+// callers, which silently turned a real SharePoint write failure
+// (InvalidAuthenticationToken: Access token is empty) into a reported
+// success here on first use — this does its own PATCH with a single retry
+// through a fresh token on an auth error, and actually throws on failure so
+// the per-row try/catch below reports it instead of hiding it.
+async function _patchJDMatchSummaryField(jd,attempt){
+  await refreshToken();
+  const resp=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items/'+jd._spItemId+'/fields',{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+    body:JSON.stringify({fields:{DetailedSummaryforJobMatch:jd.matchSummary||''}})
+  });
+  if(!resp.ok){
+    const errText=await resp.text().catch(()=>'');
+    if(!attempt){await new Promise(r=>setTimeout(r,1500));return _patchJDMatchSummaryField(jd,1);}
+    throw new Error('SharePoint write failed ('+resp.status+'): '+errText.slice(0,200));
+  }
+}
 async function backfillJDMatchSummaries(){
   if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}
   const targets=repoData.jds.filter(j=>!j.matchSummary&&j.link);
@@ -12343,6 +12361,7 @@ async function backfillJDMatchSummaries(){
   let ok=0,failed=0;
   for(let i=0;i<targets.length;i++){
     const jd=targets[i];
+    const prevSummary=jd.matchSummary;
     renderProgress('Processing '+(i+1)+' of '+targets.length+'…');
     try{
       const jdText=await extractJDText(jd.link);
@@ -12369,10 +12388,11 @@ Respond with ONLY the summary text — no preamble, no quotes, no markdown.`;
       const summary=(data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'').trim();
       if(!summary)throw new Error('AI returned an empty summary.');
       jd.matchSummary=summary;
-      await saveJDToList(jd,false);
+      await _patchJDMatchSummaryField(jd,0);
       ok++;
       log.push('<div style="color:var(--teal);padding:2px 0">✓ '+escHtml(jd.title)+'</div>');
     }catch(e){
+      jd.matchSummary=prevSummary; // roll back in-memory value so a re-run retries this JD rather than treating it as already done
       failed++;
       log.push('<div style="color:#9f4a47;padding:2px 0">✕ '+escHtml(jd.title)+' — '+escHtml(e.message)+'</div>');
     }
