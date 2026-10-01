@@ -8171,6 +8171,7 @@ let effortRecSel = '';
 let effortDataCache = null;
 let effortReportPeriod = 'month';
 let effortReportCache = null;
+let effortCustomFrom = null, effortCustomTo = null; // 1 Oct 2026, Anne: Manager Report custom date range
 
 function effortWeekRange(){
   const d = new Date(); d.setDate(d.getDate()-6);
@@ -8188,9 +8189,10 @@ function effortPeriodRange(period){
   if(period==='quarter'){ const qStartMonth=Math.floor(now.getMonth()/3)*3; const d=new Date(now.getFullYear(),qStartMonth,1); return {from:d.toISOString().slice(0,10), to:td}; }
   if(period==='6m'){ const d=new Date(now); d.setMonth(d.getMonth()-6); return {from:d.toISOString().slice(0,10), to:td}; }
   if(period==='year') return {from: now.getFullYear()+'-01-01', to: td};
+  if(period==='custom') return {from: effortCustomFrom||td, to: effortCustomTo||td};
   return {from: td.slice(0,7)+'-01', to: td};
 }
-const EFFORT_PERIOD_LABELS = {week:'This Week',month:'This Month',quarter:'This Quarter','6m':'Last 6 Months',year:'This Year'};
+const EFFORT_PERIOD_LABELS = {week:'This Week',month:'This Month',quarter:'This Quarter','6m':'Last 6 Months',year:'This Year',custom:'Custom Range'};
 
 // Same list+field pattern as fetchResumeScreenedTodayCount/RangeCount
 // (search this file) — a separate fetch rather than generalizing those,
@@ -8684,6 +8686,63 @@ function calcRecruiterFunnelGaps(recruiterName){
   }).filter(g=>g.vacCode);
 }
 
+// 1 Oct 2026, Anne: "I see one vacancy where recruiter hasn't run a
+// candidate match even though we may have profiles in dbase" — a nudge on
+// whether Profile Matches (triggerPoolMatchForVacancy) is actually being
+// used, surfaced in EOD + Manager Report. Two pieces, each fetched ONCE per
+// report render (not once per vacancy/recruiter):
+// 1. Every vacancy's MatchResults field, bulk-loaded in one paged List call
+//    (same $select pattern as loadJDsFromList()) instead of N individual
+//    _loadMatchRuns() round trips — cheap 5-min cache since Manager Report
+//    calls this once per recruiter in a loop.
+// 2. Whether the pool/resurfaceable-candidate population has ANYTHING in it
+//    right now — this can only ever be a coarse, vacancy-agnostic signal
+//    (Talent Pool entries aren't matched to any specific vacancy until a
+//    match is actually run — checking relevance per vacancy IS the thing
+//    being nudged), so a vacancy with zero runs is only flagged when this
+//    is true; otherwise there's genuinely nothing to have run it against.
+let _matchResultsMapCache=null,_matchResultsMapCacheAt=0;
+async function _loadAllVacancyMatchResultsMap(){
+  const FRESH_MS=5*60*1000;
+  if(_matchResultsMapCache&&(Date.now()-_matchResultsMapCacheAt)<FRESH_MS)return _matchResultsMapCache;
+  const map={};
+  try{
+    let url=`/sites/${siteId}/lists/Vacancies/items?$expand=fields($select=Title,MatchResults)&$top=200`;
+    while(url){
+      const res=await graphGet(url.replace(GRAPH,''));
+      (res.value||[]).forEach(it=>{const f=it.fields||{};if(f.Title)map[f.Title]=f.MatchResults||'';});
+      url=res['@odata.nextLink']||null;
+    }
+  }catch(e){console.warn('_loadAllVacancyMatchResultsMap failed',e.message);}
+  _matchResultsMapCache=map;_matchResultsMapCacheAt=Date.now();
+  return map;
+}
+async function _poolHasAvailableProfiles(){
+  try{
+    const pool=await loadPoolFromList();
+    const openPoolCount=pool.filter(p=>p.status==='New'||p.status==='Reviewed').length;
+    const resurfaceCount=MD.filter(r=>POOL_RESURFACE_STATUSES.has(r[C.status])).length;
+    return{available:(openPoolCount+resurfaceCount)>0,openPoolCount,resurfaceCount};
+  }catch(e){console.warn('_poolHasAvailableProfiles failed',e.message);return{available:false,openPoolCount:0,resurfaceCount:0};}
+}
+// Mutates gap objects (from calcRecruiterFunnelGaps) in place with
+// .matchingRun (has Profile Matches ever been run for this vacancy) and
+// .matchingNudge (never run AND there's something in the pool right now
+// worth running it against). Call sites that never call this simply never
+// get these fields, and _funnelGapTbl()/_liveFunnelGapTbl() render nothing
+// extra when they're absent — so this stays opt-in per report, scoped to
+// EOD + Manager Report only (Anne's literal ask), not Action/Weekly/Home.
+async function annotateMatchingStatus(gaps){
+  if(!gaps.length)return gaps;
+  const[map,pool]=await Promise.all([_loadAllVacancyMatchResultsMap(),_poolHasAvailableProfiles()]);
+  gaps.forEach(g=>{
+    const runs=_parseMatchRuns(map[g.vacCode]);
+    g.matchingRun=runs.length>0;
+    g.matchingNudge=!g.matchingRun&&pool.available;
+  });
+  return gaps;
+}
+
 // Home's "Today's Effort" (focus) and "My Portfolio" pages — moved in from
 // the retired Effort panel (25 Sep 2026). Same effortRecSel/effortDataCache
 // globals and #ef-focus/#ef-portfolio render targets as before; only the
@@ -8904,6 +8963,20 @@ function renderFunnelPredictionHTML(prediction){
 // separate raw-number-only views).
 async function onEffortPeriodChange(){
   effortReportPeriod = gv('effort-period')||'month';
+  const customEl = document.getElementById('effort-custom-range');
+  if(customEl) customEl.classList.toggle('hidden', effortReportPeriod!=='custom');
+  effortReportCache = null;
+  // 1 Oct 2026, Anne: don't fire a report render the instant "Custom Range"
+  // is selected — there's no usable date yet, so wait for both date inputs
+  // (see onEffortCustomRangeChange()) before loading anything.
+  if(effortReportPeriod==='custom') return;
+  await renderEffortComparison();
+}
+async function onEffortCustomRangeChange(){
+  effortCustomFrom = gv('effort-custom-from')||null;
+  effortCustomTo = gv('effort-custom-to')||null;
+  if(!effortCustomFrom||!effortCustomTo)return;
+  if(effortCustomFrom>effortCustomTo){toast('warn','Invalid Range','Start date must be on or before end date.');return;}
   effortReportCache = null;
   await renderEffortComparison();
 }
@@ -8949,7 +9022,19 @@ function _liveFunnelGapTbl(vacGaps){
   let html = '<div class="tw"><table style="table-layout:fixed">'+FUNNEL_GAP_COLGROUP+'<thead><tr>'+hdrs.map(wrapTh).join('')+'</tr></thead><tbody>';
   vacGaps.forEach(g=>{
     const since = g.sinceDate ? fmtD(g.sinceDate) : 'All-time';
-    html += `<tr><td class="mono">${g.vacCode}</td><td class="m">${g.designation}</td><td class="m">${g.client}</td><td class="m">${since}</td><td class="m">${g.total}</td><td class="m">${g.meaningful}</td><td class="m">${g.recruiterIW}</td><td class="m">${g.consultant}</td><td class="m">${g.clientIW}</td><td class="m">${g.meaningfulActionsRequired}</td><td class="m">${g.clientIWPrediction}</td><td style="font-size:10px;white-space:normal">${_ragDot(g.ragStatus)}${g.remark}</td></tr>`;
+    // 1 Oct 2026: appended into the same remark cell rather than a new
+    // table column — FUNNEL_GAP_COLGROUP's widths are shared with
+    // _funnelGapTbl() (the downloadable-report version) and already sum to
+    // 100% across exactly these 12 columns, so adding a column here would
+    // mean reworking that colgroup for every caller. Only rendered when
+    // this vacGaps array was actually run through annotateMatchingStatus()
+    // (Manager Report) — g.matchingRun is undefined everywhere else
+    // (Home's Today's Focus use of this same function), so nothing extra
+    // shows there.
+    const matchNote = typeof g.matchingRun==='boolean'
+      ? (g.matchingNudge?'<br><span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:600">⚠ Candidate Match never run — profiles available</span>':(g.matchingRun?'<br><span style="color:'+FUNNEL_GAP_COLOR_GREEN+'">✓ Candidate Match run</span>':''))
+      : '';
+    html += `<tr><td class="mono">${g.vacCode}</td><td class="m">${g.designation}</td><td class="m">${g.client}</td><td class="m">${since}</td><td class="m">${g.total}</td><td class="m">${g.meaningful}</td><td class="m">${g.recruiterIW}</td><td class="m">${g.consultant}</td><td class="m">${g.clientIW}</td><td class="m">${g.meaningfulActionsRequired}</td><td class="m">${g.clientIWPrediction}</td><td style="font-size:10px;white-space:normal">${_ragDot(g.ragStatus)}${g.remark}${matchNote}</td></tr>`;
   });
   html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:4px">MA Required = Meaningful Actions Required. Client I/W Pred. = Client I/W Prediction.</div>';
   return html;
@@ -8966,7 +9051,13 @@ async function renderEffortComparison(){
         <option value="quarter">This Quarter</option>
         <option value="6m">Last 6 Months</option>
         <option value="year">This Year</option>
+        <option value="custom">Custom Range</option>
       </select>
+      <span id="effort-custom-range" class="hidden" style="display:flex;align-items:center;gap:6px">
+        <input type="date" id="effort-custom-from" onchange="onEffortCustomRangeChange()">
+        <span style="font-size:11px;color:var(--w60)">to</span>
+        <input type="date" id="effort-custom-to" onchange="onEffortCustomRangeChange()">
+      </span>
       <button class="btn btn-t btn-sm" style="margin-left:auto" onclick="generateEffortAIReport()">🤖 Generate AI Report</button>
       <button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Manager Report','','ef-compare-body')">🖨 Print / PDF</button>
     </div>
@@ -8984,7 +9075,9 @@ async function renderEffortComparison(){
       const vacGaps = VD.filter(v=>v['Recruiter']===rec && v['Active']!=='N')
         .map(v=>calcVacancyFunnelGap(v['Vacancy code']||v['Vacancy Code']||'', v['Date of Vacancy']||'', v['Positions Count']))
         .filter(g=>g.vacCode);
-      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, vacGaps});
+      await annotateMatchingStatus(vacGaps);
+      const matchNudgeCount=vacGaps.filter(g=>g.matchingNudge).length;
+      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, vacGaps, matchNudgeCount});
     }
   }catch(e){hideLoad();toast('err','Manager Report',e.message);return;}
   hideLoad();
@@ -8993,14 +9086,20 @@ async function renderEffortComparison(){
   // sorted by coverage (the effort/quality signal), not activity volume.
   rows.sort((a,b)=>b.coverage-a.coverage);
   const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
-  let html = `<div style="font-size:11px;color:var(--w60);margin:8px 0">${periodLabel} (${fmtD(from)} – ${fmtD(to)}), except Active Vacancies/Coverage/Funnel Gap (current) and Potential Revenue (current active pipeline). Click ▶ to see the vacancy-level Funnel Gap breakdown; click a recruiter's name to view their own Portfolio tab.</div>
-  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  let html = `<div style="font-size:11px;color:var(--w60);margin:8px 0">${periodLabel} (${fmtD(from)} – ${fmtD(to)}), except Active Vacancies/Coverage/Funnel Gap/Candidate Match (current) and Potential Revenue (current active pipeline). Click ▶ to see the vacancy-level Funnel Gap breakdown; click a recruiter's name to view their own Portfolio tab.</div>
+  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th title="Vacancies where Profile Matches has never been run, despite pool/resurfaceable profiles being available right now">Candidate Match</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     const covColor = r.coverage>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
-    html += `<tr><td style="cursor:pointer;text-align:center" onclick="toggleFunnelGapExpand(${i})"><span id="fg-caret-${i}">▶</span></td><td style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${_ragCountSummary(r.vacGaps)}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
-    html += `<tr id="fg-expand-${i}" class="hidden"><td colspan="11" style="padding:8px 8px 14px">${_liveFunnelGapTbl(r.vacGaps)}</td></tr>`;
+    // 1 Oct 2026, Anne: nudge on whether Profile Matches is actually being
+    // used — see annotateMatchingStatus(). Silent (muted dash) when nothing
+    // to flag, so this column doesn't just become noise on every row.
+    const matchCell = r.matchNudgeCount>0
+      ?'<span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:700">⚠ '+r.matchNudgeCount+' never run</span>'
+      :'<span style="color:var(--w60)">—</span>';
+    html += `<tr><td style="cursor:pointer;text-align:center" onclick="toggleFunnelGapExpand(${i})"><span id="fg-caret-${i}">▶</span></td><td style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${_ragCountSummary(r.vacGaps)}</td><td class="m">${matchCell}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr id="fg-expand-${i}" class="hidden"><td colspan="12" style="padding:8px 8px 14px">${_liveFunnelGapTbl(r.vacGaps)}</td></tr>`;
   });
-  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag.</div>';
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score.</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
 }
@@ -13615,7 +13714,12 @@ function _rptCss(){
     // ("Candidate volume insufficient and vacancy not actioned in 3+
     // days") would otherwise get ellipsis-truncated by the generic nowrap
     // td rule above, defeating the point of the remark.
-    '.fgtbl td:last-child{white-space:normal;display:flex;align-items:flex-start}';
+    '.fgtbl td:last-child{white-space:normal;display:flex;align-items:flex-start}'+
+    // 1 Oct 2026: "Candidate Match" usage nudge — see annotateMatchingStatus().
+    // Hardcoded hex, not a CSS var — this stylesheet serves a standalone
+    // downloaded HTML file with no access to the live app's :root variables.
+    `.mrun-warn{color:${FUNNEL_GAP_COLOR_AMBER};font-weight:700;font-size:10pt}`+
+    `.mrun-yes{color:${FUNNEL_GAP_COLOR_GREEN};font-size:10pt}`;
 }
 
 // Shared by EOD/Weekly/Manager Report — see calcRecruiterFunnelGaps().
@@ -13638,7 +13742,21 @@ function _funnelGapTbl(gaps){
     const since = g.sinceDate ? _fDMY(g.sinceDate) : 'All-time';
     // Coloured dot + system-generated remark, no Red/Amber/Green text label
     // — see calcVacancyFunnelGap() for the fixed remark set.
-    const statusCell = '<span class="frdot frdot-'+g.ragStatus+'"></span>'+g.remark;
+    // 1 Oct 2026, Anne: nudge on whether Profile Matches has actually been
+    // used for this vacancy — see annotateMatchingStatus(). Only genEODReport()
+    // currently annotates gaps before calling this (Anne's literal ask was
+    // EOD + Manager Report); Action/Weekly Report gaps are never annotated,
+    // so g.matchingRun is undefined there and this renders nothing extra.
+    const matchNote = typeof g.matchingRun==='boolean'
+      ? (g.matchingNudge?'<br><span class="mrun-warn">⚠ Candidate Match never run — profiles available</span>':(g.matchingRun?'<br><span class="mrun-yes">✓ Candidate Match run</span>':''))
+      : '';
+    // matchNote's <br> needs to live inside its own inline wrapper, not as a
+    // direct child of this cell — .fgtbl td:last-child is display:flex, and
+    // a <br> as a direct flex-item child doesn't force a line break under
+    // flex layout (it only works inside normal block/inline flow). Wrapping
+    // remark+matchNote in one <span> keeps them in their own box, where <br>
+    // behaves normally regardless of the outer flex container.
+    const statusCell = '<span class="frdot frdot-'+g.ragStatus+'"></span><span>'+g.remark+matchNote+'</span>';
     const cells=[
       g.vacCode, g.designation, g.client, since, g.total,
       g.meaningful, g.recruiterIW, g.consultant, g.clientIW,
@@ -13746,6 +13864,9 @@ async function genEODReport(recName){
   const resumesScreenedToday=await fetchResumeScreenedTodayCount(recName,td);
   // Funnel Gap (28 Sep 2026, Anne's decision) — see calcRecruiterFunnelGaps()
   const funnelGaps=calcRecruiterFunnelGaps(recName);
+  // Candidate Match usage nudge (1 Oct 2026, Anne's ask) — EOD + Manager
+  // Report only, per annotateMatchingStatus()'s own comment.
+  await annotateMatchingStatus(funnelGaps);
   // Effort+Incentive Metrics Audit, Anne's decision (25 Sep 2026): EOD now
   // reads Meaningful Candidate Actions through the SAME shared function
   // Incentive uses (getMeaningfulActionsInPeriod) — not a separately
