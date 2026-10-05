@@ -1193,6 +1193,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="sl2">🔄 Status</div>
 <div class="fg3">
 <div class="field"><label>New Status <span class="req">*</span></label><select id="uS" onchange="onStatCh()"><option>WIP</option><option>Not Contactable</option><option>Not Interested</option><option>Dropped</option><option>Consultant Interview in Progress</option><option>Rejected by Consultant</option><option>Shortlisted for Client I/W</option><option>Client I/W in Progress</option><option>Rejected by Client</option><option>On Hold</option><option>Selected</option><option>Offered</option><option>Offer Revoked</option><option>Offer Declined</option><option>Joining in Progress</option><option>Joined</option></select></div>
+<div class="field hidden" id="uDropF"><label>Reason for closing <span class="req">*</span></label><select id="uDropR"><option value="">— Select —</option></select></div>
 <div class="field" id="uDMF"><label>Decision Maker</label><select id="uDM"><option value="">— Select —</option><option>Consultant</option><option>Client</option></select></div>
 <div class="field"><label>Follow-up Date <span class="req" id="uFUReq">*</span></label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="uFU" style="flex:1"><button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="document.getElementById('uFU').value=''" title="Clear date">✕</button></div></div>
 </div>
@@ -2201,7 +2202,12 @@ noticePeriods:['Immediate','7 days','15 days','30 days','45 days','60 days','90 
 expLevels:['Fresher','0-1 yrs','1-3 yrs','3-5 yrs','5-8 yrs','8-12 yrs','12+ yrs'].map(n=>({name:n,active:true})),
 statuses:['WIP','Active','Not Contactable','Not Interested','Dropped','Consultant Interview in Progress','Rejected by Consultant','Shortlisted for Client I/W','Client I/W in Progress','Rejected by Client','On Hold','Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'].map(n=>({name:n,active:true})),
 vacStatuses:['Open','On Hold','Shortlisted','Selected','Offered','Closed','Cancelled'].map(n=>({name:n,active:true})),
-decisionMakers:['Consultant','Client'].map(n=>({name:n,active:true}))};
+decisionMakers:['Consultant','Client'].map(n=>({name:n,active:true})),
+// 5 Oct 2026, Anne: reason picked whenever a candidate is moved to Dropped or
+// Not Interested (feeds the AI recruiter assessment). A Master, so Admin edits
+// the list in Config → Masters like every other; these are the defaults until
+// a list is saved there. Deliberately not alphabetised — "Other" belongs last.
+dropReasons:['Not interested in the role','Salary / compensation mismatch','Location mismatch','Notice period too long','Accepted another offer','Not looking for a change','Profile does not match the requirement','Unreachable / no response','Duplicate profile','Other'].map(n=>({name:n,active:true}))};
 function mA(k){return(M[k]||[]).filter(x=>x.active).map(x=>x.name);}
 // 5 Oct 2026, Anne: new Masters entries landed at the bottom of every list.
 // Lists with no inherent order are kept alphabetical — sorted in M itself, so
@@ -3229,7 +3235,7 @@ async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=W
 // ══════════════════════════════════════════════════════
 // DROPDOWNS
 // ══════════════════════════════════════════════════════
-const DMAP={nRec:'recruiters',nSrc:'sources',nLoc:'cities',nNot:'noticePeriods',nCli:'clients',nDept:'departments',epLoc:'cities',epNot:'noticePeriods',epCli:'clients',epDept:'departments',epRec:'recruiters',avCli:'clients',avDept:'departments',avLoc:'cities',avRec:'recruiters',uRI:'departments',uUC:'clients'};
+const DMAP={nRec:'recruiters',nSrc:'sources',nLoc:'cities',nNot:'noticePeriods',nCli:'clients',nDept:'departments',epLoc:'cities',epNot:'noticePeriods',epCli:'clients',epDept:'departments',epRec:'recruiters',avCli:'clients',avDept:'departments',avLoc:'cities',avRec:'recruiters',uRI:'departments',uUC:'clients',uDropR:'dropReasons'};
 function fillDrops(){
 syncActiveStatusesFromMasters();ensureStatusOptions();
 Object.entries(DMAP).forEach(([id,key])=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;const first=el.options[0];el.innerHTML='';if(first)el.appendChild(first);else{const o=document.createElement('option');o.value='';o.textContent='— Select —';el.appendChild(o);}mA(key).forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;el.appendChild(o);});if(cur)el.value=cur;});
@@ -3854,7 +3860,7 @@ document.getElementById('uLine2').textContent=l2.join('  ·  ')||'—';
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
 const _evU=igEvalData[r[C.code]||'']||{};const _fsEl=document.getElementById('uFitmentChip');if(_fsEl){if(_evU.fitmentScore){const _fc=_evU.fitmentScore>=8?'#5e7855':_evU.fitmentScore>=5?'#34bac6':'#e9982b';_fsEl.innerHTML='<span style="font-size:10px;font-weight:600;color:'+_fc+';background:'+_fc+'18;border:1px solid '+_fc+'44;border-radius:12px;padding:2px 8px" title="Final Recruiter Interview Score">⭐ '+_evU.fitmentScore+'/10</span>';_fsEl.style.display='inline';}else{_fsEl.style.display='none';}}
 renderUpdGateway(r,r[C.code]);
-sv('uS',r[C.status]||'Active');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
+sv('uS',r[C.status]||'Active');sv('uDropR','');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 // Pre-fill existing values (including dates) so user sees current state
 sv('uFU',r[C.followupDate]||'');sv('uIvD',r[C.interviewDate]||'');sv('uDecD',r[C.decisionDate]||'');sv('uDOJ',r[C.doj]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');
 const remEl=document.getElementById('uRem');if(remEl)remEl.value=r[C.remark]||'';
@@ -3863,6 +3869,7 @@ fillDrops(); // Refresh all form dropdowns from current admin config
 onStatCh();updStatDrop();}
 function onStatCh(){
 const stat=document.getElementById('uS').value;
+const _drF=document.getElementById('uDropF');if(_drF)_drF.classList.toggle('hidden',!(CLOSING_STATUSES.includes(stat)&&(!MD[eIdx]||MD[eIdx][C.status]!==stat)));
 const autoDM=STATUS_DM[stat];const dmEl=document.getElementById('uDM');const dmF=document.getElementById('uDMF');
 if(autoDM){if(dmEl)dmEl.value=autoDM;if(dmF)dmF.style.opacity='.6';}
 else if(['On Hold','Offer Revoked'].includes(stat)){if(dmEl)dmEl.value='';if(dmF)dmF.style.opacity='1';}
@@ -3881,6 +3888,11 @@ const stat=gv('uS'),dm=gv('uDM'),fu=gv('uFU');
 if(!NO_FOLLOWUP.has(stat)&&!fu){showAlert('uUpdAlert','err','Follow-up date required.');return;}
 if(['On Hold','Offer Revoked'].includes(stat)&&!dm){showAlert('uUpdAlert','err','Decision Maker required for On Hold / Offer Revoked.');return;}
 const r=MD[eIdx];const oldStat=r[C.status];
+// 5 Oct 2026, Anne: a closing move (to Dropped / Not Interested) needs a reason
+// from the Drop Reasons master — it feeds the AI recruiter assessment, which
+// otherwise only has free-text remarks to go on. Not asked again on a
+// remark-only save of a candidate who is already in that status.
+if(CLOSING_STATUSES.includes(stat)&&stat!==oldStat&&!gv('uDropR')){showAlert('uUpdAlert','err','Please pick a reason for closing this candidate.');return;}
 // Anne's decision #3 (25 Sep 2026, Effort+Incentive Metrics Audit): "Require
 // an interview date when an interview-stage workflow requires it" — moving a
 // candidate INTO an interview stage for the first time now requires Interview
@@ -3927,10 +3939,12 @@ const _clEU=writeCL('Status Update',r[C.code],C.status,oldStat,stat,r[C.name]);
 // reader EOD/Effort/Incentives must all call — do not re-derive this count
 // anywhere else.
 let _clMCA=null;
+// Drop Reason: Field 'Reason', Old = the status closed as, New = the reason.
+const _clDR=(CLOSING_STATUSES.includes(stat)&&stat!==oldStat)?writeCL('Drop Reason',r[C.code],'Reason',stat,gv('uDropR'),r[C.name]):null;
 if(stat!==oldStat&&stat!=='Not Contactable'){
   _clMCA=writeCL('Meaningful Candidate Action',r[C.code],'Vacancy Code',r[C.vacCode],stat,r[C.name]);
 }
-try{showLoad('Updating record...');await xlPatchRow(r);const _clRows=[_clEU,_clMCA].filter(Boolean);if(_clRows.length)await xlAppendRows('Change Log',_clRows);hideLoad();hideSyncBanner();}catch(e){hideLoad();showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
+try{showLoad('Updating record...');await xlPatchRow(r);const _clRows=[_clEU,_clMCA,_clDR].filter(Boolean);if(_clRows.length)await xlAppendRows('Change Log',_clRows);hideLoad();hideSyncBanner();}catch(e){hideLoad();showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(stat)+'">'+stat+'</span>';
 toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();
   const updCode=r[C.code];const updName=r[C.name];
@@ -4584,7 +4598,7 @@ function loadBKList(){
 function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
 // CONFIG / MASTERS
 let mgridInited=false;
-function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div id="wa-ed"></div></div>';loadCfg();}
+function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm'],['dropReasons','🚪 Drop Reasons','ma-drop']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div id="wa-ed"></div></div>';loadCfg();}
 function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML='<div style="font-size:10px;color:var(--w60);margin-bottom:10px;line-height:1.5">Placeholders: {N} candidate name · {R} your first name · {P} role · {C} client · {CO} candidate\'s current company · {LOC} role location · {D}/{T} interview date/time · {L} meeting link · {IL} invite link</div>'+Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
 function renderMT(key){
   const el=document.getElementById('mt-'+key);
@@ -9263,9 +9277,10 @@ async function renderEffortComparison(){
   const {from, to} = effortPeriodRange(effortReportPeriod);
   const recs = mA('recruiters');
   const rows = [];
-  let _allCL = [];
+  let _allCL = [], _screened = [];
   try{
     _allCL = await fetchLiveChangeLog();
+    _screened = await fetchScreenedAll();
     for(const rec of recs){
       const dd = await buildEffortData(rec, from, to);
       const revenue = dd.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
@@ -9281,7 +9296,8 @@ async function renderEffortComparison(){
       await annotateMatchingStatus(vacGaps);
       const matchNudgeCount=vacGaps.filter(g=>g.matchingNudge).length;
       const lowFUCount=closuresBelowFollowupMin(_allCL,rec,from,to).length;
-      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, vacGaps, matchNudgeCount, lowFUCount});
+      const scr=screeningStats(_screened,rec,from,to);
+      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, vacGaps, matchNudgeCount, lowFUCount, scr});
     }
   }catch(e){hideLoad();toast('err','Manager Report',e.message);return;}
   hideLoad();
@@ -9291,7 +9307,7 @@ async function renderEffortComparison(){
   rows.sort((a,b)=>b.coverage-a.coverage);
   const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
   let html = `<div style="font-size:11px;color:var(--w60);margin:8px 0">${periodLabel} (${fmtD(from)} – ${fmtD(to)}), except Active Vacancies/Coverage/Funnel Gap/Candidate Match (current) and Potential Revenue (current active pipeline). Click ▶ to see the vacancy-level Funnel Gap breakdown; click a recruiter's name to view their own Portfolio tab.</div>
-  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th title="Vacancies where Profile Matches has never been run, despite pool/resurfaceable profiles being available right now">Candidate Match</th><th title="Candidates moved from WIP to Dropped / Not Interested in this period with fewer than 3 call-attempt WhatsApps (📞 Follow-up / ⏳ Before We Move Ahead) first">Closed &lt;3 📞</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th title="Vacancies where Profile Matches has never been run, despite pool/resurfaceable profiles being available right now">Candidate Match</th><th title="Candidates moved from WIP to Dropped / Not Interested in this period with fewer than 3 call-attempt WhatsApps (📞 Follow-up / ⏳ Before We Move Ahead) first">Closed &lt;3 📞</th><th>Profiles</th><th title="Resumes this recruiter screened in the period, by screening date">Resumes Screened</th><th title="Of those screened in the period, how many are now marked Pushed to THP">Pushed to THP</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     const covColor = r.coverage>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
     // 1 Oct 2026, Anne: nudge on whether Profile Matches is actually being
@@ -9300,44 +9316,181 @@ async function renderEffortComparison(){
     const matchCell = r.matchNudgeCount>0
       ?'<span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:700">⚠ '+r.matchNudgeCount+' never run</span>'
       :'<span style="color:var(--w60)">—</span>';
-    html += `<tr><td style="cursor:pointer;text-align:center" onclick="toggleFunnelGapExpand(${i})"><span id="fg-caret-${i}">▶</span></td><td style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${_ragCountSummary(r.vacGaps)}</td><td class="m">${matchCell}</td><td class="m">${r.lowFUCount>0?'<span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:700">⚠ '+r.lowFUCount+'</span>':'<span style="color:var(--w60)">—</span>'}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
-    html += `<tr id="fg-expand-${i}" class="hidden"><td colspan="13" style="padding:8px 8px 14px">${_liveFunnelGapTbl(r.vacGaps)}</td></tr>`;
+    html += `<tr><td style="cursor:pointer;text-align:center" onclick="toggleFunnelGapExpand(${i})"><span id="fg-caret-${i}">▶</span></td><td style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${_ragCountSummary(r.vacGaps)}</td><td class="m">${matchCell}</td><td class="m">${r.lowFUCount>0?'<span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:700">⚠ '+r.lowFUCount+'</span>':'<span style="color:var(--w60)">—</span>'}</td><td class="m">${r.profiles}</td><td class="m">${r.scr.screened}</td><td class="m">${r.scr.pushed}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr id="fg-expand-${i}" class="hidden"><td colspan="15" style="padding:8px 8px 14px">${_liveFunnelGapTbl(r.vacGaps)}</td></tr>`;
   });
-  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score. Closed &lt;3 📞 counts candidates moved from WIP to Dropped / Not Interested in the period with fewer than 3 call-attempt WhatsApps (📞 Follow-up or ⏳ Before We Move Ahead) first (flag only; WhatsApps before 5 Oct 2026 did not record their template and are counted towards the 3).</div>';
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score. Closed &lt;3 📞 counts candidates moved from WIP to Dropped / Not Interested in the period with fewer than 3 call-attempt WhatsApps (📞 Follow-up or ⏳ Before We Move Ahead) first (flag only; WhatsApps before 5 Oct 2026 did not record their template and are counted towards the 3). Pushed to THP counts resumes screened in the period that are now marked pushed (by screening date).</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
 }
 
+// ═══ AI recruiter assessment (5 Oct 2026, Anne) ═══════════════════════════
+// The old report fed the AI eight totals per recruiter and told it to use
+// nothing else, so it could only restate them (and praise volume). It now gets
+// a structured fact sheet per recruiter — effort, sourcing mix, contact
+// discipline, conversion, outcome mix with drop reasons, vacancy attention,
+// screening quality, tenure and the previous period — plus a fixed rubric and
+// an explicit list of what THP cannot see, and is asked for evidence-backed,
+// non-verdict findings with one question for the manager's 1:1.
+async function fetchScreenedAll(){
+  const out=[];
+  try{
+    await refreshToken();
+    let url=GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items?$expand=fields($select=Recruiter,Status,FitmentScore)&$top=200';
+    while(url){
+      const res=await fetch(url,{headers:{'Authorization':'Bearer '+tok}});
+      if(!res.ok)break;
+      const data=await res.json();
+      (data.value||[]).forEach(it=>{
+        const f=it.fields||{};
+        out.push({rec:f.Recruiter||'',status:f.Status||'',score:(f.FitmentScore===undefined||f.FitmentScore===null||f.FitmentScore==='')?null:Number(f.FitmentScore),date:(it.createdDateTime||'').slice(0,10)});
+      });
+      url=data['@odata.nextLink']||null;
+    }
+  }catch(e){console.warn('fetchScreenedAll failed',e.message);}
+  return out;
+}
+// Resumes screened in [from,to] (by the row's Created date), and how many are
+// now Pushed to THP / Dropped. Push status only started saving correctly on
+// 5 Oct 2026, so older rows under-count pushes except where backfilled.
+function screeningStats(rows,rec,from,to){
+  const mine=rows.filter(x=>x.rec===rec&&x.date>=from&&x.date<=to);
+  const pushed=mine.filter(x=>x.status==='Pushed to THP'),dropped=mine.filter(x=>x.status==='Dropped');
+  const avg=a=>a.length?Math.round(a.reduce((t,x)=>t+x,0)/a.length*10)/10:null;
+  return{screened:mine.length,pushed:pushed.length,dropped:dropped.length,
+    avgScoreAll:avg(mine.filter(x=>x.score!=null).map(x=>x.score)),
+    avgScorePushed:avg(pushed.filter(x=>x.score!=null).map(x=>x.score))};
+}
+const ASSESSMENT_BLIND_SPOTS=[
+  'Phone calls are not recorded anywhere in THP. Call-attempt WhatsApps (📞 Follow-up / ⏳ Before We Move Ahead) are only a proxy, and their template has been recorded only since 5 Oct 2026.',
+  'Candidates who apply through the Candidate Portal are assigned to a recruiter automatically, so "Portal" profiles are inflow, not recruiter sourcing effort.',
+  'Meaningful Candidate Actions count any status change except to Not Contactable, so closing out Dropped / Not Interested candidates also counts as an action.',
+  'THP does not see candidate replies to WhatsApp messages, or why a candidate declined unless a Drop Reason was picked (captured only since 5 Oct 2026) or noted in the remark.',
+  'Interview-stage counts (recruiter / consultant / client) are for each vacancy\'s current cycle, not limited to the reporting period.',
+  'Resume push status was not saved before 5 Oct 2026, so earlier pushed counts may be understated.'
+];
+// Gathers one recruiter's fact sheet for [from,to]. `row` is that recruiter's
+// Manager Report row (already holds effort numbers and the per-vacancy gaps).
+async function buildAssessmentFacts(row,from,to,ctx){
+  const rec=row.rec;
+  const recUser=appUsers.find(u=>u.name===rec);
+  const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
+  const byMe=r=>(recEmail&&String(r[9]||'').toLowerCase()===recEmail)||(!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===rec.toLowerCase());
+  const inRange=r=>{const d=String(r[0]).slice(0,10);return d>=from&&d<=to;};
+  const cl=ctx.allCL.filter(r=>inRange(r)&&byMe(r));
+  const pct=(a,b)=>b?Math.round(a/b*100):null;
+
+  // contact discipline
+  const waRows=cl.filter(r=>r[4]==='WhatsApp Sent');
+  const waByTemplate={};waRows.forEach(r=>{const k=waLabel(r[5]);waByTemplate[k]=(waByTemplate[k]||0)+1;});
+  const callAttemptWA=waRows.filter(r=>FOLLOWUP_WA_KEYS.includes(r[5])).length;
+  const closuresFromWIP=cl.filter(r=>r[4]==='Status Update'&&r[5]===C.status&&r[6]===CLOSE_FROM_STATUS&&CLOSING_STATUSES.includes(r[7])).length;
+  const closuresBelow=closuresBelowFollowupMin(ctx.allCL,rec,from,to).length;
+  const staleCut=addDays(to,-7);
+  const staleWIP=MD.filter(r=>r[C.recruiter]===rec&&r[C.archive]!=='Y'&&r[C.status]==='WIP'&&(!r[C.updatedOn]||String(r[C.updatedOn]).slice(0,10)<staleCut)).length;
+
+  // sourcing mix + outcome mix of candidates sourced in the period
+  const sourced=MD.filter(r=>r[C.recruiter]===rec&&r[C.archive]!=='Y'&&String(r[C.sourcingDate]||'').slice(0,10)>=from&&String(r[C.sourcingDate]||'').slice(0,10)<=to);
+  const bySource={};sourced.forEach(r=>{const k=r[C.source]||'Unknown';bySource[k]=(bySource[k]||0)+1;});
+  const statusCounts={};sourced.forEach(r=>{const k=r[C.status]||'Unknown';statusCounts[k]=(statusCounts[k]||0)+1;});
+  const dropReasons={};cl.filter(r=>r[4]==='Drop Reason').forEach(r=>{const k=r[7]||'(none)';dropReasons[k]=(dropReasons[k]||0)+1;});
+  const closedNow=MD.filter(r=>r[C.recruiter]===rec&&CLOSING_STATUSES.includes(r[C.status])&&String(r[C.updatedOn]||'').slice(0,10)>=from&&String(r[C.updatedOn]||'').slice(0,10)<=to);
+  const sampleRemarks=closedNow.slice(0,10).map(r=>String(r[C.remark]||'').split('|').pop().replace(/\s+/g,' ').trim().slice(0,140)).filter(Boolean);
+
+  // conversion (current cycle of her active vacancies) and vacancy attention
+  const g=row.vacGaps||[];
+  const sum=k=>g.reduce((t,x)=>t+(x[k]||0),0);
+  const profiles=sum('total'),recIW=sum('recruiterIW'),consIW=sum('consultant'),cliIW=sum('clientIW');
+  const rag={red:0,amber:0,green:0};g.forEach(x=>{rag[x.ragStatus]=(rag[x.ragStatus]||0)+1;});
+
+  // tenure
+  const mdef=(M.recruiters||[]).find(x=>x.name===rec);
+  const doj=mdef&&mdef.doj?mdef.doj:'';
+  const tenureMonths=doj?Math.round((new Date(to)-new Date(doj))/(30.44*86400000)*10)/10:null;
+
+  // previous period of the same length
+  let prev=null;
+  try{
+    const days=Math.round((new Date(to)-new Date(from))/86400000)+1;
+    const pTo=addDays(from,-1),pFrom=addDays(pTo,-(days-1));
+    const dd=await buildEffortData(rec,pFrom,pTo);
+    prev={period:pFrom+' to '+pTo,coveragePct:dd.coveragePct,profilesSourced:dd.summary.sourcedWeek,meaningfulActions:dd.summary.mcaWeek,interviews:dd.summary.interviewsWeek,joined:dd.summary.joinedWeek};
+  }catch(e){console.warn('assessment: previous period failed for',rec,e.message);}
+
+  const scr=row.scr||screeningStats(ctx.screened,rec,from,to);
+  return{
+    recruiter:rec,
+    tenureMonthsAtPeriodEnd:tenureMonths,
+    inRampUp:tenureMonths!=null?tenureMonths<=3:null,
+    effort:{activeVacancies:row.activeVac,coveragePct:row.coverage,profilesSourced:row.profiles,meaningfulCandidateActions:row.mca,interviews:row.interviews,joined:row.joined,resumesScreened:scr.screened,resumesPushedToTHP:scr.pushed,resumesDropped:scr.dropped,pushRatePct:pct(scr.pushed,scr.screened),avgScoreOfAllScreened:scr.avgScoreAll,avgScoreOfPushed:scr.avgScorePushed},
+    sourcingMix:{candidatesAssignedInPeriod:sourced.length,bySource},
+    contactDiscipline:{whatsAppSent:waRows.length,byTemplate:waByTemplate,callAttemptWhatsApps:callAttemptWA,closuresFromWIP,closuresWithFewerThan3Attempts:closuresBelow,wipWithNoUpdateIn7DaysOrMore:staleWIP},
+    outcomes:{currentStatusOfCandidatesAssignedInPeriod:statusCounts,closedAsDroppedOrNotInterestedInPeriod:closedNow.length,dropReasonsPicked:dropReasons,recentClosureRemarks:sampleRemarks},
+    conversionCurrentCycle:{profiles,recruiterInterviews:recIW,consultantInterviews:consIW,clientInterviews:cliIW,recruiterToConsultantPct:pct(consIW,recIW),consultantToClientPct:pct(cliIW,consIW)},
+    vacancyAttention:{red:rag.red,amber:rag.amber,green:rag.green,matchingNeverRunWithProfilesAvailable:row.matchNudgeCount,vacancies:g.slice(0,10).map(x=>({role:x.designation,client:x.client,profiles:x.total,meaningfulActions:x.meaningful,actionsStillNeededForOneSelection:x.meaningfulActionsRequired,flag:x.ragStatus,flagReason:x.remark}))},
+    previousPeriod:prev
+  };
+}
 async function generateEffortAIReport(){
   if(!effortReportCache){toast('warn','Wait','Report data still loading — try again in a moment.');return;}
   if(!getAIKey()){toast('warn','No AI Key','Set an AI key in Admin → Config before generating an AI report.');return;}
   const aiEl = document.getElementById('ef-ai-report');
-  if(aiEl) aiEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--w60)">Generating…</div>';
+  if(aiEl) aiEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--w60)">Gathering each recruiter\'s facts…</div>';
   const {from, to, rows} = effortReportCache;
   const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
-  const dataText = rows.map(r=>`${r.rec}: Active Vacancies ${r.activeVac}, Coverage ${r.coverage}% (target ${EFFORT_COVERAGE_TARGET}%), Profiles Sourced ${r.profiles}, Meaningful Candidate Actions ${r.mca}, Submitted ${r.submitted} (approx), Interviews ${r.interviews}, Joined ${r.joined}, Potential Revenue ₹${Math.round(r.potential)}`).join('\n');
-  const prompt = `You are helping a recruitment manager at WithAWill HR Consultancy interpret their team's effort data for the period "${periodLabel}" (${from} to ${to}). Coverage target is ${EFFORT_COVERAGE_TARGET}%.
-
-Per-recruiter data:
-${dataText}
-
-Write a concise manager report (under 350 words) covering:
-1. Overall team health this period — is effort being applied consistently across the team?
-2. Specific hits — recruiters or patterns worth recognising, named directly.
-3. Specific misses — recruiters below the coverage target or with concerning patterns, named directly but fairly; note this is a diagnostic signal, not an automatic performance verdict on its own.
-4. One or two concrete, actionable recommendations for the manager this period.
-
-Base this only on the data given — do not invent numbers or reasons behind them. Plain text, no markdown headers, short paragraphs.`;
   try{
+    const ctx={allCL:await fetchLiveChangeLog(),screened:await fetchScreenedAll()};
+    const active=rows.filter(r=>r.activeVac>0||r.mca>0||r.profiles>0);
+    const facts=[];
+    for(const r of active)facts.push(await buildAssessmentFacts(r,from,to,ctx));
+    const mean=k=>active.length?Math.round(active.reduce((t,r)=>t+(r[k]||0),0)/active.length*10)/10:null;
+    const team={recruitersIncluded:active.length,avgCoveragePct:mean('coverage'),avgProfilesSourced:mean('profiles'),avgMeaningfulActions:mean('mca'),avgInterviews:mean('interviews')};
+    if(aiEl) aiEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--w60)">Generating…</div>';
+    const prompt = `You are helping a recruitment manager at WithAWill HR Consultancy review each recruiter's performance for "${periodLabel}" (${from} to ${to}). Below is a fact sheet per recruiter, the team averages, the manager's benchmarks, and a list of things THP cannot see.
+
+BENCHMARKS (set by the manager):
+- Vacancy coverage target: ${EFFORT_COVERAGE_TARGET}%.
+- Before a candidate is moved from WIP to Dropped or Not Interested, at least ${FOLLOWUP_WA_MIN} call-attempt WhatsApps should have been sent.
+- Funnel needed per selection: ${FUNNEL_GAP_MA_PER_SELECTION} meaningful actions : ${FUNNEL_GAP_RECRUITER_IW_PER_SELECTION} recruiter interviews : ${FUNNEL_GAP_CONSULTANT_IW_PER_SELECTION} consultant interviews : ${FUNNEL_GAP_CLIENT_IW_PER_SELECTION} client interviews : 1 selection.
+
+WHAT THP CANNOT SEE (state the relevant ones plainly when they limit a conclusion):
+${ASSESSMENT_BLIND_SPOTS.map(x=>'- '+x).join('\n')}
+
+TEAM AVERAGES:
+${JSON.stringify(team)}
+
+RECRUITER FACT SHEETS (JSON):
+${JSON.stringify(facts)}
+
+Write the assessment as plain text, no markdown. For EACH recruiter, in this exact layout:
+
+<NAME>
+Working well: one or two specific points, each with its number.
+Concern: the single most important concern, if the data supports one — otherwise say "No clear concern from this data".
+Evidence: the numbers behind the concern, compared with the team average, the previous period or the benchmark.
+Question for your 1:1: one concrete, non-accusatory question the manager could ask.
+
+Then finish with:
+Data caveats: the blind spots that most limit these conclusions.
+Watch next period: two or three specific things to look at again.
+
+Rules:
+- Keep effort and results separate. If a recruiter shows high effort but weak results (for example many actions and dropouts but few interviews), say so explicitly — do not let volume stand in for performance.
+- Every claim must cite a number from the fact sheet. Never invent a figure or a reason.
+- Where a sample is small (under about 10), say the conclusion is tentative.
+- Take tenure and ramp-up into account, and note when vacancy mix makes two recruiters hard to compare.
+- Use the drop reasons and closure remarks to describe why candidates are leaving, but only to the extent they appear in the data.
+- Do not give an overall rating, grade or ranking, and do not recommend disciplinary action. This is a diagnostic aid for a conversation, not a verdict.
+- Under 750 words in total.`;
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:3500,messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||('API error '+resp.status));}
     const data = await resp.json();
     const text = (data.content&&data.content[0]&&data.content[0].text)||'';
-    if(aiEl) aiEl.innerHTML = `<div class="sl2">🤖 AI Team Effort Report — ${periodLabel}</div><div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:16px 20px;font-size:12px;line-height:1.7;white-space:pre-wrap">${escHtml(text)}</div>`;
+    if(aiEl) aiEl.innerHTML = `<div class="sl2">🤖 AI Recruiter Assessment — ${periodLabel}</div><div style="background:rgba(52,186,198,.06);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);padding:16px 20px;font-size:12px;line-height:1.7;white-space:pre-wrap">${escHtml(text)}</div>`;
   }catch(e){
     if(aiEl) aiEl.innerHTML = `<div style="color:#ff6b6b;font-size:11px;padding:8px 0">AI report failed: ${escHtml(e.message)}</div>`;
   }
