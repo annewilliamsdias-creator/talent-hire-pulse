@@ -238,8 +238,8 @@ tbody td{padding:9px 11px;color:var(--ow);vertical-align:middle}
 td.m{color:var(--w60);font-size:11px}
 td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
 /* 5 Oct 2026: Manager Report (live view) — 15 columns, headers and cells wrap instead of forcing a sideways scroll */
-#ef-compare thead th{white-space:normal;word-break:break-word;letter-spacing:.5px}
-#ef-compare tbody td{word-break:break-word}
+#ef-compare thead th{white-space:normal;overflow-wrap:break-word;letter-spacing:.5px}
+#ef-compare tbody td{overflow-wrap:break-word}
 /* CODE BOX */
 .cbox{background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.25);
 border-radius:var(--r);padding:20px 24px;text-align:center;margin-top:16px}
@@ -7799,7 +7799,10 @@ function renderPolicyView(){
 // (e.g. the "ℹ Recruiter incentive..." note under Team Earnings) — the
 // :root block below defines light-theme fallback values for every var() THP
 // uses so those degrade to the correct muted colour instead of invalid/black.
-function incentivePrintWindow(title, subtitle, bodyHtml){
+// opts.compact (5 Oct 2026, Anne): wide tables (the 15-column Manager Report)
+// print in landscape with smaller type — in portrait the columns got so narrow
+// that words broke letter by letter and headers ran vertically.
+function incentivePrintWindow(title, subtitle, bodyHtml, opts){
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>${title} — Talent+ Hire Pulse</title>
   <style>
@@ -7816,8 +7819,8 @@ function incentivePrintWindow(title, subtitle, bodyHtml){
     .tw{overflow-x:auto;margin-bottom:4px}
     table{width:100%;border-collapse:collapse;font-size:12px;background:#fbfbfa}
     thead tr{background:#1f5c93}
-    thead th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fbfbfa;white-space:normal;word-break:break-word}
-    tbody td{padding:7px 10px;color:#291b39;vertical-align:middle;border-bottom:1px solid #d6dbe3;word-break:break-word}
+    thead th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fbfbfa;white-space:normal;overflow-wrap:break-word}
+    tbody td{padding:7px 10px;color:#291b39;vertical-align:middle;border-bottom:1px solid #d6dbe3;overflow-wrap:break-word}
     td.m{color:#5f6470;font-size:11px}
     td.mono{font-family:'DM Mono',monospace;font-size:11px;color:#1f5c93}
     .footer{padding:12px 32px;font-size:10px;color:#9ca3af;text-align:center;border-top:1px solid #e8ecf0;margin-top:20px}
@@ -7837,6 +7840,24 @@ function incentivePrintWindow(title, subtitle, bodyHtml){
       body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
       .body-wrap{padding:14px 20px}
     }
+    ${opts&&opts.compact?`
+    @page{size:A4 landscape;margin:8mm 9mm}
+    body{font-size:10px}
+    .header{padding:9px 16px}.logo{font-size:15px}.meta{font-size:9px}
+    .body-wrap{padding:8px 12px}
+    @media print{.body-wrap{padding:6px 8px}}
+    table{font-size:9px;table-layout:auto}
+    thead th{font-size:7.5px;letter-spacing:.2px;padding:5px 5px;line-height:1.2}
+    tbody td{padding:4px 5px;font-size:9px;line-height:1.3}
+    td.m{font-size:8.5px}
+    .sl2{font-size:9px;margin:10px 0 6px}
+    table table thead th{font-size:7px;padding:4px 3px;letter-spacing:0}
+    table table tbody td{padding:3px 3px}
+    table table col:nth-child(1){width:9%!important}table table col:nth-child(2){width:11%!important}table table col:nth-child(3){width:9%!important}
+    table table col:nth-child(4){width:6%!important}table table col:nth-child(5){width:5.5%!important}table table col:nth-child(6){width:7%!important}
+    table table col:nth-child(7){width:7%!important}table table col:nth-child(8){width:7%!important}table table col:nth-child(9){width:5%!important}
+    table table col:nth-child(10){width:6%!important}table table col:nth-child(11){width:6%!important}table table col:nth-child(12){width:21.5%!important}
+    .footer{padding:6px 16px;font-size:8px;margin-top:8px}`:''}
   </style></head><body>
   <div class="header">
     <div><div class="logo">Talent<span>+</span> Hire Pulse</div><div class="meta">WithAWill HR Consultancy Services LLP · ${title}</div></div>
@@ -7857,11 +7878,11 @@ function incentivePrintWindow(title, subtitle, bodyHtml){
 // live app already uses around every table, so print styling matches;
 // otherwise (a Div full of already-composed report markup, e.g. an Effort
 // tab) its innerHTML is used as-is.
-function printPanelAsPDF(title, subtitle, containerId){
+function printPanelAsPDF(title, subtitle, containerId, opts){
   const el = document.getElementById(containerId);
   if(!el){toast('warn','Nothing to Print','No content found for '+title+'.');return;}
   const body = el.tagName==='TABLE' ? '<div class="tw">'+el.outerHTML+'</div>' : el.innerHTML;
-  incentivePrintWindow(title, subtitle, body);
+  incentivePrintWindow(title, subtitle, body, opts);
 }
 
 // Home's Focus/Portfolio pages share one print button in the tab bar
@@ -9271,7 +9292,7 @@ async function renderEffortComparison(){
         <input type="date" id="effort-custom-to" onchange="onEffortCustomRangeChange()">
       </span>
       <button class="btn btn-t btn-sm" style="margin-left:auto" onclick="generateEffortAIReport()">🤖 Generate AI Report</button>
-      <button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Manager Report','','ef-compare-body')">🖨 Print / PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Manager Report','','ef-compare-body',{compact:true})">🖨 Print / PDF</button>
     </div>
     <div id="ef-compare-body"></div>`;
   }
@@ -14314,8 +14335,8 @@ function _rptCss(){
     // base rule used to be nowrap + ellipsis (plus _tr25's 25-character cut in
     // the table builders), which clipped names, positions, remarks and action
     // summaries in the Action, EOD and Weekly Reports alike.
-    'th{font-size:11pt;font-weight:bold;background:#1f5c93;color:#fff;padding:4pt 5pt;text-align:left;white-space:normal;word-break:break-word;vertical-align:top;line-height:1.2}'+
-    'td{font-size:11pt;padding:3pt 5pt;border-bottom:1pt solid #e8ecf0;white-space:normal;word-break:break-word;vertical-align:top;line-height:1.3}'+
+    'th{font-size:11pt;font-weight:bold;background:#1f5c93;color:#fff;padding:4pt 5pt;text-align:left;white-space:normal;overflow-wrap:break-word;vertical-align:top;line-height:1.2}'+
+    'td{font-size:11pt;padding:3pt 5pt;border-bottom:1pt solid #e8ecf0;white-space:normal;overflow-wrap:break-word;vertical-align:top;line-height:1.3}'+
     '.wl{table-layout:auto}.ty .ttype{margin:1px 3px 1px 0}'+
     'tr:nth-child(even) td{background:#f9f8f5}'+
     '.nil{font-size:11pt;color:#5f6470;font-style:italic;padding:2pt 0 8pt}'+
@@ -14344,7 +14365,7 @@ function _rptCss(){
     // ("Candidate volume insufficient and vacancy not actioned in 3+
     // days") would otherwise get ellipsis-truncated by the generic nowrap
     // td rule above, defeating the point of the remark.
-    '.fgtbl td{white-space:normal;word-break:break-word;vertical-align:top}'+
+    '.fgtbl td{white-space:normal;overflow-wrap:break-word;vertical-align:top}'+
     '.fgtbl td:last-child{white-space:normal;display:flex;align-items:flex-start}'+
     // 1 Oct 2026: "Candidate Match" usage nudge — see annotateMatchingStatus().
     // Hardcoded hex, not a CSS var — this stylesheet serves a standalone
