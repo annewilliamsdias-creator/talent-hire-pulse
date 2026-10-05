@@ -2238,6 +2238,15 @@ resume_upload_invite:'Hi {N}, please upload your resume for the *{P}* role with 
 // they were last tagged to.
 reassign_resurface:'Hi {N}, {R} here from WithAWill HR. Hope you are doing well. We\'ve connected before. A new role just opened up that looked like a strong match for your background: *{P}* with *{C}*. Let us know if you\'d like to hear more.',
 general:'Hi {N}, '};
+// 5 Oct 2026: single list of the WhatsApp menu entries (key → label), shared
+// by the Send WhatsApp menu, the Admin → Config template editor (which showed
+// only the internal key — "wip", "not contactable" — so "First Contact" and
+// "📞 Follow-up" didn't look like the same templates) and the reports.
+const WA_MENU=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['send_jd','📄 Share JD'],['resume_upload_invite','📤 Resume Upload Invite'],['ai_interview_invite','🎥 AI Interview Invite'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
+const WA_LABELS=Object.fromEntries(WA_MENU.concat([['reassign_resurface','🔁 Reassign & WA']]));
+// 'followupCount' is what every WhatsApp Sent row's Field column held before
+// 5 Oct 2026, when the template used wasn't recorded.
+function waLabel(key){return key==='followupCount'?'template not recorded':(WA_LABELS[key]||key);}
 function fillWA(tpl,r,extraLink){
 const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
 return tpl.replace(/{N}/g,r[C.name]||'').replace(/{P}/g,r[C.position]||'').replace(/{C}/g,r[C.client]||'').replace(/{R}/g,rn).replace(/{D}/g,r[C.interviewDate]?fmtD(r[C.interviewDate]):'[Date TBC]').replace(/{T}/g,r._iTime||'[Time TBC]').replace(/{L}/g,r[C.docLink]||'[Teams link to follow]').replace(/{IL}/g,extraLink||'[Link to follow]');}
@@ -2910,6 +2919,9 @@ loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
 // Load AI key from workbook into localStorage (workbook is source of truth)
 (function(){try{const k=getMetadata('ai_key');if(k&&k.trim())localStorage.setItem('thp_ai_key',k.trim());}catch(e){}})();
 (function(){try{const k=getMetadata('notify_key');if(k&&k.trim())localStorage.setItem('thp_notify_key',k.trim());}catch(e){}})();
+// Saved WhatsApp template edits override the built-in defaults key by key, so a
+// template added to the defaults later still appears.
+(function(){try{const j=getMetadata('wa_templates');if(j){const o=JSON.parse(j);Object.keys(o).forEach(k=>{if(k in WA&&typeof o[k]==='string')WA[k]=o[k];});}}catch(e){console.warn('wa_templates load',e.message);}})();
 // Load evaluations from dedicated Evaluations sheet
 (function(){try{const ws=WB.Sheets['Evaluations'];if(!ws)return;const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(1).filter(r=>r[0]);rows.forEach(r=>{try{const code=String(r[0]);const d=r[3]?JSON.parse(r[3]):{};if(code&&d)igEvalData[code]=d;}catch(e){}});}catch(e){console.warn('Eval load',e);}})();
 // ── Phase A: Read last good count from metadata ───────
@@ -4350,7 +4362,7 @@ const jdTitle=jdEntry?jdEntry.title:jdLink;
 // mentioned in her reorder list; kept in its previous relative slot (right
 // after Follow-up) rather than dropped, since "reorder" implied the set
 // stays the same — flag to her if it should move or go.
-const tpls=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['send_jd','📄 Share JD'],['resume_upload_invite','📤 Resume Upload Invite'],['ai_interview_invite','🎥 AI Interview Invite'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
+const tpls=WA_MENU;
 // View JD button (opens SP file) + WhatsApp templates including send_jd
 const jdSection=hasJD
   ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="viewJDLink()">📄 View JD — '+jdTitle+'</button>'
@@ -4387,7 +4399,7 @@ if(tplKey==='ai_interview_invite'||tplKey==='resume_upload_invite'){
   if(!r[C.vacCode]){toast('warn','No Vacancy','This candidate has no vacancy code tagged.');return;}
   extraLink=(tplKey==='ai_interview_invite'?'https://talentplus.withawill.in/interview/':'https://talentplus.withawill.in/resume-upload/')+encodeURIComponent(r[C.vacCode]);
 }
-const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _clWA=writeCL('WhatsApp Sent',r[C.code],'followupCount',String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
+const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();const _waKey=WA[tplKey]?tplKey:(Object.keys(WA).find(k=>WA[k]===tpl)||'general');window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _clWA=writeCL('WhatsApp Sent',r[C.code],_waKey,String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
 showModal('📱 Message Sent','WhatsApp opened for <strong>'+r[C.name]+'</strong>. What would you like to do next?','',
   '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
   '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
@@ -4546,7 +4558,7 @@ function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{i
 // CONFIG / MASTERS
 let mgridInited=false;
 function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div id="wa-ed"></div></div>';loadCfg();}
-function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML=Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+k.replace(/_/g,' ')+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
+function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML=Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
 function renderMT(key){
   const el=document.getElementById('mt-'+key);
   if(!el)return;
@@ -4622,7 +4634,18 @@ function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.va
 function startEditMaster(key,idx){_editingMaster={key,idx};renderMT(key);setTimeout(()=>{const inp=document.getElementById('medit-inp');if(inp){inp.focus();inp.select();}},50);}
 function cancelEditMaster(key){_editingMaster=null;renderMT(key);}
 function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;sortMaster(key);_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
-function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
+// 5 Oct 2026: this used to update only the in-memory WA object, so an edited
+// template reverted on the next page load while still toasting "Config
+// Saved". Now written to the workbook's [THP_META] block (same mechanism as
+// the AI key) and read back at load — see the wa_templates loader in parseWB.
+async function saveCfg(){
+  Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});
+  if(WB){
+    try{saveMetadata({wa_templates:JSON.stringify(WA)});await saveWB(false,true,['Config']);}
+    catch(e){toast('err','Not Saved','Templates were updated for this session but could not be saved: '+e.message);return;}
+  }
+  toast('ok','Config Saved','Templates updated.');
+}
 function getAIKey(){return localStorage.getItem('thp_ai_key')||'';}
 async function saveAIKey(){const v=(document.getElementById('ai-key-input').value||'').trim();if(!v){toast('warn','No key','Paste your Anthropic API key first.');return;}localStorage.setItem('thp_ai_key',v);if(WB){saveMetadata({ai_key:v});await saveWB(false,true,['Config']);}aiKeyStatus();toast('ok','Key Saved','AI key stored in browser and workbook.');}
 async function clearAIKey(){localStorage.removeItem('thp_ai_key');const el=document.getElementById('ai-key-input');if(el)el.value='';if(WB){saveMetadata({ai_key:''});await saveWB(false,true,['Config']);}aiKeyStatus();toast('ok','Cleared','AI key removed.');}
@@ -8853,6 +8876,41 @@ function totalDistinctActions(rows,typeClassifier){
   return Object.values(byCode).reduce((sum,codeRows)=>sum+countDistinctActions(codeRows,typeClassifier),0);
 }
 
+// 5 Oct 2026, Anne: a candidate moved from WIP to Dropped / Not Interested
+// should first have had at least 3 "📞 Follow-up" WhatsApps (the template a
+// recruiter sends after trying to call — the only trace of call attempts THP
+// can keep, since calls themselves aren't recorded). FLAG ONLY — nothing is
+// blocked. The template used is recorded on every send from 5 Oct 2026; an
+// earlier WhatsApp row has no template (Field = 'followupCount') and is given
+// the benefit of the doubt (counted towards the 3) rather than flagging a
+// closure that may well have been preceded by real follow-ups.
+const FOLLOWUP_WA_KEY='not_contactable',FOLLOWUP_WA_MIN=3,CLOSE_FROM_STATUS='WIP',CLOSING_STATUSES=['Dropped','Not Interested'];
+function closuresBelowFollowupMin(allCL,recName,from,to){
+  const recUser=appUsers.find(u=>u.name===recName);
+  const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
+  const byMe=r=>(recEmail&&String(r[9]||'').toLowerCase()===recEmail)||(!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===String(recName).toLowerCase());
+  const waByCode={};
+  allCL.forEach(r=>{if(r[4]==='WhatsApp Sent')(waByCode[r[3]]=waByCode[r[3]]||[]).push(r);});
+  const out=[];
+  allCL.forEach(r=>{
+    if(r[4]!=='Status Update'||r[5]!==C.status||r[6]!==CLOSE_FROM_STATUS||!CLOSING_STATUSES.includes(r[7]))return;
+    const d=String(r[0]).slice(0,10);
+    if(d<from||d>to||!byMe(r))return;
+    const before=(waByCode[r[3]]||[]).filter(w=>String(w[0])<=String(r[0]));
+    const fu=before.filter(w=>w[5]===FOLLOWUP_WA_KEY).length;
+    const untyped=before.filter(w=>w[5]==='followupCount').length;
+    if(fu+untyped>=FOLLOWUP_WA_MIN)return;
+    out.push({code:r[3],name:r[8]||'',closedAs:r[7],closedOn:d,followups:fu,untyped,otherWA:before.length-fu-untyped});
+  });
+  return out;
+}
+function closureFlagRows(list){return list.map(x=>[x.code,x.name,x.closedAs,_fDMY(x.closedOn),x.followups,x.untyped,x.otherWA]);}
+const CLOSURE_FLAG_HDR=['Code','Name','Closed As','Closed On','📞 Follow-up WAs','Earlier WA (template not recorded)','Other WA'];
+const CLOSURE_FLAG_NOTE='A candidate moved from WIP to Dropped / Not Interested should have at least '+FOLLOWUP_WA_MIN+' 📞 Follow-up WhatsApps first. Flag only. WhatsApps sent before 5 Oct 2026 did not record their template and are counted towards the '+FOLLOWUP_WA_MIN+', so older closures are not flagged unfairly.';
+// Action text for report rows: a WhatsApp row's Field column is now the
+// template key, shown as its menu label.
+function _clActText(r){return String(r[4]||'')+(r[5]?' — '+(r[4]==='WhatsApp Sent'?waLabel(r[5]):r[5]):'');}
+
 // Home's "Today's Effort" (focus) and "My Portfolio" pages — moved in from
 // the retired Effort panel (25 Sep 2026). Same effortRecSel/effortDataCache
 // globals and #ef-focus/#ef-portfolio render targets as before; only the
@@ -9178,7 +9236,9 @@ async function renderEffortComparison(){
   const {from, to} = effortPeriodRange(effortReportPeriod);
   const recs = mA('recruiters');
   const rows = [];
+  let _allCL = [];
   try{
+    _allCL = await fetchLiveChangeLog();
     for(const rec of recs){
       const dd = await buildEffortData(rec, from, to);
       const revenue = dd.portfolio.reduce((s,p)=>s+p.potentialRevenue,0);
@@ -9193,7 +9253,8 @@ async function renderEffortComparison(){
       const vacGaps = calcRecruiterFunnelGaps(rec);
       await annotateMatchingStatus(vacGaps);
       const matchNudgeCount=vacGaps.filter(g=>g.matchingNudge).length;
-      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, vacGaps, matchNudgeCount});
+      const lowFUCount=closuresBelowFollowupMin(_allCL,rec,from,to).length;
+      rows.push({rec, activeVac:dd.summary.activeVacancies, coverage:dd.coveragePct, profiles:dd.summary.sourcedWeek, mca:dd.summary.mcaWeek, submitted:dd.summary.submittedWeek, interviews:dd.summary.interviewsWeek, joined:dd.summary.joinedWeek, potential:revenue, vacGaps, matchNudgeCount, lowFUCount});
     }
   }catch(e){hideLoad();toast('err','Manager Report',e.message);return;}
   hideLoad();
@@ -9203,7 +9264,7 @@ async function renderEffortComparison(){
   rows.sort((a,b)=>b.coverage-a.coverage);
   const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
   let html = `<div style="font-size:11px;color:var(--w60);margin:8px 0">${periodLabel} (${fmtD(from)} – ${fmtD(to)}), except Active Vacancies/Coverage/Funnel Gap/Candidate Match (current) and Potential Revenue (current active pipeline). Click ▶ to see the vacancy-level Funnel Gap breakdown; click a recruiter's name to view their own Portfolio tab.</div>
-  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th title="Vacancies where Profile Matches has never been run, despite pool/resurfaceable profiles being available right now">Candidate Match</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th title="Vacancies where Profile Matches has never been run, despite pool/resurfaceable profiles being available right now">Candidate Match</th><th title="Candidates moved from WIP to Dropped / Not Interested in this period with fewer than 3 📞 Follow-up WhatsApps first">Closed &lt;3 📞</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     const covColor = r.coverage>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
     // 1 Oct 2026, Anne: nudge on whether Profile Matches is actually being
@@ -9212,10 +9273,10 @@ async function renderEffortComparison(){
     const matchCell = r.matchNudgeCount>0
       ?'<span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:700">⚠ '+r.matchNudgeCount+' never run</span>'
       :'<span style="color:var(--w60)">—</span>';
-    html += `<tr><td style="cursor:pointer;text-align:center" onclick="toggleFunnelGapExpand(${i})"><span id="fg-caret-${i}">▶</span></td><td style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${_ragCountSummary(r.vacGaps)}</td><td class="m">${matchCell}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
-    html += `<tr id="fg-expand-${i}" class="hidden"><td colspan="12" style="padding:8px 8px 14px">${_liveFunnelGapTbl(r.vacGaps)}</td></tr>`;
+    html += `<tr><td style="cursor:pointer;text-align:center" onclick="toggleFunnelGapExpand(${i})"><span id="fg-caret-${i}">▶</span></td><td style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${_ragCountSummary(r.vacGaps)}</td><td class="m">${matchCell}</td><td class="m">${r.lowFUCount>0?'<span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:700">⚠ '+r.lowFUCount+'</span>':'<span style="color:var(--w60)">—</span>'}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr id="fg-expand-${i}" class="hidden"><td colspan="13" style="padding:8px 8px 14px">${_liveFunnelGapTbl(r.vacGaps)}</td></tr>`;
   });
-  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score.</div>';
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score. Closed &lt;3 📞 counts candidates moved from WIP to Dropped / Not Interested in the period with fewer than 3 📞 Follow-up WhatsApps first (flag only; WhatsApps before 5 Oct 2026 did not record their template and are counted towards the 3).</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
 }
@@ -11952,7 +12013,7 @@ async function _reassignAndWAFollowup(candCode,vacCode,hasMobile){
   const cnt=parseInt(r[C.followupCount]||'0')+1;
   r[C.followupCount]=String(cnt);
   r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
-  const _clWA=writeCL('WhatsApp Sent',r[C.code],'followupCount',String(cnt-1),String(cnt),r[C.name]);
+  const _clWA=writeCL('WhatsApp Sent',r[C.code],'reassign_resurface',String(cnt-1),String(cnt),r[C.name]);
   try{
     await xlPatchRow(r);
     if(_clWA)await xlAppendRows('Change Log',[_clWA]);
@@ -14202,9 +14263,9 @@ async function genEODReport(recName){
   const td=today();
   const dateStr=_fDMY(td);
 
-  let clRows=[];
+  let clRows=[],allCL=[];
   try{
-    const all=await fetchLiveChangeLog();
+    const all=await fetchLiveChangeLog();allCL=all;
     const recUser=appUsers.find(u=>u.name===recName);
     const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
     // 1 Oct 2026: excludes 'EOD Notes' rows — same exclusion genWeeklyReport()
@@ -14271,7 +14332,7 @@ async function genEODReport(recName){
   function candActs(code){
     return candClRows(code).map(r=>{
       const t=new Date(r[0]).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-      return String(r[4]||'')+(r[5]?' — '+r[5]:'')+' ['+t+']';
+      return _clActText(r)+' ['+t+']';
     }).join('; ');
   }
   // 1 Oct 2026: was candClRows(code).length — a raw row count, inflated by
@@ -14302,7 +14363,7 @@ async function genEODReport(recName){
     const cd=String(r[3]);
     if(!s3map[cd])s3map[cd]={code:cd,name:String(r[8]||''),actions:[]};
     const t=new Date(r[0]).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-    s3map[cd].actions.push(String(r[4]||'')+(r[5]?' ('+r[5]+')':'')+' ['+t+']');
+    s3map[cd].actions.push(_clActText(r)+' ['+t+']');
   });
   const s3=Object.values(s3map);
 
@@ -14311,6 +14372,8 @@ async function genEODReport(recName){
   // 1 Oct 2026: was clRows.length — see countDistinctActions()'s comment.
   const totalActions=totalDistinctActions(clRows,eActType);
   const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
+  const totalFU=clRows.filter(r=>r[4]==='WhatsApp Sent'&&r[5]===FOLLOWUP_WA_KEY).length;
+  const lowFU=closuresBelowFollowupMin(allCL,recName,td,td);
 
   // summary bar CSS
   const sumBarCss='.sb{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 18px;font-family:Calibri,sans-serif;}'+
@@ -14375,6 +14438,7 @@ async function genEODReport(recName){
       '<div class="sc grn"><span class="scn">'+totalActioned+'</span><span class="scl">Candidates Touched</span></div>'+
       '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
       '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
+      '<div class="sc amb"><span class="scn">'+totalFU+'</span><span class="scl">📞 Follow-up WAs</span></div>'+
       '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
       '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesScreenedToday+'</span><span class="scl">Resumes Screened</span></div>'+
       '<div class="sc red"><span class="scn">'+s2.length+'</span><span class="scl">Tasks Pending</span></div>'+
@@ -14413,6 +14477,9 @@ async function genEODReport(recName){
     '<div class="sh">4. Funnel Gap — My Active Vacancies'+(funnelGaps.filter(g=>g.hasGap).length?' — '+funnelGaps.filter(g=>g.hasGap).length+' need more sourcing/engagement':'')+'</div>'+
     _funnelGapTbl(funnelGaps)+
 
+    '<div class="sh">5. Closed from WIP with fewer than '+FOLLOWUP_WA_MIN+' 📞 Follow-ups ('+lowFU.length+')</div>'+
+    _rptTbl(CLOSURE_FLAG_HDR,closureFlagRows(lowFU))+'<div class="nil">'+CLOSURE_FLAG_NOTE+'</div>'+
+
     (notes?'<div class="nl">Any other inputs</div><div class="nb">'+notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>':'')+
 
     '</body></html>';
@@ -14435,9 +14502,9 @@ async function genWeeklyReport(recName,startStr,endStr){
   showLoad('Preparing Weekly Report...');
   const startDisp=_fDMY(startStr),endDisp=_fDMY(endStr);
 
-  let weekRows=[];
+  let weekRows=[],allCL=[];
   try{
-    const all=await fetchLiveChangeLog();
+    const all=await fetchLiveChangeLog();allCL=all;
     const recUser=appUsers.find(u=>u.name===recName);
     const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
     weekRows=all.filter(r=>{
@@ -14491,7 +14558,7 @@ async function genWeeklyReport(recName,startStr,endStr){
   function fmtDT(ts){return new Date(ts).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});}
   function candFirstAct(code){const rows=candClRows(code);return rows.length?fmtDT(rows[0][0]):'—';}
   function candLastAct(code){const rows=candClRows(code);return rows.length?fmtDT(rows[rows.length-1][0]):'—';}
-  function candActs(code){return candClRows(code).map(r=>String(r[4]||'')+(r[5]?' — '+r[5]:'')+' ['+fmtDT(r[0])+']').join('; ');}
+  function candActs(code){return candClRows(code).map(r=>_clActText(r)+' ['+fmtDT(r[0])+']').join('; ');}
   function typeTagsForCode(code){const types=[...new Set(candClRows(code).map(r=>eActType(r[4])))];return types.map(typeTag).join(' ')||'—';}
 
   const touchedCodes=[...new Set(clRows.map(r=>String(r[3])).filter(Boolean))];
@@ -14508,6 +14575,8 @@ async function genWeeklyReport(recName,startStr,endStr){
   // 1 Oct 2026: was clRows.length — see countDistinctActions()'s comment.
   const totalActions=totalDistinctActions(clRows,eActType);
   const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
+  const totalFU=clRows.filter(r=>r[4]==='WhatsApp Sent'&&r[5]===FOLLOWUP_WA_KEY).length;
+  const lowFU=closuresBelowFollowupMin(allCL,recName,startStr,endStr);
   // Effort+Incentive Metrics Audit, Anne's decision (25 Sep 2026): same
   // canonical sources as genEODReport() above — Meaningful Candidate Actions
   // via the one shared function, Interviews via Interview Date rather than
@@ -14571,6 +14640,7 @@ async function genWeeklyReport(recName,startStr,endStr){
       '<div class="sc grn"><span class="scn">'+touched.length+'</span><span class="scl">Candidates Touched</span></div>'+
       '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
       '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
+      '<div class="sc amb"><span class="scn">'+totalFU+'</span><span class="scl">📞 Follow-up WAs</span></div>'+
       '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
       '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesScreenedWeek+'</span><span class="scl">Resumes Screened</span></div>'+
       '<div class="sc" style="background:#e6f2e6"><span class="scn" style="color:#3a6b30">'+offersWeek.length+'</span><span class="scl">Offers Made</span></div>'+
@@ -14599,6 +14669,9 @@ async function genWeeklyReport(recName,startStr,endStr){
 
     '<div class="sh">4. Funnel Gap — My Active Vacancies'+(funnelGaps.filter(g=>g.hasGap).length?' — '+funnelGaps.filter(g=>g.hasGap).length+' need more sourcing/engagement':'')+'</div>'+
     _funnelGapTbl(funnelGaps)+
+
+    '<div class="sh">5. Closed from WIP with fewer than '+FOLLOWUP_WA_MIN+' 📞 Follow-ups ('+lowFU.length+')</div>'+
+    _rptTbl(CLOSURE_FLAG_HDR,closureFlagRows(lowFU))+'<div class="nil">'+CLOSURE_FLAG_NOTE+'</div>'+
 
     '</body></html>';
 
