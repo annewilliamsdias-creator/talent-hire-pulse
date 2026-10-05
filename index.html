@@ -9416,7 +9416,7 @@ async function buildAssessmentFacts(row,from,to,ctx){
   try{
     const days=Math.round((new Date(to)-new Date(from))/86400000)+1;
     const pTo=addDays(from,-1),pFrom=addDays(pTo,-(days-1));
-    const dd=await buildEffortData(rec,pFrom,pTo);
+    const dd=(ctx.prevData&&ctx.prevData[rec])||await buildEffortData(rec,pFrom,pTo);
     prev={period:pFrom+' to '+pTo,coveragePct:dd.coveragePct,profilesSourced:dd.summary.sourcedWeek,meaningfulActions:dd.summary.mcaWeek,interviews:dd.summary.interviewsWeek,joined:dd.summary.joinedWeek};
   }catch(e){console.warn('assessment: previous period failed for',rec,e.message);}
 
@@ -9438,17 +9438,27 @@ async function generateEffortAIReport(){
   if(!effortReportCache){toast('warn','Wait','Report data still loading — try again in a moment.');return;}
   if(!getAIKey()){toast('warn','No AI Key','Set an AI key in Admin → Config before generating an AI report.');return;}
   const aiEl = document.getElementById('ef-ai-report');
-  if(aiEl) aiEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--w60)">Gathering each recruiter\'s facts…</div>';
+  const step=(n,msg)=>{if(aiEl)aiEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--w60)">🤖 Step '+n+' of 3 — '+msg+'<br><span style="font-size:10px">This runs in the page and can take about a minute for the whole team — please keep this tab open.</span></div>';};
+  step(1,'pulling the change log, resume screening and the previous period…');
   const {from, to, rows} = effortReportCache;
   const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
   try{
-    const ctx={allCL:await fetchLiveChangeLog(),screened:await fetchScreenedAll()};
     const active=rows.filter(r=>r.activeVac>0||r.mca>0||r.profiles>0);
+    const days=Math.round((new Date(to)-new Date(from))/86400000)+1;
+    const pTo=addDays(from,-1),pFrom=addDays(pTo,-(days-1));
+    // Everything independent is fetched at once (was one recruiter at a time).
+    const [allCL,screened,prevList]=await Promise.all([
+      fetchLiveChangeLog(),fetchScreenedAll(),
+      Promise.all(active.map(r=>buildEffortData(r.rec,pFrom,pTo).catch(e=>{console.warn('assessment: previous period failed for',r.rec,e.message);return null;})))
+    ]);
+    const prevData={};active.forEach((r,i)=>{if(prevList[i])prevData[r.rec]=prevList[i];});
+    const ctx={allCL,screened,prevData};
+    step(2,'building a fact sheet for each of '+active.length+' recruiters…');
     const facts=[];
     for(const r of active)facts.push(await buildAssessmentFacts(r,from,to,ctx));
     const mean=k=>active.length?Math.round(active.reduce((t,r)=>t+(r[k]||0),0)/active.length*10)/10:null;
     const team={recruitersIncluded:active.length,avgCoveragePct:mean('coverage'),avgProfilesSourced:mean('profiles'),avgMeaningfulActions:mean('mca'),avgInterviews:mean('interviews')};
-    if(aiEl) aiEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--w60)">Generating…</div>';
+    step(3,'the AI is writing the assessment (usually 20–40 seconds)…');
     const prompt = `You are helping a recruitment manager at WithAWill HR Consultancy review each recruiter's performance for "${periodLabel}" (${from} to ${to}). Below is a fact sheet per recruiter, the team averages, the manager's benchmarks, and a list of things THP cannot see.
 
 BENCHMARKS (set by the manager):
