@@ -11589,6 +11589,29 @@ async function fetchResumeScreenedRangeCount(recName,startStr,endStr){
     return 0;
   }
 }
+// 5 Oct 2026, Anne: "Pushed to THP" count next to Resumes Screened. Of the
+// resumes this recruiter screened in the period (by the row's Created date),
+// how many now carry Status 'Pushed to THP'. By screening date, not push
+// date — the list holds no push date — so a resume screened Monday and pushed
+// Wednesday counts on Monday. Status only started saving correctly on
+// 5 Oct 2026 (the earlier PATCH silently failed); older rows are right only
+// where the backfill matched them to a THP candidate.
+async function fetchResumeScreenedPushedCount(recName,startStr,endStr){
+  try{
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items?$expand=fields($select=Recruiter,Status)&$top=2000',{headers:{'Authorization':'Bearer '+tok}});
+    if(!res.ok)return 0;
+    const data=await res.json();
+    return((data&&data.value)||[]).filter(it=>{
+      const f=it.fields||{};
+      const created=(it.createdDateTime||'').slice(0,10);
+      return f.Recruiter===recName&&f.Status==='Pushed to THP'&&created>=startStr&&created<=endStr;
+    }).length;
+  }catch(e){
+    console.warn('fetchResumeScreenedPushedCount failed:',e.message);
+    return 0;
+  }
+}
 
 // ══════════════════════════════════════════════════════
 // REMAP REQUESTS — Admin queue for submitNew()'s "Raise Request to Admin"
@@ -14303,6 +14326,7 @@ async function genEODReport(recName){
     clRows=all.filter(r=>String(r[0]).slice(0,10)===td&&r[4]!=='EOD Notes'&&(recEmail&&String(r[9]||'').toLowerCase()===recEmail||!String(r[9]||'').trim()&&String(r[1]).toLowerCase()===recName.toLowerCase()));
   }catch(e){console.warn('EOD CL',e);}
   const resumesScreenedToday=await fetchResumeScreenedTodayCount(recName,td);
+  const resumesPushedToday=await fetchResumeScreenedPushedCount(recName,td,td);
   // Funnel Gap (28 Sep 2026, Anne's decision) — see calcRecruiterFunnelGaps()
   const funnelGaps=calcRecruiterFunnelGaps(recName);
   // Candidate Match usage nudge (1 Oct 2026, Anne's ask) — EOD + Manager
@@ -14468,6 +14492,7 @@ async function genEODReport(recName){
       '<div class="sc amb"><span class="scn">'+totalFU+'</span><span class="scl">📞 Call-attempt WAs</span></div>'+
       '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
       '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesScreenedToday+'</span><span class="scl">Resumes Screened</span></div>'+
+      '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesPushedToday+'</span><span class="scl">Pushed to THP</span></div>'+
       '<div class="sc red"><span class="scn">'+s2.length+'</span><span class="scl">Tasks Pending</span></div>'+
     '</div>'+
 
@@ -14548,6 +14573,7 @@ async function genWeeklyReport(recName,startStr,endStr){
   const clRows=weekRows.filter(r=>r[4]!=='EOD Notes');
 
   const resumesScreenedWeek=await fetchResumeScreenedRangeCount(recName,startStr,endStr);
+  const resumesPushedWeek=await fetchResumeScreenedPushedCount(recName,startStr,endStr);
   // Funnel Gap (28 Sep 2026, Anne's decision) — see calcRecruiterFunnelGaps()
   const funnelGaps=calcRecruiterFunnelGaps(recName);
   hideLoad();
@@ -14670,6 +14696,7 @@ async function genWeeklyReport(recName,startStr,endStr){
       '<div class="sc amb"><span class="scn">'+totalFU+'</span><span class="scl">📞 Call-attempt WAs</span></div>'+
       '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
       '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesScreenedWeek+'</span><span class="scl">Resumes Screened</span></div>'+
+      '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesPushedWeek+'</span><span class="scl">Pushed to THP</span></div>'+
       '<div class="sc" style="background:#e6f2e6"><span class="scn" style="color:#3a6b30">'+offersWeek.length+'</span><span class="scl">Offers Made</span></div>'+
       '<div class="sc" style="background:#e6f2e6"><span class="scn" style="color:#3a6b30">'+joinedWeek.length+'</span><span class="scl">Joined</span></div>'+
     '</div>'+
