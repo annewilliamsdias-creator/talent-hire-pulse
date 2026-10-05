@@ -2203,6 +2203,18 @@ statuses:['WIP','Active','Not Contactable','Not Interested','Dropped','Consultan
 vacStatuses:['Open','On Hold','Shortlisted','Selected','Offered','Closed','Cancelled'].map(n=>({name:n,active:true})),
 decisionMakers:['Consultant','Client'].map(n=>({name:n,active:true}))};
 function mA(k){return(M[k]||[]).filter(x=>x.active).map(x=>x.name);}
+// 5 Oct 2026, Anne: new Masters entries landed at the bottom of every list.
+// Lists with no inherent order are kept alphabetical — sorted in M itself, so
+// the Config screen, every dropdown (all read M via mA()) and the saved Config
+// sheet agree. Deliberately NOT sorted: statuses and vacStatuses (pipeline /
+// lifecycle order drives the flow logic) and noticePeriods / expLevels
+// (ordered scales — alphabetical would put "7 days" after "60 days" and
+// "Immediate" last).
+const SORTED_MASTERS=['clients','recruiters','departments','sources','cities','decisionMakers'];
+function sortMaster(key){
+  if(!SORTED_MASTERS.includes(key)||!Array.isArray(M[key]))return;
+  M[key].sort((a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:'base',numeric:true}));
+}
 
 const WA={
 wip:'Hi {N}, I am {R} from WithAWill HR. We found your profile for a {P} opportunity with {C}. Are you available for a quick discussion?',
@@ -3160,6 +3172,7 @@ function loadMastersCfg(){
       loaded[key].push(obj);
     }
     Object.keys(loaded).forEach(k=>{M[k]=loaded[k];});
+    SORTED_MASTERS.forEach(sortMaster);
   }catch(e){console.warn('masters cfg',e);}
 }
 async function saveMastersCfg(silent=false){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}const block=[['Masters'],['key','name','active','extra']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N',k==='recruiters'?(it.doj||''):''])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false,true,['Config']);if(!silent)toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);if(!silent)toast('err','Save Failed',e.message);}}
@@ -4605,10 +4618,10 @@ function getRecruiterPhase(recruiterName, asOfDate){
   return {phase:'revenue', month:monthsElapsed + 1, doj:rec.doj, monthsElapsed};
 }
 function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx].active;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('info','Master Updated',M[key][idx].name+' is now '+(M[key][idx].active?'active':'inactive'));}}
-function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});el.value='';renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();}
+function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});sortMaster(key);el.value='';renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();}
 function startEditMaster(key,idx){_editingMaster={key,idx};renderMT(key);setTimeout(()=>{const inp=document.getElementById('medit-inp');if(inp){inp.focus();inp.select();}},50);}
 function cancelEditMaster(key){_editingMaster=null;renderMT(key);}
-function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
+function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;sortMaster(key);_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
 function saveCfg(){Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});toast('ok','Config Saved','Templates updated.');}
 function getAIKey(){return localStorage.getItem('thp_ai_key')||'';}
 async function saveAIKey(){const v=(document.getElementById('ai-key-input').value||'').trim();if(!v){toast('warn','No key','Paste your Anthropic API key first.');return;}localStorage.setItem('thp_ai_key',v);if(WB){saveMetadata({ai_key:v});await saveWB(false,true,['Config']);}aiKeyStatus();toast('ok','Key Saved','AI key stored in browser and workbook.');}
