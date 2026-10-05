@@ -2219,6 +2219,12 @@ function sortMaster(key){
 const WA={
 wip:'Hi {N}, I am {R} from WithAWill HR. We found your profile for a {P} opportunity with {C}. Are you available for a quick discussion?',
 not_contactable:'Hi {N}, this is {R} from WithAWill HR following up on the {P} role with {C}. Please let us know a convenient time to connect.',
+// 5 Oct 2026, Anne: the genuine "we've tried and couldn't reach you" message —
+// not_contactable above is purely a follow-up. Mirrors the Re-engagement
+// email ("Before We Move Ahead…": tried a couple of times, no pressure, we'd
+// rather hold your spot than fill it without checking in, reply YES with a
+// date/time or NO). Counts as a call-attempt WhatsApp, like Follow-up does.
+before_we_move_ahead:'Hi {N}, this is {R} from WithAWill HR. We\'ve tried reaching you a couple of times about the *{P}* role with *{C}* and haven\'t been able to connect.\n\nWe\'d rather give you the chance to consider it than move ahead with another profile without checking in with you first.\n\nTwo options, either works:\n1️⃣ Reply YES with a date and time that suits you, and we\'ll pick the conversation right back up.\n2️⃣ Reply NO if the timing\'s off — no problem, we\'ll keep you in mind for what\'s next.\n\nLooking forward to hearing from you.\n- {R}, WithAWill HR',
 interview_confirmation:'Hi {N}, your interview for *{P}* with *{C}* is confirmed.\n\nDate: {D}\nTime: {T}\nTeams Link: {L}\n\nPlease join 5 mins early.\n- {R}, WithAWill HR',
 selected:'Hi {N}, great news! You have been selected for *{P}* with *{C}*. We will share next steps shortly. - {R}, WithAWill HR',
 offered:'Hi {N}, an offer has been extended for *{P}* with *{C}*. Please revert with your confirmation. - {R}, WithAWill HR',
@@ -2242,7 +2248,7 @@ general:'Hi {N}, '};
 // by the Send WhatsApp menu, the Admin → Config template editor (which showed
 // only the internal key — "wip", "not contactable" — so "First Contact" and
 // "📞 Follow-up" didn't look like the same templates) and the reports.
-const WA_MENU=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['send_jd','📄 Share JD'],['resume_upload_invite','📤 Resume Upload Invite'],['ai_interview_invite','🎥 AI Interview Invite'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
+const WA_MENU=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['before_we_move_ahead','⏳ Before We Move Ahead'],['send_jd','📄 Share JD'],['resume_upload_invite','📤 Resume Upload Invite'],['ai_interview_invite','🎥 AI Interview Invite'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
 const WA_LABELS=Object.fromEntries(WA_MENU.concat([['reassign_resurface','🔁 Reassign & WA']]));
 // 'followupCount' is what every WhatsApp Sent row's Field column held before
 // 5 Oct 2026, when the template used wasn't recorded.
@@ -8884,7 +8890,7 @@ function totalDistinctActions(rows,typeClassifier){
 // earlier WhatsApp row has no template (Field = 'followupCount') and is given
 // the benefit of the doubt (counted towards the 3) rather than flagging a
 // closure that may well have been preceded by real follow-ups.
-const FOLLOWUP_WA_KEY='not_contactable',FOLLOWUP_WA_MIN=3,CLOSE_FROM_STATUS='WIP',CLOSING_STATUSES=['Dropped','Not Interested'];
+const FOLLOWUP_WA_KEYS=['not_contactable','before_we_move_ahead'],FOLLOWUP_WA_MIN=3,CLOSE_FROM_STATUS='WIP',CLOSING_STATUSES=['Dropped','Not Interested'];
 function closuresBelowFollowupMin(allCL,recName,from,to){
   const recUser=appUsers.find(u=>u.name===recName);
   const recEmail=recUser&&recUser.email?recUser.email.toLowerCase():'';
@@ -8897,7 +8903,7 @@ function closuresBelowFollowupMin(allCL,recName,from,to){
     const d=String(r[0]).slice(0,10);
     if(d<from||d>to||!byMe(r))return;
     const before=(waByCode[r[3]]||[]).filter(w=>String(w[0])<=String(r[0]));
-    const fu=before.filter(w=>w[5]===FOLLOWUP_WA_KEY).length;
+    const fu=before.filter(w=>FOLLOWUP_WA_KEYS.includes(w[5])).length;
     const untyped=before.filter(w=>w[5]==='followupCount').length;
     if(fu+untyped>=FOLLOWUP_WA_MIN)return;
     out.push({code:r[3],name:r[8]||'',closedAs:r[7],closedOn:d,followups:fu,untyped,otherWA:before.length-fu-untyped});
@@ -8905,8 +8911,8 @@ function closuresBelowFollowupMin(allCL,recName,from,to){
   return out;
 }
 function closureFlagRows(list){return list.map(x=>[x.code,x.name,x.closedAs,_fDMY(x.closedOn),x.followups,x.untyped,x.otherWA]);}
-const CLOSURE_FLAG_HDR=['Code','Name','Closed As','Closed On','📞 Follow-up WAs','Earlier WA (template not recorded)','Other WA'];
-const CLOSURE_FLAG_NOTE='A candidate moved from WIP to Dropped / Not Interested should have at least '+FOLLOWUP_WA_MIN+' 📞 Follow-up WhatsApps first. Flag only. WhatsApps sent before 5 Oct 2026 did not record their template and are counted towards the '+FOLLOWUP_WA_MIN+', so older closures are not flagged unfairly.';
+const CLOSURE_FLAG_HDR=['Code','Name','Closed As','Closed On','📞 Call-attempt WAs','Earlier WA (template not recorded)','Other WA'];
+const CLOSURE_FLAG_NOTE='A candidate moved from WIP to Dropped / Not Interested should have at least '+FOLLOWUP_WA_MIN+' call-attempt WhatsApps (📞 Follow-up or ⏳ Before We Move Ahead) first. Flag only. WhatsApps sent before 5 Oct 2026 did not record their template and are counted towards the '+FOLLOWUP_WA_MIN+', so older closures are not flagged unfairly.';
 // Action text for report rows: a WhatsApp row's Field column is now the
 // template key, shown as its menu label.
 function _clActText(r){return String(r[4]||'')+(r[5]?' — '+(r[4]==='WhatsApp Sent'?waLabel(r[5]):r[5]):'');}
@@ -9264,7 +9270,7 @@ async function renderEffortComparison(){
   rows.sort((a,b)=>b.coverage-a.coverage);
   const periodLabel = EFFORT_PERIOD_LABELS[effortReportPeriod]||'This Month';
   let html = `<div style="font-size:11px;color:var(--w60);margin:8px 0">${periodLabel} (${fmtD(from)} – ${fmtD(to)}), except Active Vacancies/Coverage/Funnel Gap/Candidate Match (current) and Potential Revenue (current active pipeline). Click ▶ to see the vacancy-level Funnel Gap breakdown; click a recruiter's name to view their own Portfolio tab.</div>
-  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th title="Vacancies where Profile Matches has never been run, despite pool/resurfaceable profiles being available right now">Candidate Match</th><th title="Candidates moved from WIP to Dropped / Not Interested in this period with fewer than 3 📞 Follow-up WhatsApps first">Closed &lt;3 📞</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
+  <div class="tw"><table><thead><tr><th></th><th>Recruiter</th><th>Active Vacancies</th><th>Coverage %</th><th>Funnel Gap</th><th title="Vacancies where Profile Matches has never been run, despite pool/resurfaceable profiles being available right now">Candidate Match</th><th title="Candidates moved from WIP to Dropped / Not Interested in this period with fewer than 3 call-attempt WhatsApps (📞 Follow-up / ⏳ Before We Move Ahead) first">Closed &lt;3 📞</th><th>Profiles</th><th>Meaningful Actions</th><th>Submitted*</th><th>Interviews</th><th>Joined</th><th>Potential Revenue</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     const covColor = r.coverage>=EFFORT_COVERAGE_TARGET?'var(--teal)':'#ff6b6b';
     // 1 Oct 2026, Anne: nudge on whether Profile Matches is actually being
@@ -9276,7 +9282,7 @@ async function renderEffortComparison(){
     html += `<tr><td style="cursor:pointer;text-align:center" onclick="toggleFunnelGapExpand(${i})"><span id="fg-caret-${i}">▶</span></td><td style="cursor:pointer" onclick="goPanel('home');switchHomeTab('portfolio','${r.rec}')"><strong>${r.rec}</strong></td><td class="m">${r.activeVac}</td><td class="m" style="color:${covColor};font-weight:600">${r.coverage}%</td><td class="m">${_ragCountSummary(r.vacGaps)}</td><td class="m">${matchCell}</td><td class="m">${r.lowFUCount>0?'<span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:700">⚠ '+r.lowFUCount+'</span>':'<span style="color:var(--w60)">—</span>'}</td><td class="m">${r.profiles}</td><td class="m">${r.mca}</td><td class="m">${r.submitted}</td><td class="m">${r.interviews}</td><td class="m">${r.joined}</td><td class="m" style="font-weight:600">₹${Math.round(r.potential).toLocaleString('en-IN')}</td></tr>`;
     html += `<tr id="fg-expand-${i}" class="hidden"><td colspan="13" style="padding:8px 8px 14px">${_liveFunnelGapTbl(r.vacGaps)}</td></tr>`;
   });
-  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score. Closed &lt;3 📞 counts candidates moved from WIP to Dropped / Not Interested in the period with fewer than 3 📞 Follow-up WhatsApps first (flag only; WhatsApps before 5 Oct 2026 did not record their template and are counted towards the 3).</div>';
+  html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score. Closed &lt;3 📞 counts candidates moved from WIP to Dropped / Not Interested in the period with fewer than 3 call-attempt WhatsApps (📞 Follow-up or ⏳ Before We Move Ahead) first (flag only; WhatsApps before 5 Oct 2026 did not record their template and are counted towards the 3).</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
 }
@@ -14372,7 +14378,7 @@ async function genEODReport(recName){
   // 1 Oct 2026: was clRows.length — see countDistinctActions()'s comment.
   const totalActions=totalDistinctActions(clRows,eActType);
   const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
-  const totalFU=clRows.filter(r=>r[4]==='WhatsApp Sent'&&r[5]===FOLLOWUP_WA_KEY).length;
+  const totalFU=clRows.filter(r=>r[4]==='WhatsApp Sent'&&FOLLOWUP_WA_KEYS.includes(r[5])).length;
   const lowFU=closuresBelowFollowupMin(allCL,recName,td,td);
 
   // summary bar CSS
@@ -14438,7 +14444,7 @@ async function genEODReport(recName){
       '<div class="sc grn"><span class="scn">'+totalActioned+'</span><span class="scl">Candidates Touched</span></div>'+
       '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
       '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
-      '<div class="sc amb"><span class="scn">'+totalFU+'</span><span class="scl">📞 Follow-up WAs</span></div>'+
+      '<div class="sc amb"><span class="scn">'+totalFU+'</span><span class="scl">📞 Call-attempt WAs</span></div>'+
       '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
       '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesScreenedToday+'</span><span class="scl">Resumes Screened</span></div>'+
       '<div class="sc red"><span class="scn">'+s2.length+'</span><span class="scl">Tasks Pending</span></div>'+
@@ -14477,7 +14483,7 @@ async function genEODReport(recName){
     '<div class="sh">4. Funnel Gap — My Active Vacancies'+(funnelGaps.filter(g=>g.hasGap).length?' — '+funnelGaps.filter(g=>g.hasGap).length+' need more sourcing/engagement':'')+'</div>'+
     _funnelGapTbl(funnelGaps)+
 
-    '<div class="sh">5. Closed from WIP with fewer than '+FOLLOWUP_WA_MIN+' 📞 Follow-ups ('+lowFU.length+')</div>'+
+    '<div class="sh">5. Closed from WIP with fewer than '+FOLLOWUP_WA_MIN+' call-attempt WhatsApps ('+lowFU.length+')</div>'+
     _rptTbl(CLOSURE_FLAG_HDR,closureFlagRows(lowFU))+'<div class="nil">'+CLOSURE_FLAG_NOTE+'</div>'+
 
     (notes?'<div class="nl">Any other inputs</div><div class="nb">'+notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>':'')+
@@ -14575,7 +14581,7 @@ async function genWeeklyReport(recName,startStr,endStr){
   // 1 Oct 2026: was clRows.length — see countDistinctActions()'s comment.
   const totalActions=totalDistinctActions(clRows,eActType);
   const totalWA=clRows.filter(r=>eActType(r[4])==='WA').length;
-  const totalFU=clRows.filter(r=>r[4]==='WhatsApp Sent'&&r[5]===FOLLOWUP_WA_KEY).length;
+  const totalFU=clRows.filter(r=>r[4]==='WhatsApp Sent'&&FOLLOWUP_WA_KEYS.includes(r[5])).length;
   const lowFU=closuresBelowFollowupMin(allCL,recName,startStr,endStr);
   // Effort+Incentive Metrics Audit, Anne's decision (25 Sep 2026): same
   // canonical sources as genEODReport() above — Meaningful Candidate Actions
@@ -14640,7 +14646,7 @@ async function genWeeklyReport(recName,startStr,endStr){
       '<div class="sc grn"><span class="scn">'+touched.length+'</span><span class="scl">Candidates Touched</span></div>'+
       '<div class="sc"><span class="scn">'+totalActions+'</span><span class="scl">Total Actions</span></div>'+
       '<div class="sc amb"><span class="scn">'+totalWA+'</span><span class="scl">WA Attempts</span></div>'+
-      '<div class="sc amb"><span class="scn">'+totalFU+'</span><span class="scl">📞 Follow-up WAs</span></div>'+
+      '<div class="sc amb"><span class="scn">'+totalFU+'</span><span class="scl">📞 Call-attempt WAs</span></div>'+
       '<div class="sc tt-iv" style="background:#e8eaf6"><span class="scn" style="color:#3949ab">'+totalInterviews+'</span><span class="scl">Interviews</span></div>'+
       '<div class="sc tt-sr" style="background:#f3e5f5"><span class="scn" style="color:#6a1b9a">'+resumesScreenedWeek+'</span><span class="scl">Resumes Screened</span></div>'+
       '<div class="sc" style="background:#e6f2e6"><span class="scn" style="color:#3a6b30">'+offersWeek.length+'</span><span class="scl">Offers Made</span></div>'+
@@ -14670,7 +14676,7 @@ async function genWeeklyReport(recName,startStr,endStr){
     '<div class="sh">4. Funnel Gap — My Active Vacancies'+(funnelGaps.filter(g=>g.hasGap).length?' — '+funnelGaps.filter(g=>g.hasGap).length+' need more sourcing/engagement':'')+'</div>'+
     _funnelGapTbl(funnelGaps)+
 
-    '<div class="sh">5. Closed from WIP with fewer than '+FOLLOWUP_WA_MIN+' 📞 Follow-ups ('+lowFU.length+')</div>'+
+    '<div class="sh">5. Closed from WIP with fewer than '+FOLLOWUP_WA_MIN+' call-attempt WhatsApps ('+lowFU.length+')</div>'+
     _rptTbl(CLOSURE_FLAG_HDR,closureFlagRows(lowFU))+'<div class="nil">'+CLOSURE_FLAG_NOTE+'</div>'+
 
     '</body></html>';
