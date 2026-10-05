@@ -14336,8 +14336,16 @@ async function genEODReport(recName){
   }
 
   // custom table with raw HTML cells (for type tags)
+  // 5 Oct 2026, Anne: the Action Summary column (last column of the Tasks
+  // Completed tables) ran off as one clipped line — the report's generic
+  // td rule is nowrap + ellipsis — so the list of actions couldn't be read.
+  // These tables now get class "wl": that last cell wraps, and it gets a
+  // wide share of the fixed-layout width (the other columns split the rest
+  // evenly) instead of the same width as a one-digit count column.
   function _rptTblH(hdrs,rows){
-    let t='<table><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
+    const lastPct=hdrs.length>=10?36:46,otherPct=((100-lastPct)/(hdrs.length-1)).toFixed(2);
+    const cg='<colgroup>'+hdrs.map((h,i)=>'<col style="width:'+(i===hdrs.length-1?lastPct:otherPct)+'%">').join('')+'</colgroup>';
+    let t='<table class="wl">'+cg+'<thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
     if(!rows.length){t+='<tr><td colspan="'+hdrs.length+'" style="color:#5f6470;font-style:italic">No entries</td></tr>';}
     else{rows.forEach(r=>{t+='<tr>'+r.map((c,i)=>{
       const raw=String(c||'');
@@ -14349,7 +14357,7 @@ async function genEODReport(recName){
   }
 
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>EOD Report '+dateStr+'</title>'+
-    '<style>'+_rptCss()+sumBarCss+'</style></head><body>'+
+    '<style>'+_rptCss()+sumBarCss+'.wl td{vertical-align:top}.wl td:last-child{white-space:normal;word-break:break-word;overflow:visible;text-overflow:clip;line-height:1.3}'+'</style></head><body>'+
     '<div class="rh">EOD Report Dated '+dateStr+'</div>'+
     '<div class="rm">Recruiter: '+recName+' &nbsp;|&nbsp; Generated: '+new Date().toLocaleString('en-IN')+'</div>'+
 
