@@ -200,7 +200,14 @@ display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px)
 #modal.show{display:flex}
 .mc{background:rgba(5,0,15,.98);border:1px solid rgba(233,152,43,.3);
 border-radius:var(--r);padding:26px 30px;max-width:460px;width:90vw;
-box-shadow:var(--sh);animation:fadeUp .3s ease}
+box-shadow:var(--sh);animation:fadeUp .3s ease;
+/* 5 Oct 2026: flex column capped at 90vh — long content (e.g. the Suggested
+   Matches list with several runs) used to push the button row below the
+   viewport with no way to scroll to it. Only .mc-rec (the content area)
+   scrolls now; title, intro text and the button row stay pinned. */
+display:flex;flex-direction:column;max-height:90vh}
+.mc>*{flex-shrink:0}
+.mc>.mc-rec{flex:1 1 auto;min-height:0;overflow-y:auto}
 .mc.mc-wide{max-width:760px}
 .mc h3{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--gold);margin-bottom:6px}
 .mc p{font-size:13px;color:var(--w60);margin-bottom:14px;line-height:1.6}
@@ -969,6 +976,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="btn-row">
 <button class="btn btn-t btn-lg" id="scrRunBtn" onclick="runScreening()">▶ Run Fitment Scoring</button>
 <button class="btn btn-ghost" onclick="clearScreenQueue()">Clear All</button>
+<button class="btn btn-ghost" style="font-size:12px" onclick="backfillScreenedData()" title="One-time: fills the screening date on older rows, and copies the score/remarks across for resumes that were pushed to THP">🔄 Backfill Screening Data</button>
 </div>
 </div>
 <div class="card hidden" id="scrResultsCard">
@@ -11314,6 +11322,28 @@ Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations"
 // recruiter from seeing their score or pushing a candidate through, same
 // reasoning as saveJDToList()'s own try/catch just logs and moves on.
 const RESUME_SCREENED_LIST_ID='1926b397-6807-4866-b48e-2c99584a5631';
+// 5 Oct 2026, Anne: the List now also keeps the AI score, screening remarks
+// (the role-specific recommendations), a role-independent profile summary
+// designed for searching later, and the screening date — the 18 Sep
+// decision ("score, fitment summary and a summary of the profile — enough,
+// the resume itself isn't relevant") that was never wired in. Columns
+// (create in the ResumeScreened list, exact names): FitmentScore (Number),
+// ScreeningRemarks (multi-line text), ProfileSummary (multi-line text),
+// ScreenedOn (Date). If any is missing Graph rejects the whole write with a
+// 400 — so the row is retried with the original six fields only, rather
+// than losing the row (and the EOD Resumes Screened count) over a column
+// that hasn't been created yet.
+let _screenedColsWarned=false;
+function _screenedScoringFields(q){
+  const f={ScreeningRemarks:q.recommendations||'',ProfileSummary:q.profileSummary||'',ScreenedOn:today()};
+  const sc=parseFloat(q.score);if(!isNaN(sc))f.FitmentScore=sc;
+  return f;
+}
+function _warnScreenedColsOnce(detail){
+  console.warn('ResumeScreened scoring fields not saved:',detail);
+  if(_screenedColsWarned)return;_screenedColsWarned=true;
+  toast('warn','Screening List','Score/remarks/summary/date were not saved — add the FitmentScore, ScreeningRemarks, ProfileSummary and ScreenedOn columns to the ResumeScreened list. Basic details were still saved.');
+}
 async function saveResumeScreenedRecord(q,vacCode){
   try{
     await refreshToken();
@@ -11329,17 +11359,39 @@ async function saveResumeScreenedRecord(q,vacCode){
     // equals myRecName exactly whenever myRecName is set (same value,
     // narrower condition) — so this is behavior-neutral for genuine
     // Recruiter-role users and only fixes the Admin/Super Admin case.
-    const fields={Title:nm,CandidateName:nm,Email:q.email||'',PhoneNo:q.phone||'',VacancyCode:vacCode||'',Recruiter:(curUser&&curUser.name)||(acct&&acct.name?acct.name:'')};
-    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    const base={Title:nm,CandidateName:nm,Email:q.email||'',PhoneNo:q.phone||'',VacancyCode:vacCode||'',Recruiter:(curUser&&curUser.name)||(acct&&acct.name?acct.name:'')};
+    const post=async(fields)=>fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    let res=await post({...base,..._screenedScoringFields(q)});
+    if(!res.ok){
+      const detail=await res.text().catch(()=>'');
+      res=await post(base);
+      if(res.ok)_warnScreenedColsOnce(detail.slice(0,200));
+    }
     if(res.ok){const item=await res.json();return item.id;}
   }catch(e){console.warn('ResumeScreened save failed:',e.message);}
   return null;
+}
+// Re-score: same row, fresh score/remarks/summary/date. Flat field map —
+// PATCH .../fields takes the map directly, no {fields:{}} wrapper
+// (architecture Rule 12).
+async function updateResumeScreenedScoring(spItemId,q){
+  if(!spItemId)return;
+  try{
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items/'+spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(_screenedScoringFields(q))});
+    if(!res.ok)_warnScreenedColsOnce((await res.text().catch(()=>'')).slice(0,200));
+  }catch(e){console.warn('ResumeScreened re-score update failed:',e.message);}
 }
 async function updateResumeScreenedStatus(spItemId,status){
   if(!spItemId)return;
   try{
     await refreshToken();
-    await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items/'+spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:status}})});
+    // 5 Oct 2026: body was {fields:{Status}} — the same double-wrapped PATCH
+    // shape as saveJDToList() (architecture Rule 12 / CR-JD-001). Graph
+    // 400'd it silently, so "Pushed to THP" was never actually saved on any
+    // row since this shipped on 27 Aug. Flat map now, failure logged.
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items/'+spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({Status:status})});
+    if(!res.ok)console.warn('ResumeScreened status update failed:',res.status,(await res.text().catch(()=>'')).slice(0,200));
   }catch(e){console.warn('ResumeScreened status update failed:',e.message);}
 }
 // 27 Aug 2026 (queue item 10): count of resumes this recruiter scored today,
@@ -11581,6 +11633,109 @@ async function promotePoolMatchForVacancy(poolCode,vacCode){
   const p=POOL_ENTRIES.find(x=>x.code===poolCode);
   if(!p){toast('err','Not Found','This pool entry could not be found — it may have already been promoted or dismissed.');return;}
   promotePoolEntry(p._spItemId,vacCode);
+}
+// 5 Oct 2026: promote/view for a "screened" match (a resume screened for
+// another vacancy, never pushed). The resume file itself was never stored,
+// so the New Candidate form is pre-filled from what the screening list
+// kept — name/phone/email plus the vacancy — and the prior screening
+// score/remarks/profile summary go into the Remark, NOT into
+// ResumeFitmentData (that score was against a different role and would
+// read as this vacancy's fitment). Row is marked 'Pushed to THP' on click,
+// same optimistic best-effort convention as promotePoolEntry(), so it
+// drops out of future matching.
+async function _ensureScreenedEntry(ref){
+  if(!SCREENED_ENTRIES.some(x=>x.ref===ref)){await loadScreenedPoolFromList().catch(()=>{});}
+  return SCREENED_ENTRIES.find(x=>x.ref===ref);
+}
+async function promoteScreenedMatchForVacancy(ref,vacCode){
+  closeModal();
+  const r=await _ensureScreenedEntry(ref);
+  if(!r){toast('err','Not Found','This screened resume could not be found.');return;}
+  goPanel('new');
+  clearNew();
+  sv('nNm',r.name);sv('nMob',r.phone);sv('nEm',r.email);
+  sv('nRem','From resume screening on '+(r.screenedOn?fmtD(r.screenedOn):'—')+' (screened for '+(r.vacCode||'another vacancy')+(r.score!=null?', scored '+r.score+'/10':'')+'). Screening remarks: '+(r.remarks||'—')+' Profile summary: '+(r.summary||'—'));
+  sv('nStat','WIP');
+  if(vacCode){
+    const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
+    if(vac){
+      sv('nCli',vac['Company']||'');sv('nDept',vac['Department']||'');sv('nVacC',vacCode);
+      fillPosDrop();
+      const posSel=document.getElementById('nPos');
+      if(posSel){const opt=[...posSel.options].find(o=>o.dataset.code===vacCode);if(opt){posSel.value=opt.value;onPosSel();}}
+    }
+  }
+  toast('info','Ready to Review','Screened resume pre-filled. Add the missing details (company, source, follow-up) and click Add Candidate to save '+(r.name||'this candidate')+'.');
+  updateResumeScreenedStatus(r._spItemId,'Pushed to THP');
+}
+async function viewScreenedModal(ref){
+  showModal('📄 Screened Resume','Loading…','','<button class="btn btn-ghost" onclick="closeModal()">Close</button>');
+  const r=await _ensureScreenedEntry(ref);
+  if(!r){closeModal();toast('err','Not Found','This screened resume could not be found.');return;}
+  const row=(k,v)=>'<tr><td style="padding:4px 10px 4px 0;color:var(--w60);white-space:nowrap;vertical-align:top">'+k+'</td><td style="padding:4px 0">'+escHtml(String(v==null||v===''?'—':v))+'</td></tr>';
+  showModal('📄 '+(r.name||ref),'Screened '+(r.screenedOn?fmtD(r.screenedOn):'—')+' by '+escHtml(r.recruiter||'—')+' for '+escHtml(r.vacCode||'—')+'. The resume file itself was not kept.',
+    '<table style="font-size:12px;width:100%">'+row('Phone',r.phone)+row('Email',r.email)+row('Score (for that role)',r.score!=null?r.score+'/10':'—')+row('Screening remarks',r.remarks)+row('Profile summary',r.summary)+'</table>',
+    '<button class="btn btn-ghost" onclick="closeModal()">Close</button>',true);
+}
+// 5 Oct 2026, Anne: one-time backfill for ResumeScreened rows written before
+// score/remarks/date were captured. Only what's genuinely recoverable:
+// (1) ScreenedOn from each row's own SharePoint Created date; (2) for a
+// resume that was pushed to THP (matched to a THP candidate by phone/email),
+// the score and remarks from that candidate's ResumeFitmentData — only when
+// the candidate is still on the same vacancy the row was screened for, so a
+// score for one role is never copied across as if it were another's;
+// (3) Status 'Pushed to THP' where that match exists — updateResumeScreened
+// Status() used to silently fail (double-wrapped body) so no row ever got it.
+// Resumes screened and NOT pushed have no stored score anywhere — they stay
+// blank. Flat-map PATCH, failures counted and shown (architecture Rule 12).
+async function backfillScreenedData(){
+  if(!canEditRepo){toast('warn','Access Denied','Backfill is restricted to Administrators.');return;}
+  showLoad('Reading screening list...');
+  let rows;
+  try{rows=await loadScreenedPoolFromList();}catch(e){hideLoad();toast('err','Backfill',e.message);return;}
+  hideLoad();
+  const byPhone=new Map(),byEmail=new Map();
+  MD.forEach(r=>{
+    const ph=String(r[C.contact]||'').replace(/\D/g,'').slice(-10);if(ph&&!byPhone.has(ph))byPhone.set(ph,r);
+    [r[C.email],r[C.altEmail]].forEach(e=>{const k=String(e||'').trim().toLowerCase();if(k&&!byEmail.has(k))byEmail.set(k,r);});
+  });
+  const plan=[];
+  rows.forEach(r=>{
+    const patch={};const tags=[];
+    if(!r.hasScreenedOn&&r.created){patch.ScreenedOn=r.created.slice(0,10);tags.push('date');}
+    const cand=(r.phone&&byPhone.get(r.phone))||(r.email&&byEmail.get(r.email.toLowerCase()))||null;
+    if(cand){
+      if(r.status!=='Pushed to THP'){patch.Status='Pushed to THP';tags.push('status');}
+      if(!r.hasScore&&cand[C.vacCode]&&cand[C.vacCode]===r.vacCode&&cand[C.resumeFitmentData]){
+        try{
+          const fd=JSON.parse(cand[C.resumeFitmentData]);
+          const sc=parseFloat(fd.score);
+          if(!isNaN(sc)){patch.FitmentScore=sc;patch.ScreeningRemarks=fd.recommendations||'';tags.push('score');}
+        }catch(e){}
+      }
+    }
+    if(Object.keys(patch).length)plan.push({r,patch,tags});
+  });
+  const n=k=>plan.filter(x=>x.tags.includes(k)).length;
+  if(!plan.length){toast('info','Nothing to Backfill','Every row already has its screening date, and no pushed resumes are missing a score.');return;}
+  if(!confirm('Update '+plan.length+' of '+rows.length+' screening rows?\n\n• Screening date: '+n('date')+'\n• Score + remarks copied from the THP candidate: '+n('score')+'\n• Marked Pushed to THP: '+n('status')+'\n\nResumes screened but never pushed have no stored score and stay blank. Nothing else on any row is changed.'))return;
+  const log=[];let ok=0,failed=0;
+  showModal('🔄 Backfilling Screening Data','Starting…','','<button class="btn btn-ghost" onclick="closeModal()">Run in Background</button>',true);
+  const paint=(line)=>{const mp=document.getElementById('modal-msg');if(mp)mp.innerHTML=escHtml(line)+'<div style="max-height:240px;overflow-y:auto;margin-top:10px;font-size:12px">'+log.slice().reverse().join('')+'</div>';};
+  for(let i=0;i<plan.length;i++){
+    const{r,patch}=plan[i];
+    paint('Updating '+(i+1)+' of '+plan.length+'…');
+    try{
+      await refreshToken();
+      const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items/'+r._spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(patch)});
+      if(!res.ok)throw new Error('('+res.status+') '+(await res.text().catch(()=>'')).slice(0,160));
+      ok++;
+    }catch(e){
+      failed++;log.push('<div style="color:#9f4a47;padding:2px 0">✕ '+escHtml(r.name||r.ref)+' — '+escHtml(e.message)+'</div>');
+      if(failed>=3&&ok===0){log.push('<div style="padding:4px 0">Stopped after 3 failures in a row — check the ResumeScreened list has the FitmentScore, ScreeningRemarks, ProfileSummary and ScreenedOn columns, then run again.</div>');break;}
+    }
+  }
+  showModal('🔄 Backfill Complete',ok+' row(s) updated, '+failed+' failed.<div style="max-height:240px;overflow-y:auto;margin-top:10px;font-size:12px">'+log.slice().reverse().join('')+'</div>','','<button class="btn btn-t" onclick="closeModal()">Close</button>',true);
 }
 // Quick-view for a Talent Pool entry (19 Sep 2026) — the pool-side
 // equivalent of viewCandModal(), since a pool entry isn't a real candidate
@@ -11849,7 +12004,9 @@ ${extraCtx?'\nADDITIONAL REQUIREMENT FOR THIS SCREENING RUN:\n'+extraCtx+'\n':''
     const instructions=`
 From the resume, extract the candidate's full name, email address, 10-digit phone number, and current company (use "" for any not stated — never invent). Then score the resume's fit against this role's requirements from 1-10, and give 2-4 sentences of specific, actionable recommendations for the recruiter — what to verify or probe on, not just a summary. Base this only on what's actually in the resume; don't invent experience that isn't stated.
 
-Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string>","phone":"<string>","company":"<string>","score":<1-10>,"recommendations":"<2-4 sentences>"}`;
+Also write "profileSummary": 3-4 factual sentences describing who this candidate is as a professional, independent of this particular role, so it can be searched later against OTHER vacancies — current or most recent role and employer, total years of experience, industry/business domain(s) worked in, functional area and what they actually did day to day, key skills/tools, seniority or team size handled, and location if stated. State facts from the resume only; no judgement of fit and no mention of the role above.
+
+Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string>","phone":"<string>","company":"<string>","score":<1-10>,"recommendations":"<2-4 sentences>","profileSummary":"<3-4 sentences>"}`;
     // Images go straight to the model as a vision input (no OCR step needed);
     // every other format is extracted to plain text first (pdf.js/mammoth/
     // JSZip+XML/plain read) and dropped into the prompt as before.
@@ -11869,14 +12026,14 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:messageContent}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1100,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:messageContent}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
     const raw=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'';
     const parsed=parseAIJsonResponse(raw);
     q.name=parsed.name||'';q.email=parsed.email||'';q.phone=(parsed.phone||'').replace(/\D/g,'').slice(-10);
-    q.company=parsed.company||'';q.score=parsed.score;q.recommendations=parsed.recommendations||'';
+    q.company=parsed.company||'';q.score=parsed.score;q.recommendations=parsed.recommendations||'';q.profileSummary=parsed.profileSummary||'';
     q.status='scored';
     // 28 Aug 2026: screenOne() runs for both the initial score AND
     // "Re-score" (same function) — was writing a new ResumeScreened row
@@ -11886,8 +12043,15 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
     // itself (just candidate identity + Recruiter + Status), so a re-score
     // has nothing new worth writing — only save once, on this queue item's
     // first successful score.
+    // 5 Oct 2026: the List now DOES store the score/remarks/profile summary/
+    // screened-on date (see saveResumeScreenedRecord) — so a re-score still
+    // doesn't add a row (EOD count unchanged), but it does update the
+    // existing row's scoring fields so the stored score matches what the
+    // recruiter is now looking at.
     if(!q.screenedSpItemId){
       saveResumeScreenedRecord(q,vacCode).then(id=>{q.screenedSpItemId=id;});
+    }else{
+      updateResumeScreenedScoring(q.screenedSpItemId,q);
     }
   }catch(e){
     q.status='error';q.error=e.message;
@@ -13275,6 +13439,58 @@ async function _loadMatchRuns(vd){
     return _parseMatchRuns(res&&res.MatchResults);
   }catch(e){console.warn('_loadMatchRuns failed',e.message);return[];}
 }
+// 5 Oct 2026, Anne: resumes screened in the Resume Screening panel but never
+// pushed to THP are a third matching pool alongside the Talent Pool and
+// resurfaceable past candidates — their stored ProfileSummary (role-
+// independent, written for exactly this) is the matching signal, and the
+// prior screening score/remarks (against a DIFFERENT vacancy) go along as
+// context, not as a score for this one. Rows from before this was captured
+// have no ProfileSummary, so they're skipped — nothing to match on. Rows
+// already pushed, rows screened for the vacancy being matched, and anyone
+// already in THP or the Talent Pool (by phone/email) are excluded; the same
+// person screened more than once is represented by their latest row only.
+let SCREENED_ENTRIES=[];
+async function loadScreenedPoolFromList(){
+  const out=[];
+  let url=`/sites/${siteId}/lists/${RESUME_SCREENED_LIST_ID}/items?$expand=fields&$top=200`;
+  while(url){
+    const res=await graphGet(url.replace(GRAPH,''));
+    (res.value||[]).forEach(it=>{
+      const f=it.fields||{};
+      out.push({
+        _spItemId:it.id,ref:'RS-'+it.id,
+        name:f.CandidateName||f.Title||'',email:f.Email||'',phone:String(f.PhoneNo||'').replace(/\D/g,'').slice(-10),
+        vacCode:f.VacancyCode||'',recruiter:f.Recruiter||'',status:f.Status||'',
+        score:(f.FitmentScore===undefined||f.FitmentScore===null||f.FitmentScore==='')?null:Number(f.FitmentScore),
+        remarks:f.ScreeningRemarks||'',summary:f.ProfileSummary||'',
+        screenedOn:(f.ScreenedOn||it.createdDateTime||'').slice(0,10),created:it.createdDateTime||'',hasScreenedOn:!!f.ScreenedOn,hasScore:!(f.FitmentScore===undefined||f.FitmentScore===null||f.FitmentScore==='')
+      });
+    });
+    url=res['@odata.nextLink']||null;
+  }
+  SCREENED_ENTRIES=out;
+  return out;
+}
+function _eligibleScreenedForMatch(rows,vacCode,poolRows){
+  const knownPhones=new Set(),knownEmails=new Set();
+  const addKnown=(ph,em)=>{const p=String(ph||'').replace(/\D/g,'').slice(-10);if(p)knownPhones.add(p);const e=String(em||'').trim().toLowerCase();if(e)knownEmails.add(e);};
+  MD.forEach(r=>{addKnown(r[C.contact],r[C.email]);addKnown(r[C.altContact],r[C.altEmail]);});
+  poolRows.forEach(p=>addKnown(p.mobile,p.email));
+  const latest=new Map();
+  rows.forEach(r=>{
+    const key=r.phone||(r.email||'').toLowerCase()||r.ref;
+    const cur=latest.get(key);
+    if(!cur||r.created>cur.created)latest.set(key,r);
+  });
+  return[...latest.values()].filter(r=>{
+    if(r.status==='Pushed to THP')return false;
+    if(!r.summary)return false;
+    if(r.vacCode===vacCode)return false;
+    if(r.phone&&knownPhones.has(r.phone))return false;
+    if(r.email&&knownEmails.has(r.email.toLowerCase()))return false;
+    return true;
+  });
+}
 // 30 Sep 2026, Anne: multi-run matching — a recruiter can re-run matching
 // for the same vacancy as many times as they like (unlimited), each run
 // returning up to 20 NEW candidates, never repeating anyone already
@@ -13293,7 +13509,9 @@ async function triggerPoolMatchForVacancy(vd){
   const pool=await loadPoolFromList().catch(e=>{console.warn('triggerPoolMatchForVacancy: pool load failed',e.message);return[];});
   const openPool=pool.filter(p=>p.status==='New'||p.status==='Reviewed');
   const resurfaceCands=MD.filter(r=>POOL_RESURFACE_STATUSES.has(r[C.status]));
-  if(!openPool.length&&!resurfaceCands.length){toast('info','Nothing to Match Against','The talent pool is empty and there are no resurfaceable past candidates right now.');return;}
+  const screenedRows=await loadScreenedPoolFromList().catch(e=>{console.warn('triggerPoolMatchForVacancy: screened pool load failed',e.message);return[];});
+  const screenedPool=_eligibleScreenedForMatch(screenedRows,vacCode,pool);
+  if(!openPool.length&&!resurfaceCands.length&&!screenedPool.length){toast('info','Nothing to Match Against','The talent pool is empty, there are no resurfaceable past candidates, and no screened resumes with a saved profile summary right now.');return;}
 
   // "The previous match should not be repeated" — Anne, 30 Sep 2026.
   const existingRuns=await _loadMatchRuns(vd);
@@ -13332,7 +13550,9 @@ async function triggerPoolMatchForVacancy(vd){
     return summary;
   };
 
+  const _vacLabel=(vc)=>{const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===vc);return v?((v['Designation']||'')+(v['Company']?' @ '+v['Company']:'')):vc;};
   const profiles=[
+    ...screenedPool.map(r=>({ref:r.ref,kind:'screened',name:r.name,profileSummary:r.summary,screenedOn:r.screenedOn,priorScreening:{forRole:_vacLabel(r.vacCode),score:r.score,remarks:r.remarks}})),
     ...openPool.map(p=>({ref:p.code,kind:'pool',name:p.name,company:p.company,desiredRole:p.desiredRole,location:p.location,summary:p.summary,currentSalaryPA:p.salaryPA||''})),
     ...resurfaceCands.map(r=>{
       const prof={ref:r[C.code],kind:'candidate',name:r[C.name],company:r[C.company],designation:r[C.designation]||'',desiredRole:r[C.position]||r[C.roleInterested],location:r[C.location],status:r[C.status],remark:r[C.remark],currentSalaryPA:r[C.salaryPA]||'',expectedSalaryPA:r[C.expectedSalary]||''};
@@ -13366,14 +13586,15 @@ ${jdEntry?`DETAILED ROLE SUMMARY (for matching — use this as the primary descr
 
 Weigh these together, none as a hard cutoff:
 1. Role fit — experience, location, department, and salary vs budget. A profile whose current or expected salary sits well above the vacancy's budget is a weaker match even if the role itself lines up — say so plainly in the rationale when salary is the limiting factor (e.g. "strong role fit, but expected salary is above budget"). Don't discard a profile purely for a salary gap if nothing else is known, but don't ignore a clear mismatch either. Give this dimension a fitmentScore from 0 (poor fit) to 10 (excellent fit) — an integer, reflecting ONLY role fit (experience/location/department/salary vs budget) as described here. Do NOT factor function/industry adjacency into this number — that stays entirely separate, below.
-2. Function match, judged two different ways depending on what's known about the profile:
+2. Function match, judged three different ways depending on what's known about the profile:
+   - If a profile is kind "screened", it's a resume someone at WithAWill screened for a DIFFERENT vacancy and never added to THP. Its "profileSummary" is a role-independent factual summary of the person — compare it against this vacancy's DETAILED ROLE SUMMARY on function, domain, skills and seniority. Its "priorScreening" (score and remarks) was for another role, so it only hints at quality and what to verify — never treat that score as a fit score for this vacancy. It carries no salary or notice information, so don't comment on salary for these.
    - If a profile carries a "priorRoleSummary" field, that is a detailed summary of the ACTUAL role they were previously sourced for — compare it against this vacancy's DETAILED ROLE SUMMARY above on real function and content (responsibilities, skills, business domain), completely ignoring job-title vocabulary. Two roles can be the same real job under different titles at different companies (e.g. a "Wellness Advisor" and a "Sales Executive" can both be the same field-sales role) — judge on substance, not label. This JD-to-JD comparison is the stronger signal whenever it's available.
    - If a profile has no "priorRoleSummary" (talent pool entries, and candidates sourced before this system existed), fall back to judging business/industry adjacency from their designation/current-or-past company and role — use your own knowledge of what that company does, there's no lookup provided, this is your judgment call. This fallback signal is weaker than a direct JD-to-JD comparison, so don't claim an industryMatch here unless you can name a real, specific adjacency.
 Only set industryMatch true when the function/industry match is real and specific (from either method above) — not a vague guess. A profile can be a strong match on role fit alone even with no function/industry adjacency, or vice versa — surface both kinds and let the industryMatch flag and rationale tell the recruiter which is which. Don't require both.`;
-  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering; salary fields are annual (₹ PA) and may be blank if not on file; "priorRoleSummary" when present is the detailed JD summary of the vacancy they were previously sourced against — see method 2 above). This list already excludes everyone surfaced in an earlier run for this vacancy — every profile here is new:
+  const body=`CANDIDATE PROFILES (JSON array, "pool" = general applicant never yet added as a candidate, "candidate" = existing THP candidate whose status makes them worth reconsidering, "screened" = a resume screened for another vacancy and never added to THP; salary fields are annual (₹ PA) and may be blank if not on file; "priorRoleSummary" when present is the detailed JD summary of the vacancy they were previously sourced against — see method 2 above). This list already excludes everyone surfaced in an earlier run for this vacancy — every profile here is new:
 ${JSON.stringify(profiles)}
 
-Return up to 20 matches — fewer if fewer are genuinely relevant, don't pad the list (they'll be sorted by fitmentScore afterward, so list order here doesn't matter). Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate","name":"<name>","fitmentScore":0-10,"industryMatch":true|false,"rationale":"<1-2 sentence specific reason — name the function/industry adjacency if industryMatch is true, and say whether it came from their prior role's JD or from designation/company judgment>"}]}`;
+Return up to 20 matches — fewer if fewer are genuinely relevant, don't pad the list (they'll be sorted by fitmentScore afterward, so list order here doesn't matter). Respond with ONLY valid JSON, no other text: {"matches":[{"ref":"<ref>","kind":"pool"|"candidate"|"screened","name":"<name>","fitmentScore":0-10,"industryMatch":true|false,"rationale":"<1-2 sentence specific reason — name the function/industry adjacency if industryMatch is true, and say whether it came from their prior role's JD or from designation/company judgment>"}]}`;
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -13429,11 +13650,13 @@ function renderMatchResultsModal(vacCode,runs){
   // comment for why: Anne's explicit requirement that prior history is
   // never overwritten by a match.
   const rowsForRun=(matches)=>matches.map(m=>{
-    const action=m.kind==='pool'
+    const action=m.kind==='screened'
+      ?'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="promoteScreenedMatchForVacancy(\''+m.ref+'\',\''+vacCode+'\')">✓ Add as Candidate</button>'
+      :m.kind==='pool'
       ?'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="promotePoolMatchForVacancy(\''+m.ref+'\',\''+vacCode+'\')">✓ Promote</button>'
       :'<button class="btn btn-t btn-sm" style="font-size:10px;padding:3px 8px" onclick="tagCandidateToVacancy(\''+m.ref+'\',\''+vacCode+'\')">🔗 Tag to Vacancy</button>'+
         '<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;margin-left:4px" onclick="reassignAndWA(\''+m.ref+'\',\''+vacCode+'\')" title="Tags to this vacancy AND sends a WhatsApp reconnect message">📲 Reassign & WA</button>';
-    const nameHtml='<a href="javascript:void(0)" onclick="'+(m.kind==='candidate'?'viewCandModal':'viewPoolModal')+'(\''+m.ref+'\')" style="color:var(--teal);text-decoration:underline;cursor:pointer">'+escHtml(m.name||m.ref||'—')+'</a>';
+    const nameHtml='<a href="javascript:void(0)" onclick="'+(m.kind==='candidate'?'viewCandModal':m.kind==='screened'?'viewScreenedModal':'viewPoolModal')+'(\''+m.ref+'\')" style="color:var(--teal);text-decoration:underline;cursor:pointer">'+escHtml(m.name||m.ref||'—')+'</a>';
     // 1 Oct 2026, Anne: a 0-10 fitment score, role-fit ONLY (deliberately
     // separate from industryMatch below, so a high score can't quietly mean
     // "same industry" and vice versa) — same brand-palette thresholds as
@@ -13462,7 +13685,7 @@ function renderMatchResultsModal(vacCode,runs){
     const industryTag=m.industryMatch
       ?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(52,186,198,.15);color:var(--teal);font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid rgba(52,186,198,.35)">Same industry</span>'
       :'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(91,159,212,.15);color:#5b9fd4;font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid rgba(91,159,212,.35)">Role fit only</span>';
-    return '<tr><td>'+(m.kind==='pool'?'🌊':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+scoreTag+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
+    return '<tr><td>'+(m.kind==='pool'?'🌊':m.kind==='screened'?'📄':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+scoreTag+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
   }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
   // content (index.html ~line 3994) — the .tw class alone only scrolls
@@ -13472,9 +13695,9 @@ function renderMatchResultsModal(vacCode,runs){
     const runNum=i+1;
     const when=run.computedAt?fmtD(run.computedAt):'';
     return '<div class="sl2" style="margin-top:'+(i===0?'0':'14px')+'">Run '+runNum+(when?' — '+when:'')+' ('+run.matches.length+')</div>'+
-      '<div class="tw" style="max-height:260px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th><th></th></tr></thead><tbody>'+rowsForRun(run.matches)+'</tbody></table></div>';
+      '<div class="tw"><table style="width:100%;font-size:12px"><thead><tr><th>Candidate</th><th>Ref</th><th>Why</th><th></th></tr></thead><tbody>'+rowsForRun(run.matches)+'</tbody></table></div>';
   }).reverse().join(''); // newest run first
-  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates, weighing role fit AND business/industry background together — sorted by fitment score, highest first. 🌊 = talent pool (Promote creates a new candidate, status WIP); 👤 = existing candidate — Tag to Vacancy re-links them (status Reassigned, follow-up set for tomorrow, remarks and other history untouched); Reassign & WA does the same and also opens a WhatsApp message re-establishing contact about this new role. Run it again anytime — each run only surfaces people not already shown above.',
+  showModal('🎯 Suggested Matches for '+vacCode,'AI-ranked matches from the talent pool and past candidates, weighing role fit AND business/industry background together — sorted by fitment score, highest first. 🌊 = talent pool (Promote creates a new candidate, status WIP); 📄 = a resume screened earlier for another vacancy and never added to THP (Add as Candidate pre-fills the New Candidate form); 👤 = existing candidate — Tag to Vacancy re-links them (status Reassigned, follow-up set for tomorrow, remarks and other history untouched); Reassign & WA does the same and also opens a WhatsApp message re-establishing contact about this new role. Run it again anytime — each run only surfaces people not already shown above.',
     runsHtml,
     '<button class="btn btn-ghost" onclick="closeModal();runVacMatchingNowForCode(\''+vacCode.replace(/'/g,"\\'")+'\')">🔄 Run Another Match</button><button class="btn btn-t" onclick="closeModal()">Close</button>',true);
 }
