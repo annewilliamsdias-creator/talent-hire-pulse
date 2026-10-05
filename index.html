@@ -2137,14 +2137,29 @@ const PROCESS_ORDER=[
 ];
 // getValidStatuses: all previous stages + current + On Hold (always) + next 5 forward
 // 5 Oct 2026, Anne: 'Interview Cancelled' and 'Candidate No Show' were added
-// in Admin → Config → Masters and are not stages of the forward pipeline, so
-// PROCESS_ORDER-based filtering left them disabled in every candidate's status
-// list. Any Master status that isn't part of PROCESS_ORDER is now always
-// selectable (names are read from Masters, never hardcoded here) — except
-// 'Active'/'Reassigned', which stay as they were: legacy and system-set by
-// Tag to Vacancy respectively, not meant to be picked by hand.
+// in Admin → Config → Masters. They aren't forward pipeline stages, so they
+// are "out of flow": any Master status that isn't in PROCESS_ORDER (names read
+// from Masters, never hardcoded here), excluding 'On Hold', and 'Active'/
+// 'Reassigned', which stay as they were — legacy and system-set by Tag to
+// Vacancy respectively.
 function _outOfFlowStatuses(){
   return mA('statuses').filter(n=>!PROCESS_ORDER.includes(n)&&n!=='On Hold'&&n!=='Active'&&n!=='Reassigned');
+}
+function isOutOfFlowStatus(st){return _outOfFlowStatuses().includes(st);}
+// Anne: a candidate whose interview was cancelled / no-show "moves out of the
+// interview count" — they'll be rescheduled, so the stale date must not count.
+function interviewCounts(r){return !isOutOfFlowStatus(r[C.status]);}
+// The uS dropdown's options are hardcoded in the HTML, so a status added in
+// Masters never appeared in it at all. Adds any missing out-of-flow status
+// right after 'Rejected by Client'.
+function ensureStatusOptions(){
+  const sel=document.getElementById('uS');if(!sel)return;
+  _outOfFlowStatuses().forEach(n=>{
+    if([...sel.options].some(o=>o.value===n||o.text===n))return;
+    const o=document.createElement('option');o.value=n;o.textContent=n;
+    const ref=[...sel.options].find(x=>x.value==='Rejected by Client');
+    if(ref&&ref.nextSibling)sel.insertBefore(o,ref.nextSibling);else sel.appendChild(o);
+  });
 }
 // Anne's rule (5 Oct 2026): every status that isn't an inactive/terminal one
 // counts as Active in all reports. ACTIVE_STATUSES was a fixed list, so a
@@ -2155,7 +2170,12 @@ function syncActiveStatusesFromMasters(){
 }
 function getValidStatuses(cur){
   const idx=PROCESS_ORDER.indexOf(cur);
-  if(idx===-1) return [...PROCESS_ORDER,'On Hold',..._outOfFlowStatuses()]; // unknown status — show all
+  // Out-of-flow statuses (Interview Cancelled / Candidate No Show) are only
+  // offered to a candidate who is between 'Consultant Interview in Progress'
+  // and 'Rejected by Client' (Anne, 5 Oct 2026), or who is already in one.
+  const _wLo=PROCESS_ORDER.indexOf('Consultant Interview in Progress'),_wHi=PROCESS_ORDER.indexOf('Rejected by Client');
+  const _extras=(idx>=_wLo&&idx<=_wHi)||isOutOfFlowStatus(cur)?_outOfFlowStatuses():[];
+  if(idx===-1) return [...PROCESS_ORDER,'On Hold',..._extras]; // unknown status — show all
   const valid=new Set();
   // all stages up to and including current
   for(let i=0;i<=idx;i++) valid.add(PROCESS_ORDER[i]);
@@ -2165,7 +2185,7 @@ function getValidStatuses(cur){
   valid.add('On Hold');
   // WIP always available (already in PROCESS_ORDER[0])
   valid.add('WIP');
-  _outOfFlowStatuses().forEach(n=>valid.add(n));
+  _extras.forEach(n=>valid.add(n));
   return [...valid];
 }
 // FLOW retained for legacy references only — dynamic flow now via getValidStatuses()
@@ -3159,7 +3179,7 @@ async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=W
 // ══════════════════════════════════════════════════════
 const DMAP={nRec:'recruiters',nSrc:'sources',nLoc:'cities',nNot:'noticePeriods',nCli:'clients',nDept:'departments',epLoc:'cities',epNot:'noticePeriods',epCli:'clients',epDept:'departments',epRec:'recruiters',avCli:'clients',avDept:'departments',avLoc:'cities',avRec:'recruiters',uRI:'departments',uUC:'clients'};
 function fillDrops(){
-syncActiveStatusesFromMasters();
+syncActiveStatusesFromMasters();ensureStatusOptions();
 Object.entries(DMAP).forEach(([id,key])=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;const first=el.options[0];el.innerHTML='';if(first)el.appendChild(first);else{const o=document.createElement('option');o.value='';o.textContent='— Select —';el.appendChild(o);}mA(key).forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;el.appendChild(o);});if(cur)el.value=cur;});
 // Client filter in records
 const rcli=document.getElementById('rCli');if(rcli){const cur=rcli.value;rcli.innerHTML='<option value="">All Clients</option>';mA('clients').forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;rcli.appendChild(o);});if(cur)rcli.value=cur;}
@@ -3295,7 +3315,7 @@ sv2('tbAct', scopeMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])).length);
 const dm=document.getElementById('ds-mon');if(dm)dm.textContent=new Date().toLocaleString('default',{month:'long',year:'numeric'});
 // Interviews
 const in7=addDays(td,7);
-const ivs=hfMD.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=td&&r[C.interviewDate]<=in7).sort((a,b)=>a[C.interviewDate].localeCompare(b[C.interviewDate])).slice(0,10);
+const ivs=hfMD.filter(r=>interviewCounts(r)&&r[C.interviewDate]&&r[C.interviewDate]>=td&&r[C.interviewDate]<=in7).sort((a,b)=>a[C.interviewDate].localeCompare(b[C.interviewDate])).slice(0,10);
 const iv=document.getElementById('iv-list');
 if(iv)iv.innerHTML=ivs.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Interviewer</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>'+ivs.map(r=>{
   const sub=[];
@@ -3801,7 +3821,7 @@ if(stat==='Joining in Progress'&&eIdx!==-1){const r=MD[eIdx];if(r[C.doj]){const 
 function updStatDrop(){if(eIdx===-1)return;const r=MD[eIdx];let cur=r[C.status]||'WIP';
 // Legacy 'Active' status — treat as WIP for flow purposes, log warning
 if(cur==='Active'){console.warn('[THP] Legacy status "Active" on record '+r[C.code]+' — treating as WIP for status flow. Record can be saved/updated.');cur='WIP';}
-const valid=getValidStatuses(cur);const sel=document.getElementById('uS');if(!sel)return;Array.from(sel.options).forEach(o=>{if(!o.value)return;o.disabled=!valid.includes(o.value);o.style.color=valid.includes(o.value)?'':'rgba(255,255,255,.2)';o.style.opacity=valid.includes(o.value)?'1':'0.3';});}
+ensureStatusOptions();const valid=getValidStatuses(cur);const sel=document.getElementById('uS');if(!sel)return;Array.from(sel.options).forEach(o=>{if(!o.value)return;o.disabled=!valid.includes(o.value);o.style.color=valid.includes(o.value)?'':'rgba(255,255,255,.2)';o.style.opacity=valid.includes(o.value)?'1':'0.3';});}
 async function submitUpd(){
 if(eIdx===-1)return;
 if(myRecName&&(MD[eIdx]||{})[C.recruiter]!==myRecName){showAlert('uUpdAlert','err','You can only update candidates assigned to you.');return;}
@@ -3821,6 +3841,12 @@ const r=MD[eIdx];const oldStat=r[C.status];
 const INTERVIEW_STAGE_STATUSES=['Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress'];
 if(INTERVIEW_STAGE_STATUSES.includes(stat)&&!INTERVIEW_STAGE_STATUSES.includes(oldStat)&&!r[C.interviewDate]&&!gv('uIvD')){
   showAlert('uUpdAlert','err','Interview Date required when moving a candidate into an interview stage.');return;
+}
+// 5 Oct 2026: moving back into an interview stage from Interview Cancelled /
+// Candidate No Show is a reschedule — the stored date is the cancelled one,
+// so a new Interview Date is required (otherwise the old date would count).
+if(isOutOfFlowStatus(oldStat)&&INTERVIEW_STAGE_STATUSES.includes(stat)&&(!gv('uIvD')||gv('uIvD')===r[C.interviewDate])){
+  showAlert('uUpdAlert','err','New Interview Date required when rescheduling a cancelled / no-show interview.');return;
 }
 r[C.status]=stat;if(dm)r[C.dm]=dm;if(NO_FOLLOWUP.has(stat)){r[C.followupDate]='';}else if(fu){r[C.followupDate]=fu;}
 const rmk=gv('uRem');r[C.remark]=rmk;
@@ -6979,7 +7005,7 @@ async function calcSectionAForMonth(recruiterName, monthFrom, monthTo, empMonthN
   // it be set before a candidate can move into an interview-stage status.
   const interviews = MD.filter(r =>
     r[C.recruiter] === recruiterName &&
-    r[C.interviewDate] && r[C.interviewDate] >= monthFrom && r[C.interviewDate] <= monthTo &&
+    interviewCounts(r) && r[C.interviewDate] && r[C.interviewDate] >= monthFrom && r[C.interviewDate] <= monthTo &&
     !excludedSrc.includes(r[C.source]) && r[C.sourcingDate] >= policyStart
   );
   const interviewCount = interviews.length;
@@ -8335,7 +8361,7 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
     const cands = MD.filter(r=>r[C.vacCode]===vc);
     const profiles = cands.filter(r=>r[C.sourcingDate]>=weekFrom&&r[C.sourcingDate]<=weekTo).length;
     const submitted = cands.filter(r=>EFFORT_SUBMIT_STAGE.includes(r[C.status])&&r[C.updatedOn]&&r[C.updatedOn].slice(0,10)>=weekFrom&&r[C.updatedOn].slice(0,10)<=weekTo).length;
-    const interviews = cands.filter(r=>r[C.interviewDate]&&r[C.interviewDate]>=weekFrom&&r[C.interviewDate]<=weekTo).length;
+    const interviews = cands.filter(r=>interviewCounts(r)&&r[C.interviewDate]&&r[C.interviewDate]>=weekFrom&&r[C.interviewDate]<=weekTo).length;
     const offers = cands.filter(r=>r[C.offerDate]&&r[C.offerDate]>=weekFrom&&r[C.offerDate]<=weekTo).length;
     const joined = cands.filter(r=>isJoinedInPeriod(r,weekFrom,weekTo)).length;
     const screened = screenedRows.filter(s=>s.vacCode===vc&&s.date>=weekFrom&&s.date<=weekTo).length;
@@ -8408,7 +8434,7 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
   const mcaWeek = await getMeaningfulActionsInPeriod(recruiterName, weekFrom, weekTo);
   const screenedWeek = screenedRows.filter(s=>s.vacCode&&s.date>=weekFrom&&s.date<=weekTo).length;
   const submittedWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&hasVac(r)&&EFFORT_SUBMIT_STAGE.includes(r[C.status])&&r[C.updatedOn]&&r[C.updatedOn].slice(0,10)>=weekFrom&&r[C.updatedOn].slice(0,10)<=weekTo).length;
-  const interviewsWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&hasVac(r)&&r[C.interviewDate]&&r[C.interviewDate]>=weekFrom&&r[C.interviewDate]<=weekTo).length;
+  const interviewsWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&hasVac(r)&&interviewCounts(r)&&r[C.interviewDate]&&r[C.interviewDate]>=weekFrom&&r[C.interviewDate]<=weekTo).length;
   const offersWeek = MD.filter(r=>r[C.recruiter]===recruiterName&&hasVac(r)&&r[C.offerDate]&&r[C.offerDate]>=weekFrom&&r[C.offerDate]<=weekTo).length;
   const joinedWeek = MD.filter(r=>isJoinedInPeriod(r,weekFrom,weekTo)&&r[C.recruiter]===recruiterName&&hasVac(r)).length;
 
@@ -8425,7 +8451,7 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
     contacted: activeMine.filter(r=>r[C.status]!=='WIP'||(parseInt(r[C.followupCount])||0)>0).length,
     screened: screenedRows.filter(s=>myVacCodes.has(s.vacCode)).length,
     submitted: activeMine.filter(r=>EFFORT_SUBMIT_STAGE.includes(r[C.status])).length,
-    interviewed: activeMine.filter(r=>r[C.interviewDate]).length,
+    interviewed: activeMine.filter(r=>interviewCounts(r)&&r[C.interviewDate]).length,
     offered: activeMine.filter(r=>r[C.offerDate]).length,
     joined: activeMine.filter(r=>r[C.status]==='Joined').length
   };
@@ -8460,7 +8486,7 @@ async function calcFunnelPrediction(recruiterName){
   const rows = MD.filter(r=>r[C.recruiter]===recruiterName && r[C.archive]!=='Y' && r[C.vacCode] && String(r[C.vacCode]).trim());
   const H = {
     sourced: rows.length,
-    interviewed: rows.filter(r=>r[C.interviewDate]).length,
+    interviewed: rows.filter(r=>interviewCounts(r)&&r[C.interviewDate]).length,
     offered: rows.filter(r=>r[C.offerDate]).length,
     joined: rows.filter(r=>r[C.status]==='Joined').length
   };
@@ -8472,7 +8498,7 @@ async function calcFunnelPrediction(recruiterName){
   const offerRate = { sourced: rate(H.offered,H.sourced), interviewed: rate(H.offered,H.interviewed) };
 
   const live = rows.filter(r=>!TERMINAL.has(r[C.status]));
-  const stageOf = r => r[C.offerDate] ? 'offered' : (r[C.interviewDate] ? 'interviewed' : 'sourced');
+  const stageOf = r => r[C.offerDate] ? 'offered' : (r[C.interviewDate]&&interviewCounts(r) ? 'interviewed' : 'sourced');
   const liveByStage = { sourced:0, interviewed:0, offered:0 };
   live.forEach(r=>{ liveByStage[stageOf(r)]++; });
 
@@ -14193,7 +14219,7 @@ async function genEODReport(recName){
   // individual log rows) — that's just descriptive labeling, not a
   // compensation-relevant aggregate, so it's untouched.
   const mca = await getMeaningfulActionsInPeriod(recName, td, td);
-  const totalInterviews = MD.filter(r=>r[C.recruiter]===recName&&r[C.interviewDate]===td).length;
+  const totalInterviews = MD.filter(r=>r[C.recruiter]===recName&&interviewCounts(r)&&r[C.interviewDate]===td).length;
   hideLoad();
 
   const actionedCodes=new Set(clRows.map(r=>String(r[3])));
@@ -14460,7 +14486,7 @@ async function genWeeklyReport(recName,startStr,endStr){
   // the eActType() Change-Log classifier (kept here only for per-row type
   // tags, not this aggregate).
   const mca = await getMeaningfulActionsInPeriod(recName, startStr, endStr);
-  const totalInterviews = MD.filter(r=>r[C.recruiter]===recName&&r[C.interviewDate]&&r[C.interviewDate]>=startStr&&r[C.interviewDate]<=endStr).length;
+  const totalInterviews = MD.filter(r=>r[C.recruiter]===recName&&interviewCounts(r)&&r[C.interviewDate]&&r[C.interviewDate]>=startStr&&r[C.interviewDate]<=endStr).length;
 
   const sumBarCss='.sb{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 18px;font-family:Calibri,sans-serif;}'+
     '.sc{background:#f0f4f8;border-radius:6px;padding:10px 16px;text-align:center;min-width:90px;}'+
