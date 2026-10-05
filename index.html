@@ -2136,9 +2136,26 @@ const PROCESS_ORDER=[
   'Selected','Offered','Offer Revoked','Offer Declined','Joining in Progress','Joined'
 ];
 // getValidStatuses: all previous stages + current + On Hold (always) + next 5 forward
+// 5 Oct 2026, Anne: 'Interview Cancelled' and 'Candidate No Show' were added
+// in Admin → Config → Masters and are not stages of the forward pipeline, so
+// PROCESS_ORDER-based filtering left them disabled in every candidate's status
+// list. Any Master status that isn't part of PROCESS_ORDER is now always
+// selectable (names are read from Masters, never hardcoded here) — except
+// 'Active'/'Reassigned', which stay as they were: legacy and system-set by
+// Tag to Vacancy respectively, not meant to be picked by hand.
+function _outOfFlowStatuses(){
+  return mA('statuses').filter(n=>!PROCESS_ORDER.includes(n)&&n!=='On Hold'&&n!=='Active'&&n!=='Reassigned');
+}
+// Anne's rule (5 Oct 2026): every status that isn't an inactive/terminal one
+// counts as Active in all reports. ACTIVE_STATUSES was a fixed list, so a
+// status added in Masters (the two above) silently counted as neither active
+// nor inactive. Re-synced from Masters every time they load or change.
+function syncActiveStatusesFromMasters(){
+  mA('statuses').forEach(n=>{if(!INACTIVE_STATUSES.has(n))ACTIVE_STATUSES.add(n);});
+}
 function getValidStatuses(cur){
   const idx=PROCESS_ORDER.indexOf(cur);
-  if(idx===-1) return [...PROCESS_ORDER,'On Hold']; // unknown status — show all
+  if(idx===-1) return [...PROCESS_ORDER,'On Hold',..._outOfFlowStatuses()]; // unknown status — show all
   const valid=new Set();
   // all stages up to and including current
   for(let i=0;i<=idx;i++) valid.add(PROCESS_ORDER[i]);
@@ -2148,6 +2165,7 @@ function getValidStatuses(cur){
   valid.add('On Hold');
   // WIP always available (already in PROCESS_ORDER[0])
   valid.add('WIP');
+  _outOfFlowStatuses().forEach(n=>valid.add(n));
   return [...valid];
 }
 // FLOW retained for legacy references only — dynamic flow now via getValidStatuses()
@@ -3141,6 +3159,7 @@ async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=W
 // ══════════════════════════════════════════════════════
 const DMAP={nRec:'recruiters',nSrc:'sources',nLoc:'cities',nNot:'noticePeriods',nCli:'clients',nDept:'departments',epLoc:'cities',epNot:'noticePeriods',epCli:'clients',epDept:'departments',epRec:'recruiters',avCli:'clients',avDept:'departments',avLoc:'cities',avRec:'recruiters',uRI:'departments',uUC:'clients'};
 function fillDrops(){
+syncActiveStatusesFromMasters();
 Object.entries(DMAP).forEach(([id,key])=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;const first=el.options[0];el.innerHTML='';if(first)el.appendChild(first);else{const o=document.createElement('option');o.value='';o.textContent='— Select —';el.appendChild(o);}mA(key).forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;el.appendChild(o);});if(cur)el.value=cur;});
 // Client filter in records
 const rcli=document.getElementById('rCli');if(rcli){const cur=rcli.value;rcli.innerHTML='<option value="">All Clients</option>';mA('clients').forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;rcli.appendChild(o);});if(cur)rcli.value=cur;}
@@ -5148,7 +5167,9 @@ function renderKPIs(data) {
 // it can never silently drop a status again the way the old hardcoded list did.
 // 'WIP' already included — it's the first entry in ACTIVE_STATUSES itself
 // (fixed here after deploy showed it duplicated: was also prepended manually).
-const ALL_STATUSES_ORDERED = [...ACTIVE_STATUSES, ...INACTIVE_STATUSES];
+// 5 Oct 2026: a function, not a constant — ACTIVE_STATUSES now grows when a
+// status is added in Masters, so this must be read at draw time.
+const allStatusesOrdered = () => [...ACTIVE_STATUSES, ...INACTIVE_STATUSES];
 const STATUS_LABELS_SHORT = {
   'Consultant Interview in Progress':'Cons. Interview',
   'Shortlisted for Client I/W':'Shortlisted',
@@ -5161,6 +5182,7 @@ const STATUS_LABELS_SHORT = {
   'Offer Revoked':'Offer Revoked',
 };
 function renderFunnel(data) {
+  const ALL_STATUSES_ORDERED = allStatusesOrdered();
   const counts = ALL_STATUSES_ORDERED.map(s => data.filter(r => r[C.status] === s).length);
   const labels = ALL_STATUSES_ORDERED.map(s => STATUS_LABELS_SHORT[s] || s);
   const colors = ALL_STATUSES_ORDERED.map((s,i) => INACTIVE_STATUSES.has(s) ? 'rgba(224,82,82,0.55)' : PALETTE[i % PALETTE.length]);
@@ -11942,7 +11964,15 @@ function addScreenFiles(fileList){
   });
   renderScreenQueue();
 }
-function clearScreenQueue(){screenQueue=[];renderScreenQueue();}
+// 5 Oct 2026, Anne: a scored resume that is removed (✕) or cleared without
+// being pushed is a Dropped resume — Status on its ResumeScreened row is set
+// to Dropped (the original design was a final status of Dropped or Pushed to
+// THP, but Dropped was never written, so those rows stayed blank). Only rows
+// that actually have a saved list item and weren't pushed.
+function _markScreenedDropped(q){
+  if(q&&q.screenedSpItemId&&q.status!=='pushed')updateResumeScreenedStatus(q.screenedSpItemId,'Dropped');
+}
+function clearScreenQueue(){screenQueue.forEach(_markScreenedDropped);screenQueue=[];renderScreenQueue();}
 function screenStatusBadge(st){
   const map={queued:['#5f6470','Queued'],scoring:['#1f5c93','Scoring…'],scored:['#5e7855','Scored'],error:['#9f4a47','Failed'],pushed:['#34bac6','Pushed to THP']};
   const[c,l]=map[st]||map.queued;
@@ -11972,7 +12002,7 @@ function renderScreenQueue(){
     '</tr>';
   }).join('');
 }
-function screenRemove(i){screenQueue.splice(i,1);renderScreenQueue();}
+function screenRemove(i){_markScreenedDropped(screenQueue[i]);screenQueue.splice(i,1);renderScreenQueue();}
 async function runScreening(){
   const vacCode=gv('scrVac');
   if(!vacCode){showAlert('scrAlert','err','Select a vacancy first.');return;}
