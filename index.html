@@ -237,6 +237,9 @@ tbody tr:hover{background:var(--w06)}
 tbody td{padding:9px 11px;color:var(--ow);vertical-align:middle}
 td.m{color:var(--w60);font-size:11px}
 td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal)}
+/* 5 Oct 2026: Manager Report (live view) — 15 columns, headers and cells wrap instead of forcing a sideways scroll */
+#ef-compare thead th{white-space:normal;word-break:break-word;letter-spacing:.5px}
+#ef-compare tbody td{word-break:break-word}
 /* CODE BOX */
 .cbox{background:rgba(52,186,198,.08);border:1px solid rgba(52,186,198,.25);
 border-radius:var(--r);padding:20px 24px;text-align:center;margin-top:16px}
@@ -7813,8 +7816,8 @@ function incentivePrintWindow(title, subtitle, bodyHtml){
     .tw{overflow-x:auto;margin-bottom:4px}
     table{width:100%;border-collapse:collapse;font-size:12px;background:#fbfbfa}
     thead tr{background:#1f5c93}
-    thead th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fbfbfa;white-space:nowrap}
-    tbody td{padding:7px 10px;color:#291b39;vertical-align:middle;border-bottom:1px solid #d6dbe3}
+    thead th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fbfbfa;white-space:normal;word-break:break-word}
+    tbody td{padding:7px 10px;color:#291b39;vertical-align:middle;border-bottom:1px solid #d6dbe3;word-break:break-word}
     td.m{color:#5f6470;font-size:11px}
     td.mono{font-family:'DM Mono',monospace;font-size:11px;color:#1f5c93}
     .footer{padding:12px 32px;font-size:10px;color:#9ca3af;text-align:center;border-top:1px solid #e8ecf0;margin-top:20px}
@@ -14297,8 +14300,13 @@ function _rptCss(){
     '.rm{font-size:11pt;color:#5f6470;margin-bottom:14pt}'+
     '.sh{font-size:12pt;font-weight:bold;color:#1f5c93;border-bottom:1pt solid #d6dbe3;padding-bottom:3pt;margin:14pt 0 5pt}'+
     'table{width:100%;border-collapse:collapse;margin-bottom:10pt;table-layout:fixed}'+
-    'th{font-size:11pt;font-weight:bold;background:#1f5c93;color:#fff;padding:4pt 5pt;text-align:left;overflow:hidden;white-space:nowrap}'+
-    'td{font-size:11pt;padding:3pt 5pt;border-bottom:1pt solid #e8ecf0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}'+
+    // 5 Oct 2026, Anne: every column in every downloadable report wraps. The
+    // base rule used to be nowrap + ellipsis (plus _tr25's 25-character cut in
+    // the table builders), which clipped names, positions, remarks and action
+    // summaries in the Action, EOD and Weekly Reports alike.
+    'th{font-size:11pt;font-weight:bold;background:#1f5c93;color:#fff;padding:4pt 5pt;text-align:left;white-space:normal;word-break:break-word;vertical-align:top;line-height:1.2}'+
+    'td{font-size:11pt;padding:3pt 5pt;border-bottom:1pt solid #e8ecf0;white-space:normal;word-break:break-word;vertical-align:top;line-height:1.3}'+
+    '.wl{table-layout:auto}.ty .ttype{margin:1px 3px 1px 0}'+
     'tr:nth-child(even) td{background:#f9f8f5}'+
     '.nil{font-size:11pt;color:#5f6470;font-style:italic;padding:2pt 0 8pt}'+
     '.nl{font-size:12pt;font-weight:bold;color:#1f5c93;margin:14pt 0 4pt}'+
@@ -14326,6 +14334,7 @@ function _rptCss(){
     // ("Candidate volume insufficient and vacancy not actioned in 3+
     // days") would otherwise get ellipsis-truncated by the generic nowrap
     // td rule above, defeating the point of the remark.
+    '.fgtbl td{white-space:normal;word-break:break-word;vertical-align:top}'+
     '.fgtbl td:last-child{white-space:normal;display:flex;align-items:flex-start}'+
     // 1 Oct 2026: "Candidate Match" usage nudge — see annotateMatchingStatus().
     // Hardcoded hex, not a CSS var — this stylesheet serves a standalone
@@ -14382,9 +14391,20 @@ function _funnelGapTbl(gaps){
 
 function _rptTbl(headers,rows){
   if(!rows.length)return '<div class="nil">No records.</div>';
-  const hdr='<tr>'+headers.map(h=>'<th>'+_tr25(h)+'</th>').join('')+'</tr>';
-  const bdy=rows.map(r=>'<tr>'+r.map(c=>'<td title="'+String(c||'').replace(/"/g,'&quot;')+'">'+_tr25(c)+'</td>').join('')+'</tr>').join('');
-  return '<table><thead>'+hdr+'</thead><tbody>'+bdy+'</tbody></table>';
+  return '<table class="wl"><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+String(c==null?'':c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+}
+// Tasks Completed tables (EOD and Weekly): explicit column widths by header
+// name so Code/Name/Position/Client stay readable while the Action Summary
+// gets the room it needs; every cell wraps (see _rptCss).
+const _RPT_W11={'Code':11,'Name':11,'Position':11,'Client':8,'Status':9,'Types':9,'Actions':5,'WA':4,'First':6,'Last':6,'Action Summary':20};
+const _RPT_W6={'Code':14,'Name':16,'Types':11,'WA':5,'Actions':7,'Action Summary':47};
+function _rptTblH(hdrs,rows){
+  const map=hdrs.length>=10?_RPT_W11:_RPT_W6;
+  const cg='<colgroup>'+hdrs.map(h=>'<col style="width:'+(map[h]||10)+'%">').join('')+'</colgroup>';
+  let t='<table class="wl" style="table-layout:fixed">'+cg+'<thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
+  if(!rows.length){t+='<tr><td colspan="'+hdrs.length+'" style="color:#5f6470;font-style:italic">No entries</td></tr>';}
+  else{rows.forEach(r=>{t+='<tr>'+r.map((c,i)=>'<td'+(hdrs[i]==='Types'?' class="ty"':'')+'>'+String(c==null?'':c)+'</td>').join('')+'</tr>';});}
+  return t+'</tbody></table>';
 }
 
 function _dlReport(html,filename){
@@ -14603,35 +14623,8 @@ async function genEODReport(recName){
   }
 
   // custom table with raw HTML cells (for type tags)
-  // 5 Oct 2026, Anne: every cell in the EOD report tables used to be clipped
-  // to one line (generic nowrap + ellipsis, plus _tr25's 25-character cut),
-  // so the Action Summary couldn't be read; the first fix gave that column
-  // most of the width and squeezed Code/Name/Position/Client down to
-  // "Tale…"/"Kar…" (seen in the 5 Oct PDFs). Now: no truncation anywhere in
-  // these tables, every cell wraps, and each column has an explicit width
-  // that fits what it holds. Widths are by header name so the two Tasks
-  // Completed tables (11 and 6 columns) and any future one share the map.
-  const _W={'Code':11,'Name':11,'Position':11,'Client':8,'Status':9,'Types':9,'Actions':5,'WA':4,'First':6,'Last':6,'Action Summary':20};
-  const _W6={'Code':14,'Name':16,'Types':11,'WA':5,'Actions':7,'Action Summary':47};
-  function _rptTblH(hdrs,rows){
-    const map=hdrs.length>=10?_W:_W6;
-    const cg='<colgroup>'+hdrs.map(h=>'<col style="width:'+(map[h]||10)+'%">').join('')+'</colgroup>';
-    let t='<table class="wl" style="table-layout:fixed">'+cg+'<thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
-    if(!rows.length){t+='<tr><td colspan="'+hdrs.length+'" style="color:#5f6470;font-style:italic">No entries</td></tr>';}
-    else{rows.forEach(r=>{t+='<tr>'+r.map((c,i)=>'<td'+(hdrs[i]==='Types'?' class="ty"':'')+'>'+String(c==null?'':c)+'</td>').join('')+'</tr>';});}
-    return t+'</tbody></table>';
-  }
-  // Same no-truncation behaviour for the simpler EOD tables (Sourced Today,
-  // Tasks Pending) — the shared global _rptTbl() cuts text at 25 characters,
-  // which clipped e.g. the Pending Reason and names. Local to the EOD report;
-  // Action and Weekly Reports keep using the shared one.
-  function _rptTbl(headers,rows){
-    if(!rows.length)return '<div class="nil">No records.</div>';
-    return '<table class="wl"><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+String(c==null?'':c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
-  }
-
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>EOD Report '+dateStr+'</title>'+
-    '<style>'+_rptCss()+sumBarCss+'.wl{table-layout:auto}.wl th,.wl td{white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;vertical-align:top;line-height:1.3}.ty .ttype{margin:1px 3px 1px 0}.fgtbl td{white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;vertical-align:top}'+'</style></head><body>'+
+    '<style>'+_rptCss()+sumBarCss+'</style></head><body>'+
     '<div class="rh">EOD Report Dated '+dateStr+'</div>'+
     '<div class="rm">Recruiter: '+recName+' &nbsp;|&nbsp; Generated: '+new Date().toLocaleString('en-IN')+'</div>'+
 
@@ -14801,18 +14794,6 @@ async function genWeeklyReport(recName,startStr,endStr){
     '.tt-jn{background:#e6f2e6;color:#3a6b30;}.tt-fu{background:#f0f4f8;color:#5f6470;}'+
     '.tt-sr{background:#f3e5f5;color:#6a1b9a;}';
 
-  function _rptTblH(hdrs,rows){
-    let t='<table><thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
-    if(!rows.length){t+='<tr><td colspan="'+hdrs.length+'" style="color:#5f6470;font-style:italic">No entries</td></tr>';}
-    else{rows.forEach(r=>{t+='<tr>'+r.map((c,i)=>{
-      const raw=String(c||'');
-      const disp=(i<r.length-1&&!raw.includes('<span'))?_tr25(raw):raw;
-      const title=(i<r.length-1&&!raw.includes('<span')&&raw.length>25)?' title="'+raw.replace(/"/g,'&quot;')+'"':'';
-      return'<td'+(hdrs[i]==='Types'?' class="ty"':'')+title+'>'+disp+'</td>';
-    }).join('')+'</tr>';});}
-    return t+'</tbody></table>';
-  }
-
   // Optional AI-condensed summary of the week's manual EOD notes — degrades
   // silently to just the raw chronological list below when no AI key is
   // configured (same graceful-degradation pattern every other AI feature in
@@ -14836,7 +14817,7 @@ async function genWeeklyReport(recName,startStr,endStr){
   const escN=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Weekly Report '+startDisp+' - '+endDisp+'</title>'+
-    '<style>'+_rptCss()+sumBarCss+'.ty{white-space:normal;overflow:visible;text-overflow:clip}.ty .ttype{margin:1px 3px 1px 0}'+'</style></head><body>'+
+    '<style>'+_rptCss()+sumBarCss+'</style></head><body>'+
     '<div class="rh">Weekly Performance Report — '+startDisp+' to '+endDisp+'</div>'+
     '<div class="rm">Recruiter: '+recName+' &nbsp;|&nbsp; Generated: '+new Date().toLocaleString('en-IN')+'</div>'+
 
