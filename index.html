@@ -2217,8 +2217,15 @@ function sortMaster(key){
 }
 
 const WA={
-wip:'Hi {N}, I am {R} from WithAWill HR. We found your profile for a {P} opportunity with {C}. Are you available for a quick discussion?',
-not_contactable:'Hi {N}, this is {R} from WithAWill HR following up on the {P} role with {C}. Please let us know a convenient time to connect.',
+// 5 Oct 2026, Anne: First Contact rewritten — a reason to reply (why this
+// role suits them), one clear ask (reply with a time) and an easy way to
+// decline, instead of a yes/no "are you available?". Old text kept in
+// WA_OLD_DEFAULTS below so a saved-but-unedited copy upgrades automatically.
+wip:'Hi {N}, {R} from WithAWill HR here. Your profile looks like a strong fit for a *{P}* role with *{C}*, and I wanted to run it by you before it goes further.\n\nCould we have a quick 10-minute call? Reply with a time that suits you today or tomorrow, or reply NO if it\'s not the right time. Either is fine.',
+// 5 Oct 2026, Anne: Follow-up rewritten — refers back to the earlier message
+// and asks for a time to call, instead of repeating "let us know a convenient
+// time". Still counts as a call-attempt WhatsApp for the closure flag.
+not_contactable:'Hi {N}, {R} from WithAWill HR, following up on my message about the *{P}* role with *{C}*. I think it suits your background and I\'d like to speak before we take it further.\n\nDoes today or tomorrow work for a 10-minute call? Just reply with a time and I\'ll ring you then.',
 // 5 Oct 2026, Anne: the genuine "we've tried and couldn't reach you" message —
 // not_contactable above is purely a follow-up. Mirrors the Re-engagement
 // email ("Before We Move Ahead…": tried a couple of times, no pressure, we'd
@@ -2244,6 +2251,15 @@ resume_upload_invite:'Hi {N}, please upload your resume for the *{P}* role with 
 // they were last tagged to.
 reassign_resurface:'Hi {N}, {R} here from WithAWill HR. Hope you are doing well. We\'ve connected before. A new role just opened up that looked like a strong match for your background: *{P}* with *{C}*. Let us know if you\'d like to hear more.',
 general:'Hi {N}, '};
+// Built-in defaults, snapshotted before any saved edits are applied: saveCfg()
+// stores only templates that differ from these (so changing a default here
+// reaches everyone who never edited it), and the two wording changes of
+// 5 Oct 2026 are upgraded for a workbook that saved the old text untouched.
+const WA_DEFAULTS=Object.assign({},WA);
+const WA_OLD_DEFAULTS={
+  wip:'Hi {N}, I am {R} from WithAWill HR. We found your profile for a {P} opportunity with {C}. Are you available for a quick discussion?',
+  not_contactable:'Hi {N}, this is {R} from WithAWill HR following up on the {P} role with {C}. Please let us know a convenient time to connect.'
+};
 // 5 Oct 2026: single list of the WhatsApp menu entries (key → label), shared
 // by the Send WhatsApp menu, the Admin → Config template editor (which showed
 // only the internal key — "wip", "not contactable" — so "First Contact" and
@@ -2255,7 +2271,12 @@ const WA_LABELS=Object.fromEntries(WA_MENU.concat([['reassign_resurface','🔁 R
 function waLabel(key){return key==='followupCount'?'template not recorded':(WA_LABELS[key]||key);}
 function fillWA(tpl,r,extraLink){
 const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
-return tpl.replace(/{N}/g,r[C.name]||'').replace(/{P}/g,r[C.position]||'').replace(/{C}/g,r[C.client]||'').replace(/{R}/g,rn).replace(/{D}/g,r[C.interviewDate]?fmtD(r[C.interviewDate]):'[Date TBC]').replace(/{T}/g,r._iTime||'[Time TBC]').replace(/{L}/g,r[C.docLink]||'[Teams link to follow]').replace(/{IL}/g,extraLink||'[Link to follow]');}
+// {CO} = candidate's current company, {LOC} = location of the role (the
+// candidate's Location of Posting, else the vacancy's Location) — both fall
+// back to a neutral phrase so a blank never leaves "based in ." in a message.
+const _vacW=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===r[C.vacCode]);
+const _co=r[C.company]||'your current company',_loc=r[C.postingLoc]||(_vacW&&_vacW['Location'])||'the client location';
+return tpl.replace(/{CO}/g,_co).replace(/{LOC}/g,_loc).replace(/{N}/g,r[C.name]||'').replace(/{P}/g,r[C.position]||'').replace(/{C}/g,r[C.client]||'').replace(/{R}/g,rn).replace(/{D}/g,r[C.interviewDate]?fmtD(r[C.interviewDate]):'[Date TBC]').replace(/{T}/g,r._iTime||'[Time TBC]').replace(/{L}/g,r[C.docLink]||'[Teams link to follow]').replace(/{IL}/g,extraLink||'[Link to follow]');}
 
 // ════════════════════════════════════════════════════════
 //  NATIVE OAUTH2 PKCE AUTH — no external library needed
@@ -2927,7 +2948,7 @@ loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
 (function(){try{const k=getMetadata('notify_key');if(k&&k.trim())localStorage.setItem('thp_notify_key',k.trim());}catch(e){}})();
 // Saved WhatsApp template edits override the built-in defaults key by key, so a
 // template added to the defaults later still appears.
-(function(){try{const j=getMetadata('wa_templates');if(j){const o=JSON.parse(j);Object.keys(o).forEach(k=>{if(k in WA&&typeof o[k]==='string')WA[k]=o[k];});}}catch(e){console.warn('wa_templates load',e.message);}})();
+(function(){try{const j=getMetadata('wa_templates');if(j){const o=JSON.parse(j);Object.keys(o).forEach(k=>{if(k in WA&&typeof o[k]==='string'&&o[k]!==WA_OLD_DEFAULTS[k])WA[k]=o[k];});}}catch(e){console.warn('wa_templates load',e.message);}})();
 // Load evaluations from dedicated Evaluations sheet
 (function(){try{const ws=WB.Sheets['Evaluations'];if(!ws)return;const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(1).filter(r=>r[0]);rows.forEach(r=>{try{const code=String(r[0]);const d=r[3]?JSON.parse(r[3]):{};if(code&&d)igEvalData[code]=d;}catch(e){}});}catch(e){console.warn('Eval load',e);}})();
 // ── Phase A: Read last good count from metadata ───────
@@ -4564,7 +4585,7 @@ function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{i
 // CONFIG / MASTERS
 let mgridInited=false;
 function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div id="wa-ed"></div></div>';loadCfg();}
-function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML=Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
+function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML='<div style="font-size:10px;color:var(--w60);margin-bottom:10px;line-height:1.5">Placeholders: {N} candidate name · {R} your first name · {P} role · {C} client · {CO} candidate\'s current company · {LOC} role location · {D}/{T} interview date/time · {L} meeting link · {IL} invite link</div>'+Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
 function renderMT(key){
   const el=document.getElementById('mt-'+key);
   if(!el)return;
@@ -4647,7 +4668,7 @@ function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');
 async function saveCfg(){
   Object.keys(WA).forEach(k=>{const el=document.getElementById('wt_'+k);if(el)WA[k]=el.value;});
   if(WB){
-    try{saveMetadata({wa_templates:JSON.stringify(WA)});await saveWB(false,true,['Config']);}
+    try{const edited={};Object.keys(WA).forEach(k=>{if(WA[k]!==WA_DEFAULTS[k])edited[k]=WA[k];});saveMetadata({wa_templates:JSON.stringify(edited)});await saveWB(false,true,['Config']);}
     catch(e){toast('err','Not Saved','Templates were updated for this session but could not be saved: '+e.message);return;}
   }
   toast('ok','Config Saved','Templates updated.');
@@ -11998,7 +12019,7 @@ function reassignAndWA(candCode,vacCode){
   const hasMobile=!!(mob&&/^\d{10}$/.test(mob));
   if(hasMobile){
     const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
-    const msg=WA.reassign_resurface.replace(/{N}/g,r[C.name]||'').replace(/{R}/g,rn).replace(/{P}/g,vac['Designation']||'').replace(/{C}/g,vac['Company']||'');
+    const msg=WA.reassign_resurface.replace(/{N}/g,r[C.name]||'').replace(/{R}/g,rn).replace(/{P}/g,vac['Designation']||'').replace(/{C}/g,vac['Company']||'').replace(/{CO}/g,r[C.company]||'your current company').replace(/{LOC}/g,vac['Location']||'the client location');
     window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');
   }
   _reassignAndWAFollowup(candCode,vacCode,hasMobile);
