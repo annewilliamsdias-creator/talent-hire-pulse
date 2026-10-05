@@ -11682,8 +11682,9 @@ async function viewScreenedModal(ref){
 // (1) ScreenedOn from each row's own SharePoint Created date; (2) for a
 // resume that was pushed to THP (matched to a THP candidate by phone/email),
 // the score and remarks from that candidate's ResumeFitmentData — only when
-// the candidate is still on the same vacancy the row was screened for, so a
-// score for one role is never copied across as if it were another's;
+// the candidate is still on the same vacancy the row was screened for, or
+// the score was saved within ~1.5 days of the screening (same session, then
+// re-tagged) — so a later, unrelated fitment run is never copied across;
 // (3) Status 'Pushed to THP' where that match exists — updateResumeScreened
 // Status() used to silently fail (double-wrapped body) so no row ever got it.
 // Resumes screened and NOT pushed have no stored score anywhere — they stay
@@ -11706,11 +11707,19 @@ async function backfillScreenedData(){
     const cand=(r.phone&&byPhone.get(r.phone))||(r.email&&byEmail.get(r.email.toLowerCase()))||null;
     if(cand){
       if(r.status!=='Pushed to THP'){patch.Status='Pushed to THP';tags.push('status');}
-      if(!r.hasScore&&cand[C.vacCode]&&cand[C.vacCode]===r.vacCode&&cand[C.resumeFitmentData]){
+      if(!r.hasScore&&cand[C.resumeFitmentData]){
         try{
           const fd=JSON.parse(cand[C.resumeFitmentData]);
           const sc=parseFloat(fd.score);
-          if(!isNaN(sc)){patch.FitmentScore=sc;patch.ScreeningRemarks=fd.recommendations||'';tags.push('score');}
+          // Same vacancy, OR the fitment score was saved within ~1.5 days of
+          // this row being screened (5 Oct 2026 — first pass was same-vacancy
+          // only and missed 24 candidates who were pushed and then re-tagged;
+          // 20 of those had their score saved within 0-1 day of screening, so
+          // it's the same screening. Gaps of 5-8 days are left alone — could
+          // be a later separate Resume Fitment run).
+          const sameVac=cand[C.vacCode]&&cand[C.vacCode]===r.vacCode;
+          const gapMs=fd.computedAt&&r.created?Math.abs(new Date(fd.computedAt)-new Date(r.created)):Infinity;
+          if(!isNaN(sc)&&(sameVac||gapMs<=129600000)){patch.FitmentScore=sc;patch.ScreeningRemarks=fd.recommendations||'';tags.push('score');}
         }catch(e){}
       }
     }
