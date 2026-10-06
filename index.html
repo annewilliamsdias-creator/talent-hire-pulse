@@ -2108,7 +2108,13 @@ tat:'TAT',sNo:'S. No',recruiter:'Recruiter',reportingDate:'Data base reporting d
 resumeLink:'Resume Link',videoInterviewInvited:'Video Interview Invited',
 videoInterviewLink:'Video Interview Link',videoInterviewData:'Video Interview Data',
 resumeFitmentData:'Resume Fitment Data',resumeUploadInvited:'Resume Upload Invited',
-reengagementSent:'Reengagement Sent',reengagementReminderSent:'Reengagement Reminder Sent'};
+reengagementSent:'Reengagement Sent',reengagementReminderSent:'Reengagement Reminder Sent',
+// 6 Oct 2026: WhatsApp timing for the Follow-up / Before We Move Ahead send rules.
+// Candidates List columns FirstWhatsAppAt and LastFollowupWAAt (Date and Time).
+// Read in listItemToRecord and written by saveWATimes() — deliberately NOT in
+// SPLIST_FIELD_MAP, so a wrong column name can never make an ordinary candidate
+// save fail (the generic write sends every mapped, non-blank field).
+firstWA:'First WhatsApp At',lastFollowupWA:'Last Follow-up WA At'};
 // R2 (13 Jul 2026): every date-typed column, normalised wherever records are
 // parsed from an external source (workbook load, live sync) — previously only
 // followupDate/sourcingDate/updatedOn were covered, leaving these others
@@ -2278,6 +2284,96 @@ const WA_LABELS=Object.fromEntries(WA_MENU.concat([['reassign_resurface','🔁 R
 // 'followupCount' is what every WhatsApp Sent row's Field column held before
 // 5 Oct 2026, when the template used wasn't recorded.
 function waLabel(key){return key==='followupCount'?'template not recorded':(WA_LABELS[key]||key);}
+// ── WhatsApp send rules (6 Oct 2026, Anne) ────────────────────────────────
+// 📞 Follow-up: not before 24 hours after the candidate's First Contact
+// message, and not again within 24 hours of the previous Follow-up.
+// ⏳ Before We Move Ahead: not before 5 days after the sourcing date.
+// Hard blocks, for everyone. "First message" = the First Contact (wip)
+// template. No First Contact on record (call-first, or sent outside THP) =
+// the first-message rule doesn't apply — Follow-up is allowed. Times live in
+// two Candidates List columns, FirstWhatsAppAt / LastFollowupWAAt.
+const WA_FIRST_CONTACT_KEY='wip',WA_FOLLOWUP_KEY='not_contactable',WA_BWMA_KEY='before_we_move_ahead';
+const WA_FOLLOWUP_GAP_MS=24*3600000,WA_BWMA_MIN_DAYS=5;
+function fmtWAWhen(ms){return new Date(ms).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});}
+function waSendBlock(r,key){
+  const now=Date.now();
+  if(key===WA_FOLLOWUP_KEY){
+    let until=0,why='';
+    const first=Date.parse(r[C.firstWA]||''),last=Date.parse(r[C.lastFollowupWA]||'');
+    if(!isNaN(first)&&first+WA_FOLLOWUP_GAP_MS>now){until=first+WA_FOLLOWUP_GAP_MS;why='A Follow-up can only go 24 hours after the First Contact message (sent '+fmtWAWhen(first)+')';}
+    if(!isNaN(last)&&last+WA_FOLLOWUP_GAP_MS>now&&last+WA_FOLLOWUP_GAP_MS>until){until=last+WA_FOLLOWUP_GAP_MS;why='Another Follow-up can only go 24 hours after the previous one (sent '+fmtWAWhen(last)+')';}
+    return until?{until,why}:null;
+  }
+  if(key===WA_BWMA_KEY){
+    const sd=String(r[C.sourcingDate]||'').slice(0,10);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(sd)){
+      const until=new Date(sd+'T00:00:00').getTime()+WA_BWMA_MIN_DAYS*86400000;
+      if(until>now)return{until,why:'Before We Move Ahead can only go '+WA_BWMA_MIN_DAYS+' days after sourcing (sourced '+_fDMY(sd)+')'};
+    }
+  }
+  return null;
+}
+// Non-fatal on purpose: a failure here means the two rules can't see this send,
+// never that the candidate save fails. Warns once per session.
+let _waTimesWarned=false;
+async function saveWATimes(r,fields){
+  if(!fields||!Object.keys(fields).length)return;
+  try{
+    const itemId=await resolveSpItemId(r);
+    if(!itemId)throw new Error('no Candidates List item id');
+    await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Candidates/items/${itemId}/fields`,fields);
+  }catch(e){
+    console.warn('saveWATimes failed:',e.message);
+    if(!_waTimesWarned){_waTimesWarned=true;toast('warn','WhatsApp Timing Not Saved','The Follow-up / Before We Move Ahead rules could not record this send ('+e.message+'). Check the Candidates List has FirstWhatsAppAt and LastFollowupWAAt columns (Date and Time).');}
+  }
+}
+// One-time (Admin): fills the two columns for candidates already messaged,
+// from the Change Log. First Contact time = earliest First Contact send, or —
+// for sends before 5 Oct 2026, which recorded no template — the earliest
+// WhatsApp of any kind as a proxy. Last Follow-up = latest 📞 Follow-up send
+// (only recorded since 5 Oct). Never overwrites an existing value.
+async function backfillWATimes(){
+  if(!canEditRepo){toast('warn','Access Denied','Backfill is restricted to Administrators.');return;}
+  showLoad('Reading the change log...');
+  let all;
+  try{all=await fetchLiveChangeLog();}catch(e){hideLoad();toast('err','Backfill',e.message);return;}
+  hideLoad();
+  const first={},lastFU={};
+  all.forEach(r=>{
+    if(r[4]!=='WhatsApp Sent'||!r[3])return;
+    const code=String(r[3]),ts=String(r[0]);
+    if(r[5]===WA_FIRST_CONTACT_KEY||r[5]==='followupCount'){if(!first[code]||ts<first[code])first[code]=ts;}
+    if(r[5]===WA_FOLLOWUP_KEY){if(!lastFU[code]||ts>lastFU[code])lastFU[code]=ts;}
+  });
+  const plan=[];
+  MD.forEach(r=>{
+    const code=String(r[C.code]),patch={};
+    if(first[code]&&!r[C.firstWA])patch.FirstWhatsAppAt=new Date(first[code]).toISOString();
+    if(lastFU[code]&&(!r[C.lastFollowupWA]||Date.parse(lastFU[code])>Date.parse(r[C.lastFollowupWA])))patch.LastFollowupWAAt=new Date(lastFU[code]).toISOString();
+    if(Object.keys(patch).length)plan.push({r,patch});
+  });
+  if(!plan.length){toast('info','Nothing to Backfill','Every candidate with a WhatsApp on record already has its timing filled in.');return;}
+  if(!confirm('Fill WhatsApp timing for '+plan.length+' candidate(s)?\n\n• First Contact time: '+plan.filter(x=>x.patch.FirstWhatsAppAt).length+'\n• Last Follow-up time: '+plan.filter(x=>x.patch.LastFollowupWAAt).length+'\n\nSends before 5 Oct 2026 did not record a template, so for those the earliest WhatsApp stands in for First Contact. Nothing already filled in is overwritten.'))return;
+  showModal('🔄 Backfilling WhatsApp Timing','Starting…','','<button class="btn btn-ghost" onclick="closeModal()">Run in Background</button>',true);
+  const log=[];let ok=0,failed=0;
+  const paint=l=>{const mp=document.getElementById('modal-msg');if(mp)mp.innerHTML=escHtml(l)+'<div style="max-height:240px;overflow-y:auto;margin-top:10px;font-size:12px">'+log.slice().reverse().join('')+'</div>';};
+  for(let i=0;i<plan.length;i++){
+    const{r,patch}=plan[i];
+    paint('Updating '+(i+1)+' of '+plan.length+'…');
+    try{
+      const itemId=await resolveSpItemId(r);
+      if(!itemId)throw new Error('no list item id');
+      await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Candidates/items/${itemId}/fields`,patch);
+      if(patch.FirstWhatsAppAt)r[C.firstWA]=patch.FirstWhatsAppAt;
+      if(patch.LastFollowupWAAt)r[C.lastFollowupWA]=patch.LastFollowupWAAt;
+      ok++;
+    }catch(e){
+      failed++;log.push('<div style="color:#9f4a47;padding:2px 0">✕ '+escHtml(r[C.name]||r[C.code])+' — '+escHtml(e.message.slice(0,160))+'</div>');
+      if(failed>=3&&ok===0){log.push('<div style="padding:4px 0">Stopped after 3 failures in a row — check the Candidates List has FirstWhatsAppAt and LastFollowupWAAt columns (Date and Time), named exactly like that, then run again.</div>');break;}
+    }
+  }
+  showModal('🔄 Backfill Complete',ok+' candidate(s) updated, '+failed+' failed.<div style="max-height:240px;overflow-y:auto;margin-top:10px;font-size:12px">'+log.slice().reverse().join('')+'</div>','','<button class="btn btn-t" onclick="closeModal()">Close</button>',true);
+}
 function fillWA(tpl,r,extraLink){
 const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
 // {CO} = candidate's current company, {LOC} = location of the role (the
@@ -4426,7 +4522,7 @@ showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',
   jdSection+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',
   '<div style="display:flex;flex-direction:column;gap:4px;width:100%">'+
   '<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">'+
-  tpls.map(([k,l])=>'<button class="btn btn-ghost" style="width:100%;text-align:left;flex-shrink:0" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>').join('')+
+  tpls.map(([k,l])=>{const blk=waSendBlock(r,k);return blk?'<button class="btn btn-ghost" disabled title="'+blk.why.replace(/"/g,'&quot;')+'" style="width:100%;text-align:left;flex-shrink:0;color:var(--w60);cursor:not-allowed">'+l+' <span style="font-size:10px">— available '+fmtWAWhen(blk.until)+'</span></button>':'<button class="btn btn-ghost" style="width:100%;text-align:left;flex-shrink:0" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>';}).join('')+
   '</div>'+
   '<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button></div>');}
 
@@ -4443,7 +4539,7 @@ if(tplKey==='ai_interview_invite'||tplKey==='resume_upload_invite'){
   if(!r[C.vacCode]){toast('warn','No Vacancy','This candidate has no vacancy code tagged.');return;}
   extraLink=(tplKey==='ai_interview_invite'?'https://talentplus.withawill.in/interview/':'https://talentplus.withawill.in/resume-upload/')+encodeURIComponent(r[C.vacCode]);
 }
-const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();const _waKey=WA[tplKey]?tplKey:(Object.keys(WA).find(k=>WA[k]===tpl)||'general');window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _clWA=writeCL('WhatsApp Sent',r[C.code],_waKey,String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
+const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();const _waKey=WA[tplKey]?tplKey:(Object.keys(WA).find(k=>WA[k]===tpl)||'general');const _blk=waSendBlock(r,_waKey);if(_blk){toast('warn','Not Yet',_blk.why+' — available from '+fmtWAWhen(_blk.until)+'.');return;}window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _waNow=new Date().toISOString(),_waTimes={};if(_waKey===WA_FIRST_CONTACT_KEY&&!r[C.firstWA]){r[C.firstWA]=_waNow;_waTimes.FirstWhatsAppAt=_waNow;}if(_waKey===WA_FOLLOWUP_KEY){r[C.lastFollowupWA]=_waNow;_waTimes.LastFollowupWAAt=_waNow;}const _clWA=writeCL('WhatsApp Sent',r[C.code],_waKey,String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);await saveWATimes(r,_waTimes);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
 showModal('📱 Message Sent','WhatsApp opened for <strong>'+r[C.name]+'</strong>. What would you like to do next?','',
   '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
   '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
@@ -4601,7 +4697,7 @@ function loadBKList(){
 function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
 // CONFIG / MASTERS
 let mgridInited=false;
-function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm'],['dropReasons','🚪 Drop Reasons','ma-drop']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div id="wa-ed"></div></div>';loadCfg();}
+function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm'],['dropReasons','🚪 Drop Reasons','ma-drop']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div style="margin-bottom:8px"><button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="backfillWATimes()" title="One-time: fills First Contact / last Follow-up times for candidates already messaged, so the 24-hour and 5-day send rules apply to them">🔄 Backfill WhatsApp timing</button></div><div id="wa-ed"></div></div>';loadCfg();}
 function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML='<div style="font-size:10px;color:var(--w60);margin-bottom:10px;line-height:1.5">Placeholders: {N} candidate name · {R} your first name · {P} role · {C} client · {CO} candidate\'s current company · {LOC} role location · {D}/{T} interview date/time · {L} meeting link · {IL} invite link</div>'+Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
 function renderMT(key){
   const el=document.getElementById('mt-'+key);
@@ -13484,6 +13580,8 @@ function listItemToRecord(item){
     }
     r[srcCol]=v;
   }
+  r[C.firstWA]=f.FirstWhatsAppAt?String(f.FirstWhatsAppAt):'';
+  r[C.lastFollowupWA]=f.LastFollowupWAAt?String(f.LastFollowupWAAt):'';
   r._spItemId=item.id;
   return r;
 }
