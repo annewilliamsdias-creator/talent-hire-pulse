@@ -4893,10 +4893,22 @@ try{
     if(itemId){
       await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Vacancies/items/${itemId}/fields`,buildVacancyListFields(vRecord));
     }else{
-      console.warn('saveVac: no Vacancies List item id for',vRecord['Vacancy code'],'— List not updated');
+      throw new Error('No Vacancies List item found for code '+(vRecord['Vacancy code']||'(blank)')+' — edit not saved');
     }
   }
-}catch(vacListErr){console.warn('saveVac: Vacancies List dual-write failed:',vacListErr.message);}
+}catch(vacListErr){
+  // 6 Oct 2026: the Vacancies List is the ONLY source VD[] is read from now
+  // (parseWB / syncFromServer), so a failed List write means the vacancy or
+  // edit vanishes on the next sync/reload while looking saved on screen.
+  // Previously this was console.warn only — Anne lost a new vacancy and an
+  // edit that way. Keep the form open and say exactly what Graph returned.
+  console.warn('saveVac: Vacancies List write failed:',vacListErr.message);
+  if(isNew){const _i=VD.indexOf(vd);if(_i>-1)VD.splice(_i,1);}
+  showAlert('avAlert','err','NOT saved — SharePoint rejected the write. '+String(vacListErr.message||'').slice(0,300)+' (Your entries are still in the form; copy this message to Lucy.)');
+  toast('err','Vacancy NOT saved','SharePoint write failed');
+  alert('Vacancy was NOT saved.\n\nSharePoint rejected the write:\n'+String(vacListErr.message||'').slice(0,400)+'\n\nYour entries are still in the form. Please send this message to Lucy.');
+  return;
+}
 // Auto-match the talent pool + resurfaceable past candidates against this
 // new vacancy — approved 18 Sep 2026 (Notion "Open Applications / Searchable
 // Talent Database"). Fire-and-forget: never await this inline, a slow or
@@ -9907,22 +9919,33 @@ async function loadJDsFromList(){
   return out;
 }
 async function saveJDToList(jd,isNew=false){
+  // 6 Oct 2026: now returns true/false and shows a blocking message on failure.
+  // Previously every failure (incl. a non-ok POST for a NEW JD, which had no
+  // else branch at all) was silent, so a JD could look saved and vanish on
+  // reload — the Repository_JD List is the only place JDs are read from.
   try{
     await refreshToken();
     const fields=jdToListFields(jd);
     if(isNew){
       const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-      if(res.ok){const item=await res.json();jd._spItemId=item.id;}
+      if(!res.ok)throw new Error('POST '+res.status+': '+(await res.text().catch(()=>'')));
+      const item=await res.json();jd._spItemId=item.id;
     }else if(jd._spItemId){
       // PATCH to .../items/{id}/fields takes the flat field map directly —
       // unlike POST to .../items (above), which needs it wrapped in
-      // {fields:{...}}. This was wrapped the same way here too (copy-paste
-      // from the POST branch) and Graph silently 400'd on every JD edit as
-      // a result — found 1 Oct 2026 chasing an unrelated backfill failure.
+      // {fields:{...}}. See CR-JD-001 (1 Oct 2026).
       const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items/'+jd._spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(fields)});
-      if(!res.ok)console.warn('JD List PATCH failed:',res.status,await res.text().catch(()=>''));
+      if(!res.ok)throw new Error('PATCH '+res.status+': '+(await res.text().catch(()=>'')));
+    }else{
+      throw new Error('No SharePoint item id on this JD — edit not saved');
     }
-  }catch(e){console.warn('JD List save failed:',e.message);}
+    return true;
+  }catch(e){
+    console.warn('JD List save failed:',e.message);
+    toast('err','JD NOT saved','SharePoint write failed');
+    alert('JD "'+(jd.title||'')+'" was NOT saved to SharePoint.\n\n'+String(e.message||'').slice(0,500)+'\n\nIt will disappear on reload. Please send this message to Lucy.');
+    return false;
+  }
 }
 async function deleteJDFromList(spItemId){
   if(!spItemId)return;
@@ -9945,11 +9968,11 @@ function saveJD(){
     repoData.jds[editIdx]={...repoData.jds[editIdx],...obj,updated:today()};
     document.getElementById('jd-add-form').classList.add('hidden');
     if(eiEl)eiEl.value='-1';
-    saveJDToList(repoData.jds[editIdx],false);renderJDList();toast('ok','JD Updated',title);
+    renderJDList();saveJDToList(repoData.jds[editIdx],false).then(ok=>{if(ok)toast('ok','JD Updated',title);});
   } else {
     repoData.jds.push({id:Date.now(),...obj,added:today()});
     document.getElementById('jd-add-form').classList.add('hidden');
-    saveJDToList(repoData.jds[repoData.jds.length-1],true);renderJDList();toast('ok','JD Added',title);
+    renderJDList();saveJDToList(repoData.jds[repoData.jds.length-1],true).then(ok=>{if(ok)toast('ok','JD Added',title);});
   }
 }
 function renderJDList(){
@@ -11302,16 +11325,27 @@ async function fetchResumeArrayBuffer(resumeUrl){
   return resp.arrayBuffer();
 }
 async function extractResumeText(resumeUrl){
+  return (await extractResumeContentFromUrl(resumeUrl)).text||'';
+}
+// 6 Oct 2026: image-only PDFs (a resume exported/printed as a picture — no
+// text layer, e.g. Siddhi Kamble's, which is one embedded JPEG) give pdf.js
+// nothing to extract, so Resume Fitment failed with "Could not extract any
+// text". When the text layer is empty, hand the PDF itself to Claude as a
+// `document` block instead — the API reads scanned pages visually.
+// Returns {kind:'text',text} or {kind:'pdf',base64}.
+async function extractResumeContentFromUrl(resumeUrl){
   ensurePdfWorker();
   const buf=await fetchResumeArrayBuffer(resumeUrl);
-  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
   let text='';
   for(let i=1;i<=pdf.numPages;i++){
     const page=await pdf.getPage(i);
     const content=await page.getTextContent();
     text+=content.items.map(it=>it.str).join(' ')+'\n';
   }
-  return text.trim();
+  text=text.trim();
+  if(text.replace(/\s/g,'').length>=40)return{kind:'text',text};
+  return{kind:'pdf',base64:_arrayBufferToBase64(buf),text:''};
 }
 
 // 30 Sep 2026, Anne: the JD Repository's AI Generate button needs the
@@ -11684,8 +11718,9 @@ async function computeResumeFitment(code){
 
   toast('info','AI','Extracting resume and comparing to JD…');
   try{
-    const resumeText=await extractResumeText(resumeUrl);
-    if(!resumeText)throw new Error('Could not extract any text from the resume PDF.');
+    const resumeContent=await extractResumeContentFromUrl(resumeUrl);
+    const resumeText=resumeContent.text||'';
+    if(resumeContent.kind==='text'&&!resumeText)throw new Error('Could not extract any text from the resume PDF.');
 
     const coreQs=[];for(let i=1;i<=10;i++){if(jdEntry['q'+i])coreQs.push(jdEntry['q'+i]);}
     // 8 Sep 2026 — prompt caching, same reasoning as screenOne()'s bulk
@@ -11707,8 +11742,7 @@ ${jdEntry.shortlist||'(none provided)'}
 
 CONCERN / RED FLAG INDICATORS:
 ${jdEntry.redflag||'(none provided)'}`;
-    const body=`CANDIDATE'S RESUME TEXT:
-${resumeText.slice(0,12000)}
+    const body=`${resumeContent.kind==='pdf'?'The candidate\'s resume is the attached PDF (scanned/image-only) — read it directly.':'CANDIDATE\'S RESUME TEXT:\n'+resumeText.slice(0,12000)}
 
 Score the resume's fit against this role's requirements from 1-10, and give 2-4 sentences of specific, actionable recommendations for the recruiter — what to verify or probe on, not just a summary. Base this only on what's actually in the resume; don't invent experience that isn't stated.
 
@@ -11717,7 +11751,7 @@ Respond with ONLY valid JSON, no other text: {"score": <1-10>, "recommendations"
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:body}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,system:[{type:'text',text:header,cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:resumeContent.kind==='pdf'?[{type:'document',source:{type:'base64',media_type:'application/pdf',data:resumeContent.base64}},{type:'text',text:body}]:body}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
@@ -12494,6 +12528,9 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
     const messageContent=content.kind==='image'
       ?[{type:'image',source:{type:'base64',media_type:content.mediaType,data:content.base64}},
          {type:'text',text:'The candidate\'s resume is provided as an image above — read it directly.\n'+instructions}]
+      :content.kind==='pdf'
+      ?[{type:'document',source:{type:'base64',media_type:'application/pdf',data:content.base64}},
+         {type:'text',text:'The candidate\'s resume is the attached PDF (scanned/image-only) — read it directly.\n'+instructions}]
       :'CANDIDATE\'S RESUME TEXT:\n'+content.text.slice(0,12000)+'\n'+instructions;
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -12554,14 +12591,18 @@ async function extractResumeContent(file){
   }
   ensurePdfWorker();
   const buf=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
   let text='';
   for(let i=1;i<=pdf.numPages;i++){
     const page=await pdf.getPage(i);
     const pageContent=await page.getTextContent();
     text+=pageContent.items.map(it=>it.str).join(' ')+'\n';
   }
-  return{kind:'text',text:text.trim()};
+  text=text.trim();
+  // 6 Oct 2026: image-only PDF (no text layer) — send the PDF to Claude as a
+  // document block so it reads the page visually. See extractResumeContentFromUrl().
+  if(ext==='pdf'&&text.replace(/\s/g,'').length<40)return{kind:'pdf',base64:_arrayBufferToBase64(buf)};
+  return{kind:'text',text};
 }
 async function extractPptxText(file){
   if(typeof JSZip==='undefined')throw new Error('PPTX reader failed to load — check your connection and retry.');
