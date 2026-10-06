@@ -4904,9 +4904,10 @@ try{
   // edit that way. Keep the form open and say exactly what Graph returned.
   console.warn('saveVac: Vacancies List write failed:',vacListErr.message);
   if(isNew){const _i=VD.indexOf(vd);if(_i>-1)VD.splice(_i,1);}
+  const _vdiag=await diagnoseListWrite('Vacancies',buildVacancyListFields(isNew?vd:VD[vacEIdx]));
   showAlert('avAlert','err','NOT saved — SharePoint rejected the write. '+String(vacListErr.message||'').slice(0,300)+' (Your entries are still in the form; copy this message to Lucy.)');
   toast('err','Vacancy NOT saved','SharePoint write failed');
-  alert('Vacancy was NOT saved.\n\nSharePoint rejected the write:\n'+String(vacListErr.message||'').slice(0,400)+'\n\nYour entries are still in the form. Please send this message to Lucy.');
+  alert('Vacancy was NOT saved.\n\nSharePoint rejected the write:\n'+String(vacListErr.message||'').slice(0,400)+'\n\n'+_vdiag+'\n\nYour entries are still in the form. Please send this message to Lucy.');
   return;
 }
 // Auto-match the talent pool + resurfaceable past candidates against this
@@ -9918,6 +9919,29 @@ async function loadJDsFromList(){
   }
   return out;
 }
+// 6 Oct 2026: Graph answers a rejected List write with a bare "invalidRequest"
+// that never names the column. Read the List's column definitions and compare
+// every value against them — flags values over a single-line text column's
+// limit (255 default), unknown column names, choice values not in the list,
+// and blanks sent to number/date columns. Read-only, never throws.
+async function diagnoseListWrite(listRef,fields){
+  try{
+    const res=await graphGet(`/sites/${siteId}/lists/${listRef}/columns?$select=name,displayName,readOnly,required,text,choice,number,dateTime,boolean&$top=200`);
+    const cols=Object.fromEntries((res.value||[]).map(c=>[c.name,c]));
+    const issues=[];
+    for(const[k,v]of Object.entries(fields)){
+      const c=cols[k];
+      const sv_=v==null?'':String(v);
+      if(!c){issues.push('No column named "'+k+'" in the List');continue;}
+      if(c.readOnly){issues.push('"'+(c.displayName||k)+'" is read-only');continue;}
+      if(c.text&&!c.text.allowMultipleLines){const mx=c.text.maxLength||255;if(sv_.length>mx)issues.push('"'+(c.displayName||k)+'" has '+sv_.length+' characters but the column allows only '+mx+' (single-line text)');}
+      if(c.choice&&sv_&&!c.choice.allowTextEntry&&Array.isArray(c.choice.choices)&&!c.choice.choices.includes(sv_))issues.push('"'+(c.displayName||k)+'" value "'+sv_.slice(0,40)+'" is not one of its choices ('+c.choice.choices.join(', ')+')');
+      if((c.number||c.dateTime||c.boolean)&&sv_==='')issues.push('"'+(c.displayName||k)+'" is a number/date/yes-no column but was sent blank');
+    }
+    for(const c of Object.values(cols)){if(c.required&&!c.readOnly&&(fields[c.name]==null||fields[c.name]===''))issues.push('Required column "'+(c.displayName||c.name)+'" was sent blank');}
+    return issues.length?'LIKELY CAUSE:\n- '+issues.join('\n- '):'No column mismatch found by comparing against the List definition.';
+  }catch(e){return 'Could not read the List column definitions ('+String(e.message||'').slice(0,120)+').';}
+}
 async function saveJDToList(jd,isNew=false){
   // 6 Oct 2026: now returns true/false and shows a blocking message on failure.
   // Previously every failure (incl. a non-ok POST for a NEW JD, which had no
@@ -9942,8 +9966,9 @@ async function saveJDToList(jd,isNew=false){
     return true;
   }catch(e){
     console.warn('JD List save failed:',e.message);
+    const diag=await diagnoseListWrite(JD_LIST_ID,jdToListFields(jd));
     toast('err','JD NOT saved','SharePoint write failed');
-    alert('JD "'+(jd.title||'')+'" was NOT saved to SharePoint.\n\n'+String(e.message||'').slice(0,500)+'\n\nIt will disappear on reload. Please send this message to Lucy.');
+    alert('JD "'+(jd.title||'')+'" was NOT saved to SharePoint.\n\n'+String(e.message||'').slice(0,300)+'\n\n'+diag+'\n\nYour entries are still in the form. Please send this message to Lucy.');
     return false;
   }
 }
@@ -9954,7 +9979,7 @@ async function deleteJDFromList(spItemId){
     await fetch(GRAPH+'/sites/'+siteId+'/lists/'+JD_LIST_ID+'/items/'+spItemId,{method:'DELETE',headers:{'Authorization':'Bearer '+tok}});
   }catch(e){console.warn('JD List delete failed:',e.message);}
 }
-function saveJD(){
+async function saveJD(){
   if(!canEditRepo){toast('warn','Access Denied','Repository editing is restricted to Administrators.');return;}
   const title=gv('jd-title'),link=gv('jd-link');
   if(!title||!link){toast('warn','Required','Title and link are required.');return;}
@@ -9965,14 +9990,20 @@ function saveJD(){
   const eiEl=document.getElementById('jd-edit-idx');
   const editIdx=eiEl?parseInt(eiEl.value):-1;
   if(editIdx>=0&&repoData.jds[editIdx]){
-    repoData.jds[editIdx]={...repoData.jds[editIdx],...obj,updated:today()};
+    const _prevJD=repoData.jds[editIdx];
+    repoData.jds[editIdx]={..._prevJD,...obj,updated:today()};
+    const ok=await saveJDToList(repoData.jds[editIdx],false);
+    if(!ok){repoData.jds[editIdx]=_prevJD;return;}
     document.getElementById('jd-add-form').classList.add('hidden');
     if(eiEl)eiEl.value='-1';
-    renderJDList();saveJDToList(repoData.jds[editIdx],false).then(ok=>{if(ok)toast('ok','JD Updated',title);});
+    renderJDList();toast('ok','JD Updated',title);
   } else {
-    repoData.jds.push({id:Date.now(),...obj,added:today()});
+    const _newJD={id:Date.now(),...obj,added:today()};
+    const ok=await saveJDToList(_newJD,true);
+    if(!ok)return;
+    repoData.jds.push(_newJD);
     document.getElementById('jd-add-form').classList.add('hidden');
-    renderJDList();saveJDToList(repoData.jds[repoData.jds.length-1],true).then(ok=>{if(ok)toast('ok','JD Added',title);});
+    renderJDList();toast('ok','JD Added',title);
   }
 }
 function renderJDList(){
