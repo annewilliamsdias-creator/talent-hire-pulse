@@ -9469,14 +9469,14 @@ async function fetchScreenedAll(){
   const out=[];
   try{
     await refreshToken();
-    let url=GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items?$expand=fields($select=Recruiter,Status,FitmentScore)&$top=200';
+    let url=GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items?$expand=fields($select=Recruiter,Status,FitmentScore,VacancyCode)&$top=200';
     while(url){
       const res=await fetch(url,{headers:{'Authorization':'Bearer '+tok}});
       if(!res.ok)break;
       const data=await res.json();
       (data.value||[]).forEach(it=>{
         const f=it.fields||{};
-        out.push({rec:f.Recruiter||'',status:f.Status||'',score:(f.FitmentScore===undefined||f.FitmentScore===null||f.FitmentScore==='')?null:Number(f.FitmentScore),date:(it.createdDateTime||'').slice(0,10)});
+        out.push({rec:f.Recruiter||'',vac:f.VacancyCode||'',status:f.Status||'',score:(f.FitmentScore===undefined||f.FitmentScore===null||f.FitmentScore==='')?null:Number(f.FitmentScore),date:(it.createdDateTime||'').slice(0,10)});
       });
       url=data['@odata.nextLink']||null;
     }
@@ -9493,6 +9493,21 @@ function screeningStats(rows,rec,from,to){
   return{screened:mine.length,pushed:pushed.length,dropped:dropped.length,
     avgScoreAll:avg(mine.filter(x=>x.score!=null).map(x=>x.score)),
     avgScorePushed:avg(pushed.filter(x=>x.score!=null).map(x=>x.score))};
+}
+// 9 Oct 2026, Anne: EOD + Weekly vacancy (Funnel Gap) table gets Resumes
+// Screened / Pushed to THP per vacancy. Same basis as the summary chips:
+// this recruiter's ResumeScreened rows created in [from,to], matched to the
+// vacancy by its VacancyCode; "pushed" = Status 'Pushed to THP'. Adds
+// scrScreened / scrPushed to each gap; _funnelGapTbl() shows the two columns
+// only when these are present (the Action Report and Manager Report do not
+// call this, so their tables are unchanged).
+async function annotateScreeningCounts(gaps,rec,from,to){
+  const rows=await fetchScreenedAll();
+  gaps.forEach(g=>{
+    const mine=rows.filter(x=>x.rec===rec&&x.vac===g.vacCode&&x.date>=from&&x.date<=to);
+    g.scrScreened=mine.length;
+    g.scrPushed=mine.filter(x=>x.status==='Pushed to THP').length;
+  });
 }
 const ASSESSMENT_BLIND_SPOTS=[
   'Phone calls are not recorded anywhere in THP. Call-attempt WhatsApps (📞 Follow-up / ⏳ Before We Move Ahead) are only a proxy, and their template has been recorded only since 5 Oct 2026.',
@@ -14555,7 +14570,12 @@ function _funnelGapTbl(gaps){
   // benchmark (28 Sep 2026): positions × 30, and 3% of actual Meaningful
   // Action, respectively. See calcVacancyFunnelGap().
   const hdrs=['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','Meaningful Actions Required','Client I/W Prediction',''];
-  let t='<table class="fgtbl">'+FUNNEL_GAP_COLGROUP+'<thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
+  // 9 Oct 2026: EOD/Weekly only (see annotateScreeningCounts()) — two extra
+  // columns right after Profiles, with their own 14-column width set.
+  const withScr=gaps.some(g=>g.scrScreened!==undefined);
+  if(withScr)hdrs.splice(5,0,'Resumes Screened','Pushed to THP');
+  const colgroup=withScr?'<colgroup>'+[8,10,8,6,4,5,5,5,5,5,5,6,6,22].map(w=>'<col style="width:'+w+'%">').join('')+'</colgroup>':FUNNEL_GAP_COLGROUP;
+  let t='<table class="fgtbl">'+colgroup+'<thead><tr>'+hdrs.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>';
   gaps.forEach(g=>{
     // "Since" shows the reopen/open date candidates are scoped from — see
     // _funnelEligibleCandidates(). "All-time" means the vacancy has no Date
@@ -14581,6 +14601,7 @@ function _funnelGapTbl(gaps){
     const statusCell = '<span class="frdot frdot-'+g.ragStatus+'"></span><span>'+g.remark+matchNote+'</span>';
     const cells=[
       g.vacCode, g.designation, g.client, since, g.total,
+      ...(withScr?[g.scrScreened||0,g.scrPushed||0]:[]),
       g.meaningful, g.recruiterIW, g.consultant, g.clientIW,
       g.meaningfulActionsRequired, g.clientIWPrediction,
       statusCell
@@ -14706,6 +14727,7 @@ async function genEODReport(recName){
   // Candidate Match usage nudge (1 Oct 2026, Anne's ask) — EOD + Manager
   // Report only, per annotateMatchingStatus()'s own comment.
   await annotateMatchingStatus(funnelGaps);
+  await annotateScreeningCounts(funnelGaps,recName,td,td);
   // Effort+Incentive Metrics Audit, Anne's decision (25 Sep 2026): EOD now
   // reads Meaningful Candidate Actions through the SAME shared function
   // Incentive uses (getMeaningfulActionsInPeriod) — not a separately
@@ -14923,6 +14945,7 @@ async function genWeeklyReport(recName,startStr,endStr){
   const resumesPushedWeek=await fetchResumeScreenedPushedCount(recName,startStr,endStr);
   // Funnel Gap (28 Sep 2026, Anne's decision) — see calcRecruiterFunnelGaps()
   const funnelGaps=calcRecruiterFunnelGaps(recName);
+  await annotateScreeningCounts(funnelGaps,recName,startStr,endStr);
   hideLoad();
 
   const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y');
