@@ -7962,10 +7962,11 @@ function incentivePrintWindow(title, subtitle, bodyHtml, opts){
     .sl2{font-size:9px;margin:10px 0 6px}
     table table thead th{font-size:7px;padding:4px 3px;letter-spacing:0}
     table table tbody td{padding:3px 3px}
-    table table col:nth-child(1){width:9%!important}table table col:nth-child(2){width:11%!important}table table col:nth-child(3){width:9%!important}
-    table table col:nth-child(4){width:6%!important}table table col:nth-child(5){width:5.5%!important}table table col:nth-child(6){width:7%!important}
-    table table col:nth-child(7){width:7%!important}table table col:nth-child(8){width:7%!important}table table col:nth-child(9){width:5%!important}
-    table table col:nth-child(10){width:6%!important}table table col:nth-child(11){width:6%!important}table table col:nth-child(12){width:21.5%!important}
+    table table colgroup:not(.fg14) col:nth-child(1){width:9%!important}table table colgroup:not(.fg14) col:nth-child(2){width:11%!important}table table colgroup:not(.fg14) col:nth-child(3){width:9%!important}
+    table table colgroup:not(.fg14) col:nth-child(4){width:6%!important}table table colgroup:not(.fg14) col:nth-child(5){width:5.5%!important}table table colgroup:not(.fg14) col:nth-child(6){width:7%!important}
+    table table colgroup:not(.fg14) col:nth-child(7){width:7%!important}table table colgroup:not(.fg14) col:nth-child(8){width:7%!important}table table colgroup:not(.fg14) col:nth-child(9){width:5%!important}
+    table table colgroup:not(.fg14) col:nth-child(10){width:6%!important}table table colgroup:not(.fg14) col:nth-child(11){width:6%!important}table table colgroup:not(.fg14) col:nth-child(12){width:21.5%!important}
+    table table colgroup.fg14 col:nth-child(1){width:7%!important}table table colgroup.fg14 col:nth-child(2){width:9%!important}table table colgroup.fg14 col:nth-child(3){width:8%!important}table table colgroup.fg14 col:nth-child(4){width:5%!important}table table colgroup.fg14 col:nth-child(5){width:5%!important}table table colgroup.fg14 col:nth-child(6){width:6%!important}table table colgroup.fg14 col:nth-child(7){width:6%!important}table table colgroup.fg14 col:nth-child(8){width:6%!important}table table colgroup.fg14 col:nth-child(9){width:6%!important}table table colgroup.fg14 col:nth-child(10){width:6%!important}table table colgroup.fg14 col:nth-child(11){width:5%!important}table table colgroup.fg14 col:nth-child(12){width:6%!important}table table colgroup.fg14 col:nth-child(13){width:6%!important}table table colgroup.fg14 col:nth-child(14){width:19%!important}
     .footer{padding:6px 16px;font-size:8px;margin-top:8px}`:''}
   </style></head><body>
   <div class="header">
@@ -9361,7 +9362,13 @@ function _liveFunnelGapTbl(vacGaps){
   // Meaningful Actions and Prediction respectively.
   const wrapTh = h => `<th style="white-space:normal">${h}</th>`;
   const hdrs = ['Vacancy','Role','Client','Since','Profiles','Meaningful Action','Recruiter I/W','Consultant I/W','Client I/W','MA Required','Client I/W Pred.',''];
-  let html = '<div class="tw"><table style="table-layout:fixed">'+FUNNEL_GAP_COLGROUP+'<thead><tr>'+hdrs.map(wrapTh).join('')+'</tr></thead><tbody>';
+  // 9 Oct 2026: Manager Report only (see annotateScreeningCounts()) — two
+  // extra per-vacancy columns after Profiles; Home's Today's Focus use of
+  // this table never annotates, so it keeps its 12 columns.
+  const withScr = vacGaps.some(g=>g.scrScreened!==undefined);
+  if(withScr) hdrs.splice(5,0,'Resumes Screened','Pushed to THP');
+  const colgroup = withScr ? '<colgroup class="fg14">'+[8,10,8,6,4,5,5,5,5,5,5,6,6,22].map(w=>'<col style="width:'+w+'%">').join('')+'</colgroup>' : FUNNEL_GAP_COLGROUP;
+  let html = '<div class="tw"><table style="table-layout:fixed">'+colgroup+'<thead><tr>'+hdrs.map(wrapTh).join('')+'</tr></thead><tbody>';
   vacGaps.forEach(g=>{
     const since = g.sinceDate ? fmtD(g.sinceDate) : 'All-time';
     // 1 Oct 2026: appended into the same remark cell rather than a new
@@ -9376,7 +9383,7 @@ function _liveFunnelGapTbl(vacGaps){
     const matchNote = typeof g.matchingRun==='boolean'
       ? (g.matchingNudge?'<br><span style="color:'+FUNNEL_GAP_COLOR_AMBER+';font-weight:600">⚠ Candidate Match never run — profiles available</span>':(g.matchingRun?'<br><span style="color:'+FUNNEL_GAP_COLOR_GREEN+'">✓ Candidate Match run</span>':''))
       : '';
-    html += `<tr><td class="mono">${g.vacCode}</td><td class="m">${g.designation}</td><td class="m">${g.client}</td><td class="m">${since}</td><td class="m">${g.total}</td><td class="m">${g.meaningful}</td><td class="m">${g.recruiterIW}</td><td class="m">${g.consultant}</td><td class="m">${g.clientIW}</td><td class="m">${g.meaningfulActionsRequired}</td><td class="m">${g.clientIWPrediction}</td><td style="font-size:10px;white-space:normal">${_ragDot(g.ragStatus)}${g.remark}${matchNote}</td></tr>`;
+    html += `<tr><td class="mono">${g.vacCode}</td><td class="m">${g.designation}</td><td class="m">${g.client}</td><td class="m">${since}</td><td class="m">${g.total}</td>${withScr?`<td class="m">${g.scrScreened||0}</td><td class="m">${g.scrPushed||0}</td>`:''}<td class="m">${g.meaningful}</td><td class="m">${g.recruiterIW}</td><td class="m">${g.consultant}</td><td class="m">${g.clientIW}</td><td class="m">${g.meaningfulActionsRequired}</td><td class="m">${g.clientIWPrediction}</td><td style="font-size:10px;white-space:normal">${_ragDot(g.ragStatus)}${g.remark}${matchNote}</td></tr>`;
   });
   html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:4px">MA Required = Meaningful Actions Required. Client I/W Pred. = Client I/W Prediction.</div>';
   return html;
@@ -9427,6 +9434,7 @@ async function renderEffortComparison(){
       // (and under-enriching) the same logic.
       const vacGaps = calcRecruiterFunnelGaps(rec);
       await annotateMatchingStatus(vacGaps);
+      await annotateScreeningCounts(vacGaps,rec,from,to,_screened);
       const matchNudgeCount=vacGaps.filter(g=>g.matchingNudge).length;
       const lowFUCount=closuresBelowFollowupMin(_allCL,rec,from,to).length;
       const scr=screeningStats(_screened,rec,from,to);
@@ -9501,8 +9509,8 @@ function screeningStats(rows,rec,from,to){
 // scrScreened / scrPushed to each gap; _funnelGapTbl() shows the two columns
 // only when these are present (the Action Report and Manager Report do not
 // call this, so their tables are unchanged).
-async function annotateScreeningCounts(gaps,rec,from,to){
-  const rows=await fetchScreenedAll();
+async function annotateScreeningCounts(gaps,rec,from,to,preRows){
+  const rows=preRows||await fetchScreenedAll();
   gaps.forEach(g=>{
     const mine=rows.filter(x=>x.rec===rec&&x.vac===g.vacCode&&x.date>=from&&x.date<=to);
     g.scrScreened=mine.length;
