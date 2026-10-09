@@ -9385,6 +9385,7 @@ function _liveFunnelGapTbl(vacGaps){
       : '';
     html += `<tr><td class="mono">${g.vacCode}</td><td class="m">${g.designation}</td><td class="m">${g.client}</td><td class="m">${since}</td><td class="m">${g.total}</td>${withScr?`<td class="m">${g.scrScreened||0}</td><td class="m">${g.scrPushed||0}</td>`:''}<td class="m">${g.meaningful}</td><td class="m">${g.recruiterIW}</td><td class="m">${g.consultant}</td><td class="m">${g.clientIW}</td><td class="m">${g.meaningfulActionsRequired}</td><td class="m">${g.clientIWPrediction}</td><td style="font-size:10px;white-space:normal">${_ragDot(g.ragStatus)}${g.remark}${matchNote}</td></tr>`;
   });
+  html += '<tr style="font-weight:700;border-top:2px solid var(--w60)"><td class="mono">Total</td><td></td><td></td><td></td>'+_fgTotals(vacGaps,withScr).map(c=>'<td class="m">'+c+'</td>').join('')+'<td></td></tr>';
   html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:4px">MA Required = Meaningful Actions Required. Client I/W Pred. = Client I/W Prediction.</div>';
   return html;
 }
@@ -14560,6 +14561,7 @@ function _rptCss(){
     // td rule above, defeating the point of the remark.
     '.fgtbl td{white-space:normal;overflow-wrap:break-word;vertical-align:top}'+
     '.fgtbl td:last-child{white-space:normal;display:flex;align-items:flex-start}'+
+    '.fgtbl tr.fgtot td{font-weight:bold;border-top:2pt solid #291b39;background:#f6f1e7}'+
     // 1 Oct 2026: "Candidate Match" usage nudge — see annotateMatchingStatus().
     // Hardcoded hex, not a CSS var — this stylesheet serves a standalone
     // downloaded HTML file with no access to the live app's :root variables.
@@ -14572,6 +14574,16 @@ function _rptCss(){
 // helper is defined as a LOCAL closure inside genEODReport()/
 // genWeeklyReport() separately, not shared, so this top-level function
 // can't reach either copy).
+// 9 Oct 2026, Anne: a Total row at the end of every vacancy (Funnel Gap)
+// table, in all reports. Sums the numeric columns (ratios/dates left blank);
+// shared by the downloadable-report table and the live Manager Report /
+// Home table so they always agree.
+function _fgTotals(gaps,withScr){
+  const sum=(k,dp)=>{const t=gaps.reduce((a,g)=>a+(Number(g[k])||0),0);const f=Math.pow(10,dp||0);return Math.round(t*f)/f;};
+  return[sum('total'),...(withScr?[sum('scrScreened'),sum('scrPushed')]:[]),
+    sum('meaningful'),sum('recruiterIW'),sum('consultant'),sum('clientIW'),
+    sum('meaningfulActionsRequired',1),sum('clientIWPrediction',2)];
+}
 function _funnelGapTbl(gaps){
   if(!gaps.length) return '<div class="nil">No active vacancies.</div>';
   // Meaningful Actions Required / Client I/W Prediction — Anne's fixed
@@ -14616,6 +14628,7 @@ function _funnelGapTbl(gaps){
     ];
     t+='<tr>'+cells.map(c=>'<td>'+c+'</td>').join('')+'</tr>';
   });
+  t+='<tr class="fgtot"><td>Total</td><td></td><td></td><td></td>'+_fgTotals(gaps,withScr).map(c=>'<td>'+c+'</td>').join('')+'<td></td></tr>';
   return t+'</tbody></table>';
 }
 
