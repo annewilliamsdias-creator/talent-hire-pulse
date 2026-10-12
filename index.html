@@ -209,6 +209,33 @@ display:flex;flex-direction:column;max-height:90vh}
 .mc>*{flex-shrink:0}
 .mc>.mc-rec{flex:1 1 auto;min-height:0;overflow-y:auto}
 .mc.mc-wide{max-width:760px}
+/* 12 Oct 2026: My Priorities Today — the same modal, wider, so six cards fit without scrolling; only .mc-rec scrolls, title and buttons stay pinned (above). */
+.mc.mc-xwide{max-width:1120px;width:94vw}
+#modal-rec.pr-rec{background:none;border:none;padding:0;margin-bottom:12px}
+.pr-fyi{display:flex;gap:10px;align-items:flex-start;background:rgba(52,186,198,.10);border:1px solid rgba(52,186,198,.35);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
+.pr-fyi b{white-space:nowrap;color:var(--teal);font-weight:600}
+.pr-fyi em{font-style:normal;color:var(--w60)}
+.pr-fyi u{text-decoration:none;color:var(--ow);font-weight:600}
+.pr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pr-card{border:1px solid var(--w12);border-radius:10px;padding:11px 13px 9px;display:flex;flex-direction:column;gap:5px;animation:fadeUp .4s ease both}
+.pr-card:nth-child(2){animation-delay:.06s}.pr-card:nth-child(3){animation-delay:.12s}.pr-card:nth-child(4){animation-delay:.18s}.pr-card:nth-child(5){animation-delay:.24s}.pr-card:nth-child(6){animation-delay:.3s}
+.pr-must{background:rgba(159,74,71,.20);border-color:rgba(224,138,134,.45)}
+.pr-should{background:rgba(233,152,43,.13);border-color:rgba(233,152,43,.45)}
+.pr-wait{background:rgba(94,120,85,.22);border-color:rgba(159,192,143,.45)}
+.pr-tag{font-size:12px;font-weight:600;letter-spacing:.03em}
+.pr-must .pr-tag{color:#f0a8a4}.pr-should .pr-tag{color:#f1b862}.pr-wait .pr-tag{color:#a9cf9b}
+.pr-vac{font-size:12px;color:#8dbde6;font-family:'DM Mono',ui-monospace,monospace}
+.pr-card .pr-act{font-size:14px;font-weight:600;line-height:1.35;margin:0;color:var(--ow)}
+.pr-card .pr-why{font-size:12.5px;color:var(--w60);margin:0;line-height:1.45}
+.pr-card .pr-why b{color:var(--ow);font-weight:500}
+.pr-inc{font-size:12px;background:var(--w08);border-radius:6px;padding:3px 8px;align-self:flex-start;color:var(--ow)}
+.pr-det{margin-top:auto;font-size:12px;color:var(--w60)}
+.pr-det summary{cursor:pointer;color:var(--teal);text-decoration:underline;text-underline-offset:2px;width:max-content}
+.pr-det ul{margin:5px 0 0;padding-left:16px}
+.pr-note{font-size:12px;color:var(--w60);margin:10px 0 0;line-height:1.5}
+.pr-flag{color:#f1b862}
+@media (max-width:860px){.pr-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){.pr-card{animation:none}}
 .mc h3{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--gold);margin-bottom:6px}
 .mc p{font-size:13px;color:var(--w60);margin-bottom:14px;line-height:1.6}
 .mc-rec{background:var(--w06);border:1px solid var(--w08);border-radius:var(--rs);
@@ -816,6 +843,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div class="atab on" id="ht-queue" onclick="switchHomeTab('queue')">⚡ My Action Queue</div>
   <div class="atab" id="ht-focus" onclick="switchHomeTab('focus')">🔎 Today's Effort</div>
   <div class="atab" id="ht-portfolio" onclick="switchHomeTab('portfolio')">📋 My Portfolio</div>
+  <div class="atab" id="ht-prio" onclick="openPriorities()" title="Six things that will move your roles most today">☀️ My Priorities</div>
   <div id="effort-rec-picker" style="display:none;align-items:center;gap:8px;margin-left:auto"></div>
   <button class="btn btn-ghost btn-sm" id="ht-print" style="display:none" onclick="printHomeEffortTab()">🖨 Print / PDF</button>
 </div>
@@ -2216,7 +2244,16 @@ decisionMakers:['Consultant','Client'].map(n=>({name:n,active:true})),
 // Not Interested (feeds the AI recruiter assessment). A Master, so Admin edits
 // the list in Config → Masters like every other; these are the defaults until
 // a list is saved there. Deliberately not alphabetised — "Other" belongs last.
-dropReasons:['Not interested in the role','Salary / compensation mismatch','Location mismatch','Notice period too long','Accepted another offer','Not looking for a change','Profile does not match the requirement','Unreachable / no response','Duplicate profile','Other'].map(n=>({name:n,active:true}))};
+dropReasons:['Not interested in the role','Salary / compensation mismatch','Location mismatch','Notice period too long','Accepted another offer','Not looking for a change','Profile does not match the requirement','Unreachable / no response','Duplicate profile','Other'].map(n=>({name:n,active:true})),
+// 12 Oct 2026, Anne: working-day counting (weekends AND holidays are never
+// counted when judging how long something has gone untouched). Each entry is
+// "YYYY-MM-DD" optionally followed by a label, e.g. "2026-11-08 Diwali" —
+// only the leading date is read. Empty until Admin adds dates in Config → Masters.
+holidays:[],
+// 12 Oct 2026, Anne: recruiters whose "My Priorities Today" pop-up opens by
+// itself at login (pilot = Alisha and Upasana). Anyone can still open it from
+// Home; Admin can view any recruiter's.
+priorityPilot:['Alisha','Upasana'].map(n=>({name:n,active:true}))};
 function mA(k){return(M[k]||[]).filter(x=>x.active).map(x=>x.name);}
 // 5 Oct 2026, Anne: new Masters entries landed at the bottom of every list.
 // Lists with no inherent order are kept alphabetical — sorted in M itself, so
@@ -2225,7 +2262,7 @@ function mA(k){return(M[k]||[]).filter(x=>x.active).map(x=>x.name);}
 // lifecycle order drives the flow logic) and noticePeriods / expLevels
 // (ordered scales — alphabetical would put "7 days" after "60 days" and
 // "Immediate" last).
-const SORTED_MASTERS=['clients','recruiters','departments','sources','cities','decisionMakers'];
+const SORTED_MASTERS=['clients','recruiters','departments','sources','cities','decisionMakers','holidays','priorityPilot'];
 function sortMaster(key){
   if(!SORTED_MASTERS.includes(key)||!Array.isArray(M[key]))return;
   M[key].sort((a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:'base',numeric:true}));
@@ -3394,7 +3431,7 @@ function goPanel(name){
   // Always refresh dropdowns from current M when entering any panel with forms
   if(['new','upd','bulk','repos','incentive','rec','vac'].includes(name))fillDrops();
   if(name==='adm')initAdmin();
-  if(name==='home'){loadDash();}
+  if(name==='home'){loadDash();prioMaybeAutoOpen();}
   if(name==='analytics'){
     setTimeout(renderDash,200);
     const isAdmin = curRole==='Admin'||curRole==='Super Admin';
@@ -4697,7 +4734,7 @@ function loadBKList(){
 function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
 // CONFIG / MASTERS
 let mgridInited=false;
-function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm'],['dropReasons','🚪 Drop Reasons','ma-drop']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div style="margin-bottom:8px"><button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="backfillWATimes()" title="One-time: fills First Contact / last Follow-up times for candidates already messaged, so the 24-hour and 5-day send rules apply to them">🔄 Backfill WhatsApp timing</button></div><div id="wa-ed"></div></div>';loadCfg();}
+function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm'],['dropReasons','🚪 Drop Reasons','ma-drop'],['holidays','🌴 Holidays (YYYY-MM-DD Name)','ma-hol'],['priorityPilot','☀️ Priorities Pilot (recruiters)','ma-pp']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div style="margin-bottom:8px"><button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="backfillWATimes()" title="One-time: fills First Contact / last Follow-up times for candidates already messaged, so the 24-hour and 5-day send rules apply to them">🔄 Backfill WhatsApp timing</button></div><div id="wa-ed"></div></div>';loadCfg();}
 function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML='<div style="font-size:10px;color:var(--w60);margin-bottom:10px;line-height:1.5">Placeholders: {N} candidate name · {R} your first name · {P} role · {C} client · {CO} candidate\'s current company · {LOC} role location · {D}/{T} interview date/time · {L} meeting link · {IL} invite link</div>'+Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
 function renderMT(key){
   const el=document.getElementById('mt-'+key);
@@ -4770,10 +4807,10 @@ function getRecruiterPhase(recruiterName, asOfDate){
   return {phase:'revenue', month:monthsElapsed + 1, doj:rec.doj, monthsElapsed};
 }
 function toggleM(key,idx){if(M[key]&&M[key][idx]){M[key][idx].active=!M[key][idx].active;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('info','Master Updated',M[key][idx].name+' is now '+(M[key][idx].active?'active':'inactive'));}}
-function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});sortMaster(key);el.value='';renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();}
+function addMaster(key,aid){const el=document.getElementById(aid);if(!el||!el.value.trim())return;const nm=el.value.trim();if(key==='holidays'&&!/^\d{4}-\d{2}-\d{2}(\s.*)?$/.test(nm)){toast('warn','Date needed','Start with the date as YYYY-MM-DD, e.g. 2026-11-08 Diwali.');return;}if(M[key].find(m=>m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key].push({name:nm,active:true});sortMaster(key);el.value='';renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();}
 function startEditMaster(key,idx){_editingMaster={key,idx};renderMT(key);setTimeout(()=>{const inp=document.getElementById('medit-inp');if(inp){inp.focus();inp.select();}},50);}
 function cancelEditMaster(key){_editingMaster=null;renderMT(key);}
-function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;sortMaster(key);_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
+function saveMasterEdit(key,idx){const inp=document.getElementById('medit-inp');if(!inp)return;const nm=inp.value.trim();if(!nm){toast('warn','Name required','Entry name cannot be blank.');return;}if(key==='holidays'&&!/^\d{4}-\d{2}-\d{2}(\s.*)?$/.test(nm)){toast('warn','Date needed','Start with the date as YYYY-MM-DD, e.g. 2026-11-08 Diwali.');return;}if(M[key].find((m,i)=>i!==idx&&m.name.toLowerCase()===nm.toLowerCase())){toast('warn','Already exists',nm+' is already in the list.');return;}M[key][idx].name=nm;sortMaster(key);_editingMaster=null;renderMT(key);fillDrops();refreshAllFilters();saveMastersCfg();toast('ok','Updated',nm+' saved.');}
 // 5 Oct 2026: this used to update only the in-memory WA object, so an edited
 // template reverted on the next page load while still toasting "Config
 // Saved". Now written to the workbook's [THP_META] block (same mechanism as
@@ -4979,6 +5016,24 @@ function renderUsers(){const tb=document.getElementById('uBody');if(!tb)return;i
 // ══════════════════════════════════════════════════════
 function today(){return new Date().toISOString().split('T')[0];}
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
+// ── Working days (12 Oct 2026, Anne: "Standardise, weekends and holidays to
+// not be counted") ───────────────────────────────────────────────────────
+// Every "N days since it was last touched" test now counts Monday-Friday only,
+// minus the dates in the Admin 'holidays' master. Before this, work last
+// touched on a Friday read as 3 days old on Monday and flagged Red.
+function _isoLocal(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _holidaySet(){const s=new Set();(M.holidays||[]).forEach(h=>{if(h&&h.active!==false){const m=String(h.name||'').match(/^(\d{4}-\d{2}-\d{2})/);if(m)s.add(m[1]);}});return s;}
+function isWorkingDay(dStr){const s=String(dStr||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const w=new Date(s+'T00:00:00').getDay();return w!==0&&w!==6&&!_holidaySet().has(s);}
+// Working days that have passed AFTER fromStr up to and including toStr
+// (Friday -> Monday = 1). null when either date is missing.
+function workingDaysBetween(fromStr,toStr){
+  const a=String(fromStr||'').slice(0,10),b=String(toStr||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(a)||!/^\d{4}-\d{2}-\d{2}$/.test(b))return null;
+  if(b<=a)return 0;
+  const hs=_holidaySet();let n=0;const d=new Date(a+'T00:00:00'),end=new Date(b+'T00:00:00');
+  for(d.setDate(d.getDate()+1);d<=end;d.setDate(d.getDate()+1)){const w=d.getDay();if(w!==0&&w!==6&&!hs.has(_isoLocal(d)))n++;}
+  return n;
+}
 // R2 (13 Jul 2026): month-abbreviation map for explicit d/MMM/yyyy parsing
 const MONTHS3={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
 function normDateStr(v){
@@ -5085,7 +5140,7 @@ function showLoad(msg){document.getElementById('loading').classList.add('show');
 function hideLoad(){document.getElementById('loading').classList.remove('show');}
 let _tt;function toast(type,title,sub){const i={ok:'✅',err:'❌',warn:'⚠️',info:'ℹ️'};sv('ti',i[type]||'ℹ️');const tt=document.getElementById('tt');if(tt)tt.textContent=title;const ts=document.getElementById('ts');if(ts)ts.textContent=sub||'';const t=document.getElementById('toast');t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),4500);}
 function showAlert(id,type,msg){const el=document.getElementById(id);if(!el)return;if(!type||!msg){el.innerHTML='';return;}el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>{if(el)el.innerHTML=''},6000);}
-function showModal(title,msg,rec,btns,wide){document.getElementById('modal-title').textContent=title;const mp=document.getElementById('modal-msg');if(mp)mp.innerHTML=msg;const mr=document.getElementById('modal-rec');if(mr)mr.innerHTML=rec||'';const mb=document.getElementById('modal-btns');if(mb)mb.innerHTML=btns||'';const mc=document.getElementById('mc');if(mc)mc.classList.toggle('mc-wide',!!wide);document.getElementById('modal').classList.add('show');}
+function showModal(title,msg,rec,btns,wide){document.getElementById('modal-title').textContent=title;const mp=document.getElementById('modal-msg');if(mp)mp.innerHTML=msg;const mr=document.getElementById('modal-rec');if(mr)mr.innerHTML=rec||'';const mb=document.getElementById('modal-btns');if(mb)mb.innerHTML=btns||'';const mc=document.getElementById('mc');if(mc){mc.classList.toggle('mc-wide',!!wide);mc.classList.remove('mc-xwide');}if(mr)mr.className='mc-rec';document.getElementById('modal').classList.add('show');}
 function closeModal(){document.getElementById('modal').classList.remove('show');}
 function copyCode(){const code=document.getElementById('nCodeVal').textContent;navigator.clipboard.writeText(code).then(()=>toast('ok','Copied!',code));}
 
@@ -8582,7 +8637,7 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
       potentialRevenue += calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||0),r[C.client],undefined,r[C.code]);
     });
     const lastTouch = cands.reduce((max,r)=>{const d=r[C.updatedOn]||'';return (d&&d>max)?d:max;},'');
-    const daysInactive = lastTouch ? Math.floor((new Date(td+'T00:00:00')-new Date(lastTouch.slice(0,10)+'T00:00:00'))/86400000) : null;
+    const daysInactive = lastTouch ? workingDaysBetween(lastTouch, td) : null; // working days (12 Oct 2026)
     const activityThisWeek = cands.some(r=>r[C.updatedOn] && r[C.updatedOn].slice(0,10)>=weekFrom && r[C.updatedOn].slice(0,10)<=weekTo);
     const onHold = v['Current Status']==='On Hold';
     // Green: touched within 2 days AND has active pipeline. Amber: touched
@@ -8601,7 +8656,7 @@ async function buildEffortData(recruiterName, periodFrom, periodTo){
     // above (an on-hold role isn't meant to be actively sourced).
     const vacAltRows = altRows.filter(a=>a.vacCode===vc).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const lastAltDate = vacAltRows.length ? vacAltRows[0].date : '';
-    const daysSinceAlt = lastAltDate ? Math.floor((new Date(td+'T00:00:00')-new Date(lastAltDate.slice(0,10)+'T00:00:00'))/86400000) : null;
+    const daysSinceAlt = lastAltDate ? workingDaysBetween(lastAltDate, td) : null; // working days (12 Oct 2026)
     const altSourcingRequired = !onHold && activePipeline.length<3 && (daysSinceAlt===null||daysSinceAlt>=5);
     return {
       vacCode:vc, client:v['Company']||'', priority:v['Priority']||'—', positions:v['Positions Count']||'1',
@@ -8927,7 +8982,9 @@ function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
   const vacAgeDays = dateOfVacancy ? Math.floor((new Date(td+'T00:00:00')-new Date(dateOfVacancy.slice(0,10)+'T00:00:00'))/86400000) : null;
   const isNewVacancy = vacAgeDays!==null && vacAgeDays<7;
   const lastTouch = eligible.reduce((max,r)=>{const d=r[C.updatedOn]||'';return (d&&d>max)?d:max;},'');
-  const daysInactive = lastTouch ? Math.floor((new Date(td+'T00:00:00')-new Date(lastTouch.slice(0,10)+'T00:00:00'))/86400000) : null;
+  // 12 Oct 2026, Anne: weekends and holidays are not counted, so work last
+  // touched on Friday is 1 day old on Monday (it used to read 3 and flag Red).
+  const daysInactive = lastTouch ? workingDaysBetween(lastTouch, td) : null;
   const isFresh = daysInactive!==null && daysInactive<=2;
 
   let ragStatus, remark;
@@ -8935,8 +8992,8 @@ function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
   else if(gapMet){ ragStatus='green'; remark='Pipeline sufficient for expected selection'; }
   else if(isNewVacancy){ ragStatus='amber'; remark='New vacancy — within first week grace period'; }
   else if(isFresh){ ragStatus='amber'; remark='Pipeline behind target, actively being worked'; }
-  else if(pctMet>=0.5){ ragStatus='red'; remark='Candidate count sufficient but vacancy not actioned in 3+ days'; }
-  else { ragStatus='red'; remark='Candidate volume insufficient and vacancy not actioned in 3+ days'; }
+  else if(pctMet>=0.5){ ragStatus='red'; remark='Candidate count sufficient but vacancy not actioned in 3+ working days'; }
+  else { ragStatus='red'; remark='Candidate volume insufficient and vacancy not actioned in 3+ working days'; }
   const hasGap = ragStatus!=='green';
 
   return {vacCode, ...f, meaningfulActionsRequired, clientIWPrediction, hasLiveSelection, hasGap, ragStatus, remark, sinceDate:dateOfVacancy||''};
@@ -9183,7 +9240,7 @@ function renderEffortPortfolio(d){
     <div class="stat"><div class="sn">${s.joinedWeek}</div><div class="sl">Joined (7d)</div></div>
   </div>
   <div class="sl2">Vacancy Portfolio</div>
-  <div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Priority</th><th>Positions</th><th>Profiles (7d)</th><th>Screened (7d)</th><th>Submitted* (7d)</th><th>Interviews (7d)</th><th>Offers (7d)</th><th>Joined (7d)</th><th>Last Activity</th><th>Days Inactive</th><th>Status</th><th>Potential Revenue</th><th>Alt. Sourcing</th></tr></thead><tbody>`;
+  <div class="tw"><table><thead><tr><th>Vacancy</th><th>Client</th><th>Priority</th><th>Positions</th><th>Profiles (7d)</th><th>Screened (7d)</th><th>Submitted* (7d)</th><th>Interviews (7d)</th><th>Offers (7d)</th><th>Joined (7d)</th><th>Last Activity</th><th>Working Days Inactive</th><th>Status</th><th>Potential Revenue</th><th>Alt. Sourcing</th></tr></thead><tbody>`;
   if(!d.portfolio.length){
     html += '<tr><td colspan="15" style="text-align:center;color:var(--w60);padding:20px">No active vacancies assigned.</td></tr>';
   } else {
@@ -9215,7 +9272,7 @@ function renderEffortFocus(d){
   const sec = (title,icon,rows,cols,mapper) => `<div class="sl2" style="margin-top:16px">${icon} ${title} (${rows.length})</div>`+
     (rows.length?`<div class="tw"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(mapper).join('')}</tbody></table></div>`
       :'<div style="color:var(--w60);font-size:11px;padding:8px 0">Nothing here — clear.</div>');
-  let html = sec('Dormant / Needs Attention Vacancies','🚨',dormant,['Vacancy','Client','Status','Days Inactive'],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td>${effortStatusBadge(p.status)}</td><td class="m">${p.daysInactive===null?'—':p.daysInactive}</td></tr>`);
+  let html = sec('Dormant / Needs Attention Vacancies','🚨',dormant,['Vacancy','Client','Status','Working Days Inactive'],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td>${effortStatusBadge(p.status)}</td><td class="m">${p.daysInactive===null?'—':p.daysInactive}</td></tr>`);
   // 29 Sep 2026, Anne: replaces Thin Pipeline Vacancies — Funnel Gap is the
   // same underlying signal (is this vacancy getting enough sourcing/
   // engagement) but weighted against her real benchmark instead of a flat
@@ -9464,6 +9521,246 @@ async function renderEffortComparison(){
   html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score. Closed &lt;3 📞 counts candidates moved from WIP to Dropped / Not Interested in the period with fewer than 3 call-attempt WhatsApps (📞 Follow-up or ⏳ Before We Move Ahead) first (flag only; WhatsApps before 5 Oct 2026 did not record their template and are counted towards the 3). Pushed to THP counts resumes screened in the period that are now marked pushed (by screening date).</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MY PRIORITIES TODAY — Phase A, read-only (12 Oct 2026)
+// Design + approval: Notion "My Priorities Today — Audit and Design (12 Oct
+// 2026)"; Anne approved phase A the same day. Fixed, transparent rules pick
+// SIX daily cards (3 Must / 2 Should / 1 Can wait) for a recruiter. No AI in
+// the ranking and nothing is stored in this phase (Agree / Add a focus item /
+// manager edits / completion ticks are phases B and C).
+//
+// Anne's decisions that shape it:
+// - Interviews are INFORMATION, not cards ("recruiters never forget
+//   interviews — if anything they skip other tasks because interviews are in
+//   progress"): one line above the cards, no score, no slot.
+// - Weekends and holidays are never counted (workingDaysBetween()).
+// - It never counts as a Meaningful Candidate Action and writes nothing.
+// - Starting weights and sizes approved as proposed (10 first contacts, about
+//   10 sourced). On Hold vacancies are excluded; a vacancy that is On Hold
+//   but still Active is flagged.
+//
+// Two corrections to the Funnel Gap live ONLY in here (the report's own
+// Red/Amber/Green keeps Anne's benchmark): (1) a WIP profile nobody has
+// contacted (no follow-up attempt and no WhatsApp on record) earns no pipeline
+// credit — it is waiting for first contact; (2) days since last touched are
+// working days (the report itself also uses working days now).
+// ═══════════════════════════════════════════════════════════════════════
+const PRIO_RULES_VERSION='A1';
+const PRIO_W={targetPast:25,targetSoon3:25,targetSoon7:15,targetLater:5,prioHigh:25,prioMed:10,commHigh:20,commMid:10,gapRed:20,gapAmber:10,waiting:10,dueMany:10,dueSome:5,finalisation:30,newVacancy:-15};
+const PRIO_FIRST_CONTACT_CAP=10;      // first contacts per card (feasible in a day)
+const PRIO_SOURCE_N=10;               // "source about N more" per card
+const PRIO_MIN_UNCONTACTED=5;         // this many never-contacted profiles = a first-contact card
+const PRIO_WAIT_WD=3;                 // working days with no update = "waiting on a decision"
+const PRIO_WAITING_STATUSES=new Set(['Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress']);
+const PRIO_INTERVIEW_STATUSES=PRIO_WAITING_STATUSES; // same stages carry the interview date
+// Refinement on the approved design (Lucy, 12 Oct 2026 — flag to Anne): a
+// candidate still at an interview stage whose interview date has already
+// passed is waiting on a decision even before 3 working days have gone by
+// (feedback is simply pending). Set to false to use only the 3-working-day test.
+const PRIO_WAIT_ON_PAST_INTERVIEW=true;
+
+function prioNeverContacted(r){return !(parseInt(r[C.followupCount])||0) && !r[C.firstWA];}
+function prioShortName(n){const p=String(n||'').trim().split(/\s+/).filter(Boolean);return p.length>1?p[0]+' '+p[p.length-1][0].toUpperCase():(p[0]||'');}
+function prioFmtShort(d){const s=String(d||'').slice(0,10);if(!s)return'';const dt=new Date(s+'T00:00:00');return isNaN(dt)?s:dt.toLocaleDateString('en-IN',{day:'numeric',month:'short'});}
+function prioNextWorkingDay(dStr){const d=new Date(dStr+'T00:00:00');for(let i=0;i<21;i++){d.setDate(d.getDate()+1);const s=_isoLocal(d);if(isWorkingDay(s))return s;}return dStr;}
+function prioDaysBetween(aStr,bStr){return Math.round((new Date(bStr+'T00:00:00')-new Date(aStr+'T00:00:00'))/86400000);}
+function prioPlural(n,one,many){return n+' '+(n===1?one:many);}
+
+// One vacancy → score, bottleneck and the card text. Pure over MD/VD globals
+// (so it can be run against a saved copy of the real data).
+function prioAssessVacancy(v,td,match){
+  const code=v['Vacancy code']||v['Vacancy Code']||'';
+  const dov=String(v['Date of Vacancy']||'').slice(0,10);
+  const pos=parseInt(v['Positions Count'])||1;
+  const prio=String(v['Priority']||'').trim();
+  const tgt=String(v['Target Fill Date']||'').slice(0,10);
+  const st=r=>r[C.status]||'';
+  const all=MD.filter(r=>r[C.vacCode]===code&&r[C.archive]!=='Y');
+  const el=_funnelEligibleCandidates(code,dov);
+  const wip=el.filter(r=>st(r)==='WIP');
+  const uncontacted=wip.filter(prioNeverContacted);
+  const f=_funnelStageCounts(el.map(st));
+  const liveCons=el.filter(r=>st(r)==='Consultant Interview in Progress').length;
+  const liveRec=el.filter(r=>{const s=st(r);return s!=='Not Contactable'&&s!=='Dropped'&&s!=='Not Interested'&&!FUNNEL_GAP_CONSULTANT_PLUS.has(s);}).length;
+  const viableRec=Math.max(0,liveRec-uncontacted.length);
+  const expClient=f.clientIW+liveCons*FUNNEL_GAP_RATE_CONSULTANT_TO_CLIENT+viableRec*FUNNEL_GAP_RATE_RECRUITER_TO_CLIENT;
+  const target=pos*FUNNEL_GAP_CLIENT_IW_PER_SELECTION;
+  const remaining=Math.max(0,target-expClient);
+  const lastTouch=el.reduce((m,r)=>{const d=r[C.updatedOn]||'';return(d&&d>m)?d:m;},'');
+  const inactWD=lastTouch?workingDaysBetween(lastTouch,td):null;
+  const age=dov?prioDaysBetween(dov,td):null;
+  const isNew=age!==null&&age<7;
+  const liveSel=el.some(r=>FUNNEL_GAP_LIVE_SELECTED.has(st(r)));
+  let rag;
+  if(liveSel||remaining<=0)rag='green';
+  else if(isNew)rag='amber';
+  else if(inactWD!==null&&inactWD<=2)rag='amber';
+  else rag='red';
+  const dtt=tgt?prioDaysBetween(td,tgt):null;
+  const liveExists=el.some(r=>!TERMINAL.has(st(r)));
+  const sevenAgo=addDays(td,-7);
+  const due=all.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(st(r))&&!NO_FOLLOWUP.has(st(r))&&!(st(r)==='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<sevenAgo)));
+  // waiting on a decision: at an interview stage and either the interview date has passed or nothing has changed for 3+ working days
+  const waiting=el.filter(r=>PRIO_WAITING_STATUSES.has(st(r))&&(
+    (PRIO_WAIT_ON_PAST_INTERVIEW&&r[C.interviewDate]&&String(r[C.interviewDate]).slice(0,10)<td)||(r[C.updatedOn]&&workingDaysBetween(r[C.updatedOn],td)>=PRIO_WAIT_WD)));
+  const closing=all.filter(r=>st(r)==='Selected'||st(r)==='Offered');
+  const joining=all.filter(r=>st(r)==='Joining in Progress'&&r[C.doj]&&prioDaysBetween(td,String(r[C.doj]).slice(0,10))<=7);
+  const finalising=all.some(r=>FUNNEL_GAP_LIVE_SELECTED.has(st(r))&&st(r)!=='Joined');
+  const droppedN=el.filter(r=>st(r)==='Dropped'||st(r)==='Not Interested').length;
+
+  // ── score ──
+  const W=PRIO_W;const parts={};
+  parts.target=dtt===null?W.targetLater:(dtt<0&&liveExists)?W.targetPast:dtt<=3?W.targetSoon3:dtt<=7?W.targetSoon7:W.targetLater;
+  parts.priority=prio==='High'?W.prioHigh:prio==='Low'?0:W.prioMed;
+  parts.commercial=pos>=4?W.commHigh:pos>=2?W.commMid:0;
+  parts.gap=rag==='red'?W.gapRed:rag==='amber'?W.gapAmber:0;
+  parts.waiting=waiting.length?W.waiting:0;
+  parts.followups=due.length>=5?W.dueMany:due.length>=1?W.dueSome:0;
+  parts.finalisation=finalising?W.finalisation:0;
+  parts.newVacancy=isNew?W.newVacancy:0;
+  const score=Object.values(parts).reduce((a,b)=>a+b,0);
+
+  // ── next action: first matching bottleneck leads ──
+  const names=a=>{const n=a.slice(0,3).map(r=>prioShortName(r[C.name]));const head=n.length>1?n.slice(0,-1).join(', ')+' and '+n[n.length-1]:n[0];return head+(a.length>3?' and '+(a.length-3)+' more':'');};
+  const volumeLow=expClient<0.5*target;
+  let lead='',action='',why='';
+  const matchNudge=!!(match&&match.matchingNudge);
+  const pastTgt=dtt!==null&&dtt<0&&liveExists;
+  if(waiting.length){
+    lead='feedback';
+    const who=waiting.every(r=>st(r)==='Consultant Interview in Progress')?'your consultant':'the client';
+    action='Ask '+who+' for feedback on '+names(waiting)+'.';
+    why=prioPlural(waiting.length,'candidate','candidates')+' waiting on a decision.';
+  }else if(closing.length||joining.length){
+    lead='finalise';
+    action=closing.length?('Close the offer for '+names(closing)+'.'):('Confirm joining for '+names(joining)+'.');
+    why=closing.length?'A placement is close. Protect it.':'Joining is within a week.';
+  }else if(uncontacted.length>=PRIO_MIN_UNCONTACTED){
+    lead='first-contact';
+    const n=Math.min(PRIO_FIRST_CONTACT_CAP,uncontacted.length);
+    action='Make first contact with '+(n===uncontacted.length?'all '+n:n+' of your '+uncontacted.length)+' uncontacted profiles. Shortlist '+Math.max(2,Math.min(3,pos+1))+' for consultant review.';
+    why=uncontacted.length+' profiles have not been contacted yet.';
+  }else if(prio==='Low'&&el.length&&droppedN/el.length>=0.7){
+    lead='refresh';action='Talk to your manager: refresh or close this role?';why='Low priority. '+droppedN+' of '+el.length+' profiles dropped.';
+  }else if(due.length&&volumeLow){
+    lead='due-and-source';
+    action='Clear your '+prioPlural(due.length,'due follow-up','due follow-ups')+'. Then '+(matchNudge?'run Candidate Match and ':'')+'source about '+PRIO_SOURCE_N+' more profiles.';
+    why=(expClient<1?'Fewer than 1':'Only about '+Math.round(expClient))+' of '+target+' Client interviews are in sight.';
+  }else if(due.length){
+    lead='due';
+    action='Clear your '+prioPlural(due.length,'due follow-up','due follow-ups')+'.';
+    why=(prio==='High'?'High priority role. ':'')+prioPlural(due.length,'follow-up is','follow-ups are')+' due.';
+  }else if(matchNudge){
+    lead='match';action='Run Candidate Match.';why='Candidate Match has never been run and there are profiles to match.';
+  }else if(pastTgt){
+    lead='timeline';action='Ask the client for a new timeline, or talk to your manager.';why='The target date has passed with live candidates.';
+  }else if(isNew){
+    lead='new';action='Plan your first sourcing push for this new role.';why='New role in its first week.';
+  }else{
+    lead='check';action='Check in with your live candidates.';why='Nothing urgent here today.';
+  }
+  if((lead==='feedback'||lead==='finalise'||lead==='first-contact')&&matchNudge)action+=' Then run Candidate Match.';
+  // time context in front of the reason
+  let tctx='';
+  if(dtt!==null){
+    if(dtt<0&&liveExists)tctx=prioPlural(-dtt,'day','days')+' past target.';
+    else if(dtt>=0&&dtt<=7)tctx='Due '+prioFmtShort(tgt)+(dtt===0?' (today).':' ('+prioPlural(dtt,'day','days')+' away).');
+  }
+  if(lead!=='feedback'&&lead!=='finalise')why=[tctx,why].filter(Boolean).join(' ');
+  else why=[tctx,why].filter(Boolean).join(' ');
+
+  // ── money: only where a placement is genuinely close (never a promise) ──
+  let possibleFee=0;
+  all.filter(r=>FUNNEL_GAP_LIVE_SELECTED.has(st(r))&&st(r)!=='Joined').forEach(r=>{
+    try{possibleFee+=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||0),r[C.client],undefined,r[C.code])||0;}catch(e){}
+  });
+  const details=[
+    wip.length?(wip.length+' in WIP, '+uncontacted.length+' not contacted yet'):'No profiles in WIP',
+    'Follow-ups due: '+due.length,
+    'Expected Client interviews: about '+(Math.round(expClient*10)/10)+' of '+target+(uncontacted.length?' (counting contacted profiles only)':''),
+    'Funnel (working days): '+rag.toUpperCase()+(inactWD!==null?', last touched '+prioPlural(inactWD,'working day','working days')+' ago':''),
+    (tgt?('Target date '+prioFmtShort(tgt)):'No target date set')+' · '+(prio||'Priority not set')+' · '+prioPlural(pos,'position','positions'),
+    (match&&match.matchingRun===false)?'Candidate Match never run':'',
+    'Score '+score+' = '+Object.entries(parts).map(([k,x])=>k+' '+x).join(', ')
+  ].filter(Boolean);
+  return {code,role:v['Designation']||'',client:v['Company']||'',priority:prio,positions:pos,target:tgt,dtt,score,parts,rag,lead,action,why,details,
+    dueCount:due.length,uncontacted:uncontacted.length,expClient:Math.round(expClient*10)/10,targetIW:target,possibleFee:Math.round(possibleFee)};
+}
+
+// Information line: today's and the next working day's interviews. Not scored.
+function prioInterviewsFor(recName,td){
+  const nxt=prioNextWorkingDay(td);
+  const mine=new Set(VD.filter(v=>v['Recruiter']===recName&&v['Active']!=='N'&&(v['Current Status']||'Open')==='Open').map(v=>v['Vacancy code']||v['Vacancy Code']||''));
+  const rows=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&mine.has(r[C.vacCode])&&PRIO_INTERVIEW_STATUSES.has(r[C.status])&&r[C.interviewDate]);
+  const pick=d=>rows.filter(r=>String(r[C.interviewDate]).slice(0,10)===d).map(r=>({vac:r[C.vacCode],name:prioShortName(r[C.name]),type:r[C.status]==='Consultant Interview in Progress'?'consultant':'client'}));
+  return {today:pick(td),next:pick(nxt),nextDate:nxt};
+}
+
+// All six cards for one recruiter.
+async function buildPriorities(recName){
+  const td=today();
+  const mineAll=VD.filter(v=>v['Recruiter']===recName&&v['Active']!=='N');
+  const open=mineAll.filter(v=>(v['Current Status']||'Open')==='Open');
+  const flags=mineAll.filter(v=>(v['Current Status']||'Open')!=='Open').map(v=>(v['Vacancy code']||v['Vacancy Code']||'')+' is '+v['Current Status']+' but still marked Active — set it inactive so it drops off.');
+  const probe=open.map(v=>({vacCode:v['Vacancy code']||v['Vacancy Code']||''}));
+  try{await annotateMatchingStatus(probe);}catch(e){console.warn('priorities: match status unavailable',e.message);}
+  const byCode={};probe.forEach(g=>{byCode[g.vacCode]=g;});
+  const assessed=open.map(v=>prioAssessVacancy(v,td,byCode[v['Vacancy code']||v['Vacancy Code']||'']||{}));
+  assessed.sort((a,b)=>(b.score-a.score)||((a.target||'9999')<(b.target||'9999')?-1:(a.target||'9999')>(b.target||'9999')?1:0)||a.code.localeCompare(b.code));
+  const tiers=['must','must','must','should','should','wait'];
+  const cards=assessed.slice(0,6).map((a,i)=>({...a,tier:tiers[i]}));
+  return {recName,date:td,workingDay:isWorkingDay(td),interviews:prioInterviewsFor(recName,td),cards,also:assessed.slice(6),flags,rulesVersion:PRIO_RULES_VERSION};
+}
+
+// ── Pop-up (built on THP's existing #modal / .mc — see CSS .mc-xwide) ──
+let _prioAutoShown=false;
+function prioMaybeAutoOpen(){
+  if(_prioAutoShown||!myRecName||!MD.length)return;
+  if(!mA('priorityPilot').includes(myRecName))return;
+  if(!isWorkingDay(today()))return;
+  _prioAutoShown=true;
+  setTimeout(()=>{const m=document.getElementById('modal');if(m&&!m.classList.contains('show'))openPriorities();},700);
+}
+async function openPriorities(recOverride){
+  const isAdmin=curRole==='Admin'||curRole==='Super Admin';
+  let rec=recOverride||myRecName||'';
+  if(!rec&&isAdmin)rec=effortRecSel||mA('priorityPilot')[0]||mA('recruiters')[0]||'';
+  if(!rec){toast('warn','My Priorities','No recruiter selected.');return;}
+  showLoad('Working out priorities...');
+  let d;
+  try{d=await buildPriorities(rec);}catch(e){hideLoad();console.error(e);toast('err','My Priorities',e.message);return;}
+  hideLoad();
+  renderPrioModal(d,isAdmin);
+}
+function renderPrioModal(d,isAdmin){
+  const E=escHtml;
+  const tag={must:'🔥 Must do',should:'⭐ Should do',wait:'🌿 Can wait'};
+  const grp=(list)=>{const m={};list.forEach(x=>{(m[x.vac]=m[x.vac]||[]).push(x);});return Object.entries(m).map(([vac,xs])=>vac+': '+xs.length+' '+xs[0].type+' interview'+(xs.length>1?'s':'')+' ('+xs.map(x=>E(x.name)).join(', ')+')').join(' · ');};
+  const iv=d.interviews;
+  let strip='';
+  if(iv.today.length||iv.next.length){
+    strip='<div class="pr-fyi"><b>🎤 Interviews</b><span>'+(iv.today.length?'<u>Today</u> — '+grp(iv.today):'')+(iv.today.length&&iv.next.length?' &nbsp;|&nbsp; ':'')+(iv.next.length?'<u>'+prioFmtShort(iv.nextDate)+'</u> — '+grp(iv.next):'')+' <em>· For your information. They are not part of your six.</em></span></div>';
+  }
+  const cards=d.cards.map(c=>{
+    const money=c.possibleFee>0?'<div class="pr-inc">💰 Possible placement fee for the firm: ₹'+c.possibleFee.toLocaleString('en-IN')+'. Your incentive depends on your month\'s total, subject to policy.</div>':'';
+    return '<article class="pr-card pr-'+c.tier+'"><div class="pr-tag">'+tag[c.tier]+'</div>'+
+      '<div class="pr-vac">'+E(c.code)+' · '+E(c.role)+' · '+E(c.client)+'</div>'+
+      '<p class="pr-act">'+E(c.action)+'</p>'+
+      '<p class="pr-why"><b>Why:</b> '+E(c.why)+'</p>'+money+
+      '<details class="pr-det"><summary>See details</summary><ul>'+c.details.map(x=>'<li>'+E(x)+'</li>').join('')+'</ul></details></article>';
+  }).join('');
+  const also=d.also.length?'<p class="pr-note">Also on your list ('+d.also.length+'): '+d.also.map(a=>E(a.code)+' '+E(a.role)).join(' · ')+'</p>':'';
+  const flags=d.flags.length?'<p class="pr-note pr-flag">⚠ Data to fix: '+d.flags.map(E).join(' ')+'</p>':'';
+  const body=strip+(cards?'<div class="pr-grid">'+cards+'</div>':'<p class="pr-note">No open vacancies are assigned to '+E(d.recName)+' right now.</p>')+also+flags+
+    '<p class="pr-note">Closing this never blocks your work. Reopen any time from Home → ☀️ My Priorities. A successful paid placement may increase your incentive. This screen is a guide: it changes nothing and does not count as an action.</p>';
+  const recSel=isAdmin?('<select id="pr-rec-sel" style="width:auto;margin-right:auto" onchange="openPriorities(this.value)">'+mA('recruiters').map(r=>'<option value="'+E(r)+'"'+(r===d.recName?' selected':'')+'>'+E(r)+'</option>').join('')+'</select>'):'';
+  const btns=recSel+'<button class="btn btn-t" onclick="closeModal()">👍 Got it, let\'s go</button>';
+  const first=(d.recName||'').split(' ')[0];
+  showModal('☀️ My Priorities Today',(d.workingDay?'':'Today is not a working day. ')+(isAdmin&&d.recName!==myRecName?'Viewing '+E(first)+'. ':'Good morning, '+E(first)+'! ')+'Six things that will move your roles the most today.',body,btns,false);
+  const mc=document.getElementById('mc');if(mc)mc.classList.add('mc-xwide');
+  const mr=document.getElementById('modal-rec');if(mr)mr.className='mc-rec pr-rec';
 }
 
 // ═══ AI recruiter assessment (5 Oct 2026, Anne) ═══════════════════════════
@@ -14512,6 +14809,13 @@ function _fDMY(d){
   return p.length<3?String(d):p[2]+'/'+p[1]+'/'+p[0].slice(2);
 }
 
+// 12 Oct 2026: working days (no weekends or holidays) — used where the report
+// header says "Working Days".
+function _wdSince(d){
+  if(!d)return '—';
+  const n=workingDaysBetween(String(d).slice(0,10),today());
+  return n===null?'—':n+'d';
+}
 function _dSince(d){
   if(!d)return '—';
   const diff=Math.floor((Date.now()-new Date(String(d).slice(0,10)).getTime())/86400000);
@@ -14663,15 +14967,13 @@ function genActionReport(recName){
   const td=today();
   const dateStr=_fDMY(td);
   const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y');
-  const threeAgo=new Date();threeAgo.setDate(threeAgo.getDate()-3);
-  const threeStr=threeAgo.toISOString().slice(0,10);
 
   const sevenAgo=new Date();sevenAgo.setDate(sevenAgo.getDate()-7);const sevenStr=sevenAgo.toISOString().slice(0,10);
   const s1=recMD.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])&&!(r[C.status]==='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<sevenStr)));
   const s2=recMD.filter(r=>r[C.status]==='WIP'&&!r[C.followupDate]);
   const s3=recMD.filter(r=>r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress');
   const s4=recMD.filter(r=>r[C.status]==='Joining in Progress');
-  const s5=recMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])&&r[C.status]!=='On Hold'&&r[C.status]!=='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<threeStr));
+  const s5=recMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])&&r[C.status]!=='On Hold'&&r[C.status]!=='Not Contactable'&&(!r[C.updatedOn]||workingDaysBetween(r[C.updatedOn],td)>=3));
   const funnelGaps=calcRecruiterFunnelGaps(recName);
 
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Action Report '+dateStr+'</title>'+
@@ -14696,9 +14998,9 @@ function genActionReport(recName){
       s4.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],_fDMY(r[C.doj]),
         r[C.doj]?Math.ceil((new Date(String(r[C.doj]).slice(0,10)).getTime()-Date.now())/86400000)+'d':'—']))+
 
-    '<div class="sh">5. Not Actioned in 3+ Days ('+s5.length+')</div>'+
-    _rptTbl(['Code','Name','Position','Client','Status','Last Updated','Days Since'],
-      s5.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],_fDMY(r[C.updatedOn]),_dSince(r[C.updatedOn])]))+
+    '<div class="sh">5. Not Actioned in 3+ Working Days ('+s5.length+')</div>'+
+    _rptTbl(['Code','Name','Position','Client','Status','Last Updated','Working Days Since'],
+      s5.map(r=>[r[C.code],r[C.name],r[C.position],r[C.client],r[C.status],_fDMY(r[C.updatedOn]),_wdSince(r[C.updatedOn])]))+
 
     '<div class="sh">6. Funnel Gap — My Active Vacancies ('+funnelGaps.length+')</div>'+
     _funnelGapTbl(funnelGaps)+
@@ -14770,12 +15072,11 @@ async function genEODReport(recName){
   const recMD=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&!addedTodayCodes.has(r[C.code]));
 
   const sevenAgoE=new Date();sevenAgoE.setDate(sevenAgoE.getDate()-7);const sevenStrE=sevenAgoE.toISOString().slice(0,10);
-  const threeAgoE=new Date();threeAgoE.setDate(threeAgoE.getDate()-3);const threeStrE=threeAgoE.toISOString().slice(0,10);
   const eS1=recMD.filter(r=>r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status])&&!(r[C.status]==='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<sevenStrE)));
   const eS2=recMD.filter(r=>r[C.status]==='WIP'&&!r[C.followupDate]);
   const eS3=recMD.filter(r=>r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress');
   const eS4=recMD.filter(r=>r[C.status]==='Joining in Progress');
-  const eS5=recMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])&&r[C.status]!=='On Hold'&&r[C.status]!=='Not Contactable'&&(!r[C.updatedOn]||r[C.updatedOn]<threeStrE));
+  const eS5=recMD.filter(r=>ACTIVE_STATUSES.has(r[C.status])&&r[C.status]!=='On Hold'&&r[C.status]!=='Not Contactable'&&(!r[C.updatedOn]||workingDaysBetween(r[C.updatedOn],td)>=3));
   const actnMap={};[...eS1,...eS2,...eS3,...eS4,...eS5].forEach(r=>{actnMap[r[C.code]]=r;});
   const actionableCands=Object.values(actnMap);const actionableCodes=new Set(Object.keys(actnMap));
   function eReason(r){if(r[C.followupDate]&&r[C.followupDate]<td)return'Overdue FU';if(r[C.followupDate]&&r[C.followupDate]===td)return'Due Today';if(r[C.status]==='WIP')return'WIP — No FU';if(r[C.status]==='Client I/W in Progress'||r[C.status]==='Consultant Interview in Progress')return'Interview';if(r[C.status]==='Joining in Progress')return'Joining';return'Not Actioned 3d+';}
