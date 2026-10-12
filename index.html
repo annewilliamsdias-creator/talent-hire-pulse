@@ -212,10 +212,12 @@ display:flex;flex-direction:column;max-height:90vh}
 /* 12 Oct 2026: My Priorities Today — the same modal, wider, so six cards fit without scrolling; only .mc-rec scrolls, title and buttons stay pinned (above). */
 .mc.mc-xwide{max-width:1120px;width:94vw}
 #modal-rec.pr-rec{background:none;border:none;padding:0;margin-bottom:12px}
-.pr-fyi{display:flex;gap:10px;align-items:flex-start;background:rgba(52,186,198,.10);border:1px solid rgba(52,186,198,.35);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
-.pr-fyi b{white-space:nowrap;color:var(--teal);font-weight:600}
-.pr-fyi em{font-style:normal;color:var(--w60)}
-.pr-fyi u{text-decoration:none;color:var(--ow);font-weight:600}
+.pr-iv{background:rgba(52,186,198,.10);border:1px solid rgba(52,186,198,.35);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px}
+.pr-iv em{font-style:normal;font-weight:400;color:var(--w60);letter-spacing:0}
+.pr-ivcols{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-top:6px}
+.pr-ivcols b{font-size:12px;color:var(--ow);font-weight:600}
+.pr-ivcols ul{margin:3px 0 0;padding-left:16px;color:var(--w60);line-height:1.5}
+.pr-ivcols u{text-decoration:none;color:var(--ow);font-weight:600}
 .pr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .pr-card{border:1px solid var(--w12);border-radius:10px;padding:11px 13px 9px;display:flex;flex-direction:column;gap:5px;animation:fadeUp .4s ease both}
 .pr-card:nth-child(2){animation-delay:.06s}.pr-card:nth-child(3){animation-delay:.12s}.pr-card:nth-child(4){animation-delay:.18s}.pr-card:nth-child(5){animation-delay:.24s}.pr-card:nth-child(6){animation-delay:.3s}
@@ -234,7 +236,7 @@ display:flex;flex-direction:column;max-height:90vh}
 .pr-det ul{margin:5px 0 0;padding-left:16px}
 .pr-note{font-size:12px;color:var(--w60);margin:10px 0 0;line-height:1.5}
 .pr-flag{color:#f1b862}
-@media (max-width:860px){.pr-grid{grid-template-columns:1fr}}
+@media (max-width:860px){.pr-grid{grid-template-columns:1fr}.pr-ivcols{grid-template-columns:1fr}}
 @media (prefers-reduced-motion: reduce){.pr-card{animation:none}}
 .mc h3{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--gold);margin-bottom:6px}
 .mc p{font-size:13px;color:var(--w60);margin-bottom:14px;line-height:1.6}
@@ -8977,6 +8979,20 @@ function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
 
   const hasLiveSelection = eligible.some(r=>FUNNEL_GAP_LIVE_SELECTED.has(r[C.status]));
   const gapMet = remainingClientIW <= 0;
+  // 12 Oct 2026, Anne: "if pipeline looks good but most are not contacted,
+  // status should be amber not green". A profile nobody has contacted (no
+  // follow-up attempt and no WhatsApp on record) earns pipeline credit above
+  // like any live profile — so a long list of untouched profiles can make the
+  // target look met. Green is held back (Amber) only when MOST of the live
+  // recruiter-stage profiles are uncontacted AND the target would not be met
+  // without their credit (so a role already covered by real Client interviews
+  // is not downgraded for a stray uncontacted profile).
+  const uncontactedLive = eligible.filter(r=>{
+    const s = r[C.status]||'';
+    return s!=='Not Contactable' && s!=='Dropped' && s!=='Not Interested' && !FUNNEL_GAP_CONSULTANT_PLUS.has(s) && prioNeverContacted(r);
+  }).length;
+  const expectedWithoutUncontacted = expectedClientIWFromPipeline - uncontactedLive*FUNNEL_GAP_RATE_RECRUITER_TO_CLIENT;
+  const mostlyUncontacted = liveRecruiterIWCount>0 && uncontactedLive > liveRecruiterIWCount/2 && expectedWithoutUncontacted < targetClientIW;
 
   const td = today();
   const vacAgeDays = dateOfVacancy ? Math.floor((new Date(td+'T00:00:00')-new Date(dateOfVacancy.slice(0,10)+'T00:00:00'))/86400000) : null;
@@ -8989,6 +9005,7 @@ function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
 
   let ragStatus, remark;
   if(hasLiveSelection){ ragStatus='green'; remark='Position filled or in final stages'; }
+  else if(gapMet && mostlyUncontacted){ ragStatus='amber'; remark='Pipeline looks sufficient but most profiles have not been contacted yet'; }
   else if(gapMet){ ragStatus='green'; remark='Pipeline sufficient for expected selection'; }
   else if(isNewVacancy){ ragStatus='amber'; remark='New vacancy — within first week grace period'; }
   else if(isFresh){ ragStatus='amber'; remark='Pipeline behind target, actively being worked'; }
@@ -8996,7 +9013,7 @@ function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
   else { ragStatus='red'; remark='Candidate volume insufficient and vacancy not actioned in 3+ working days'; }
   const hasGap = ragStatus!=='green';
 
-  return {vacCode, ...f, meaningfulActionsRequired, clientIWPrediction, hasLiveSelection, hasGap, ragStatus, remark, sinceDate:dateOfVacancy||''};
+  return {vacCode, ...f, meaningfulActionsRequired, clientIWPrediction, hasLiveSelection, hasGap, ragStatus, remark, sinceDate:dateOfVacancy||'', uncontactedLive};
 }
 
 // All of a recruiter's ACTIVE vacancies with their funnel gap — the form
@@ -9548,7 +9565,8 @@ async function renderEffortComparison(){
 // working days (the report itself also uses working days now).
 // ═══════════════════════════════════════════════════════════════════════
 const PRIO_RULES_VERSION='A1';
-const PRIO_W={targetPast:25,targetSoon3:25,targetSoon7:15,targetLater:5,prioHigh:25,prioMed:10,commHigh:20,commMid:10,gapRed:20,gapAmber:10,waiting:10,dueMany:10,dueSome:5,finalisation:30,newVacancy:-15};
+// waiting is 0 since 12 Oct 2026: interview feedback now lives in its own combined Interviews card, so it no longer lifts a vacancy's card.
+const PRIO_W={targetPast:25,targetSoon3:25,targetSoon7:15,targetLater:5,prioHigh:25,prioMed:10,commHigh:20,commMid:10,gapRed:20,gapAmber:10,waiting:0,dueMany:10,dueSome:5,finalisation:30,newVacancy:-15};
 const PRIO_FIRST_CONTACT_CAP=10;      // first contacts per card (feasible in a day)
 const PRIO_SOURCE_N=10;               // "source about N more" per card
 const PRIO_MIN_UNCONTACTED=5;         // this many never-contacted profiles = a first-contact card
@@ -9593,11 +9611,11 @@ function prioAssessVacancy(v,td,match){
   const age=dov?prioDaysBetween(dov,td):null;
   const isNew=age!==null&&age<7;
   const liveSel=el.some(r=>FUNNEL_GAP_LIVE_SELECTED.has(st(r)));
-  let rag;
-  if(liveSel||remaining<=0)rag='green';
-  else if(isNew)rag='amber';
-  else if(inactWD!==null&&inactWD<=2)rag='amber';
-  else rag='red';
+  // One definition of Red/Amber/Green for the reports and this screen: the
+  // report's own Funnel Gap (working days, and Amber when the pipeline only
+  // looks good because most profiles are uncontacted — Anne, 12 Oct 2026).
+  const gapRes=calcVacancyFunnelGap(code,dov,v['Positions Count']);
+  const rag=gapRes.ragStatus;
   const dtt=tgt?prioDaysBetween(td,tgt):null;
   const liveExists=el.some(r=>!TERMINAL.has(st(r)));
   const sevenAgo=addDays(td,-7);
@@ -9628,12 +9646,7 @@ function prioAssessVacancy(v,td,match){
   let lead='',action='',why='';
   const matchNudge=!!(match&&match.matchingNudge);
   const pastTgt=dtt!==null&&dtt<0&&liveExists;
-  if(waiting.length){
-    lead='feedback';
-    const who=waiting.every(r=>st(r)==='Consultant Interview in Progress')?'your consultant':'the client';
-    action='Ask '+who+' for feedback on '+names(waiting)+'.';
-    why=prioPlural(waiting.length,'candidate','candidates')+' waiting on a decision.';
-  }else if(closing.length||joining.length){
+  if(closing.length||joining.length){
     lead='finalise';
     action=closing.length?('Close the offer for '+names(closing)+'.'):('Confirm joining for '+names(joining)+'.');
     why=closing.length?'A placement is close. Protect it.':'Joining is within a week.';
@@ -9661,15 +9674,14 @@ function prioAssessVacancy(v,td,match){
   }else{
     lead='check';action='Check in with your live candidates.';why='Nothing urgent here today.';
   }
-  if((lead==='feedback'||lead==='finalise'||lead==='first-contact')&&matchNudge)action+=' Then run Candidate Match.';
+  if((lead==='finalise'||lead==='first-contact')&&matchNudge)action+=' Then run Candidate Match.';
   // time context in front of the reason
   let tctx='';
   if(dtt!==null){
     if(dtt<0&&liveExists)tctx=prioPlural(-dtt,'day','days')+' past target.';
     else if(dtt>=0&&dtt<=7)tctx='Due '+prioFmtShort(tgt)+(dtt===0?' (today).':' ('+prioPlural(dtt,'day','days')+' away).');
   }
-  if(lead!=='feedback'&&lead!=='finalise')why=[tctx,why].filter(Boolean).join(' ');
-  else why=[tctx,why].filter(Boolean).join(' ');
+  why=[tctx,why].filter(Boolean).join(' ');
 
   // ── money: only where a placement is genuinely close (never a promise) ──
   let possibleFee=0;
@@ -9685,7 +9697,8 @@ function prioAssessVacancy(v,td,match){
     (match&&match.matchingRun===false)?'Candidate Match never run':'',
     'Score '+score+' = '+Object.entries(parts).map(([k,x])=>k+' '+x).join(', ')
   ].filter(Boolean);
-  return {code,role:v['Designation']||'',client:v['Company']||'',priority:prio,positions:pos,target:tgt,dtt,score,parts,rag,lead,action,why,details,
+  const waitingList=waiting.map(r=>({name:prioShortName(r[C.name]),type:st(r)==='Consultant Interview in Progress'?'consultant':'client'}));
+  return {code,role:v['Designation']||'',client:v['Company']||'',priority:prio,positions:pos,target:tgt,dtt,score,parts,rag,lead,action,why,details,waitingList,
     dueCount:due.length,uncontacted:uncontacted.length,expClient:Math.round(expClient*10)/10,targetIW:target,possibleFee:Math.round(possibleFee)};
 }
 
@@ -9708,10 +9721,17 @@ async function buildPriorities(recName){
   try{await annotateMatchingStatus(probe);}catch(e){console.warn('priorities: match status unavailable',e.message);}
   const byCode={};probe.forEach(g=>{byCode[g.vacCode]=g;});
   const assessed=open.map(v=>prioAssessVacancy(v,td,byCode[v['Vacancy code']||v['Vacancy Code']||'']||{}));
-  assessed.sort((a,b)=>(b.score-a.score)||((a.target||'9999')<(b.target||'9999')?-1:(a.target||'9999')>(b.target||'9999')?1:0)||a.code.localeCompare(b.code));
+  // A role whose only open item is interview feedback (lead 'check') is covered by the Interviews card, so it does not take one of the six ahead of a role with real work to do.
+  assessed.sort((a,b)=>((a.lead==='check')-(b.lead==='check'))||(b.score-a.score)||((a.target||'9999')<(b.target||'9999')?-1:(a.target||'9999')>(b.target||'9999')?1:0)||a.code.localeCompare(b.code));
   const tiers=['must','must','must','should','should','wait'];
   const cards=assessed.slice(0,6).map((a,i)=>({...a,tier:tiers[i]}));
-  return {recName,date:td,workingDay:isWorkingDay(td),interviews:prioInterviewsFor(recName,td),cards,also:assessed.slice(6),flags,rulesVersion:PRIO_RULES_VERSION};
+  // 12 Oct 2026, Anne: ONE combined card for everything interview-related —
+  // interviews scheduled (today and the next working day) plus interview
+  // feedback to chase across all her roles. Information for the recruiter, not
+  // one of the six, and never scored; the six stay about everything else.
+  const iv=prioInterviewsFor(recName,td);
+  iv.feedback=assessed.filter(a=>a.waitingList&&a.waitingList.length).map(a=>({vac:a.code,role:a.role,items:a.waitingList}));
+  return {recName,date:td,workingDay:isWorkingDay(td),interviews:iv,cards,also:assessed.slice(6),flags,rulesVersion:PRIO_RULES_VERSION};
 }
 
 // ── Pop-up (built on THP's existing #modal / .mc — see CSS .mc-xwide) ──
@@ -9740,8 +9760,13 @@ function renderPrioModal(d,isAdmin){
   const grp=(list)=>{const m={};list.forEach(x=>{(m[x.vac]=m[x.vac]||[]).push(x);});return Object.entries(m).map(([vac,xs])=>vac+': '+xs.length+' '+xs[0].type+' interview'+(xs.length>1?'s':'')+' ('+xs.map(x=>E(x.name)).join(', ')+')').join(' · ');};
   const iv=d.interviews;
   let strip='';
-  if(iv.today.length||iv.next.length){
-    strip='<div class="pr-fyi"><b>🎤 Interviews</b><span>'+(iv.today.length?'<u>Today</u> — '+grp(iv.today):'')+(iv.today.length&&iv.next.length?' &nbsp;|&nbsp; ':'')+(iv.next.length?'<u>'+prioFmtShort(iv.nextDate)+'</u> — '+grp(iv.next):'')+' <em>· For your information. They are not part of your six.</em></span></div>';
+  const fbN=(iv.feedback||[]).reduce((n,x)=>n+x.items.length,0);
+  if(iv.today.length||iv.next.length||fbN){
+    const sched='<ul>'+(iv.today.length?'<li><u>Today</u> — '+grp(iv.today)+'</li>':'<li><u>Today</u> — none</li>')+(iv.next.length?'<li><u>'+prioFmtShort(iv.nextDate)+'</u> — '+grp(iv.next)+'</li>':'')+'</ul>';
+    const fb=fbN?'<ul>'+iv.feedback.map(x=>{const cl=x.items.filter(i=>i.type==='client').map(i=>E(i.name));const co=x.items.filter(i=>i.type==='consultant').map(i=>E(i.name));
+      return '<li>'+E(x.vac)+' '+E(x.role)+' — '+(cl.length?'ask the client: '+cl.join(', '):'')+(cl.length&&co.length?' · ':'')+(co.length?'ask your consultant: '+co.join(', '):'')+'</li>';}).join('')+'</ul>':'<ul><li>No feedback waiting.</li></ul>';
+    strip='<div class="pr-iv"><div class="pr-tag" style="color:var(--teal)">🎤 Interviews and feedback <em>· For your information. Not part of your six.</em></div>'+
+      '<div class="pr-ivcols"><div><b>Interviews scheduled</b>'+sched+'</div><div><b>Feedback to chase ('+fbN+')</b>'+fb+'</div></div></div>';
   }
   const cards=d.cards.map(c=>{
     const money=c.possibleFee>0?'<div class="pr-inc">💰 Possible placement fee for the firm: ₹'+c.possibleFee.toLocaleString('en-IN')+'. Your incentive depends on your month\'s total, subject to policy.</div>':'';
