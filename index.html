@@ -9783,14 +9783,19 @@ async function buildPriorities(recName){
   // A role whose only open item is interview feedback (lead 'check') is covered by the Interviews card, so it does not take one of the six ahead of a role with real work to do.
   assessed.sort((a,b)=>((a.lead==='check')-(b.lead==='check'))||(b.score-a.score)||((a.target||'9999')<(b.target||'9999')?-1:(a.target||'9999')>(b.target||'9999')?1:0)||a.code.localeCompare(b.code));
   const tiers=['must','must','must','should','should','wait'];
-  const cards=assessed.slice(0,6).map((a,i)=>({...a,tier:tiers[i]}));
+  // 12 Oct 2026, Anne: a role whose only open item is interview feedback is
+  // listed under "Also on your list" (the Interviews card already covers it),
+  // never as one of the six — so there can be fewer than six cards.
+  const withWork=assessed.filter(a=>a.lead!=='check');
+  const feedbackOnly=assessed.filter(a=>a.lead==='check');
+  const cards=withWork.slice(0,6).map((a,i)=>({...a,tier:tiers[i]}));
   // 12 Oct 2026, Anne: ONE combined card for everything interview-related —
   // interviews scheduled (today and the next working day) plus interview
   // feedback to chase across all her roles. Information for the recruiter, not
   // one of the six, and never scored; the six stay about everything else.
   const iv=prioInterviewsFor(recName,td);
   iv.feedback=assessed.filter(a=>a.waitingList&&a.waitingList.length).map(a=>({vac:a.code,role:a.role,items:a.waitingList}));
-  return {recName,date:td,workingDay:isWorkingDay(td),interviews:iv,cards,also:assessed.slice(6),flags,rulesVersion:PRIO_RULES_VERSION};
+  return {recName,date:td,workingDay:isWorkingDay(td),interviews:iv,cards,also:[...withWork.slice(6),...feedbackOnly],flags,rulesVersion:PRIO_RULES_VERSION};
 }
 
 // ── Pop-up (built on THP's existing #modal / .mc — see CSS .mc-xwide) ──
@@ -9835,7 +9840,7 @@ function renderPrioModal(d,isAdmin){
       '<p class="pr-why"><b>Why:</b> '+E(c.why)+'</p>'+money+
       '<details class="pr-det"><summary>See details</summary><ul>'+c.details.map(x=>'<li>'+E(x)+'</li>').join('')+'</ul></details></article>';
   }).join('');
-  const also=d.also.length?'<p class="pr-note">Also on your list ('+d.also.length+'): '+d.also.map(a=>E(a.code)+' '+E(a.role)).join(' · ')+'</p>':'';
+  const also=d.also.length?'<p class="pr-note">Also on your list ('+d.also.length+'): '+d.also.map(a=>E(a.code)+' '+E(a.role)+(a.lead==='check'?' (feedback only — see the Interviews card)':'')).join(' · ')+'</p>':'';
   const flags=d.flags.length?'<p class="pr-note pr-flag">⚠ Data to fix: '+d.flags.map(E).join(' ')+'</p>':'';
   const body=strip+(cards?'<div class="pr-grid">'+cards+'</div>':'<p class="pr-note">No open vacancies are assigned to '+E(d.recName)+' right now.</p>')+also+flags+
     '<p class="pr-note">Closing this never blocks your work. Reopen any time from Home → ☀️ My Priorities. A successful paid placement may increase your incentive. This screen is a guide: it changes nothing and does not count as an action.</p>';
