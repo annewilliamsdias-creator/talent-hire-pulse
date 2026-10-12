@@ -9627,6 +9627,11 @@ function prioAssessVacancy(v,td,match){
   const joining=all.filter(r=>st(r)==='Joining in Progress'&&r[C.doj]&&prioDaysBetween(td,String(r[C.doj]).slice(0,10))<=7);
   const finalising=all.some(r=>FUNNEL_GAP_LIVE_SELECTED.has(st(r))&&st(r)!=='Joined');
   const droppedN=el.filter(r=>st(r)==='Dropped'||st(r)==='Not Interested').length;
+  // 12 Oct 2026, Anne (Upasana's BD role: interview today, yet the card said
+  // "source 10 more"): while candidates are in interview stages the role is work
+  // in progress, so the card must not tell the recruiter to source more. Sourcing
+  // is only suggested when nobody is in an interview stage.
+  const inProcess=el.filter(r=>PRIO_INTERVIEW_STATUSES.has(st(r))).length;
 
   // ── score ──
   const W=PRIO_W;const parts={};
@@ -9657,14 +9662,14 @@ function prioAssessVacancy(v,td,match){
     why=uncontacted.length+' profiles have not been contacted yet.';
   }else if(prio==='Low'&&el.length&&droppedN/el.length>=0.7){
     lead='refresh';action='Talk to your manager: refresh or close this role?';why='Low priority. '+droppedN+' of '+el.length+' profiles dropped.';
-  }else if(due.length&&volumeLow){
+  }else if(due.length&&volumeLow&&inProcess===0){
     lead='due-and-source';
     action='Clear your '+prioPlural(due.length,'due follow-up','due follow-ups')+'. Then '+(matchNudge?'run Candidate Match and ':'')+'source about '+PRIO_SOURCE_N+' more profiles.';
     why=(expClient<1?'Fewer than 1':'Only about '+Math.round(expClient))+' of '+target+' Client interviews are in sight.';
   }else if(due.length){
     lead='due';
-    action='Clear your '+prioPlural(due.length,'due follow-up','due follow-ups')+'.';
-    why=(prio==='High'?'High priority role. ':'')+prioPlural(due.length,'follow-up is','follow-ups are')+' due.';
+    action='Clear your '+prioPlural(due.length,'due follow-up','due follow-ups')+'.'+(inProcess?' Keep your '+prioPlural(inProcess,'candidate','candidates')+' in interview moving.':'');
+    why=inProcess?(prio==='High'?'High priority role. ':'')+'Interviews are under way ('+inProcess+'), so more sourcing can wait.':(prio==='High'?'High priority role. ':'')+prioPlural(due.length,'follow-up is','follow-ups are')+' due.';
   }else if(matchNudge){
     lead='match';action='Run Candidate Match.';why='Candidate Match has never been run and there are profiles to match.';
   }else if(pastTgt){
@@ -9692,6 +9697,7 @@ function prioAssessVacancy(v,td,match){
     wip.length?(wip.length+' in WIP, '+uncontacted.length+' not contacted yet'):'No profiles in WIP',
     'Follow-ups due: '+due.length,
     'Expected Client interviews: about '+(Math.round(expClient*10)/10)+' of '+target+(uncontacted.length?' (counting contacted profiles only)':''),
+    (inProcess?'Candidates in interview stages: '+inProcess+' (so no sourcing suggested)':''),
     'Funnel (working days): '+rag.toUpperCase()+(inactWD!==null?', last touched '+prioPlural(inactWD,'working day','working days')+' ago':''),
     (tgt?('Target date '+prioFmtShort(tgt)):'No target date set')+' · '+(prio||'Priority not set')+' · '+prioPlural(pos,'position','positions'),
     (match&&match.matchingRun===false)?'Candidate Match never run':'',
