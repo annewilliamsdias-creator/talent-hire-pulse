@@ -1806,9 +1806,11 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="atab" id="at-remap" onclick="switchATab('remap')">🔀 Remap Requests <span id="remap-pending-badge" style="display:none;background:#e9982b;color:#0e0f17;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px"></span></div>
 </div>
 <!-- BILLING CONFIG -->
+<!-- 12 Oct 2026, Anne: the standard fee template and the client-specific overrides were one long card under one Save button, with the override form split in two and its Add button above the experience-band fields, and Add Override never saved by itself — so template and override data got mixed up and overrides could be lost. Now two separate cards; each override saves on its own and confirms only once SharePoint has it. Recruiter Share % removed: nothing in THP uses it (incentive comes from revenue vs salary slabs). -->
 <div id="ap-billing" class="hidden">
 <div class="card">
-<div class="card-hdr"><div class="card-title"><span class="ac">💰</span> Incentive Policy &amp; Billing Configuration</div><button class="btn btn-t btn-sm" onclick="saveBillingConfig()">💾 Save All Changes</button></div>
+<div class="card-hdr"><div class="card-title"><span class="ac">📐</span> Standard Fee Template</div><button class="btn btn-t btn-sm" onclick="saveBillingConfig()">💾 Save Template</button></div>
+<div style="font-size:11px;color:var(--w60);margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs)">The default fee rules every client uses. <strong>Client-specific rates are not edited here</strong> — add them under Client Billing Overrides below. Saving this section never changes an override.</div>
 
 <div class="sl2" style="margin-bottom:10px">Active Policy Period</div>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
@@ -1817,8 +1819,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div class="field" style="margin:0"><label>Applicable To</label><input type="date" id="bp-to" value="2027-03-31"></div>
   <div class="field" style="margin:0"><label>Revision #</label><input type="number" id="bp-rev" value="1" min="1"></div>
   <div class="field" style="margin:0"><label>Revision Date</label><input type="date" id="bp-revdate"></div>
-  <div class="field" style="margin:0;grid-column:span 2"><label>Revision Notes</label><input type="text" id="bp-notes" placeholder="e.g. Initial policy / Amendment 1 — revised senior rates"></div>
-  <div class="field" style="margin:0"><label>Recruiter Share %</label><input type="number" id="bp-recshare" value="20" min="0" max="100" step="1" title="% of firm recruitment fee credited to recruiter"></div>
+  <div class="field" style="margin:0;grid-column:span 3"><label>Revision Notes</label><input type="text" id="bp-notes" placeholder="e.g. Initial policy / Amendment 1 — revised senior rates"></div>
 </div>
 
 <div class="sl2" style="margin-bottom:10px">Standard Fee Slabs <span style="font-size:10px;color:var(--w60);font-weight:400">(by candidate experience)</span></div>
@@ -1827,31 +1828,27 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <button class="btn btn-ghost btn-sm" onclick="addSlabRow()" style="margin-top:8px">+ Add Slab</button>
 </div>
 
-<div class="sl2" style="margin-bottom:10px">Client-Specific Overrides <span style="font-size:10px;color:var(--w60);font-weight:400">(leave blank to use standard slabs)</span></div>
-<div id="bp-overrides-list"></div>
-<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 6px">
-  <div class="field" style="margin:0"><label>Client</label><select id="bp-ov-client"><option value="">— Select —</option></select></div>
-  <div class="field" style="margin:0"><label>Fee Type</label><select id="bp-ov-model"><option value="pct">% of Fixed Pay</option><option value="fixed">Flat ₹ per hire</option></select></div>
-  <div class="field" style="margin:0"><label>Rate / Amount</label><input type="number" id="bp-ov-rate" placeholder="e.g. 10 or 75000" step="0.01"></div>
-  <div class="field" style="margin:0"><label>Recruiter Share %</label><input type="number" id="bp-ov-recshare" placeholder="e.g. 25" min="0" max="100"></div>
-  <div class="field" style="margin:0;align-self:flex-end"><button class="btn btn-t btn-sm" onclick="addClientOverride()">Add Override</button></div>
-</div>
-<!-- 25 Sep 2026: a client override was previously always all-or-nothing —
-     one rate for every hire at that client, regardless of experience. Anne
-     hit this directly trying to enter a 1-3yr-only rate for a client that
-     needed a different rate outside that band. Exp From/To are optional —
-     leave both blank for the old "applies to every hire at this client"
-     behavior; fill them in to scope the override to just that experience
-     band, and add more override rows for the same client to cover other
-     bands separately. -->
-<div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px;margin:0 0 14px;align-items:end">
-  <div class="field" style="margin:0"><label>Exp From (yrs) <span style="font-size:9px;color:var(--w60)">optional</span></label><input type="number" id="bp-ov-expfrom" placeholder="e.g. 1" step="0.5" min="0"></div>
-  <div class="field" style="margin:0"><label>Exp To (yrs) <span style="font-size:9px;color:var(--w60)">optional</span></label><input type="number" id="bp-ov-expto" placeholder="e.g. 3, blank = ∞" step="0.5" min="0"></div>
-  <div style="font-size:10px;color:var(--w60);padding-bottom:8px">Leave both blank to apply this rate to every hire at this client, regardless of experience.</div>
-</div>
-
 <div class="sl2" style="margin-bottom:10px">Revision History</div>
 <div id="bp-revision-history"></div>
+</div>
+
+<div class="card" style="margin-top:14px">
+<div class="card-hdr"><div class="card-title"><span class="ac">🏢</span> Client Billing Overrides</div></div>
+<div style="font-size:11px;color:var(--w60);margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs)">A rate for one client that <strong>replaces</strong> the standard template for that client. Leave both experience boxes blank to apply it to every hire at the client, or fill them in to cover one experience band only. If bands overlap, the narrower band wins. Each override is saved the moment you add, update or remove it.</div>
+<div id="bp-overrides-list"></div>
+<div class="sl2" style="margin:12px 0 8px" id="bp-ov-formtitle">Add an override</div>
+<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr .8fr .8fr;gap:8px;align-items:end">
+  <div class="field" style="margin:0"><label>Client</label><select id="bp-ov-client"><option value="">— Select —</option></select></div>
+  <div class="field" style="margin:0"><label>Fee Type</label><select id="bp-ov-model"><option value="pct">% of Fixed Pay</option><option value="fixed">Flat ₹ per hire</option></select></div>
+  <div class="field" style="margin:0"><label>Rate / Amount</label><input type="number" id="bp-ov-rate" placeholder="e.g. 10 or 75000" step="0.01" min="0"></div>
+  <div class="field" style="margin:0"><label>Exp From (yrs)</label><input type="number" id="bp-ov-expfrom" placeholder="optional" step="0.5" min="0"></div>
+  <div class="field" style="margin:0"><label>Exp To (yrs)</label><input type="number" id="bp-ov-expto" placeholder="blank = ∞" step="0.5" min="0"></div>
+</div>
+<div class="flex gap8" style="margin-top:10px"><button class="btn btn-t btn-sm" id="bp-ov-save" onclick="saveClientOverride()">Add Override</button><button class="btn btn-ghost btn-sm hidden" id="bp-ov-cancel" onclick="cancelOverrideEdit()">Cancel edit</button></div>
+<div id="bp-ov-note" style="font-size:11px;margin-top:8px"></div>
+
+<div class="sl2" style="margin:18px 0 8px">One-off Candidate Fee Overrides <span style="font-size:10px;color:var(--w60);font-weight:400">(a single hire billed differently — set from the Banked Ramp-Up table's 💰 Override button)</span></div>
+<div id="bp-cand-overrides"></div>
 </div>
 </div>
 <!-- BACKUP -->
@@ -6753,10 +6750,14 @@ function calcFirmFee(expYears, annualFixedPay, client, onDate, candidateCode){
   // level exactly as before.
   const clientNorm = String(client||'').trim().toLowerCase();
   const exp = parseFloat(expYears) || 0;
-  const ov = incPolicy.clientOverrides.find(o =>
+  // 12 Oct 2026: when more than one override for the client covers this
+  // experience, the NARROWEST band wins (it used to be whichever was saved
+  // first, so an all-experience override entered earlier hid a later,
+  // band-specific one). With no overlaps the result is unchanged.
+  const ov = incPolicy.clientOverrides.filter(o =>
     String(o.client||'').trim().toLowerCase() === clientNorm &&
     exp >= (o.expFrom||0) && exp < (o.expTo!=null?o.expTo:999)
-  );
+  ).sort((a,b)=>((a.expTo!=null?a.expTo:999)-(a.expFrom||0))-((b.expTo!=null?b.expTo:999)-(b.expFrom||0)))[0];
   if(ov){
     if(ov.model === 'fixed') return ov.amount || 0;
     if(ov.model === 'pct')   return annualFixedPay * ((ov.rate || 0) / 100);
@@ -8248,9 +8249,9 @@ function loadBillingConfigUI(){
   sv('bp-rev',   p.revision);
   sv('bp-revdate', p.revisionDate||today());
   sv('bp-notes', p.revisionNotes||'');
-  sv('bp-recshare', p.recruiterShare||20);
   renderSlabTable(p.slabs);
   renderClientOverridesList();
+  renderCandidateOverridesList();
   renderRevisionHistory();
   // Populate client override dropdown
   const cl = document.getElementById('bp-ov-client');
@@ -8299,48 +8300,95 @@ function removeSlabRow(i){
   renderSlabTable(p.slabs);
 }
 
-function addClientOverride(){
-  const cli = gv('bp-ov-client');
-  const model = gv('bp-ov-model');
-  const rate = parseFloat(gv('bp-ov-rate'))||0;
-  const share = parseFloat(gv('bp-ov-recshare'))||20;
-  // 25 Sep 2026: expFrom/expTo optional — blank means "every experience
-  // level", same open-ended convention the standard fee slabs already use
-  // (999 = no upper bound). Existing overrides saved before this change have
-  // no expFrom/expTo at all; calcFirmFee() treats that the same as 0–999,
-  // so they keep behaving exactly as before.
-  const expFromRaw = gv('bp-ov-expfrom'), expToRaw = gv('bp-ov-expto');
-  const expFrom = expFromRaw!==''? (parseFloat(expFromRaw)||0) : 0;
-  const expTo   = expToRaw!==''  ? (parseFloat(expToRaw)||999) : 999;
-  if(!cli||!rate){toast('warn','Required','Select client and enter rate');return;}
-  // Matched on client + exact band now, not client alone — so the same
-  // client can have several overrides covering different experience bands
-  // without one silently overwriting another.
-  const existing = incPolicy.clientOverrides.findIndex(o=>
-    String(o.client||'').trim().toLowerCase()===String(cli).trim().toLowerCase() &&
-    (o.expFrom||0)===expFrom && (o.expTo!=null?o.expTo:999)===expTo
-  );
-  const entry = {client:cli, model, rate, amount:rate, recruiterShare:share, expFrom, expTo};
-  if(existing>=0) incPolicy.clientOverrides[existing]=entry;
-  else incPolicy.clientOverrides.push(entry);
-  renderClientOverridesList();
-  const bandLabel = (expFrom>0||expTo<999) ? ' for '+expFrom+'–'+(expTo>=999?'∞':expTo)+' yrs' : ' (all experience levels)';
-  toast('ok','Override Added',cli+' billing override saved'+bandLabel);
+// ── Client billing overrides (12 Oct 2026 rewrite, Anne) ───────────────
+// Kept apart from the standard template: own card, own form, and every change
+// is written to SharePoint on the spot — and only reported as saved once it is.
+let _ovEditIdx = -1;
+function _ovBand(o){return {ef:(o.expFrom||0), et:(o.expTo!=null?o.expTo:999)};}
+function _ovBandLabel(o){const {ef,et}=_ovBand(o);return (ef>0||et<999) ? ef+'–'+(et>=999?'∞':et)+' yrs' : 'All experience';}
+function _ovSameClient(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();}
+// Bands are half-open (from <= exp < to), exactly as calcFirmFee() reads them.
+function _ovOverlaps(cli,ef,et,skipIdx){
+  return incPolicy.clientOverrides.map((o,i)=>({o,i})).filter(({o,i})=>i!==skipIdx&&_ovSameClient(o.client,cli)&&ef<_ovBand(o).et&&_ovBand(o).ef<et);
 }
-
+async function _persistOverrides(prev, okMsg){
+  const ok = await saveIncPolicyToSP();
+  if(!ok){ incPolicy.clientOverrides = prev; renderClientOverridesList(); return false; }
+  if(okMsg) toast('ok','Saved',okMsg);
+  return true;
+}
+async function saveClientOverride(){
+  const cli = gv('bp-ov-client'), model = gv('bp-ov-model');
+  const rate = parseFloat(gv('bp-ov-rate'))||0;
+  const expFromRaw = gv('bp-ov-expfrom'), expToRaw = gv('bp-ov-expto');
+  const expFrom = expFromRaw!=='' ? (parseFloat(expFromRaw)||0) : 0;
+  const expTo   = expToRaw!==''   ? (parseFloat(expToRaw)||999) : 999;
+  const note = document.getElementById('bp-ov-note'); if(note) note.innerHTML='';
+  if(!cli||!rate){toast('warn','Required','Select a client and enter a rate or amount.');return;}
+  if(model==='pct' && rate>100){toast('warn','Check the rate','A percentage cannot be over 100.');return;}
+  if(expTo<=expFrom){toast('warn','Check the band','Exp To must be greater than Exp From.');return;}
+  const editing = _ovEditIdx>=0 && incPolicy.clientOverrides[_ovEditIdx];
+  const same = incPolicy.clientOverrides.findIndex((o,i)=>i!==_ovEditIdx&&_ovSameClient(o.client,cli)&&_ovBand(o).ef===expFrom&&_ovBand(o).et===expTo);
+  if(same>=0){toast('warn','Already there',cli+' already has an override for '+_ovBandLabel({expFrom,expTo})+'. Use Edit on that row to change it.');return;}
+  const overlaps = _ovOverlaps(cli,expFrom,expTo,_ovEditIdx);
+  const prev = JSON.parse(JSON.stringify(incPolicy.clientOverrides));
+  // rate and amount are both kept: calcFirmFee() reads rate for % and amount for flat ₹
+  const entry = {client:cli, model, rate, amount:rate, expFrom, expTo};
+  if(editing) incPolicy.clientOverrides[_ovEditIdx]=entry; else incPolicy.clientOverrides.push(entry);
+  renderClientOverridesList();
+  const ok = await _persistOverrides(prev, cli+' override '+(editing?'updated':'added')+' ('+_ovBandLabel(entry)+') and saved.');
+  if(!ok) return;
+  cancelOverrideEdit();
+  if(overlaps.length && note) note.innerHTML='<span style="color:var(--gold)">⚠ This band overlaps '+overlaps.map(x=>_ovBandLabel(x.o)).join(', ')+' for '+escHtml(cli)+'. The narrower band is used where they overlap.</span>';
+}
+function editClientOverride(i){
+  const o=incPolicy.clientOverrides[i]; if(!o) return;
+  _ovEditIdx=i;
+  sv('bp-ov-client',o.client); sv('bp-ov-model',o.model||'pct'); sv('bp-ov-rate',o.model==='fixed'?(o.amount!=null?o.amount:o.rate):o.rate);
+  const b=_ovBand(o); sv('bp-ov-expfrom',b.ef>0?b.ef:''); sv('bp-ov-expto',b.et<999?b.et:'');
+  const t=document.getElementById('bp-ov-formtitle'); if(t) t.textContent='Editing: '+o.client+' ('+_ovBandLabel(o)+')';
+  const sb=document.getElementById('bp-ov-save'); if(sb) sb.textContent='Update Override';
+  const cb=document.getElementById('bp-ov-cancel'); if(cb) cb.classList.remove('hidden');
+  renderClientOverridesList();
+}
+function cancelOverrideEdit(){
+  _ovEditIdx=-1;
+  ['bp-ov-client','bp-ov-rate','bp-ov-expfrom','bp-ov-expto'].forEach(id=>sv(id,''));
+  sv('bp-ov-model','pct');
+  const t=document.getElementById('bp-ov-formtitle'); if(t) t.textContent='Add an override';
+  const sb=document.getElementById('bp-ov-save'); if(sb) sb.textContent='Add Override';
+  const cb=document.getElementById('bp-ov-cancel'); if(cb) cb.classList.add('hidden');
+  renderClientOverridesList();
+}
 function renderClientOverridesList(){
   const el = document.getElementById('bp-overrides-list');if(!el)return;
-  if(!incPolicy.clientOverrides.length){el.innerHTML='<div style="color:var(--w60);font-size:11px;padding:6px 0">No client overrides. All clients use standard slabs.</div>';return;}
-  const bandLabel = o => {
-    const ef=o.expFrom||0, et=o.expTo!=null?o.expTo:999;
-    return (ef>0||et<999) ? ef+'–'+(et>=999?'∞':et)+' yrs' : 'All experience';
-  };
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Experience Band</th><th>Fee Model</th><th>Rate / Amount</th><th>Rec Share %</th><th></th></tr></thead><tbody>'+
-    incPolicy.clientOverrides.map((o,i)=>`<tr><td>${o.client}</td><td class="m">${bandLabel(o)}</td><td class="m">${o.model==='pct'?'% of Fixed Pay':'Flat ₹'}</td><td class="m">${o.model==='pct'?o.rate+'%':'₹'+Math.round(o.rate).toLocaleString('en-IN')}</td><td class="m">${o.recruiterShare}%</td><td><button class="btn btn-ghost btn-sm" onclick="removeClientOverride(${i})" style="color:#ff6b6b">✕</button></td></tr>`).join('')+
+  const list = incPolicy.clientOverrides;
+  if(!list.length){el.innerHTML='<div style="color:var(--w60);font-size:11px;padding:6px 0">No client overrides saved. Every client uses the standard template.</div>';return;}
+  const order = list.map((o,i)=>i).sort((a,b)=>String(list[a].client).localeCompare(String(list[b].client))||_ovBand(list[a]).ef-_ovBand(list[b]).ef);
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Experience Band</th><th>Fee Model</th><th>Rate / Amount</th><th></th></tr></thead><tbody>'+
+    order.map(i=>{const o=list[i];const ov=_ovOverlaps(o.client,_ovBand(o).ef,_ovBand(o).et,i);
+      const val=o.model==='pct'?(o.rate+'%'):('₹'+Math.round(o.amount!=null?o.amount:o.rate).toLocaleString('en-IN'));
+      return '<tr'+(i===_ovEditIdx?' style="outline:1px solid var(--gold)"':'')+'><td>'+escHtml(o.client)+'</td><td class="m">'+_ovBandLabel(o)+(ov.length?' <span style="color:var(--gold);font-size:10px" title="Where bands overlap, the narrower band is used">⚠ overlaps '+ov.map(x=>_ovBandLabel(x.o)).join(', ')+'</span>':'')+'</td><td class="m">'+(o.model==='pct'?'% of Fixed Pay':'Flat ₹ per hire')+'</td><td class="m">'+val+'</td>'+
+      '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="editClientOverride('+i+')">✏ Edit</button> <button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="removeClientOverride('+i+')">✕</button></td></tr>';}).join('')+
     '</tbody></table></div>';
 }
-
-function removeClientOverride(i){incPolicy.clientOverrides.splice(i,1);renderClientOverridesList();}
+async function removeClientOverride(i){
+  const o=incPolicy.clientOverrides[i]; if(!o) return;
+  if(!confirm('Remove the '+o.client+' override ('+_ovBandLabel(o)+')? That client then uses the standard template for these hires.')) return;
+  const prev = JSON.parse(JSON.stringify(incPolicy.clientOverrides));
+  incPolicy.clientOverrides.splice(i,1);
+  if(_ovEditIdx===i) _ovEditIdx=-1; else if(_ovEditIdx>i) _ovEditIdx--;
+  renderClientOverridesList();
+  await _persistOverrides(prev, o.client+' override removed and saved.');
+}
+function renderCandidateOverridesList(){
+  const el = document.getElementById('bp-cand-overrides');if(!el)return;
+  const list = incPolicy.candidateFeeOverrides||[];
+  if(!list.length){el.innerHTML='<div style="color:var(--w60);font-size:11px;padding:6px 0">None.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Candidate</th><th>Fee</th><th>Reason</th><th>Set by</th><th></th></tr></thead><tbody>'+
+    list.map(o=>{const r=MD.find(x=>x[C.code]===o.code);return '<tr><td>'+escHtml(r?r[C.name]:'')+' <span class="mono" style="font-size:10px">'+escHtml(o.code)+'</span></td><td class="m">₹'+Math.round(o.fee||0).toLocaleString('en-IN')+'</td><td class="m">'+escHtml(o.reason||'')+'</td><td class="m">'+escHtml((o.setBy||'')+(o.setOn?' · '+fmtD(o.setOn):''))+'</td><td><button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="removeCandidateFeeOverride(\''+o.code+'\').then(renderCandidateOverridesList)">✕</button></td></tr>';}).join('')+
+    '</tbody></table></div>';
+}
 
 // Per-candidate fee override (25 Sep 2026, Anne's decision) — a one-off
 // exception for a specific historical hire that was genuinely billed
@@ -8400,14 +8448,13 @@ async function saveBillingConfig(){
   p.revision = parseInt(gv('bp-rev'))||p.revision;
   p.revisionDate = gv('bp-revdate')||today();
   p.revisionNotes = gv('bp-notes')||'';
-  p.recruiterShare = parseFloat(gv('bp-recshare'))||20;
-  await saveIncPolicyToSP();
+  const ok = await saveIncPolicyToSP();
   renderRevisionHistory();
-  toast('ok','Billing Config Saved','Policy updated and synced to SharePoint');
+  if(ok) toast('ok','Template Saved','Standard fee template updated and saved. Client overrides were not touched.');
 }
 
 async function saveIncPolicyToSP(){
-  if(!WB) return;
+  if(!WB) return false;
   try {
     const data = JSON.stringify(incPolicy);
     // Primary: dedicated Incentive_Config sheet
@@ -8421,7 +8468,13 @@ async function saveIncPolicyToSP(){
       if(si>=0){let ei=si+1;while(ei<all.length&&all[ei][0])ei++;all.splice(si,ei-si);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);}
     }
     await saveWB(false,true,['Incentive_Config','Config']);
-  } catch(e) { console.warn('saveIncPolicyToSP',e); }
+    return true;
+  } catch(e) {
+    console.warn('saveIncPolicyToSP',e);
+    // 12 Oct 2026: used to be silent — a failed save still looked saved.
+    toast('err','Billing config NOT saved',String(e.message||e).slice(0,160));
+    return false;
+  }
 }
 
 function loadIncPolicyFromSP(){
