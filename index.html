@@ -235,6 +235,17 @@ display:flex;flex-direction:column;max-height:90vh}
 .pr-det summary{cursor:pointer;color:var(--teal);text-decoration:underline;text-underline-offset:2px;width:max-content}
 .pr-det ul{margin:5px 0 0;padding-left:16px}
 .pr-note{font-size:12px;color:var(--w60);margin:10px 0 0;line-height:1.5}
+.pr-by{font-size:11px;color:var(--gold)}
+.pr-day{margin-left:8px;font-size:10px;font-weight:600;color:var(--gold);border:1px solid rgba(233,152,43,.5);border-radius:10px;padding:1px 7px}
+.pr-prog{font-size:12px;color:var(--teal)}
+.pr-donenote{font-size:12px;color:#a9cf9b}
+.pr-isdone{opacity:.55;filter:grayscale(.6)}
+.pr-isdone .pr-act{text-decoration:line-through;text-decoration-thickness:1px}
+.pr-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.pr-foot .pr-det{margin-top:0}
+.pr-sec{font-size:13px;font-weight:600;margin:14px 0 4px;color:var(--ow)}
+.pr-added{margin:0;padding-left:18px;font-size:13px;line-height:1.7}
+.pr-addone{opacity:.55;text-decoration:line-through}
 .pr-flag{color:#f1b862}
 @media (max-width:860px){.pr-grid{grid-template-columns:1fr}.pr-ivcols{grid-template-columns:1fr}}
 @media (prefers-reduced-motion: reduce){.pr-card{animation:none}}
@@ -1150,7 +1161,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   </div>
   <div class="chart-card">
     <div class="chart-title" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span class="ac">📈</span> Weekly Activity Trend</div><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="dlChart('ch-trend','Weekly_Trend')">⬇</button></div>
-    <div class="chart-sub">Candidates added per week</div>
+    <div class="chart-sub" id="trend-sub">Candidates added per week</div>
     <div class="chart-wrap tall"><canvas id="ch-trend"></canvas></div>
   </div>
 </div>
@@ -5296,7 +5307,7 @@ function getDashDates() {
   return { from, to };
 }
 
-function filterData(dates) {
+function filterData(dates, opts) {
   let data = MD.slice();
   const client = document.getElementById('df-client') ?
     document.getElementById('df-client').value : '';
@@ -5320,8 +5331,13 @@ function filterData(dates) {
   if (source) data = data.filter(r => r[C.source] === source);
   // Period filter uses Last Updated On (activity date) — not Profile Sourcing date
   // sourcingDate is preserved for the "Added" series in renderTrendChart() only
-  if (dates.from) data = data.filter(r => r[C.updatedOn] >= dates.from);
-  if (dates.to)   data = data.filter(r => r[C.updatedOn] <= dates.to);
+  // 13 Oct 2026: opts.skipDate leaves the Last Updated filter off — the Weekly
+  // Activity Trend needs every profile in the other filters so its weekly
+  // counts do not change with the report's end date.
+  if (!(opts && opts.skipDate)) {
+    if (dates.from) data = data.filter(r => r[C.updatedOn] >= dates.from);
+    if (dates.to)   data = data.filter(r => r[C.updatedOn] <= dates.to);
+  }
   return data;
 }
 
@@ -5351,7 +5367,7 @@ function renderDash() {
   renderClientChart(data);
   renderSourceChart(data);
   renderRecruiterChart(data);
-  renderTrendChart(data, dates);
+  renderTrendChart(dates).catch(e=>console.warn('trend chart failed',e));
   renderRejectionChart(data);
   renderDeptChart(data);
   // 13 Aug 2026: removed `loadDash()` call — it wrote to the exact same
@@ -5626,25 +5642,63 @@ function renderRecruiterChart(data) {
 }
 
 // ── WEEKLY TREND ──────────────────────────────────────────
-function renderTrendChart(data, dates) {
-  // Build weekly buckets for last 12 weeks
-  const weeks = [];
-  const now = new Date();
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i * 7);
-    const weekStart = new Date(d);
-    weekStart.setDate(d.getDate() - d.getDay() + 1);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    weeks.push({
-      label: weekStart.toLocaleDateString('en-IN', {day:'2-digit',month:'short'}),
-      from:  weekStart.toISOString().split('T')[0],
-      to:    weekEnd.toISOString().split('T')[0]
-    });
+async function renderTrendChart(dates) {
+  // 13 Oct 2026, Anne — rewritten. Before: always the last 12 weeks counted
+  // back from today (the selected period was ignored), each point labelled by
+  // the week's first day (so a week that had only just begun showed as a
+  // 0 for "today"), Added taken from a list already filtered by Last Updated
+  // On (so counts moved with the report's end date), Joined placed by Last
+  // Updated On. Now:
+  // - complete Monday-Sunday weeks inside the selected period (first/last week
+  //   clipped to it), labelled with the real date range, current week marked
+  //   "so far", and never a week that has not started;
+  // - Added = a profile counts in a week if it was SOURCED that week (Profile
+  //   Sourcing Date) or REASSIGNED to a vacancy that week (Tagged to New
+  //   Vacancy in the Change Log) — once per profile per week — independent of
+  //   the Last Updated filter (client/department/recruiter/source/scope still
+  //   apply);
+  // - Joined = joined candidates by their joining date.
+  const td = today();
+  const mondayOf = d => addDays(d, -((new Date(d+'T00:00:00Z').getUTCDay()+6)%7));
+  let rangeFrom, rangeTo, note = '';
+  if (dates && dates.from && dates.to) { rangeFrom = dates.from; rangeTo = dates.to > td ? td : dates.to; }
+  else { rangeTo = td; rangeFrom = addDays(mondayOf(td), -77); }
+  if (rangeFrom > rangeTo) rangeFrom = rangeTo;
+  const MAXW = 26;
+  if (Math.round((new Date(rangeTo+'T00:00:00Z')-new Date(mondayOf(rangeFrom)+'T00:00:00Z'))/604800000) >= MAXW) {
+    rangeFrom = addDays(mondayOf(rangeTo), -7*(MAXW-1));
+    note = ' · showing the last '+MAXW+' weeks';
   }
-  const added  = weeks.map(w => data.filter(r=>r[C.sourcingDate]>=w.from&&r[C.sourcingDate]<=w.to).length);
-  const joined = weeks.map(w => data.filter(r=>r[C.status]==='Joined'&&r[C.updatedOn]>=w.from&&r[C.updatedOn]<=w.to).length);
+  const fmt = d => new Date(d+'T00:00:00Z').toLocaleDateString('en-IN',{day:'numeric',month:'short',timeZone:'UTC'});
+  const weeks = [];
+  for (let mon = mondayOf(rangeFrom); mon <= rangeTo; mon = addDays(mon, 7)) {
+    const from = mon < rangeFrom ? rangeFrom : mon;
+    const sun = addDays(mon, 6);
+    const to = sun > rangeTo ? rangeTo : sun;
+    const a = new Date(from+'T00:00:00Z'), b = new Date(to+'T00:00:00Z');
+    let label = from === to ? fmt(from) : (a.getUTCMonth()===b.getUTCMonth() ? a.getUTCDate()+'–'+fmt(to) : fmt(from)+'–'+fmt(to));
+    if (to >= td && sun > td) label += ' (so far)';
+    weeks.push({label, from, to});
+  }
+  const base = filterData(dates || {}, {skipDate:true});
+  // when each profile was added: sourcing date, plus every date it was reassigned to a vacancy
+  const addedOn = new Map();
+  base.forEach(r => { const set = new Set(); const sd = String(r[C.sourcingDate]||'').slice(0,10); if (sd) set.add(sd); addedOn.set(r[C.code], set); });
+  let reassignNote = '';
+  try {
+    (await fetchLiveChangeLog()).forEach(r => {
+      if (r[4]==='Tagged to New Vacancy' && r[5]===C.vacCode && addedOn.has(r[3])) addedOn.get(r[3]).add(String(r[0]).slice(0,10));
+    });
+  } catch(e) { reassignNote = ' · reassignments unavailable'; }
+  const inWeek = (set, w) => { for (const d of set) if (d >= w.from && d <= w.to) return true; return false; };
+  const added  = weeks.map(w => { let n = 0; addedOn.forEach(set => { if (inWeek(set, w)) n++; }); return n; });
+  const joined = weeks.map(w => base.filter(r => r[C.status]==='Joined' && r[C.doj] && String(r[C.doj]).slice(0,10) >= w.from && String(r[C.doj]).slice(0,10) <= w.to).length);
+  const rangeAll = {from: rangeFrom, to: rangeTo};
+  let totalAdded = 0; addedOn.forEach(set => { if (inWeek(set, rangeAll)) totalAdded++; });
+  const totalJoined = joined.reduce((x,y)=>x+y,0);
+  const noDate = base.filter(r => !String(r[C.sourcingDate]||'').trim()).length;
+  const sub = document.getElementById('trend-sub');
+  if (sub) sub.textContent = 'Profiles added per week (sourced or reassigned to a vacancy) · ' + totalAdded + ' between ' + fmt(rangeFrom) + ' and ' + fmt(rangeTo) + ' · ' + totalJoined + ' joined' + (noDate ? ' · ' + noDate + ' profiles have no sourcing date' : '') + note + reassignNote;
   mkChart('ch-trend', {
     type: 'line',
     data: {
@@ -9042,7 +9096,7 @@ function calcVacancyFunnelGap(vacCode, dateOfVacancy, positionsCount){
   // is not downgraded for a stray uncontacted profile).
   const uncontactedLive = eligible.filter(r=>{
     const s = r[C.status]||'';
-    return s!=='Not Contactable' && s!=='Dropped' && s!=='Not Interested' && !FUNNEL_GAP_CONSULTANT_PLUS.has(s) && prioNeverContacted(r);
+    return s!=='Not Contactable' && s!=='Dropped' && s!=='Not Interested' && !FUNNEL_GAP_CONSULTANT_PLUS.has(s) && prioNeverContacted(r) && !prioHeldNew(r,today());
   }).length;
   const expectedWithoutUncontacted = expectedClientIWFromPipeline - uncontactedLive*FUNNEL_GAP_RATE_RECRUITER_TO_CLIENT;
   const mostlyUncontacted = liveRecruiterIWCount>0 && uncontactedLive > liveRecruiterIWCount/2 && expectedWithoutUncontacted < targetClientIW;
@@ -9538,7 +9592,8 @@ async function renderEffortComparison(){
       <button class="btn btn-t btn-sm" style="margin-left:auto" onclick="generateEffortAIReport()">🤖 Generate AI Report</button>
       <button class="btn btn-ghost btn-sm" onclick="printPanelAsPDF('Manager Report','','ef-compare-body',{compact:true})">🖨 Print / PDF</button>
     </div>
-    <div id="ef-compare-body"></div>`;
+    <div id="ef-compare-body"></div>
+    <div id="ef-prio-mgr"></div>`;
   }
   const bodyEl = document.getElementById('ef-compare-body'); if(!bodyEl) return;
   showLoad('Loading manager report...');
@@ -9591,6 +9646,7 @@ async function renderEffortComparison(){
   html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. Funnel Gap counts (🔴 Red / 🟡 Amber / 🟢 Green) per recruiter — expand a row (▶) for the vacancy-level breakdown with a remark per vacancy explaining the flag. Candidate Match flags vacancies where Profile Matches has never been run even though pool/resurfaceable profiles are available right now — a usage nudge, not a quality score. Closed &lt;3 📞 counts candidates moved from WIP to Dropped / Not Interested in the period with fewer than 3 call-attempt WhatsApps (📞 Follow-up or ⏳ Before We Move Ahead) first (flag only; WhatsApps before 5 Oct 2026 did not record their template and are counted towards the 3). Pushed to THP counts resumes screened in the period that are now marked pushed (by screening date).</div>';
   html += '<div id="ef-ai-report" style="margin-top:16px"></div>';
   bodyEl.innerHTML = html;
+  renderPriorityManager().catch(e=>console.warn('priorities manager view',e));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -9617,7 +9673,7 @@ async function renderEffortComparison(){
 // credit — it is waiting for first contact; (2) days since last touched are
 // working days (the report itself also uses working days now).
 // ═══════════════════════════════════════════════════════════════════════
-const PRIO_RULES_VERSION='A1';
+const PRIO_RULES_VERSION='B1';
 // waiting is 0 since 12 Oct 2026: interview feedback now lives in its own combined Interviews card, so it no longer lifts a vacancy's card.
 const PRIO_W={targetPast:25,targetSoon3:25,targetSoon7:15,targetLater:5,prioHigh:25,prioMed:10,commHigh:20,commMid:10,gapRed:20,gapAmber:10,waiting:0,dueMany:10,dueSome:5,finalisation:30,newVacancy:-15};
 const PRIO_FIRST_CONTACT_CAP=10;      // first contacts per card (feasible in a day)
@@ -9633,6 +9689,10 @@ const PRIO_INTERVIEW_STATUSES=PRIO_WAITING_STATUSES; // same stages carry the in
 const PRIO_WAIT_ON_PAST_INTERVIEW=true;
 
 function prioNeverContacted(r){return !(parseInt(r[C.followupCount])||0) && !r[C.firstWA];}
+// 13 Oct 2026, Anne: a 24-hour gap between actions, = the NEXT WORKING DAY.
+// Profiles a recruiter has just sourced are not "uncontacted work" until the
+// next working day after they were sourced (no same-day "now call them").
+function prioHeldNew(r,td){const sd=String(r[C.sourcingDate]||'').slice(0,10);return !!sd&&prioNextWorkingDay(sd)>td;}
 function prioShortName(n){const p=String(n||'').trim().split(/\s+/).filter(Boolean);return p.length>1?p[0]+' '+p[p.length-1][0].toUpperCase():(p[0]||'');}
 function prioFmtShort(d){const s=String(d||'').slice(0,10);if(!s)return'';const dt=new Date(s+'T00:00:00');return isNaN(dt)?s:dt.toLocaleDateString('en-IN',{day:'numeric',month:'short'});}
 function prioNextWorkingDay(dStr){const d=new Date(dStr+'T00:00:00');for(let i=0;i<21;i++){d.setDate(d.getDate()+1);const s=_isoLocal(d);if(isWorkingDay(s))return s;}return dStr;}
@@ -9651,7 +9711,7 @@ function prioAssessVacancy(v,td,match){
   const all=MD.filter(r=>r[C.vacCode]===code&&r[C.archive]!=='Y');
   const el=_funnelEligibleCandidates(code,dov);
   const wip=el.filter(r=>st(r)==='WIP');
-  const uncontacted=wip.filter(prioNeverContacted);
+  const uncontacted=wip.filter(r=>prioNeverContacted(r)&&!prioHeldNew(r,td));
   const f=_funnelStageCounts(el.map(st));
   const liveCons=el.filter(r=>st(r)==='Consultant Interview in Progress').length;
   const liveRec=el.filter(r=>{const s=st(r);return s!=='Not Contactable'&&s!=='Dropped'&&s!=='Not Interested'&&!FUNNEL_GAP_CONSULTANT_PLUS.has(s);}).length;
@@ -9757,7 +9817,11 @@ function prioAssessVacancy(v,td,match){
     'Score '+score+' = '+Object.entries(parts).map(([k,x])=>k+' '+x).join(', ')
   ].filter(Boolean);
   const waitingList=waiting.map(r=>({name:prioShortName(r[C.name]),type:st(r)==='Consultant Interview in Progress'?'consultant':'client'}));
-  return {code,role:v['Designation']||'',client:v['Company']||'',priority:prio,positions:pos,target:tgt,dtt,score,parts,rag,lead,action,why,details,waitingList,
+  // what was true when the card was written: completion is judged against this
+  const stat={};closing.concat(joining).forEach(r=>{stat[r[C.code]]=st(r);});
+  const base={codes:uncontacted.map(r=>r[C.code]),need:Math.min(PRIO_FIRST_CONTACT_CAP,uncontacted.length),dueCodes:due.map(r=>r[C.code]),
+    sourcedBefore:prioSourcedOn(code,td),statuses:stat,vacStatus:v['Current Status']||'',vacActive:v['Active']||''};
+  return {code,role:v['Designation']||'',client:v['Company']||'',priority:prio,positions:pos,target:tgt,dtt,score,parts,rag,lead,action,why,details,waitingList,base,inactWD,
     dueCount:due.length,uncontacted:uncontacted.length,expClient:Math.round(expClient*10)/10,targetIW:target,possibleFee:Math.round(possibleFee)};
 }
 
@@ -9798,29 +9862,176 @@ async function buildPriorities(recName){
   return {recName,date:td,workingDay:isWorkingDay(td),interviews:iv,cards,also:[...withWork.slice(6),...feedbackOnly],flags,rulesVersion:PRIO_RULES_VERSION};
 }
 
-// ── Pop-up (built on THP's existing #modal / .mc — see CSS .mc-xwide) ──
+// ═══════════════════════════════════════════════════════════════════════
+// PHASES B and C (13 Oct 2026, Anne: "go ahead and develop along with phase
+// B and C"): a daily plan that is saved, recruiter actions, a manager view
+// and completion ticks.
+// - The first open on a working day saves the six cards to the SharePoint
+//   list DailyPriorities (one row per card). Later opens read the saved plan,
+//   so the cards do NOT change mid-day. A card that has been acted on turns
+//   grey and ticks; its next step appears in the next working day's plan
+//   (Anne: a gap of one working day between actions; completed = grey out).
+// - Completion is inferred from data the recruiter already updates, never
+//   from clicking. "Not confirmed" is neutral and shown to the manager only.
+// - Agree / Add a focus item / Suggest a change / Mark done are NOT counted
+//   as Meaningful Candidate Actions and appear in no report.
+// - Manager (Admin) view sits in the Manager Report: edit, reorder, remove,
+//   urgent management focus, suggestions, exceptions.
+// - If the list is missing or unreadable it falls back to the live phase A
+//   view and says so; every write that fails shows an error.
+// List columns (all plain text; the four marked * are multiple lines, plain
+// text): Title, PlanDate, Recruiter, Kind, Slot, VacancyCode, Lead, Action*,
+// Why*, Source, State, ChangedBy, ChangedAt, Baseline*, Evidence*, Completion,
+// CompletedAt, RulesVersion, ScoreDetail*, AgreedAt, Suggestion*, Streak.
+// ═══════════════════════════════════════════════════════════════════════
+const PRIO_LIST='DailyPriorities';
+let _prioListState='unknown';          // 'ok' | 'missing' | 'unknown'
 let _prioAutoShown=false;
+let _prioCur=null;                      // plan currently shown {recName,date,rows,...}
+
+function prioListPath(q){return '/sites/'+siteId+'/lists/'+PRIO_LIST+'/items'+(q||'');}
+async function prioFetchRows(filter){
+  await refreshToken();
+  let url=GRAPH+prioListPath('?$expand=fields&$top=500'+(filter?('&$filter='+encodeURIComponent(filter)):''));
+  const out=[];
+  while(url){
+    const r=await fetch(url,{headers:{Authorization:'Bearer '+tok,Prefer:'HonorNonIndexedQueriesWarningMayFailRandomly'}});
+    if(r.status===404){_prioListState='missing';return null;}
+    if(!r.ok)throw new Error('DailyPriorities read failed ('+r.status+'): '+(await r.text().catch(()=>'')).slice(0,200));
+    const d=await r.json();(d.value||[]).forEach(it=>out.push(it));url=d['@odata.nextLink']||null;
+  }
+  _prioListState='ok';
+  return out;
+}
+function prioJson(s,fb){try{return s?JSON.parse(s):fb;}catch(e){return fb;}}
+function prioItemToRow(it){
+  const f=it.fields||{};
+  return {id:it.id,planDate:f.PlanDate||'',recruiter:f.Recruiter||'',kind:f.Kind||'Card',slot:parseInt(f.Slot),code:f.VacancyCode||'',lead:f.Lead||'',
+    action:f.Action||'',why:f.Why||'',source:f.Source||'System',state:f.State||'Proposed',changedBy:f.ChangedBy||'',changedAt:f.ChangedAt||'',
+    baseline:prioJson(f.Baseline,{}),evidence:f.Evidence||'',completion:f.Completion||'',completedAt:f.CompletedAt||'',
+    details:prioJson(f.ScoreDetail,[]),agreedAt:f.AgreedAt||'',suggestion:f.Suggestion||'',streak:parseInt(f.Streak)||1};
+}
+function prioNowIso(){return new Date().toISOString();}
+function prioUser(){return (acct&&acct.name)?acct.name:'';}
+async function prioPost(fields){return graphPost('/sites/'+siteId+'/lists/'+PRIO_LIST+'/items',{fields});}   // POST needs {fields:{}} (Rule 12)
+async function prioPatch(id,fields){return graphPatch('/sites/'+siteId+'/lists/'+PRIO_LIST+'/items/'+id+'/fields',fields);} // PATCH takes the flat map (Rule 12)
+function prioPrevWorkingDay(dStr){let d=dStr;for(let i=0;i<10;i++){d=addDays(d,-1);if(isWorkingDay(d))return d;}return addDays(dStr,-1);}
+
+// ── completion inference (design §6.3), evaluated live on the saved baseline ──
+function prioSourcedOn(vc,day){return MD.filter(r=>r[C.vacCode]===vc&&r[C.archive]!=='Y'&&String(r[C.sourcingDate]||'').slice(0,10)===day).length;}
+function prioEvalCard(card,ctx){
+  const b=card.baseline||{},td=ctx.td,vc=card.code;
+  const cand=c=>MD.find(r=>r[C.code]===c);
+  if(card.completion==='Confirmed')return {done:true,evidence:card.evidence||'',progress:''};
+  switch(card.lead){
+    case 'first-contact':{
+      const codes=b.codes||[],need=b.need||Math.min(PRIO_FIRST_CONTACT_CAP,codes.length);
+      const n=codes.filter(c=>{const r=cand(c);return r&&!prioNeverContacted(r);}).length;
+      return {done:need>0&&n>=need,evidence:n+' of '+need+' first contacts logged',progress:n+' of '+need+' contacted'};}
+    case 'due':case 'due-and-source':{
+      const codes=b.dueCodes||[];
+      const still=codes.filter(c=>{const r=cand(c);return r&&r[C.followupDate]&&r[C.followupDate]<=td&&!TERMINAL.has(r[C.status])&&!NO_FOLLOWUP.has(r[C.status]);}).length;
+      const cleared=codes.length-still;let ok=codes.length>0&&still===0;let prog=cleared+' of '+codes.length+' follow-ups cleared';
+      if(card.lead==='due-and-source'){const s=Math.max(0,prioSourcedOn(vc,td)-(b.sourcedBefore||0));ok=ok&&s>=PRIO_SOURCE_N;prog+=' · '+s+' of '+PRIO_SOURCE_N+' sourced';}
+      return {done:ok,evidence:prog,progress:prog};}
+    case 'finalise':{
+      const was=b.statuses||{};const changed=Object.keys(was).filter(c=>{const r=cand(c);return r&&(r[C.status]!==was[c]);});
+      return {done:changed.length>0,evidence:changed.length?'Status moved for '+changed.length+' candidate(s)':'',progress:''};}
+    case 'match':{
+      const runs=ctx.matchRuns[vc]||[];const ran=runs.some(x=>String(x.computedAt||'').slice(0,10)>=card.planDate);
+      return {done:ran,evidence:ran?'Candidate Match run':'',progress:''};}
+    case 'new':{
+      const s=prioSourcedOn(vc,td);return {done:s>=5,evidence:s+' profiles sourced today',progress:s+' of 5 sourced'};}
+    case 'refresh':{
+      const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===vc);
+      const ch=v&&((v['Current Status']||'')!==(b.vacStatus||'')||(v['Active']||'')!==(b.vacActive||''));
+      return {done:!!ch,evidence:ch?'Vacancy status changed':'',progress:''};}
+    default:return {done:false,evidence:'',progress:''};   // timeline / check / added items: recruiter ticks Mark done
+  }
+}
+
+// ── build / load / save the day's plan ──
+function prioCardFields(rec,date,slot,c,extra){
+  return Object.assign({Title:rec+'|'+date+'|'+slot,PlanDate:date,Recruiter:rec,Kind:'Card',Slot:String(slot),VacancyCode:c.code,Lead:c.lead,
+    Action:c.action,Why:c.why,Source:'System',State:'Proposed',ChangedBy:'',ChangedAt:prioNowIso(),Baseline:JSON.stringify(c.base||{}),Evidence:'',Completion:'Not confirmed',
+    CompletedAt:'',RulesVersion:PRIO_RULES_VERSION,ScoreDetail:JSON.stringify(c.details||[]),AgreedAt:'',Suggestion:'',Streak:String(c.streak||1)},extra||{});
+}
+async function prioLoadOrCreatePlan(recName,live,opts){
+  const td=today(),q=m=>"fields/PlanDate eq '"+m+"' and fields/Recruiter eq '"+recName+"'";
+  let items=await prioFetchRows(q(td));
+  if(items===null)return null;
+  if(!items.length&&!(opts&&opts.noCreate)){
+    // streak: how many working days in a row this vacancy+lead has been a card without being confirmed
+    const prevItems=await prioFetchRows(q(prioPrevWorkingDay(td)))||[];
+    const prev={};prevItems.map(prioItemToRow).filter(r=>r.kind==='Card'&&r.state!=='Removed').forEach(r=>{prev[r.code+'|'+r.lead]=r;});
+    const created=[];
+    for(let i=0;i<live.cards.length;i++){
+      const c=live.cards[i],p=prev[c.code+'|'+c.lead];
+      c.streak=(p&&p.completion!=='Confirmed')?(p.streak||1)+1:1;
+      created.push(await prioPost(prioCardFields(recName,td,i+1,c)));
+    }
+    items=created.map(it=>({id:it.id,fields:it.fields}));
+  }
+  return items.map(prioItemToRow);
+}
+// cards in display order with their tier; manager "urgent focus" rows carry a negative slot and come first
+function prioDisplayCards(rows){
+  const cards=rows.filter(r=>r.kind==='Card'&&r.state!=='Removed').sort((a,b)=>a.slot-b.slot);
+  const tiers=['must','must','must','should','should','wait'];
+  return {shown:cards.slice(0,6).map((c,i)=>({...c,tier:tiers[i]})),pushed:cards.slice(6)};
+}
+async function prioEvaluatePlan(rows,td){
+  let matchRuns={};
+  try{const map=await _loadAllVacancyMatchResultsMap();Object.keys(map||{}).forEach(k=>{matchRuns[k]=_parseMatchRuns(map[k]);});}catch(e){}
+  const ctx={td,matchRuns};
+  for(const r of rows.filter(x=>x.kind==='Card'||x.kind==='Added')){
+    const ev=r.kind==='Added'?{done:r.completion==='Confirmed',evidence:r.evidence,progress:''}:prioEvalCard(r,ctx);
+    r.progress=ev.progress||'';
+    if(ev.done&&r.completion!=='Confirmed'){
+      r.completion='Confirmed';r.evidence=ev.evidence||'';r.completedAt=prioNowIso();
+      try{await prioPatch(r.id,{Completion:'Confirmed',Evidence:r.evidence,CompletedAt:r.completedAt});}
+      catch(e){console.warn('priorities: could not save completion',e.message);}
+    }
+  }
+  return rows;
+}
+
+// ── open / render ──
+async function openPriorities(recOverride,auto){
+  const isAdmin=curRole==='Admin'||curRole==='Super Admin';
+  let rec=recOverride||myRecName||'';
+  if(!rec&&isAdmin)rec=effortRecSel||mA('priorityPilot')[0]||mA('recruiters')[0]||'';
+  if(!rec){toast('warn','My Priorities','No recruiter selected.');return;}
+  if(!auto)showLoad('Working out priorities...');
+  let d,rows=null,listNote='';
+  try{
+    d=await buildPriorities(rec);
+    if(_prioListState!=='missing'){
+      try{rows=await prioLoadOrCreatePlan(rec,d,{noCreate:isAdmin&&rec!==myRecName});
+        if(rows&&!rows.length){rows=null;listNote=rec+' has not opened today\'s plan yet, so this is the live view.';}}
+      catch(e){console.error(e);listNote='The saved plan could not be read or written ('+String(e.message||e).slice(0,120)+'), so this is today\'s live view.';}
+    }
+    if(rows===null&&!listNote)listNote=_prioListState==='missing'?'The DailyPriorities list is not set up yet, so this is today\'s live view.':'';
+    if(rows){rows=await prioEvaluatePlan(rows,today());}
+  }catch(e){if(!auto)hideLoad();console.error(e);toast('err','My Priorities',e.message);return;}
+  if(!auto)hideLoad();
+  if(rows&&auto&&rows.some(r=>r.kind==='Card'&&r.agreedAt)){return;}   // already agreed today: do not pop up again
+  _prioCur={rec,live:d,rows,listNote,isAdmin};
+  renderPrioModal();
+}
 function prioMaybeAutoOpen(){
   if(_prioAutoShown||!myRecName||!MD.length)return;
   if(!mA('priorityPilot').includes(myRecName))return;
   if(!isWorkingDay(today()))return;
   _prioAutoShown=true;
-  setTimeout(()=>{const m=document.getElementById('modal');if(m&&!m.classList.contains('show'))openPriorities();},700);
+  setTimeout(()=>{const m=document.getElementById('modal');if(m&&!m.classList.contains('show'))openPriorities(null,true);},700);
 }
-async function openPriorities(recOverride){
-  const isAdmin=curRole==='Admin'||curRole==='Super Admin';
-  let rec=recOverride||myRecName||'';
-  if(!rec&&isAdmin)rec=effortRecSel||mA('priorityPilot')[0]||mA('recruiters')[0]||'';
-  if(!rec){toast('warn','My Priorities','No recruiter selected.');return;}
-  showLoad('Working out priorities...');
-  let d;
-  try{d=await buildPriorities(rec);}catch(e){hideLoad();console.error(e);toast('err','My Priorities',e.message);return;}
-  hideLoad();
-  renderPrioModal(d,isAdmin);
-}
-function renderPrioModal(d,isAdmin){
-  const E=escHtml;
+function prioFmtTime(iso){if(!iso)return '';const d=new Date(iso);return isNaN(d)?'':d.toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});}
+function renderPrioModal(){
+  const P=_prioCur;if(!P)return;
+  const E=escHtml,d=P.live,rows=P.rows;
   const tag={must:'🔥 Must do',should:'⭐ Should do',wait:'🌿 Can wait'};
+  const vacInfo=code=>{const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===code)||{};return {role:v['Designation']||'',client:v['Company']||''};};
   const grp=(list)=>{const m={};list.forEach(x=>{(m[x.vac]=m[x.vac]||[]).push(x);});return Object.entries(m).map(([vac,xs])=>vac+': '+xs.length+' '+xs[0].type+' interview'+(xs.length>1?'s':'')+' ('+xs.map(x=>E(x.name)).join(', ')+')').join(' · ');};
   const iv=d.interviews;
   let strip='';
@@ -9832,25 +10043,191 @@ function renderPrioModal(d,isAdmin){
     strip='<div class="pr-iv"><div class="pr-tag" style="color:var(--teal)">🎤 Interviews and feedback <em>· For your information. Not part of your six.</em></div>'+
       '<div class="pr-ivcols"><div><b>Interviews scheduled</b>'+sched+'</div><div><b>Feedback to chase ('+fbN+')</b>'+fb+'</div></div></div>';
   }
-  const cards=d.cards.map(c=>{
-    const money=c.possibleFee>0?'<div class="pr-inc">💰 Possible placement fee for the firm: ₹'+c.possibleFee.toLocaleString('en-IN')+'. Your incentive depends on your month\'s total, subject to policy.</div>':'';
-    return '<article class="pr-card pr-'+c.tier+'"><div class="pr-tag">'+tag[c.tier]+'</div>'+
-      '<div class="pr-vac">'+E(c.code)+' · '+E(c.role)+' · '+E(c.client)+'</div>'+
-      '<p class="pr-act">'+E(c.action)+'</p>'+
-      '<p class="pr-why"><b>Why:</b> '+E(c.why)+'</p>'+money+
-      '<details class="pr-det"><summary>See details</summary><ul>'+c.details.map(x=>'<li>'+E(x)+'</li>').join('')+'</ul></details></article>';
+  // cards: saved plan when available, otherwise the live view
+  let cards,pushed=[],added=[],suggestions=[];
+  if(rows){const dc=prioDisplayCards(rows);cards=dc.shown;pushed=dc.pushed;added=rows.filter(r=>r.kind==='Added'&&r.state!=='Removed');suggestions=rows.filter(r=>r.suggestion);}
+  else cards=d.cards.map(c=>({...c,id:'',source:'System',state:'Proposed',completion:'',progress:'',streak:1,code:c.code}));
+  const own=P.rec===myRecName||!P.isAdmin;
+  const doneCount=cards.filter(c=>c.completion==='Confirmed').length;
+  const cardHtml=cards.map(c=>{
+    const vi=vacInfo(c.code),isDone=c.completion==='Confirmed';
+    const money=(!rows&&c.possibleFee>0)?'<div class="pr-inc">💰 Possible placement fee for the firm: ₹'+c.possibleFee.toLocaleString('en-IN')+'. Your incentive depends on your month\'s total, subject to policy.</div>':'';
+    const by=(c.source==='Manager'||c.state==='Edited')&&c.changedBy?'<div class="pr-by">✎ Changed by '+E(c.changedBy.split(' ')[0])+'</div>':'';
+    const day=c.streak>1?'<span class="pr-day">Day '+c.streak+'</span>':'';
+    const prog=(!isDone&&c.progress)?'<div class="pr-prog">'+E(c.progress)+'</div>':'';
+    const doneNote=isDone?'<div class="pr-donenote">✓ Done'+(c.evidence?' — '+E(c.evidence):'')+'. Any next step comes in the next working day\'s plan.</div>':'';
+    const det=(c.details&&c.details.length)?'<details class="pr-det"><summary>See details</summary><ul>'+c.details.map(x=>'<li>'+E(x)+'</li>').join('')+'</ul></details>':'';
+    const mark=(rows&&own&&c.id&&!isDone)?'<button class="btn btn-ghost btn-sm pr-mark" onclick="prioMarkDone(\''+c.id+'\')">✓ Mark done</button>':'';
+    return '<article class="pr-card pr-'+c.tier+(isDone?' pr-isdone':'')+'"><div class="pr-tag">'+tag[c.tier]+day+'</div>'+
+      '<div class="pr-vac">'+E(c.code)+' · '+E(vi.role)+' · '+E(vi.client)+'</div>'+
+      '<p class="pr-act">'+E(c.action)+'</p><p class="pr-why"><b>Why:</b> '+E(c.why)+'</p>'+money+by+prog+doneNote+
+      '<div class="pr-foot">'+det+mark+'</div></article>';
   }).join('');
-  const also=d.also.length?'<p class="pr-note">Also on your list ('+d.also.length+'): '+d.also.map(a=>E(a.code)+' '+E(a.role)+(a.lead==='check'?' (feedback only — see the Interviews card)':'')).join(' · ')+'</p>':'';
+  const addedHtml=added.length?'<div class="pr-sec">➕ Your focus items</div><ul class="pr-added">'+added.map(a=>'<li class="'+(a.completion==='Confirmed'?'pr-addone':'')+'">'+(a.completion==='Confirmed'?'✓ ':'')+E(a.action)+(a.code?' <span class="pr-vac">'+E(a.code)+'</span>':'')+(a.completion!=='Confirmed'?' <button class="btn btn-ghost btn-sm" onclick="prioMarkDone(\''+a.id+'\')">✓ Done</button>':'')+'</li>').join('')+'</ul>':'';
+  const pushedHtml=pushed.length?'<p class="pr-note">Pushed down by a management focus: '+pushed.map(a=>E(a.code)+' '+E(vacInfo(a.code).role)).join(' · ')+'</p>':'';
+  const alsoHtml=d.also.length?'<p class="pr-note">Also on your list ('+d.also.length+'): '+d.also.map(a=>E(a.code)+' '+E(a.role)+(a.lead==='check'?' (feedback only — see the Interviews card)':'')).join(' · ')+'</p>':'';
   const flags=d.flags.length?'<p class="pr-note pr-flag">⚠ Data to fix: '+d.flags.map(E).join(' ')+'</p>':'';
-  const body=strip+(cards?'<div class="pr-grid">'+cards+'</div>':'<p class="pr-note">No open vacancies are assigned to '+E(d.recName)+' right now.</p>')+also+flags+
-    '<p class="pr-note">Closing this never blocks your work. Reopen any time from Home → ☀️ My Priorities. A successful paid placement may increase your incentive. This screen is a guide: it changes nothing and does not count as an action.</p>';
-  const recSel=isAdmin?('<select id="pr-rec-sel" style="width:auto;margin-right:auto" onchange="openPriorities(this.value)">'+mA('recruiters').map(r=>'<option value="'+E(r)+'"'+(r===d.recName?' selected':'')+'>'+E(r)+'</option>').join('')+'</select>'):'';
-  const btns=recSel+'<button class="btn btn-t" onclick="closeModal()">👍 Got it, let\'s go</button>';
+  const sugHtml=suggestions.length?'<p class="pr-note">💬 Your suggestions are with your manager.</p>':'';
+  const listNote=P.listNote?'<p class="pr-note pr-flag">'+E(P.listNote)+'</p>':'';
+  const body=strip+(cardHtml?'<div class="pr-grid">'+cardHtml+'</div>':'<p class="pr-note">No open vacancies with work to do are assigned to '+E(d.recName)+' right now.</p>')+addedHtml+pushedHtml+alsoHtml+flags+listNote+sugHtml+
+    '<p class="pr-note">Closing this never blocks your work. Reopen any time from Home → ☀️ My Priorities. Ticks appear on their own from the updates you already make. A successful paid placement may increase your incentive. This screen is a guide: it does not count as an action in your reports.</p>';
+  const recSel=P.isAdmin?('<select id="pr-rec-sel" style="width:auto;margin-right:auto" onchange="openPriorities(this.value)">'+mA('recruiters').map(r=>'<option value="'+E(r)+'"'+(r===d.recName?' selected':'')+'>'+E(r)+'</option>').join('')+'</select>'):'';
+  const agreed=rows&&rows.some(r=>r.kind==='Card'&&r.agreedAt);
+  const btns=recSel+(rows&&own?('<button class="btn btn-ghost" onclick="prioAddFocus()">➕ Add a focus item</button><button class="btn btn-ghost" onclick="prioSuggest()">💬 Suggest a change</button>'):'')+
+    (rows&&own&&!agreed?'<button class="btn btn-t" onclick="prioAgree()">👍 Agree, let\'s go</button>':'<button class="btn btn-t" onclick="closeModal()">'+(agreed?'✓ Agreed · Close':'👍 Got it, let\'s go')+'</button>');
   const first=(d.recName||'').split(' ')[0];
-  showModal('☀️ My Priorities Today',(d.workingDay?'':'Today is not a working day. ')+(isAdmin&&d.recName!==myRecName?'Viewing '+E(first)+'. ':'Good morning, '+E(first)+'! ')+'Six things that will move your roles the most today.',body,btns,false);
+  showModal('☀️ My Priorities Today',(d.workingDay?'':'Today is not a working day. ')+(P.isAdmin&&d.recName!==myRecName?'Viewing '+E(first)+'. ':'Good morning, '+E(first)+'! ')+'Six things that will move your roles the most today.'+(rows?(' <span class="pr-prog">'+doneCount+' of '+cards.length+' done</span>'):''),body,btns,false);
   const mc=document.getElementById('mc');if(mc)mc.classList.add('mc-xwide');
   const mr=document.getElementById('modal-rec');if(mr)mr.className='mc-rec pr-rec';
 }
+
+// ── recruiter actions (not counted anywhere as work) ──
+async function prioAgree(){
+  const P=_prioCur;if(!P||!P.rows)return;
+  const now=prioNowIso();
+  try{
+    for(const r of P.rows.filter(x=>x.kind==='Card')){
+      await prioPatch(r.id,{AgreedAt:now,State:r.state==='Proposed'?'Agreed':r.state});r.agreedAt=now;if(r.state==='Proposed')r.state='Agreed';
+    }
+  }catch(e){toast('err','Could not save',String(e.message||e).slice(0,160));return;}
+  closeModal();toast('ok','Agreed','Have a good day, '+(P.rec||'').split(' ')[0]+'!');
+}
+async function prioMarkDone(id){
+  const P=_prioCur;if(!P||!P.rows)return;const r=P.rows.find(x=>x.id===id);if(!r)return;
+  const now=prioNowIso();
+  try{await prioPatch(id,{Completion:'Confirmed',Evidence:'Marked done by '+prioUser(),CompletedAt:now});}
+  catch(e){toast('err','Could not save',String(e.message||e).slice(0,160));return;}
+  r.completion='Confirmed';r.evidence='Marked done by '+prioUser();r.completedAt=now;renderPrioModal();
+}
+function prioAddFocus(){
+  const P=_prioCur;if(!P||!P.rows)return;
+  const opts='<option value="">No specific vacancy</option>'+VD.filter(v=>v['Recruiter']===P.rec&&v['Active']!=='N').map(v=>{const c=v['Vacancy code']||v['Vacancy Code']||'';return '<option value="'+escHtml(c)+'">'+escHtml(c+' · '+(v['Designation']||''))+'</option>';}).join('');
+  showModal('➕ Add a focus item','One thing you want to get done today, in your own words. It shows below your six and is not counted anywhere as work.',
+    '<div class="field" style="margin:0 0 8px"><label>Focus item</label><textarea id="pr-add-text" rows="3" style="width:100%;box-sizing:border-box;font-family:inherit" placeholder="e.g. Send the JD to the Atmann hiring manager"></textarea></div><div class="field" style="margin:0"><label>Vacancy (optional)</label><select id="pr-add-vac">'+opts+'</select></div>',
+    '<button class="btn btn-t" onclick="prioSaveFocus()">Add</button><button class="btn btn-ghost" onclick="renderPrioModal()">Back</button>',false);
+}
+async function prioSaveFocus(){
+  const P=_prioCur;const text=(gv('pr-add-text')||'').trim();if(!text){toast('warn','Required','Write the focus item first.');return;}
+  const n=P.rows.filter(r=>r.kind==='Added').length+1,date=today();
+  try{
+    const it=await prioPost({Title:P.rec+'|'+date+'|A'+n,PlanDate:date,Recruiter:P.rec,Kind:'Added',Slot:String(100+n),VacancyCode:gv('pr-add-vac')||'',Lead:'added',Action:text,Why:'',Source:'Recruiter',State:'Proposed',ChangedBy:prioUser(),ChangedAt:prioNowIso(),Baseline:'{}',Evidence:'',Completion:'Not confirmed',CompletedAt:'',RulesVersion:PRIO_RULES_VERSION,ScoreDetail:'[]',AgreedAt:'',Suggestion:'',Streak:'1'});
+    P.rows.push(prioItemToRow({id:it.id,fields:it.fields}));
+  }catch(e){toast('err','Could not save',String(e.message||e).slice(0,160));return;}
+  renderPrioModal();
+}
+function prioSuggest(){
+  const P=_prioCur;if(!P||!P.rows)return;
+  const cards=prioDisplayCards(P.rows).shown;
+  const opts='<option value="">General (not about one card)</option>'+cards.map(c=>'<option value="'+c.id+'">'+escHtml(c.code+' · '+c.action.slice(0,60))+'</option>').join('');
+  showModal('💬 Suggest a change','Tell your manager what you would change and why. Your manager sees this; the card stays as it is until they edit it.',
+    '<div class="field" style="margin:0 0 8px"><label>About</label><select id="pr-sug-card">'+opts+'</select></div><div class="field" style="margin:0"><label>Your suggestion</label><textarea id="pr-sug-text" rows="3" style="width:100%;box-sizing:border-box;font-family:inherit" placeholder="e.g. This role is on hold at the client, so I would move it down"></textarea></div>',
+    '<button class="btn btn-t" onclick="prioSaveSuggestion()">Send</button><button class="btn btn-ghost" onclick="renderPrioModal()">Back</button>',false);
+}
+async function prioSaveSuggestion(){
+  const P=_prioCur;const text=(gv('pr-sug-text')||'').trim();if(!text){toast('warn','Required','Write your suggestion first.');return;}
+  const stamp='['+today()+' '+prioUser().split(' ')[0]+'] '+text,id=gv('pr-sug-card');
+  try{
+    if(id){const r=P.rows.find(x=>x.id===id);const v=(r.suggestion?r.suggestion+'\n':'')+stamp;await prioPatch(id,{Suggestion:v});r.suggestion=v;}
+    else{const n=P.rows.filter(r=>r.kind==='Suggestion').length+1,date=today();
+      const it=await prioPost({Title:P.rec+'|'+date+'|S'+n,PlanDate:date,Recruiter:P.rec,Kind:'Suggestion',Slot:String(200+n),VacancyCode:'',Lead:'suggestion',Action:'General suggestion',Why:'',Source:'Recruiter',State:'Proposed',ChangedBy:prioUser(),ChangedAt:prioNowIso(),Baseline:'{}',Evidence:'',Completion:'',CompletedAt:'',RulesVersion:PRIO_RULES_VERSION,ScoreDetail:'[]',AgreedAt:'',Suggestion:stamp,Streak:'1'});
+      P.rows.push(prioItemToRow({id:it.id,fields:it.fields}));}
+  }catch(e){toast('err','Could not save',String(e.message||e).slice(0,160));return;}
+  toast('ok','Sent','Your suggestion is with your manager.');renderPrioModal();
+}
+
+// ── manager view (Admin / Super Admin), inside the Manager Report ──
+let _prioMgrDate='';
+function prioIsAdmin(){return curRole==='Admin'||curRole==='Super Admin';}
+async function renderPriorityManager(){
+  const el=document.getElementById('ef-prio-mgr');if(!el||!prioIsAdmin())return;
+  const date=_prioMgrDate||today();
+  el.innerHTML='<div class="sl2" style="margin:18px 0 8px">☀️ Priorities — manager view</div><div style="font-size:11px;color:var(--w60)">Loading…</div>';
+  const pilot=mA('priorityPilot').filter(n=>mA('recruiters').includes(n));
+  let html='<div class="sl2" style="margin:18px 0 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">☀️ Priorities — manager view <input type="date" id="pr-mgr-date" value="'+date+'" style="width:auto" onchange="_prioMgrDate=this.value;renderPriorityManager()"> <button class="btn btn-ghost btn-sm" onclick="renderPriorityManager()">↻ Refresh</button></div>'+
+    '<div style="font-size:11px;color:var(--w60);margin-bottom:10px">You do not need to approve anything. Edits are optional, visible to the recruiter as "Changed by", and saved with who changed what and when. Not confirmed means no update on record yet — it is not a failure.</div>';
+  if(!pilot.length)html+='<div style="font-size:11px;color:var(--w60)">No pilot recruiters set (Config → Masters → Priorities Pilot).</div>';
+  for(const rec of pilot){
+    let rows=null,err='';
+    try{rows=await prioFetchRows("fields/PlanDate eq '"+date+"' and fields/Recruiter eq '"+rec+"'");}catch(e){err=String(e.message||e).slice(0,140);}
+    html+='<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 14px;margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><strong style="font-size:14px">'+escHtml(rec)+'</strong>';
+    if(rows===null){html+='<span style="color:var(--w60);font-size:11px">'+(err?escHtml(err):'The DailyPriorities list is not set up yet.')+'</span></div></div>';continue;}
+    rows=rows.map(prioItemToRow);
+    if(date===today())rows=await prioEvaluatePlan(rows,date);
+    const cards=prioDisplayCards(rows),agreed=rows.find(r=>r.kind==='Card'&&r.agreedAt);
+    if(!rows.length){
+      html+='<span style="color:var(--w60);font-size:11px">Has not opened today\'s plan yet.</span>'+(date===today()?' <button class="btn btn-ghost btn-sm" onclick="prioMgrCreatePlan(\''+escHtml(rec)+'\')">Create today\'s plan</button>':'')+'</div></div>';continue;}
+    const done=cards.shown.filter(c=>c.completion==='Confirmed').length;
+    html+='<span style="font-size:11px;color:var(--w60)">'+done+' of '+cards.shown.length+' confirmed'+(agreed?' · agreed '+prioFmtTime(agreed.agreedAt):' · not agreed yet')+'</span>'+(date===today()?' <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="prioMgrAddFocus(\''+escHtml(rec)+'\')">+ Urgent focus</button>':'')+'</div>';
+    // exceptions
+    const exc=[];
+    cards.shown.forEach(c=>{const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===c.code)||{};
+      if(c.completion!=='Confirmed'&&c.streak>=3&&String(v['Priority']||'')==='High')exc.push(c.code+' (High priority) not confirmed '+c.streak+' working days running');
+      else if(c.completion!=='Confirmed'&&c.streak>=5)exc.push(c.code+' on the list '+c.streak+' days without progress');});
+    VD.filter(v=>v['Recruiter']===rec&&v['Active']!=='N'&&(v['Current Status']||'Open')==='Open').forEach(v=>{
+      const code=v['Vacancy code']||v['Vacancy Code']||'';const last=MD.filter(r=>r[C.vacCode]===code&&r[C.archive]!=='Y').reduce((m,r)=>{const x=r[C.updatedOn]||'';return x>m?x:m;},'');
+      const wd=last?workingDaysBetween(last,today()):null;if(wd!==null&&wd>=5)exc.push(code+' untouched for '+wd+' working days');});
+    if(exc.length)html+='<div style="margin-bottom:8px">'+exc.map(x=>'<span class="badge b-rejected" style="margin-right:6px">⚠ '+escHtml(x)+'</span>').join('')+'</div>';
+    html+='<div class="tw"><table><thead><tr><th>#</th><th>Vacancy</th><th>Action</th><th>Source</th><th>Progress</th>'+(date===today()?'<th></th>':'')+'</tr></thead><tbody>'+
+      cards.shown.map((c,i)=>{const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===c.code)||{};
+        const st=c.completion==='Confirmed'?'<span style="color:#5dd5df">✓ Confirmed</span><div style="font-size:10px;color:var(--w60)">'+escHtml(c.evidence||'')+'</div>':'<span style="color:var(--w60)">Not confirmed</span>'+(c.progress?'<div style="font-size:10px;color:var(--w60)">'+escHtml(c.progress)+'</div>':'');
+        return '<tr><td class="m">'+({must:'🔥',should:'⭐',wait:'🌿'}[c.tier])+'</td><td class="mono">'+escHtml(c.code)+'<div style="font-size:10px;color:var(--w60)">'+escHtml(v['Designation']||'')+'</div></td><td class="m" style="white-space:normal;max-width:380px">'+escHtml(c.action)+(c.streak>1?' <span class="pr-day">Day '+c.streak+'</span>':'')+(c.suggestion?'<div style="font-size:10px;color:var(--gold);white-space:pre-wrap">💬 '+escHtml(c.suggestion)+'</div>':'')+'</td><td class="m">'+escHtml(c.source)+(c.state==='Edited'&&c.changedBy?' · edited by '+escHtml(c.changedBy.split(' ')[0]):'')+'</td><td class="m">'+st+'</td>'+
+        (date===today()?'<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="prioMgrEdit(\''+c.id+'\',\''+escHtml(rec)+'\')">✏</button> <button class="btn btn-ghost btn-sm" '+(i===0?'disabled':'')+' onclick="prioMgrMove(\''+c.id+'\',-1,\''+escHtml(rec)+'\')">↑</button> <button class="btn btn-ghost btn-sm" '+(i===cards.shown.length-1?'disabled':'')+' onclick="prioMgrMove(\''+c.id+'\',1,\''+escHtml(rec)+'\')">↓</button> <button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="prioMgrRemove(\''+c.id+'\',\''+escHtml(rec)+'\')">✕</button></td>':'')+'</tr>';}).join('')+'</tbody></table></div>';
+    const added=rows.filter(r=>r.kind==='Added'&&r.state!=='Removed'),sugg=rows.filter(r=>r.kind==='Suggestion');
+    if(added.length)html+='<div style="margin-top:8px;font-size:11px"><strong>➕ Added by '+escHtml(rec)+':</strong> '+added.map(a=>(a.completion==='Confirmed'?'✓ ':'')+escHtml(a.action)).join(' · ')+'</div>';
+    if(sugg.length)html+='<div style="margin-top:6px;font-size:11px;color:var(--gold)">💬 General suggestions: '+sugg.map(s=>escHtml(s.suggestion)).join(' · ')+'</div>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+async function prioMgrCreatePlan(rec){
+  showLoad('Creating plan...');
+  try{const d=await buildPriorities(rec);await prioLoadOrCreatePlan(rec,d);}catch(e){hideLoad();toast('err','Could not create',String(e.message||e).slice(0,160));return;}
+  hideLoad();renderPriorityManager();
+}
+async function prioMgrRows(rec){const items=await prioFetchRows("fields/PlanDate eq '"+today()+"' and fields/Recruiter eq '"+rec+"'");return (items||[]).map(prioItemToRow);}
+function prioMgrEdit(id,rec){
+  prioMgrRows(rec).then(rows=>{const r=rows.find(x=>x.id===id);if(!r)return;
+    showModal('✏ Edit card for '+rec,r.code+'. The recruiter sees this change marked "Changed by '+escHtml(prioUser().split(' ')[0])+'".',
+      '<div class="field" style="margin:0 0 8px"><label>Action</label><textarea id="pr-edit-action" rows="3" style="width:100%;box-sizing:border-box;font-family:inherit">'+escHtml(r.action)+'</textarea></div><div class="field" style="margin:0"><label>Why</label><textarea id="pr-edit-why" rows="2" style="width:100%;box-sizing:border-box;font-family:inherit">'+escHtml(r.why)+'</textarea></div>',
+      '<button class="btn btn-t" onclick="prioMgrSaveEdit(\''+id+'\')">Save</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>',false);}).catch(e=>toast('err','Could not open',String(e.message||e).slice(0,160)));
+}
+async function prioMgrSaveEdit(id){
+  const action=(gv('pr-edit-action')||'').trim();if(!action){toast('warn','Required','The action cannot be blank.');return;}
+  try{await prioPatch(id,{Action:action,Why:gv('pr-edit-why')||'',State:'Edited',ChangedBy:prioUser(),ChangedAt:prioNowIso()});}
+  catch(e){toast('err','Could not save',String(e.message||e).slice(0,160));return;}
+  closeModal();toast('ok','Saved','The recruiter will see "Changed by '+prioUser().split(' ')[0]+'".');renderPriorityManager();
+}
+async function prioMgrMove(id,dir,rec){
+  try{
+    const dc=prioDisplayCards(await prioMgrRows(rec)),list=dc.shown.concat(dc.pushed),i=list.findIndex(x=>x.id===id),j=i+dir;
+    if(i<0||j<0||j>=list.length)return;
+    const a=list[i],b=list[j];
+    await prioPatch(a.id,{Slot:String(b.slot),ChangedBy:prioUser(),ChangedAt:prioNowIso(),State:a.state==='Proposed'||a.state==='Agreed'?'Edited':a.state});
+    await prioPatch(b.id,{Slot:String(a.slot)});
+  }catch(e){toast('err','Could not reorder',String(e.message||e).slice(0,160));return;}
+  renderPriorityManager();
+}
+async function prioMgrRemove(id,rec){
+  if(!confirm('Remove this card from '+rec+'\'s plan for today?'))return;
+  try{await prioPatch(id,{State:'Removed',ChangedBy:prioUser(),ChangedAt:prioNowIso()});}
+  catch(e){toast('err','Could not save',String(e.message||e).slice(0,160));return;}
+  renderPriorityManager();
+}
+function prioMgrAddFocus(rec){
+  const opts='<option value="">No specific vacancy</option>'+VD.filter(v=>v['Recruiter']===rec&&v['Active']!=='N').map(v=>{const c=v['Vacancy code']||v['Vacancy Code']||'';return '<option value="'+escHtml(c)+'">'+escHtml(c+' · '+(v['Designation']||''))+'</option>';}).join('');
+  showModal('+ Urgent management focus for '+rec,'It becomes the first Must do on their list today; their lowest card moves down. They see it marked "Changed by '+escHtml(prioUser().split(' ')[0])+'".',
+    '<div class="field" style="margin:0 0 8px"><label>Focus</label><textarea id="pr-mf-text" rows="3" style="width:100%;box-sizing:border-box;font-family:inherit" placeholder="e.g. Call the client today and confirm the interview feedback for VC-2026-0037"></textarea></div><div class="field" style="margin:0"><label>Vacancy (optional)</label><select id="pr-mf-vac">'+opts+'</select></div>',
+    '<button class="btn btn-t" onclick="prioMgrSaveFocus(\''+escHtml(rec)+'\')">Add</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>',false);
+}
+async function prioMgrSaveFocus(rec){
+  const text=(gv('pr-mf-text')||'').trim();if(!text){toast('warn','Required','Write the focus first.');return;}
+  try{
+    const rows=await prioMgrRows(rec);const minSlot=Math.min(0,...rows.filter(r=>r.kind==='Card').map(r=>r.slot||0))-1,date=today();
+    await prioPost({Title:rec+'|'+date+'|M'+Math.abs(minSlot),PlanDate:date,Recruiter:rec,Kind:'Card',Slot:String(minSlot),VacancyCode:gv('pr-mf-vac')||'',Lead:'manager',Action:text,Why:'Urgent focus from '+prioUser().split(' ')[0]+'.',Source:'Manager',State:'Proposed',ChangedBy:prioUser(),ChangedAt:prioNowIso(),Baseline:'{}',Evidence:'',Completion:'Not confirmed',CompletedAt:'',RulesVersion:PRIO_RULES_VERSION,ScoreDetail:'[]',AgreedAt:'',Suggestion:'',Streak:'1'});
+  }catch(e){toast('err','Could not save',String(e.message||e).slice(0,160));return;}
+  closeModal();toast('ok','Added','It is now the first Must do on '+rec+'\'s list.');renderPriorityManager();
+}
+
 
 // ═══ AI recruiter assessment (5 Oct 2026, Anne) ═══════════════════════════
 // The old report fed the AI eight totals per recruiter and told it to use
