@@ -209,6 +209,10 @@ display:flex;flex-direction:column;max-height:90vh}
 .mc>*{flex-shrink:0}
 .mc>.mc-rec{flex:1 1 auto;min-height:0;overflow-y:auto}
 .mc.mc-wide{max-width:760px}
+.hs-th{cursor:pointer;user-select:none}
+.hs-th:hover{color:var(--teal)}
+.hs-th.asc::after{content:' ▲';font-size:8px}
+.hs-th.desc::after{content:' ▼';font-size:8px}
 /* 12 Oct 2026: My Priorities Today — the same modal, wider, so six cards fit without scrolling; only .mc-rec scrolls, title and buttons stay pinned (above). */
 .mc.mc-xwide{max-width:1120px;width:94vw}
 #modal-rec.pr-rec{background:none;border:none;padding:0;margin-bottom:12px}
@@ -3530,12 +3534,13 @@ if(iv)iv.innerHTML=ivs.length?'<div class="tw"><table><thead><tr><th>Candidate</
   if(r[C.updatedOn]) sub.push('🕐 Last: '+fmtD(r[C.updatedOn]));
   return '<tr><td><strong>'+r[C.name]+'</strong>'
     +(sub.length?'<div style="font-size:10px;color:var(--w60);margin-top:2px">'+sub.join(' · ')+'</div>':'')
-    +'</td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="m">'+(r[C.interviewerName]||'—')+'</td><td class="mono">'+fmtD(r[C.interviewDate])+(r._iTime?'<br><span style="font-size:10px;color:var(--teal)">'+r._iTime+'</span>':'')+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>';
+    +'</td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="m">'+(r[C.interviewerName]||'—')+'</td><td class="mono" data-v="'+(r[C.interviewDate]||'')+'">'+fmtD(r[C.interviewDate])+(r._iTime?'<br><span style="font-size:10px;color:var(--teal)">'+r._iTime+'</span>':'')+'</td><td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>';
 }).join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No interviews in next 7 days</div>';
 // Joining in progress
 const jp=hfMD.filter(r=>r[C.status]==='Joining in Progress'&&r[C.doj]);
 const jpe=document.getElementById('jp-list');
-if(jpe)jpe.innerHTML=jp.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Expected DOJ</th><th>Follow-up (Day Before)</th><th></th></tr></thead><tbody>'+jp.map(r=>{const db=addDays(r[C.doj],-1);const urg=db<=td;return'<tr style="'+(urg?'background:rgba(233,152,43,.06)':'')+'"><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="mono">'+fmtD(r[C.doj])+'</td><td><span class="badge '+(urg?'b-wip':'b-progress')+'">'+fmtD(db)+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>';}).join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No active joinings tracked</div>';}
+if(jpe)jpe.innerHTML=jp.length?'<div class="tw"><table><thead><tr><th>Candidate</th><th>Role</th><th>Client</th><th>Expected DOJ</th><th>Follow-up (Day Before)</th><th></th></tr></thead><tbody>'+jp.map(r=>{const db=addDays(r[C.doj],-1);const urg=db<=td;return'<tr style="'+(urg?'background:rgba(233,152,43,.06)':'')+'"><td><strong>'+r[C.name]+'</strong></td><td class="m">'+r[C.position]+'</td><td class="m">'+r[C.client]+'</td><td class="mono" data-v="'+(r[C.doj]||'')+'">'+fmtD(r[C.doj])+'</td><td data-v="'+db+'"><span class="badge '+(urg?'b-wip':'b-progress')+'">'+fmtD(db)+'</span></td><td><button class="btn btn-ghost btn-sm" onclick="qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button></td></tr>';}).join('')+'</tbody></table></div>':'<div style="text-align:center;padding:18px;color:var(--w60)">No active joinings tracked</div>';
+homeSortInit();}
 function goRecFiltered(scope, status){
   // Open filtered results in modal — does NOT modify All Records filters
   const statusLabel=status||'All';
@@ -3608,7 +3613,7 @@ function buildAQAccordion(before,today,after,wip){
       +'<td class="aq-cell">'+(r[C.position]||'—')+'</td>'
       +'<td><span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span></td>'
       +'<td class="aq-cell">'+(r[C.recruiter]||'—')+'</td>'
-      +'<td class="aq-date '+u+'">'+fmtD(fd)+'</td>'
+      +'<td class="aq-date '+u+'" data-v="'+fd+'">'+fmtD(fd)+'</td>'
       +'<td><button class="btn btn-ghost btn-sm aq-upd-btn" onclick="event.stopPropagation();qUpd(\''+r[C.code]+'\')" style="padding:3px 8px;font-size:10px">Update</button> <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openBtn(this,\'view\')" data-code="'+r[C.code]+'" style="padding:3px 8px;font-size:10px">View</button></td>'
       +'</tr>';
   }
@@ -3642,6 +3647,45 @@ function buildAQAccordion(before,today,after,wip){
     +section('today','Due Today','📅',today,true,'td')
     +section('after','Due in Future','🔜',after,false,'up')
     +section('wip','WIP — No Follow-up Tagged','📋',wip,false,'td');
+}
+// 14 Oct 2026, Anne ("Sort on each queue section"): click a column heading in
+// any Home queue section (Overdue, Due Today, Due in Future, WIP - No
+// Follow-up, Upcoming Interviews, Joining in Progress) to sort it: first click
+// ascending, second descending, third back to the original order. The choice is
+// remembered while the page is open, because the Home lists are redrawn after
+// nearly every save. Dates sort by their real date (data-v), everything else
+// by its text, numbers numerically. Upcoming Interviews shows the next 10 only,
+// so sorting reorders those 10.
+let _homeSort={};
+function _hsCell(td){if(!td)return'';if(td.dataset&&td.dataset.v!==undefined)return td.dataset.v;const el=td.querySelector('strong')||td.querySelector('.aq-name > span');return(el||td).textContent.trim();}
+function homeSortApply(table,key){
+  const tb=table.tBodies[0];if(!tb)return;
+  const st=_homeSort[key];const rows=[...tb.rows];
+  const ths=[...table.tHead.rows[0].cells];
+  ths.forEach((th,i)=>{th.classList.remove('asc','desc');if(st&&st.col===i)th.classList.add(st.dir);});
+  if(!st){rows.sort((a,b)=>(+a.dataset.i)-(+b.dataset.i));}
+  else{const m=st.dir==='asc'?1:-1;rows.sort((a,b)=>{const x=_hsCell(a.cells[st.col]),y=_hsCell(b.cells[st.col]);
+    if(x===''&&y!=='')return 1;if(y===''&&x!=='')return -1;
+    return m*String(x).localeCompare(String(y),undefined,{numeric:true,sensitivity:'base'})||((+a.dataset.i)-(+b.dataset.i));});}
+  rows.forEach(r=>tb.appendChild(r));
+}
+function homeSortInit(){
+  const targets=[];
+  document.querySelectorAll('#aq-list .aq-sec-body').forEach(b=>{const t=b.querySelector('table');if(t)targets.push([t,'aq-'+b.id]);});
+  const iv=document.querySelector('#iv-list table');if(iv)targets.push([iv,'iv']);
+  const jp=document.querySelector('#jp-list table');if(jp)targets.push([jp,'jp']);
+  targets.forEach(([table,key])=>{
+    if(!table.tHead||!table.tBodies[0])return;
+    [...table.tBodies[0].rows].forEach((r,i)=>{r.dataset.i=i;});
+    [...table.tHead.rows[0].cells].forEach((th,i)=>{
+      if(!th.textContent.trim())return;
+      th.classList.add('hs-th');th.title='Click to sort';
+      th.onclick=()=>{const cur=_homeSort[key];
+        if(!cur||cur.col!==i)_homeSort[key]={col:i,dir:'asc'};else if(cur.dir==='asc')_homeSort[key]={col:i,dir:'desc'};else delete _homeSort[key];
+        homeSortApply(table,key);};
+    });
+    homeSortApply(table,key);
+  });
 }
 function aqToggle(id){
   const body=document.getElementById('aq-sec-'+id);
