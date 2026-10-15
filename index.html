@@ -110,6 +110,12 @@ padding:4px 10px;border-radius:20px}
 /* PANELS */
 .panel{display:none;animation:fadeIn .3s ease}
 .panel.active{display:block}
+/* 15 Oct 2026: Edit Profile as a pop-up over Update Candidate (same form, same ids — shown as an overlay instead of a page) */
+#p-ep .ep-popbar{display:none}
+#p-ep.ep-popup{display:block;position:fixed;inset:0;z-index:2150;background:rgba(10,12,20,.84);backdrop-filter:blur(4px);overflow-y:auto;padding:24px 16px;animation:none}
+#p-ep.ep-popup>*{max-width:980px;margin-left:auto;margin-right:auto}
+#p-ep.ep-popup .ep-popbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+#p-ep.ep-popup .lbar{display:none}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 /* CARDS */
 .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:22px 26px;margin-bottom:16px}
@@ -1229,11 +1235,14 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 </div>
 <div id="uActionsRow" class="flex gap8" style="flex-wrap:wrap;border-top:1px solid var(--w08);padding-top:10px;margin-top:12px">
+<button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:var(--teal);border-color:rgba(52,186,198,.3)" onclick="openEPPopup()">✏ Edit Profile</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showWAMenu()"><svg width="12" height="12" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> WA</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showSched()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:var(--teal);border-color:rgba(52,186,198,.3)" onclick="openInterviewGuide()">📋 Interview Guide</button>
 <span id="uGwBtns" style="display:contents"></span>
 </div>
+<div id="uWAHist"></div>
+<div id="uEngHist"></div>
 </div>
 <div class="card">
 <div class="card-title mb0" style="margin-bottom:14px"><span class="ac">↺</span> Status Update</div>
@@ -1270,6 +1279,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <!-- EDIT PROFILE -->
 <div class="panel" id="p-ep">
+<div class="ep-popbar"><div style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:var(--gold)">✏ Edit Profile</div><button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="closeEPPopup()">✕ Close</button></div>
 <div class="lbar">
 <div class="field"><label>Candidate Code</label><input type="text" id="epCode" placeholder="Enter code to edit profile" style="font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')doEPLookup()"></div>
 <button class="btn btn-p" onclick="doEPLookup()">⌕ Find</button>
@@ -1852,10 +1862,11 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div style="font-size:11px;color:var(--w60);margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs)">A rate for one client that <strong>replaces</strong> the standard template for that client. Leave both experience boxes blank to apply it to every hire at the client, or fill them in to cover one experience band only. If bands overlap, the narrower band wins. Each override is saved the moment you add, update or remove it.</div>
 <div id="bp-overrides-list"></div>
 <div class="sl2" style="margin:12px 0 8px" id="bp-ov-formtitle">Add an override</div>
-<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr .8fr .8fr;gap:8px;align-items:end">
+<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr .8fr .8fr;gap:8px;align-items:end">
   <div class="field" style="margin:0"><label>Client</label><select id="bp-ov-client"><option value="">— Select —</option></select></div>
   <div class="field" style="margin:0"><label>Fee Type</label><select id="bp-ov-model"><option value="pct">% of Fixed Pay</option><option value="fixed">Flat ₹ per hire</option></select></div>
   <div class="field" style="margin:0"><label>Rate / Amount</label><input type="number" id="bp-ov-rate" placeholder="e.g. 10 or 75000" step="0.01" min="0"></div>
+  <div class="field" style="margin:0"><label>Grade <span style="font-size:9px;color:var(--w60)">(overrides the band)</span></label><select id="bp-ov-grade" onchange="onOvGradeCh()"><option value="">— Use experience band —</option></select></div>
   <div class="field" style="margin:0"><label>Exp From (yrs)</label><input type="number" id="bp-ov-expfrom" placeholder="optional" step="0.5" min="0"></div>
   <div class="field" style="margin:0"><label>Exp To (yrs)</label><input type="number" id="bp-ov-expto" placeholder="blank = ∞" step="0.5" min="0"></div>
 </div>
@@ -1869,7 +1880,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <!-- BACKUP -->
 <div id="ap-backup"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">💾</span> Backup Manager</div><button class="btn btn-t btn-sm" onclick="doBackup()">Create Backup Now</button></div><div style="margin-bottom:12px;padding:9px 12px;background:var(--tdim);border:1px solid rgba(52,186,198,.15);border-radius:var(--rs);font-size:11px;color:var(--w60)">Backups saved to <span style="color:var(--teal);font-family:monospace">/Talent+ Hire-Pulse/Backups/</span> on SharePoint</div><div id="bkList"></div></div></div>
 <!-- CHANGELOG -->
-<div id="ap-changelog" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Change Log</div></div><div class="tw"><table><thead><tr><th>Timestamp</th><th>User</th><th>Code</th><th>Action</th><th>Field</th><th>Old</th><th>New</th></tr></thead><tbody id="clBody"></tbody></table></div></div></div>
+<div id="ap-changelog" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Change Log</div></div><div class="tw"><table><thead><tr><th>Timestamp</th><th>User</th><th>Role</th><th>Code</th><th>Action</th><th>Field</th><th>Old</th><th>New</th></tr></thead><tbody id="clBody"></tbody></table></div></div></div>
 <!-- CONFIG -->
 <div id="ap-config" class="hidden"><div class="card"><div class="card-hdr"><div class="card-title"><span class="ac">⚙</span> Config &amp; Masters</div><button class="btn btn-t btn-sm" onclick="saveCfg()">✓ Save Templates</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="mgrid"></div></div>
 <div class="card" style="margin-top:14px"><div class="card-hdr"><div class="card-title"><span class="ac">💰</span> Salary Data Migration</div></div>
@@ -1926,6 +1937,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div class="field"><label>Manager Name</label><input type="text" id="avMgrName" placeholder="Reporting manager"></div>
 <div class="field"><label>Date of Vacancy</label><input type="date" id="avDateVac"></div>
 <div class="field"><label>Target Fill Date</label><input type="date" id="avTgt"></div>
+<div class="field"><label>Grade <span style="font-size:9px;color:var(--w60)">(drives client billing overrides)</span></label><select id="avGrade"><option value="">— Not set —</option></select></div>
 <div class="field"><label>Priority</label><select id="avPriority"><option value="">— Select —</option><option value="High">🔴 High</option><option value="Medium">🟡 Medium</option><option value="Low">🟢 Low</option></select></div>
 <div class="field"><label># of Positions</label><input type="number" id="avPositions" min="1" value="1" placeholder="e.g. 3"></div>
 <div class="field"><label>Status</label><select id="avStat"><option value="Open">Open</option><option>On Hold</option><option>Closed</option><option>Cancelled</option></select></div>
@@ -3083,6 +3095,7 @@ try{
 // real network call and a hiccup here shouldn't block Repository/Masters/etc.
 try{
   VD=await loadVacanciesFromList();
+  loadGradeChoices(); // non-blocking; falls back to the four default grades
 }catch(e){
   console.error('parseWB: loadVacanciesFromList failed — Vacancies may be stale/empty, but continuing with other initialization:',e.message);
   toast('err','Vacancies Load Failed','Could not load vacancies from the List: '+e.message+'. Other data loaded normally — click Refresh Now or reload to retry.');
@@ -3370,17 +3383,19 @@ function loadMastersCfg(){
       const nm=String(r[1]||'').trim();
       const act=String(r[2]||'Y').trim().toUpperCase()!=='N';
       const extra=String(r[3]||'').trim(); // optional field (e.g. doj for recruiters)
+      const extra2=String(r[4]||'').trim(); // recruiters only: monthly gross salary (15 Oct 2026)
       if(!key||!nm)continue;
       if(!loaded[key])loaded[key]=[];
       const obj={name:nm,active:act};
       if(key==='recruiters'&&extra) obj.doj=extra;
+      if(key==='recruiters'&&extra2&&!isNaN(parseFloat(extra2))) obj.salary=parseFloat(extra2);
       loaded[key].push(obj);
     }
     Object.keys(loaded).forEach(k=>{M[k]=loaded[k];});
     SORTED_MASTERS.forEach(sortMaster);
   }catch(e){console.warn('masters cfg',e);}
 }
-async function saveMastersCfg(silent=false){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}const block=[['Masters'],['key','name','active','extra']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N',k==='recruiters'?(it.doj||''):''])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false,true,['Config']);if(!silent)toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);if(!silent)toast('err','Save Failed',e.message);}}
+async function saveMastersCfg(silent=false){if(!WB)return;try{let ws=WB.Sheets['Config'];let all=ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:''}) :[];let mi=-1;for(let i=0;i<all.length;i++){if(String(all[i][0]).trim().toLowerCase()==='masters'){mi=i;break;}}if(mi>=0){let ei=mi+1;while(ei<all.length&&(all[ei][0]||all[ei][1]))ei++;all.splice(mi,ei-mi);}const block=[['Masters'],['key','name','active','extra','salary']];Object.entries(M).forEach(([k,arr])=>arr.forEach(it=>block.push([k,it.name,it.active?'Y':'N',k==='recruiters'?(it.doj||''):'',k==='recruiters'&&it.salary?it.salary:''])));all.push([],...block);WB.Sheets['Config']=XLSX.utils.aoa_to_sheet(all);if(!WB.SheetNames.includes('Config'))WB.SheetNames.push('Config');await saveWB(false,true,['Config']);if(!silent)toast('ok','Masters Saved','Config updated for all users');}catch(e){console.warn('saveMastersCfg',e);if(!silent)toast('err','Save Failed',e.message);}}
 function resolveRole(){if(!acct)return;const em=(acct.username||acct.name||'').toLowerCase();const u=appUsers.find(u=>u.email===em||u.name.toLowerCase()===em.split('@')[0]);if(u&&u.active){curRole=u.role;curUser=u;}else if(em.includes('annewilliamsdias')||em.includes('anne')){curRole='Super Admin';curUser={name:acct.name,email:em,role:'Super Admin',active:true};}else{curRole='Recruiter';curUser={name:acct.name,email:em,role:'Recruiter',active:true};}const rd=ROLES[curRole]||ROLES['Recruiter'];const sr=document.getElementById('sbRole');if(sr){sr.textContent=curRole;sr.style.color=rd.color||'var(--w60)';}const nb=document.getElementById('navBulk');const na=document.getElementById('navAdm');const ni=document.getElementById('navIncentive');const niv=document.getElementById('navInvoice');if(nb)nb.style.display=rd.bulk?'':'none';if(na)na.style.display=rd.admin?'':'none';if(ni)ni.style.display='';if(niv)niv.style.display=rd.admin?'':'none';canEditRepo=!!(rd&&rd.admin);myRecName=(curRole==='Recruiter'&&curUser)?curUser.name:null;
 // 4 Sep 2026: surface the pending-Remap-Requests count on the Admin tab
 // badge right away, not only after Admin happens to open that tab —
@@ -3401,7 +3416,7 @@ syncActiveStatusesFromMasters();ensureStatusOptions();
 Object.entries(DMAP).forEach(([id,key])=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;const first=el.options[0];el.innerHTML='';if(first)el.appendChild(first);else{const o=document.createElement('option');o.value='';o.textContent='— Select —';el.appendChild(o);}mA(key).forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;el.appendChild(o);});if(cur)el.value=cur;});
 // Client filter in records
 const rcli=document.getElementById('rCli');if(rcli){const cur=rcli.value;rcli.innerHTML='<option value="">All Clients</option>';mA('clients').forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;rcli.appendChild(o);});if(cur)rcli.value=cur;}
-fillPosDrop();}
+fillPosDrop();fillGradeDrops();}
 function fillPosDrop(){
 const sel=document.getElementById('nPos');if(!sel)return;
 const cv=document.getElementById('nCli')?document.getElementById('nCli').value:'';
@@ -3982,30 +3997,57 @@ const captureFv=(prevCode)=>({nm,mob,em,sd,rec,cli,dept,src,loc,pos,fu,stat,fr,
   exp:gv('nExp'),notice:gv('nNot'),co:gv('nCo'),de:gv('nDe'),reason:gv('nReas'),
   spa:gv('nSPA'),espa:gv('nESPM'),vacC:gv('nVacC'),fun:gv('nFUN'),rem:gv('nRem'),
   screenPush:_screenPush||null,prevCode:prevCode||''});
-const doAdd=async(prevCode)=>{
+const doAdd=async(prevCode,afterCreate)=>{
 showLoad('Adding candidate...');
 const res=await createCandidateFromForm(captureFv(prevCode));
 hideLoad();
 if(!res.ok){showAlert('na','err','Save failed: '+res.error+'. Candidate was NOT added. Please try again.');return;}
+if(afterCreate){try{await afterCreate(res.code);}catch(e){console.warn('doAdd afterCreate:',e.message);}}
 hideSyncBanner();
 sv('nCodeVal',res.code);document.getElementById('nCodeBox').classList.remove('hidden');
 showAlert('na','ok','✅ '+nm+' added. Code: '+res.code);
 updateTopbar();loadDash();renderRec();setTimeout(()=>clearNew(true),100);};
-const dups=dupChk(mob,em);
-if(dups.length){const d=dups[0];const r=d.r;const isInactive=INACTIVE_STATUSES.has(r[C.status]);
-  const title=isInactive?'♻ Re-engage Candidate?':'⚠ Duplicate Found';
-  const msg=isInactive?'This candidate was previously marked <strong>'+r[C.status]+'</strong> but can be re-approached for a new opportunity.':'A candidate with the same '+d.type+' already exists.';
-  showModal(title,msg,'<strong>'+r[C.name]+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br><span style="font-size:12px;color:var(--w60)">'+r[C.position]+' @ '+r[C.client]+' · '+r[C.status]+'</span>'
-  +'<div style="margin-top:10px"><label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Note (optional)</label><textarea id="dupNote" rows="2" style="width:100%;font-size:12px;margin-top:4px;padding:6px 8px;box-sizing:border-box;font-family:inherit" placeholder="Why proceed, or what should Admin know?"></textarea></div>',
-  '<button class="btn btn-t" onclick="closeModal();qUpd(\'' + r[C.code] + '\')">Update Profile</button>'+
-  '<button class="btn btn-g" onclick="window._mapAsNew()">🔗 Map as New Application</button>'+
+const dups=dupMatches(mob,em);
+if(dups.length){
+  // 15 Oct 2026 (Anne): a candidate who is still open can never be added a second time;
+  // a closed one is re-opened on the SAME record (history archived), never a second row;
+  // a genuinely different person who shares a phone/email can be added unlinked, with a note.
+  const openM=dups.find(x=>!INACTIVE_STATUSES.has(x.r[C.status]));
+  const d=openM||dups[0];const r=d.r;
+  const isOpen=!!openM,isJoined=!isOpen&&r[C.status]==='Joined';
+  const canReopen=!isOpen&&!isJoined;
+  const title=isOpen?'⚠ Already In Progress':isJoined?'⚠ Already Joined':'♻ Returning Candidate';
+  const msg=isOpen?'A candidate with the same '+d.type+' is <strong>still open</strong>. Update that record instead — a second record cannot be created for someone who is already in progress.'
+    :isJoined?'A candidate with the same '+d.type+' has <strong>already joined</strong>. A joined (billed) record cannot be reopened — open it, or raise a request to Admin.'
+    :'This candidate was previously marked <strong>'+r[C.status]+'</strong>. Reopening keeps the <strong>same record</strong>: the earlier engagement (vacancy, recruiter, dates, remarks) is saved to its history, and the record is moved to the new vacancy as <strong>Reassigned</strong>. Only the vacancy details change — anything else typed in this form is not applied.';
+  const _hist='<span style="font-size:12px;color:var(--w60)">'+escHtml(r[C.position]||'')+' @ '+escHtml(r[C.client]||'')+' · '+escHtml(r[C.status]||'')+(r[C.recruiter]?' · '+escHtml(r[C.recruiter]):'')+'</span>';
+  showModal(title,msg,'<strong>'+escHtml(r[C.name])+'</strong> <span class="ccode" style="font-size:10px">'+r[C.code]+'</span><br>'+_hist
+  +'<div style="margin-top:10px"><label style="font-size:10px;color:var(--w60);text-transform:uppercase;letter-spacing:.5px">Note <span id="dupNoteReq" style="color:var(--gold)">(required for "Different person")</span></label><textarea id="dupNote" rows="2" style="width:100%;font-size:12px;margin-top:4px;padding:6px 8px;box-sizing:border-box;font-family:inherit" placeholder="e.g. Different person — shares a family email / phone"></textarea></div>',
+  '<button class="btn btn-t" onclick="closeModal();qUpd(\''+r[C.code]+'\')">'+(isOpen||isJoined?'Open Existing Record':'Update Profile')+'</button>'+
+  (canReopen?'<button class="btn btn-g" onclick="window._reopenClosed()">♻ Reopen Same Record</button>':'')+
+  '<button class="btn btn-ghost" style="color:var(--gold);border-color:rgba(233,152,43,.4)" onclick="window._differentPerson()">👥 Different Person — Add as New</button>'+
   '<button class="btn btn-ghost" style="color:#e9982b;border-color:rgba(233,152,43,.4)" onclick="window._raiseRemapRequest()">🚩 Raise Request to Admin</button>'+
   '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>');
-  // Recruiter recognizes this as genuinely the same person (a new role, or a
-  // re-application) — go ahead and add a second row, but stamp Previous
-  // Candidate code so it stays traceable as a known, intentional link rather
-  // than an accidental blind duplicate.
-  window._mapAsNew=()=>{closeModal();doAdd(r[C.code]);};
+  // Same person, closed earlier: reopen the existing record for the vacancy chosen on this form.
+  window._reopenClosed=async()=>{
+    const vc=gv('nVacC');
+    if(!vc){toast('warn','Select a Vacancy','Choose the Vacancy Code on the form first — the record is reopened against that vacancy.');return;}
+    closeModal();
+    showLoad('Reopening record...');
+    const res=await tagCandidateToVacancy(r[C.code],vc,{reason:'Re-application',quiet:true});
+    hideLoad();
+    if(res&&res.ok){showAlert('na','ok','♻ '+r[C.name]+' reopened on the same record <strong>'+r[C.code]+'</strong> for '+vc+' (Reassigned). Earlier engagement saved to its history.');setTimeout(()=>clearNew(true),100);}
+  };
+  // Not the same person (shared phone/email): added as an unlinked new record, with a note and an audit row.
+  window._differentPerson=()=>{
+    const note=gv('dupNote');
+    if(!note){toast('warn','Note Required','Add a short note explaining why this is a different person.');const t=document.getElementById('dupNote');if(t)t.focus();return;}
+    closeModal();
+    doAdd('',async(newCode)=>{
+      const row=writeCL('Duplicate Override',newCode,d.type,r[C.code],note,nm);
+      if(row)await xlAppendRows('Change Log',[row]);
+    });
+  };
   // Recruiter isn't sure this is theirs to decide — capture the whole form
   // (nothing typed is lost) into RemapRequests for Admin to review. Nothing
   // is added to Candidates until Admin approves it (approveRemapRequest()).
@@ -4033,12 +4075,8 @@ else await doAdd();}
 // ══════════════════════════════════════════════════════
 // UPDATE RECORD
 // ══════════════════════════════════════════════════════
-function doLookup(){
-const code=gv('uCode');if(!code){showAlert('uAlert','err','Please enter a candidate code.');return;}
-const idx=MD.findIndex(r=>String(r[C.code]).trim().toLowerCase()===code.toLowerCase());
-if(idx===-1){showAlert('uAlert','err','No record found for "'+code+'".');document.getElementById('uForm').classList.add('hidden');return;}
-eIdx=idx;const r=MD[idx];
-document.getElementById('uAlert').innerHTML='';document.getElementById('uForm').classList.remove('hidden');
+// Candidate header on the Update form (avatar, identity line, role line). Also re-run after the Edit Profile pop-up saves.
+function renderUpdHeader(r){
 const init=(r[C.name]||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
 document.getElementById('uAv').textContent=init;
 // 28 Aug 2026: condensed to exactly 2 lines per Anne's feedback — line 1 is
@@ -4058,9 +4096,17 @@ if(r[C.expYrs])l2.push(r[C.expYrs]+' yrs');
 if(r[C.company])l2.push(r[C.company]+(r[C.designation]?', '+r[C.designation]:''));
 if(r[C.prevCode])l2.push('🔗 Linked from '+r[C.prevCode]);
 document.getElementById('uLine2').textContent=l2.join('  ·  ')||'—';
+}
+function doLookup(){
+const code=gv('uCode');if(!code){showAlert('uAlert','err','Please enter a candidate code.');return;}
+const idx=MD.findIndex(r=>String(r[C.code]).trim().toLowerCase()===code.toLowerCase());
+if(idx===-1){showAlert('uAlert','err','No record found for "'+code+'".');document.getElementById('uForm').classList.add('hidden');return;}
+eIdx=idx;const r=MD[idx];
+document.getElementById('uAlert').innerHTML='';document.getElementById('uForm').classList.remove('hidden');
+renderUpdHeader(r);
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(r[C.status])+'">'+r[C.status]+'</span>';
 const _evU=igEvalData[r[C.code]||'']||{};const _fsEl=document.getElementById('uFitmentChip');if(_fsEl){if(_evU.fitmentScore){const _fc=_evU.fitmentScore>=8?'#5e7855':_evU.fitmentScore>=5?'#34bac6':'#e9982b';_fsEl.innerHTML='<span style="font-size:10px;font-weight:600;color:'+_fc+';background:'+_fc+'18;border:1px solid '+_fc+'44;border-radius:12px;padding:2px 8px" title="Final Recruiter Interview Score">⭐ '+_evU.fitmentScore+'/10</span>';_fsEl.style.display='inline';}else{_fsEl.style.display='none';}}
-renderUpdGateway(r,r[C.code]);
+renderUpdGateway(r,r[C.code]);renderWAHistory(r[C.code],'uWAHist');renderEngagementHistory(r[C.code],'uEngHist');
 sv('uS',r[C.status]||'Active');sv('uDropR','');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 // Pre-fill existing values (including dates) so user sees current state
 sv('uFU',r[C.followupDate]||'');sv('uIvD',r[C.interviewDate]||'');sv('uDecD',r[C.decisionDate]||'');sv('uDOJ',r[C.doj]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');
@@ -4160,6 +4206,27 @@ toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar
 // ══════════════════════════════════════════════════════
 // EDIT PROFILE
 // ══════════════════════════════════════════════════════
+// ── Edit Profile pop-up (15 Oct 2026, Anne) ──────────────────────────────
+// Opens the Edit Profile form as an overlay on top of Update Candidate, for the candidate being
+// updated, so there is no moving between pages. It is the same form and the same save (saveEP);
+// only how it is shown differs. Anything typed on the Update form underneath is left untouched.
+let _epPopup=false;
+function openEPPopup(code){
+  code=code||(eIdx>=0&&MD[eIdx]?MD[eIdx][C.code]:'');
+  if(!code){toast('warn','No Candidate','Open a candidate first.');return;}
+  const el=document.getElementById('p-ep');if(!el)return;
+  sv('epCode',code);
+  _epPopup=true;el.classList.add('ep-popup');el.scrollTop=0;
+  doEPLookup();
+}
+function closeEPPopup(saved){
+  const el=document.getElementById('p-ep');if(el)el.classList.remove('ep-popup');
+  _epPopup=false;
+  const f=document.getElementById('epForm');if(f)f.classList.add('hidden');
+  sv('epCode','');epIdx=-1;
+  if(saved&&eIdx>=0&&MD[eIdx]){renderUpdHeader(MD[eIdx]);renderUpdGateway(MD[eIdx],MD[eIdx][C.code]);}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&_epPopup)closeEPPopup();});
 function doEPLookup(){
 const code=gv('epCode');if(!code){showAlert('epAlert','err','Please enter a candidate code.');return;}
 const idx=MD.findIndex(r=>String(r[C.code]).trim().toLowerCase()===code.toLowerCase());
@@ -4223,7 +4290,8 @@ showAlert('epSaveAlert','ok','✅ '+changes.length+' field(s) updated for '+r[C.
   // Clear form
   document.getElementById('epForm').classList.add('hidden');
   document.getElementById('epCode').value='';
-  epIdx=-1;}
+  epIdx=-1;
+  if(_epPopup)closeEPPopup(true);}
 
 // ══════════════════════════════════════════════════════
 // ALL RECORDS — Bug I: pagination
@@ -4381,11 +4449,13 @@ function viewCandModal(code){
     tableHtml+='<div style="margin-top:10px;border-top:1px solid var(--w08);padding-top:8px"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:8px">🌐 Talent+ Gateway</div>'+gw.scoresHtml+gw.btnsHtml+'</div>';
   }
 
+  tableHtml+='<div id="vcWAHist"></div><div id="vcEngHist"></div>';
   window._mc=code;
   document.getElementById('vc-title').textContent='👤 '+r[C.name];
   document.getElementById('vc-subtitle').textContent=(r[C.position]||'')+' · '+(r[C.client]||'');
   document.getElementById('vc-body').innerHTML=tableHtml;
   document.getElementById('vc-overlay').style.display='block';
+  renderWAHistory(code,'vcWAHist');renderEngagementHistory(code,'vcEngHist');
 }
 function dlAllRecords(){
   const srch=(gv('rSrch')||'').toLowerCase(),sf=gv('rStat'),cf=gv('rCli'),rf=gv('rRec'),scope=gv('rScope')||'all';
@@ -4631,6 +4701,48 @@ showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',
 function sendJDWA(jdLink){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';const msg='Hi '+r[C.name]+', please find below the Job Description for the *'+r[C.position]+'* role with *'+r[C.client]+'*.\n\nRole: '+r[C.position]+'\nClient: '+r[C.client]+'\n\nKindly review and share your interest / availability.\n\nRegards,\n'+rn+', WithAWill HR';window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(msg),'_blank');toast('ok','JD Shared','JD details sent to '+r[C.name]);}
 
 function showCustomJD(){if(eIdx===-1)return;const r=MD[eIdx];const lnk=prompt('Enter JD link or SharePoint URL to share:');if(lnk&&lnk.trim())sendJDWA(lnk.trim());}
+// ── WhatsApp history on the record (15 Oct 2026, Anne) ───────────────────
+// Recruiters don't type a remark when they send a WhatsApp, because every
+// send already writes a 'WhatsApp Sent' Change Log row (template key in the
+// Field column, sender in the User column). This reads those rows back and
+// shows them on the candidate record, so whoever picks the candidate up sees
+// what was already sent, when and by whom. Read-only; nothing new is stored.
+// The log is written when the Send WhatsApp button is used here, so messages
+// typed straight from a phone are not in it.
+let _waHist={at:0,rows:null,busy:null};
+async function waHistRows(force){
+  if(!force&&_waHist.rows&&Date.now()-_waHist.at<60000)return _waHist.rows;
+  if(_waHist.busy)return _waHist.busy;
+  _waHist.busy=(async()=>{
+    try{const all=await fetchLiveChangeLog();_waHist.rows=all.filter(r=>r[4]==='WhatsApp Sent');_waHist.at=Date.now();}
+    finally{_waHist.busy=null;}
+    return _waHist.rows;
+  })();
+  return _waHist.busy;
+}
+function waHistAdd(entry){
+  if(_waHist.rows)_waHist.rows.push(entry);
+  const code=String(entry[3]);
+  if(document.getElementById('uWAHist')&&eIdx!==-1&&MD[eIdx]&&MD[eIdx][C.code]===code)renderWAHistory(code,'uWAHist');
+}
+function waHistHtml(rows){
+  if(!rows.length)return '<div style="font-size:11px;color:var(--w60)">💬 <strong style="color:var(--ow)">WhatsApp history</strong> — none sent from the app yet.</div>';
+  const sorted=rows.slice().sort((a,b)=>String(b[0]).localeCompare(String(a[0])));
+  const when=ts=>{const d=new Date(ts);return isNaN(d)?String(ts):d.toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});};
+  const last=sorted[0];
+  const line=r=>'<div style="display:flex;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="color:var(--w60);white-space:nowrap;min-width:108px">'+escHtml(when(r[0]))+'</span><span style="color:var(--ow);flex:1">'+escHtml(waLabel(r[5]))+'</span><span style="color:var(--w60);white-space:nowrap">'+escHtml(r[1]||'')+'</span></div>';
+  return '<div style="font-size:11px;color:var(--w60);margin-bottom:5px">💬 <strong style="color:var(--ow)">WhatsApp history</strong> — '+sorted.length+' sent · last: '+escHtml(waLabel(last[5]))+' by '+escHtml(last[1]||'—')+', '+escHtml(when(last[0]))+'</div>'+
+    '<div style="max-height:150px;overflow:auto">'+sorted.map(line).join('')+'</div>';
+}
+async function renderWAHistory(code,hostId){
+  const host=document.getElementById(hostId);if(!host||!code)return;
+  host.style.cssText='border-top:1px solid var(--w08);padding-top:8px;margin-top:10px';
+  host.innerHTML='<div style="font-size:11px;color:var(--w60)">💬 Loading WhatsApp history…</div>';
+  try{
+    const rows=(await waHistRows()).filter(r=>String(r[3])===String(code));
+    const h=document.getElementById(hostId);if(h)h.innerHTML=waHistHtml(rows);
+  }catch(e){const h=document.getElementById(hostId);if(h)h.innerHTML='<div style="font-size:11px;color:var(--w60)">💬 WhatsApp history could not be loaded.</div>';}
+}
 async function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}
 // 28 Aug 2026: ai_interview_invite/resume_upload_invite need a link derived
 // from r[C.vacCode] at send time (same formula inviteToVideoInterview()/
@@ -4641,7 +4753,7 @@ if(tplKey==='ai_interview_invite'||tplKey==='resume_upload_invite'){
   if(!r[C.vacCode]){toast('warn','No Vacancy','This candidate has no vacancy code tagged.');return;}
   extraLink=(tplKey==='ai_interview_invite'?'https://talentplus.withawill.in/interview/':'https://talentplus.withawill.in/resume-upload/')+encodeURIComponent(r[C.vacCode]);
 }
-const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();const _waKey=WA[tplKey]?tplKey:(Object.keys(WA).find(k=>WA[k]===tpl)||'general');const _blk=waSendBlock(r,_waKey);if(_blk){toast('warn','Not Yet',_blk.why+' — available from '+fmtWAWhen(_blk.until)+'.');return;}window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _waNow=new Date().toISOString(),_waTimes={};if(_waKey===WA_FIRST_CONTACT_KEY&&!r[C.firstWA]){r[C.firstWA]=_waNow;_waTimes.FirstWhatsAppAt=_waNow;}if(_waKey===WA_FOLLOWUP_KEY){r[C.lastFollowupWA]=_waNow;_waTimes.LastFollowupWAAt=_waNow;}const _clWA=writeCL('WhatsApp Sent',r[C.code],_waKey,String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA)await xlAppendRows('Change Log',[_clWA]);await saveWATimes(r,_waTimes);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
+const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();const _waKey=WA[tplKey]?tplKey:(Object.keys(WA).find(k=>WA[k]===tpl)||'general');const _blk=waSendBlock(r,_waKey);if(_blk){toast('warn','Not Yet',_blk.why+' — available from '+fmtWAWhen(_blk.until)+'.');return;}window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _waNow=new Date().toISOString(),_waTimes={};if(_waKey===WA_FIRST_CONTACT_KEY&&!r[C.firstWA]){r[C.firstWA]=_waNow;_waTimes.FirstWhatsAppAt=_waNow;}if(_waKey===WA_FOLLOWUP_KEY){r[C.lastFollowupWA]=_waNow;_waTimes.LastFollowupWAAt=_waNow;}const _clWA=writeCL('WhatsApp Sent',r[C.code],_waKey,String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA){await xlAppendRows('Change Log',[_clWA]);waHistAdd(_clWA);}await saveWATimes(r,_waTimes);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
 showModal('📱 Message Sent','WhatsApp opened for <strong>'+r[C.name]+'</strong>. What would you like to do next?','',
   '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
   '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
@@ -4826,7 +4938,9 @@ function loadBKList(){
   }catch(e){el.innerHTML='<div style="color:#ff6b6b;padding:12px">Error: '+e.message+'</div>';}
 }
 // CHANGELOG
-function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>'<tr><td class="mono" style="font-size:10px">'+new Date(r[0]).toLocaleString('en-IN')+'</td><td class="m">'+r[1]+'</td><td class="mono" style="font-size:10px">'+r[2]+'</td><td><span class="badge b-wip" style="font-size:10px">'+r[3]+'</span></td><td class="m" style="font-size:10px">'+r[4]+'</td><td class="m" style="font-size:10px">'+String(r[5]||'').substring(0,20)+'</td><td style="font-size:10px;color:var(--teal)">'+String(r[6]||'').substring(0,20)+'</td></tr>').join('');}catch(e){tb.innerHTML='<tr><td colspan="7" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
+function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{if(!WB||!WB.Sheets['Change Log']){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--w60)">No change log data.</td></tr>';return;}
+// CR-CL-001 (15 Oct 2026): row schema is [timestamp,user,role,code,action,field,old,new,name,email]; the old render read r[1..6] under 7 headers, so every column after User was shifted. Now 8 columns incl. Role and New.
+const cl=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;');const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>{const d=new Date(r[0]);return '<tr><td class="mono" style="font-size:10px">'+(isNaN(d)?cl(r[0]):d.toLocaleString('en-IN'))+'</td><td class="m">'+cl(r[1])+'</td><td class="mono" style="font-size:10px">'+cl(r[2])+'</td><td><span class="badge b-wip" style="font-size:10px">'+cl(r[3])+'</span></td><td class="m" style="font-size:10px">'+cl(r[4])+'</td><td class="m" style="font-size:10px">'+cl(String(r[5]||'').substring(0,30))+'</td><td style="font-size:10px">'+cl(String(r[6]||'').substring(0,30))+'</td><td style="font-size:10px;color:var(--teal)">'+cl(String(r[7]||'').substring(0,30))+'</td></tr>';}).join('');}catch(e){tb.innerHTML='<tr><td colspan="8" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
 // CONFIG / MASTERS
 let mgridInited=false;
 function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm'],['dropReasons','🚪 Drop Reasons','ma-drop'],['holidays','🌴 Holidays (YYYY-MM-DD Name)','ma-hol'],['priorityPilot','☀️ Priorities Pilot (recruiters)','ma-pp'],['venues','📍 Interview Venues (full address; may include a Google Maps link)','ma-ven']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div style="margin-bottom:8px"><button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="backfillWATimes()" title="One-time: fills First Contact / last Follow-up times for candidates already messaged, so the 24-hour and 5-day send rules apply to them">🔄 Backfill WhatsApp timing</button></div><div id="wa-ed"></div></div>';loadCfg();}
@@ -4845,6 +4959,10 @@ function renderMT(key){
             <span style="font-size:9px;color:var(--w60)">Joined:</span>
             <input type="date" value="${it.doj||''}" style="font-size:10px;padding:2px 5px;width:120px" onchange="setRecruiterDOJ(${i},this.value)">
           </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:9px;color:var(--w60)">Salary ₹/mo:</span>
+          <input type="number" min="0" step="500" value="${it.salary||''}" placeholder="monthly gross" style="font-size:10px;padding:2px 5px;width:92px" onchange="setRecruiterSalary(${i},this.value)" title="Monthly gross salary — drives the incentive slab, projections and the recruiter's incentive footnote.">
+        </div>
           <button class="btn btn-t btn-sm" style="padding:2px 7px;font-size:10px" onclick="saveMasterEdit('recruiters',${i})">Save</button>
           <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="cancelEditMaster('recruiters')">Cancel</button>
         </div>`;
@@ -4854,6 +4972,10 @@ function renderMT(key){
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:9px;color:var(--w60)">Joined:</span>
           <input type="date" value="${it.doj||''}" style="font-size:10px;padding:2px 5px;width:120px" onchange="setRecruiterDOJ(${i},this.value)" title="Recruiter company joining date — used for ramp-up incentive calculation">
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:9px;color:var(--w60)">Salary ₹/mo:</span>
+          <input type="number" min="0" step="500" value="${it.salary||''}" placeholder="monthly gross" style="font-size:10px;padding:2px 5px;width:92px" onchange="setRecruiterSalary(${i},this.value)" title="Monthly gross salary — drives the incentive slab, projections and the recruiter's incentive footnote.">
         </div>
         <span class="badge ${it.active?'b-active':'b-inactive'}" style="font-size:9px;padding:1px 6px">${it.active?'Active':'Inactive'}</span>
         <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="startEditMaster('recruiters',${i})">Edit</button>
@@ -4876,6 +4998,26 @@ function setRecruiterDOJ(idx, doj){
   }
 }
 
+function setRecruiterSalary(idx, val){
+  if(!M.recruiters||!M.recruiters[idx])return;
+  const n=parseFloat(val);
+  if(val!==''&&(isNaN(n)||n<0)){toast('warn','Check the amount','Enter the monthly gross salary as a number.');return;}
+  if(val===''||n===0)delete M.recruiters[idx].salary;else M.recruiters[idx].salary=n;
+  saveMastersCfg(); // not silent: reports success or failure itself
+}
+// Monthly gross salary configured for a recruiter (0 when not set).
+function recruiterSalary(name){const r=(M.recruiters||[]).find(x=>x.name===name);return r&&r.salary?(parseFloat(r.salary)||0):0;}
+// Fills a salary box from Config, and keeps it in step while the recruiter selection changes —
+// but never overwrites a figure the user typed over it.
+function autoFillSalary(inputId,recName){
+  const el=document.getElementById(inputId);if(!el)return;
+  const sal=recName?recruiterSalary(recName):0;
+  const untouched=el.value===''||(el.dataset.auto==='1'&&el.value===el.dataset.autoVal);
+  if(untouched){
+    el.value=sal?String(sal):'';el.dataset.auto=sal?'1':'';el.dataset.autoVal=sal?String(sal):'';
+    el.title=sal?'Filled from Config — type a different figure to try a what-if':'No salary set in Config for this recruiter';
+  }
+}
 // Returns which incentive phase a recruiter is in as of calcDate
 // Phase: 'ramp' (months 1-3) or 'revenue' (month 4+) or 'unknown' (no DOJ set)
 // Returns the recruiter's employment phase as of a given date.
@@ -4958,7 +5100,7 @@ function closeVacFormModal(){
   if(bk)bk.style.display='none';
   // Scroll vacancy list back into view
   const tb=document.getElementById('avBody');if(tb){const tw=tb.closest('.tw');if(tw)tw.scrollIntoView({behavior:'smooth',block:'nearest'});}}
-function openAddVac(){vacEIdx=-1;['avRole','avBudgetMin','avBudgetMax','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';const ev=document.getElementById('avExtVis');if(ev)ev.value='N';const jdsel=document.getElementById('avJDSel');if(jdsel)jdsel.selectedIndex=0;fillDrops();populateAvJDSel();showVacFormModal('➕ Add Vacancy');}
+function openAddVac(){vacEIdx=-1;['avRole','avBudgetMin','avBudgetMax','avExp','avTgt','avHiringMgr','avMgrName','avDateVac','avRemarks','avJDLink','avPositions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['avCli','avDept','avLoc','avRec','avPriority','avGrade'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});const pos=document.getElementById('avPositions');if(pos)pos.value='1';const s=document.getElementById('avStat');if(s)s.value='Open';const a=document.getElementById('avAct');if(a)a.value='Y';const ev=document.getElementById('avExtVis');if(ev)ev.value='N';const jdsel=document.getElementById('avJDSel');if(jdsel)jdsel.selectedIndex=0;fillDrops();populateAvJDSel();showVacFormModal('➕ Add Vacancy');}
 function renderAVacs(){
   // Populate admin vacancy filter dropdowns (rebuild only if empty)
   ['avf-cli','avf-rec','avf-dept'].forEach(id=>{
@@ -4986,12 +5128,12 @@ function renderAVacs(){
   });
   if(!vis.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies yet.')+'</td></tr>';return;}
   tb.innerHTML=vis.map(v=>{const i=VD.indexOf(v);const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
-function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;fillDrops();['avCli','avDept','avLoc','avRec','avPriority','avStat'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudgetMin','Budget Min'],['avBudgetMax','Budget Max'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';const ev=document.getElementById('avExtVis');if(ev)ev.value=v['Externally Visible']==='Y'?'Y':'N';populateAvJDSel(v['JD Link']||'');showVacFormModal('✏ Edit Vacancy');}
+function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;fillDrops();['avCli','avDept','avLoc','avRec','avPriority','avStat','avGrade'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudgetMin','Budget Min'],['avBudgetMax','Budget Max'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority'],['avGrade','Grade']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';const ev=document.getElementById('avExtVis');if(ev)ev.value=v['Externally Visible']==='Y'?'Y':'N';populateAvJDSel(v['JD Link']||'');showVacFormModal('✏ Edit Vacancy');}
 async function saveVac(){
 const cli=gv('avCli'),role=gv('avRole'),dept=gv('avDept');
 if(!cli||!role||!dept){showAlert('avAlert','err','Client, Role and Department required.');return;}
 const isNew=vacEIdx===-1;
-const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudgetMin')?gv('avBudgetMin')+' - '+gv('avBudgetMax'):gv('avBudgetMax')||'','Budget Min':gv('avBudgetMin'),'Budget Max':gv('avBudgetMax'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y','Externally Visible':document.getElementById('avExtVis')?document.getElementById('avExtVis').value:'N'};
+const vd={'Company':cli,'Designation':role,'Department':dept,'Location':gv('avLoc'),'Monthly Budget':gv('avBudgetMin')?gv('avBudgetMin')+' - '+gv('avBudgetMax'):gv('avBudgetMax')||'','Budget Min':gv('avBudgetMin'),'Budget Max':gv('avBudgetMax'),'Experience':gv('avExp'),'Recruiter':gv('avRec'),'Hiring Manager':gv('avHiringMgr'),'Manager Name':gv('avMgrName'),'Date of Vacancy':gv('avDateVac'),'Target Fill Date':gv('avTgt'),'Priority':gv('avPriority'),'Grade':gv('avGrade'),'Positions Count':gv('avPositions')||'1','Remarks':gv('avRemarks'),'JD Link':gv('avJDLink'),'Current Status':gv('avStat')||'Open','Active':document.getElementById('avAct')?document.getElementById('avAct').value:'Y','Externally Visible':document.getElementById('avExtVis')?document.getElementById('avExtVis').value:'N'};
 if(isNew){const yr=new Date().getFullYear();const mx=Math.max(0,...VD.map(v=>{const m=String(v['Vacancy code']||v['Vacancy Code']||'').match(/(\d+)$/);return m?parseInt(m[1]):0;}));vd['Vacancy code']='VC-'+yr+'-'+String(mx+1).padStart(4,'0');vd['Sr. No.']=VD.length+1;VD.push(vd);}else{// Field-level merge: only apply non-blank form values; never clear existing JD Link with blank
 const _ex=VD[vacEIdx];const _oldVacStatus=_ex['Current Status'];const _patch={};Object.entries(vd).forEach(([k,v])=>{if(k==='JD Link'){if(v)_patch[k]=v;// preserve existing if form blank
 }else if(v!==''&&v!==null&&v!==undefined){_patch[k]=v;}});Object.assign(VD[vacEIdx],_patch);
@@ -5226,6 +5368,11 @@ async function genCodeLive(){
   const next=allNums.length>0?Math.max(...allNums)+1:1269;
   return 'Talent+Hire/'+yr+'/'+String(next).padStart(6,'0');
 }
+// All records sharing the phone or email (dupChk returns only the first of each) — one entry per record, so an open record is never hidden behind an older closed one.
+function dupMatches(mob,em,excl){const out=[];const add=(type,r)=>{if(!out.find(x=>x.r[C.code]===r[C.code]))out.push({type,r});};
+  if(mob&&/^\d{10}$/.test(mob))MD.forEach(r=>{if(String(r[C.contact]).trim()===mob&&r[C.code]!==excl)add('Mobile',r);});
+  if(em&&em.includes('@')){const e=em.trim().toLowerCase();MD.forEach(r=>{if(String(r[C.email]).trim().toLowerCase()===e&&r[C.code]!==excl)add('Email',r);});}
+  return out;}
 function dupChk(mob,em,excl){const res=[];if(mob&&/^\d{10}$/.test(mob)){const f=MD.find(r=>String(r[C.contact]).trim()===mob&&r[C.code]!==excl);if(f)res.push({type:'Mobile',r:f});}if(em&&em.includes('@')){const f=MD.find(r=>String(r[C.email]).trim().toLowerCase()===em.toLowerCase()&&r[C.code]!==excl);if(f&&!res.find(x=>x.r[C.code]===f[C.code]))res.push({type:'Email',r:f});}return res;}
 function gv(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 function sv(id,val){const el=document.getElementById(id);if(el)el.value=val!==undefined&&val!==null?val:'';}
@@ -6853,7 +7000,7 @@ function isJoinedInPeriod(r, from, to){
   return r[C.status]==='Joined' && r[C.doj] && r[C.doj]>=from && r[C.doj]<=to;
 }
 
-function calcFirmFee(expYears, annualFixedPay, client, onDate, candidateCode){
+function calcFirmFee(expYears, annualFixedPay, client, onDate, candidateCode, gradeArg){
   // Per-candidate fee override (25 Sep 2026, Anne's decision) — a one-off
   // exception distinct from the general client/experience rules below: this
   // specific hire was genuinely billed at a different rate than the
@@ -6893,7 +7040,19 @@ function calcFirmFee(expYears, annualFixedPay, client, onDate, candidateCode){
   // experience, the NARROWEST band wins (it used to be whichever was saved
   // first, so an all-experience override entered earlier hid a later,
   // band-specific one). With no overlaps the result is unchanged.
+  // 15 Oct 2026 (Anne): a client's rate can be set per Grade (Frontline-Flat, Frontline, Mid to
+  // Senior, Senior) instead of by experience. The grade is the one on the candidate's vacancy.
+  // Precedence: candidate override > client + grade > client + experience band > standard template.
+  const gradeNorm = String(gradeArg || gradeForCandidate(candidateCode) || '').trim().toLowerCase();
+  const gov = gradeNorm ? incPolicy.clientOverrides.find(o =>
+    o.grade && String(o.client||'').trim().toLowerCase() === clientNorm && String(o.grade).trim().toLowerCase() === gradeNorm
+  ) : null;
+  if(gov){
+    if(gov.model === 'fixed') return gov.amount || 0;
+    if(gov.model === 'pct')   return annualFixedPay * ((gov.rate || 0) / 100);
+  }
   const ov = incPolicy.clientOverrides.filter(o =>
+    !o.grade &&
     String(o.client||'').trim().toLowerCase() === clientNorm &&
     exp >= (o.expFrom||0) && exp < (o.expTo!=null?o.expTo:999)
   ).sort((a,b)=>((a.expTo!=null?a.expTo:999)-(a.expFrom||0))-((b.expTo!=null?b.expTo:999)-(b.expFrom||0)))[0];
@@ -6931,16 +7090,19 @@ function calcRecShare(firmFee, client, onDate){ return 0; }
 // totalRevenue: total realised firm fees for period
 // monthlySalary: recruiter's gross monthly salary
 // Returns: { rate, multiple, incentive, slab }
-function calcRecIncentive(totalRevenue, monthlySalary){
-  const p = getActivePolicyPeriod();
-  if(!p || !monthlySalary || monthlySalary <= 0) return {rate:0, multiple:0, incentive:0, slab:'Nil'};
-  const slabs = p.incentiveSlabs || [
+function incSlabsOf(p){
+  return (p&&p.incentiveSlabs) || [
     {multipleFrom:0,multipleTo:1,rate:0},
     {multipleFrom:1,multipleTo:2,rate:10},
     {multipleFrom:2,multipleTo:3,rate:15},
     {multipleFrom:3,multipleTo:4,rate:20},
     {multipleFrom:4,multipleTo:999,rate:25}
   ];
+}
+function calcRecIncentive(totalRevenue, monthlySalary){
+  const p = getActivePolicyPeriod();
+  if(!p || !monthlySalary || monthlySalary <= 0) return {rate:0, multiple:0, incentive:0, slab:'Nil'};
+  const slabs = incSlabsOf(p);
   const multiple = totalRevenue / monthlySalary;
   const slab = slabs.slice().reverse().find(s => multiple > s.multipleFrom) || slabs[0];
   const rate = slab.rate || 0;
@@ -7196,6 +7358,7 @@ function onPlanInput(el){
 function calcPlanEarnings(){
   const p = getActivePolicyPeriod();
   if(!p) return;
+  autoFillSalary('plan-salary', myRecName || ((acct&&acct.name)?(mA('recruiters').find(n=>n===acct.name.split(' ')[0])||''):''));
   const monthlySalary = parseFloat(document.getElementById('plan-salary')?.value) || 0;
   let totHires=0, totFirm=0;
 
@@ -7652,6 +7815,7 @@ function _buildSectionBHTML(joined, monthlySalary, from, to, recruiterDoj, banke
 async function calcIncentives(){
   const period        = gv('inc-period') || 'month';
   const recSel        = gv('inc-rec') || ((acct&&acct.name) ? acct.name.split(' ')[0] : '');
+  autoFillSalary('inc-my-salary', recSel);
   const monthlySalary = parseFloat(document.getElementById('inc-my-salary')?.value) || 0;
   const {from, to}    = getPeriodDates(period);
   renderPolicyBadge();
@@ -8259,6 +8423,7 @@ function exportProjectionsPDF(){
 function genProjections(){
   const recFilter   = gv('proj-rec') || '';
   const phaseFilter = gv('proj-phase') || 'all';
+  autoFillSalary('proj-salary', recFilter);
   const monthlySalary   = parseFloat(document.getElementById('proj-salary')?.value) || 0;
   const currentRevenue  = parseFloat(document.getElementById('proj-current-rev')?.value) || 0;
   const el = document.getElementById('inc-proj-list');
@@ -8329,9 +8494,9 @@ function genProjections(){
     const midBudget = budgetMin && budgetMax ? (budgetMin+budgetMax)/2 : budgetMin||budgetMax||0;
     const annualMid = midBudget;
     const exp = parseExp(v['Experience'] || '2');
-    const feeMin = budgetMin ? calcFirmFee(exp, budgetMin, v['Company']) : 0;
-    const feeMax = budgetMax ? calcFirmFee(exp, budgetMax, v['Company']) : 0;
-    const feeMid = calcFirmFee(exp, annualMid, v['Company']);
+    const feeMin = budgetMin ? calcFirmFee(exp, budgetMin, v['Company'], undefined, undefined, v['Grade']) : 0;
+    const feeMax = budgetMax ? calcFirmFee(exp, budgetMax, v['Company'], undefined, undefined, v['Grade']) : 0;
+    const feeMid = calcFirmFee(exp, annualMid, v['Company'], undefined, undefined, v['Grade']);
     const positions = parseInt(v['Positions Count']||1);
     const recPhase = v['Recruiter'] ? getRecruiterPhase(v['Recruiter'], today()) : {phase:'unknown'};
     return {v, exp, feeMid, feeMin, feeMax, positions, recPhase};
@@ -8395,6 +8560,7 @@ function loadBillingConfigUI(){
   // Populate client override dropdown
   const cl = document.getElementById('bp-ov-client');
   if(cl){cl.innerHTML='<option value="">— Select —</option>';mA('clients').forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;cl.appendChild(o);});}
+  fillGradeDrops();
 }
 
 function renderSlabTable(slabs){
@@ -8444,11 +8610,11 @@ function removeSlabRow(i){
 // is written to SharePoint on the spot — and only reported as saved once it is.
 let _ovEditIdx = -1;
 function _ovBand(o){return {ef:(o.expFrom||0), et:(o.expTo!=null?o.expTo:999)};}
-function _ovBandLabel(o){const {ef,et}=_ovBand(o);return (ef>0||et<999) ? ef+'–'+(et>=999?'∞':et)+' yrs' : 'All experience';}
+function _ovBandLabel(o){if(o.grade)return 'Grade: '+o.grade;const {ef,et}=_ovBand(o);return (ef>0||et<999) ? ef+'–'+(et>=999?'∞':et)+' yrs' : 'All experience';}
 function _ovSameClient(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();}
 // Bands are half-open (from <= exp < to), exactly as calcFirmFee() reads them.
 function _ovOverlaps(cli,ef,et,skipIdx){
-  return incPolicy.clientOverrides.map((o,i)=>({o,i})).filter(({o,i})=>i!==skipIdx&&_ovSameClient(o.client,cli)&&ef<_ovBand(o).et&&_ovBand(o).ef<et);
+  return incPolicy.clientOverrides.map((o,i)=>({o,i})).filter(({o,i})=>!o.grade&&i!==skipIdx&&_ovSameClient(o.client,cli)&&ef<_ovBand(o).et&&_ovBand(o).ef<et);
 }
 async function _persistOverrides(prev, okMsg){
   const ok = await saveIncPolicyToSP();
@@ -8460,19 +8626,21 @@ async function saveClientOverride(){
   const cli = gv('bp-ov-client'), model = gv('bp-ov-model');
   const rate = parseFloat(gv('bp-ov-rate'))||0;
   const expFromRaw = gv('bp-ov-expfrom'), expToRaw = gv('bp-ov-expto');
-  const expFrom = expFromRaw!=='' ? (parseFloat(expFromRaw)||0) : 0;
-  const expTo   = expToRaw!==''   ? (parseFloat(expToRaw)||999) : 999;
+  const grade = gv('bp-ov-grade');
+  const expFrom = !grade && expFromRaw!=='' ? (parseFloat(expFromRaw)||0) : 0;
+  const expTo   = !grade && expToRaw!==''   ? (parseFloat(expToRaw)||999) : 999;
   const note = document.getElementById('bp-ov-note'); if(note) note.innerHTML='';
   if(!cli||!rate){toast('warn','Required','Select a client and enter a rate or amount.');return;}
   if(model==='pct' && rate>100){toast('warn','Check the rate','A percentage cannot be over 100.');return;}
   if(expTo<=expFrom){toast('warn','Check the band','Exp To must be greater than Exp From.');return;}
   const editing = _ovEditIdx>=0 && incPolicy.clientOverrides[_ovEditIdx];
-  const same = incPolicy.clientOverrides.findIndex((o,i)=>i!==_ovEditIdx&&_ovSameClient(o.client,cli)&&_ovBand(o).ef===expFrom&&_ovBand(o).et===expTo);
-  if(same>=0){toast('warn','Already there',cli+' already has an override for '+_ovBandLabel({expFrom,expTo})+'. Use Edit on that row to change it.');return;}
-  const overlaps = _ovOverlaps(cli,expFrom,expTo,_ovEditIdx);
+  const same = incPolicy.clientOverrides.findIndex((o,i)=>i!==_ovEditIdx&&_ovSameClient(o.client,cli)&&(grade?(o.grade===grade):(!o.grade&&_ovBand(o).ef===expFrom&&_ovBand(o).et===expTo)));
+  if(same>=0){toast('warn','Already there',cli+' already has an override for '+_ovBandLabel({expFrom,expTo,grade})+'. Use Edit on that row to change it.');return;}
+  const overlaps = grade?[]:_ovOverlaps(cli,expFrom,expTo,_ovEditIdx);
   const prev = JSON.parse(JSON.stringify(incPolicy.clientOverrides));
   // rate and amount are both kept: calcFirmFee() reads rate for % and amount for flat ₹
   const entry = {client:cli, model, rate, amount:rate, expFrom, expTo};
+  if(grade) entry.grade = grade;
   if(editing) incPolicy.clientOverrides[_ovEditIdx]=entry; else incPolicy.clientOverrides.push(entry);
   renderClientOverridesList();
   const ok = await _persistOverrides(prev, cli+' override '+(editing?'updated':'added')+' ('+_ovBandLabel(entry)+') and saved.');
@@ -8480,11 +8648,13 @@ async function saveClientOverride(){
   cancelOverrideEdit();
   if(overlaps.length && note) note.innerHTML='<span style="color:var(--gold)">⚠ This band overlaps '+overlaps.map(x=>_ovBandLabel(x.o)).join(', ')+' for '+escHtml(cli)+'. The narrower band is used where they overlap.</span>';
 }
+// A grade override replaces the experience band, so the band boxes are switched off while a grade is picked.
+function onOvGradeCh(){const g=gv('bp-ov-grade');['bp-ov-expfrom','bp-ov-expto'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=!!g;if(g)el.value='';}});}
 function editClientOverride(i){
   const o=incPolicy.clientOverrides[i]; if(!o) return;
   _ovEditIdx=i;
   sv('bp-ov-client',o.client); sv('bp-ov-model',o.model||'pct'); sv('bp-ov-rate',o.model==='fixed'?(o.amount!=null?o.amount:o.rate):o.rate);
-  const b=_ovBand(o); sv('bp-ov-expfrom',b.ef>0?b.ef:''); sv('bp-ov-expto',b.et<999?b.et:'');
+  const b=_ovBand(o); sv('bp-ov-grade',o.grade||''); sv('bp-ov-expfrom',b.ef>0?b.ef:''); sv('bp-ov-expto',b.et<999?b.et:''); onOvGradeCh();
   const t=document.getElementById('bp-ov-formtitle'); if(t) t.textContent='Editing: '+o.client+' ('+_ovBandLabel(o)+')';
   const sb=document.getElementById('bp-ov-save'); if(sb) sb.textContent='Update Override';
   const cb=document.getElementById('bp-ov-cancel'); if(cb) cb.classList.remove('hidden');
@@ -8492,8 +8662,8 @@ function editClientOverride(i){
 }
 function cancelOverrideEdit(){
   _ovEditIdx=-1;
-  ['bp-ov-client','bp-ov-rate','bp-ov-expfrom','bp-ov-expto'].forEach(id=>sv(id,''));
-  sv('bp-ov-model','pct');
+  ['bp-ov-client','bp-ov-rate','bp-ov-expfrom','bp-ov-expto','bp-ov-grade'].forEach(id=>sv(id,''));
+  sv('bp-ov-model','pct'); onOvGradeCh();
   const t=document.getElementById('bp-ov-formtitle'); if(t) t.textContent='Add an override';
   const sb=document.getElementById('bp-ov-save'); if(sb) sb.textContent='Add Override';
   const cb=document.getElementById('bp-ov-cancel'); if(cb) cb.classList.add('hidden');
@@ -8504,7 +8674,7 @@ function renderClientOverridesList(){
   const list = incPolicy.clientOverrides;
   if(!list.length){el.innerHTML='<div style="color:var(--w60);font-size:11px;padding:6px 0">No client overrides saved. Every client uses the standard template.</div>';return;}
   const order = list.map((o,i)=>i).sort((a,b)=>String(list[a].client).localeCompare(String(list[b].client))||_ovBand(list[a]).ef-_ovBand(list[b]).ef);
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Experience Band</th><th>Fee Model</th><th>Rate / Amount</th><th></th></tr></thead><tbody>'+
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Applies To</th><th>Fee Model</th><th>Rate / Amount</th><th></th></tr></thead><tbody>'+
     order.map(i=>{const o=list[i];const ov=_ovOverlaps(o.client,_ovBand(o).ef,_ovBand(o).et,i);
       const val=o.model==='pct'?(o.rate+'%'):('₹'+Math.round(o.amount!=null?o.amount:o.rate).toLocaleString('en-IN'));
       return '<tr'+(i===_ovEditIdx?' style="outline:1px solid var(--gold)"':'')+'><td>'+escHtml(o.client)+'</td><td class="m">'+_ovBandLabel(o)+(ov.length?' <span style="color:var(--gold);font-size:10px" title="Where bands overlap, the narrower band is used">⚠ overlaps '+ov.map(x=>_ovBandLabel(x.o)).join(', ')+'</span>':'')+'</td><td class="m">'+(o.model==='pct'?'% of Fixed Pay':'Flat ₹ per hire')+'</td><td class="m">'+val+'</td>'+
@@ -9431,6 +9601,32 @@ function effortStatusBadge(status){
   return `<span style="background:${M2[0]}22;color:${M2[0]};font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">${M2[1]}</span>`;
 }
 
+// Incentive footnote for the recruiter's own pages (15 Oct 2026, Anne): where this month stands against
+// the incentive policy and what is left to reach the next slab. Revenue = firm fees of the recruiter's
+// hires that join this month (grade / client / experience rules via calcFirmFee); salary from Config.
+// Only the revenue-phase (month 4+) recruiter has a slab; ramp-up months are activity based.
+function incentiveFootnoteHtml(recName){
+  try{
+    if(!recName)return '';
+    const p=getActivePolicyPeriod();if(!p)return '';
+    const ph=getRecruiterPhase(recName,today());
+    if(ph.phase!=='revenue')return '';
+    const wrap=t=>'<div style="font-size:11px;color:var(--w60);margin-top:14px;padding-top:8px;border-top:1px solid var(--w08);line-height:1.7">💡 <strong style="color:var(--ow)">Incentive outlook, this month</strong> — '+t+'</div>';
+    const salary=recruiterSalary(recName);
+    if(!salary)return (curRole==='Recruiter')?'':wrap('monthly salary is not set for '+escHtml(recName)+' in Config → Recruiters, so no slab can be shown.');
+    const t=today(),mFrom=t.slice(0,8)+'01',mTo=t.slice(0,8)+'31';
+    const joined=MD.filter(r=>isJoinedInPeriod(r,mFrom,mTo)&&r[C.recruiter]===recName);
+    const rev=joined.reduce((a,r)=>a+calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.offeredSalary])||0),r[C.client],r[C.doj],r[C.code]),0);
+    const inc=calcRecIncentive(rev,salary);
+    const slabs=incSlabsOf(p).slice().sort((a,b)=>a.multipleFrom-b.multipleFrom);
+    const next=slabs.find(s=>s.rate>inc.rate&&!(inc.multiple>s.multipleFrom));
+    const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+    let txt=joined.length?(joined.length+' joined so far, firm revenue '+inr(rev)+' ('+inc.multiple+'× salary) → '+(inc.rate?inc.rate+'% slab, incentive '+inr(inc.incentive):'below the first slab')+'. '):'no joins yet this month. ';
+    if(next){const gap=Math.ceil(next.multipleFrom*salary-rev+1);txt+='<strong style="color:var(--gold)">'+inr(gap)+' more firm revenue</strong> reaches the '+next.rate+'% slab.';}
+    else txt+='You are in the top slab.';
+    return wrap(txt);
+  }catch(e){console.warn('incentiveFootnoteHtml',e.message);return '';}
+}
 function renderEffortPortfolio(d){
   const el = document.getElementById('ef-portfolio'); if(!el) return;
   const s = d.summary;
@@ -9465,6 +9661,7 @@ function renderEffortPortfolio(d){
     });
   }
   html += '</tbody></table></div><div style="font-size:9px;color:var(--w60);margin-top:6px">*Submitted has no dedicated tracked event in THP — approximated as status reaching a client-facing pipeline stage. "Alt. Sourcing" flags a thin-pipeline vacancy (&lt;3 active candidates) with no logged alternate-sourcing action in the last 5 days.</div>';
+  html += incentiveFootnoteHtml(effortRecSel);
   el.innerHTML = html;
 }
 
@@ -9492,6 +9689,7 @@ function renderEffortFocus(d){
   html += sec('Alternate Sourcing Action Required','📢',altRequired,['Vacancy','Client','Last Alt. Sourcing','Active Pipeline',''],p=>`<tr><td class="mono">${p.vacCode}</td><td class="m">${p.client}</td><td class="m">${p.lastAltDate?fmtD(p.lastAltDate):'Never'}</td><td class="m">${p.activePipelineCount}</td><td><button class="btn btn-ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="openLogAltSourcing('${p.vacCode}','${(p.client||'').replace(/'/g,"\\'")}')">📢 Log</button></td></tr>`);
   html += sec('Follow-ups Due / Overdue','⏰',followupsDue,['Candidate','Position','Client','Follow-up Date'],r=>`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.position]}</td><td class="m">${r[C.client]}</td><td class="mono">${fmtD(r[C.followupDate])}</td></tr>`);
   html += sec('Interviews Today','🎤',interviewsToday,['Candidate','Position','Client'],r=>`<tr><td><strong>${r[C.name]}</strong></td><td class="m">${r[C.position]}</td><td class="m">${r[C.client]}</td></tr>`);
+  html += incentiveFootnoteHtml(effortRecSel);
   el.innerHTML = html;
 }
 
@@ -11727,7 +11925,7 @@ function igRenderPage() {
           <div style="font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px">AI-GENERATED SUMMARY</div>
           <button class="btn btn-t btn-sm" style="font-size:11px" onclick="igAISummary()">✨ Generate / Refresh</button>
         </div>
-        <textarea id="ig-summary" style="min-height:120px;font-size:12px;line-height:1.8" placeholder="Click 'Generate' to create an AI summary from your notes and scores. You can edit before exporting." onchange="igSaveSummary(this)">${escHtml(ev2.summary||'')}</textarea>
+        <textarea id="ig-summary" style="min-height:280px;font-size:12px;line-height:1.8" placeholder="Click 'Generate' to create an AI summary from your notes and scores. You can edit before exporting." onchange="igSaveSummary(this)">${escHtml(ev2.summary||'')}</textarea>
         <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
           <button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--gold)" onclick="igExportPDF()">⬇ Export PDF</button>
         </div>
@@ -12144,27 +12342,28 @@ ${coreQA.join('\n')||'None'}
 ADDITIONAL / PROBING QUESTIONS & RESPONSES:
 ${addQA.join('\n')||'None'}
 
-Write a professional interview summary in 150–200 words using this format:
+Write a professional interview summary of about 350–450 words (longer is fine when the candidate gave a lot of detail — do not compress real content to fit) using this format:
 Candidate has [X] years of experience in [area]. Currently working with [company] as [designation].
-Relevant experience includes [2–3 points].
+Career snapshot: [2–4 lines — employers, roles, tenure, team size / scope, location, as stated].
+Relevant experience: [4–6 specific points taken from the responses — keep the candidate's own figures, names, volumes, outcomes].
 Tools/systems used: [mention tools if noted].
-Strong example shared: [mention if any].
-Strengths: [key positives].
-Areas to explore further: [optional — frame as development opportunities or points needing clarification, not as negatives].
+Strong examples shared: [1–3 examples, each as situation, what the candidate did, and the result].
+Strengths: [3–5 key positives, each tied to something the candidate actually said].
+What would have enhanced fitment: [2–4 neutral, factual points — areas not covered or not evidenced in the interview that would add to the fit for this role. Phrase each as what would strengthen the fit, e.g. "Exposure to X would further strengthen fit", never as a criticism].
 Current: [salary]. Expected: [salary]. Notice: [period].
 Reason for change: [one short phrase from REASON FOR CHANGE above — omit this sentence entirely if it is "—"]. Next round availability: [from NEXT ROUND AVAILABILITY above — omit this sentence entirely if it is "—"].
 Questions asked: ${tickedCount}/${totalQs}.
 ${resumeFitmentText?'Resume fitment vs JD: [one line summarising the RESUME FITMENT VS JD finding above in your own words — state its score and the key takeaway].\n':''}Recommendation: ${ev.recommendation||'[Shortlist/Hold/Reject]'} — [one-line reason].
 Do NOT state or invent the interview evaluation's own fitment score (the deterministic one computed from the SCORES above) — that is computed separately from the interview scores, not generated by you. The RESUME FITMENT VS JD score, if provided above, is a different, pre-computed signal you should reference as instructed, not something you are generating yourself.
-Use simple English. Do not use jargon. Frame all observations positively — describe what the candidate brings and what to explore, never what they lack.
-Base "Relevant experience", "Strong example shared", and "Strengths" primarily on the candidate's actual responses in CORE INTERVIEW QUESTIONS & RESPONSES and ADDITIONAL / PROBING QUESTIONS & RESPONSES above — that's where the real interview content lives. Use RECRUITER NOTES and OTTER / CALL NOTES to supplement or corroborate, not replace, what the question responses show.`;
+Use simple English. Do not use jargon. Frame all observations positively — describe what the candidate brings; gaps appear only under "What would have enhanced fitment", worded neutrally.
+Base "Relevant experience", "Strong example shared", and "Strengths" primarily on the candidate's actual responses in CORE INTERVIEW QUESTIONS & RESPONSES and ADDITIONAL / PROBING QUESTIONS & RESPONSES above — that's where the real interview content lives. Use RECRUITER NOTES and OTTER / CALL NOTES to supplement or corroborate, not replace, what the question responses show. If OTTER / CALL NOTES holds a full call transcript, mine it for concrete facts (employers, titles, dates, team size, numbers, tools, examples) and include them — the summary must not leave out meaningful content the candidate gave. Do not invent anything that was not said, and do not state or infer the candidate's gender; write "the candidate" or "they".`;
 
   toast('info','AI','Generating summary...');
   try {
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':getAIKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2500,messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){const e=await resp.json();throw new Error(e.error&&e.error.message?e.error.message:'API error '+resp.status);}
     const data=await resp.json();
@@ -12916,8 +13115,10 @@ async function approveRemapRequest(itemId){
   if(!res.ok){hideLoad();toast('err','Approve Failed',res.error);return;}
   try{
     await refreshToken();
-    await fetch(GRAPH+'/sites/'+siteId+'/lists/RemapRequests/items/'+itemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Approved',ResolvedBy:(curUser&&curUser.name)||(acct&&acct.name?acct.name:''),ResolvedOn:new Date().toISOString(),NewCandidateCode:res.code}})});
-  }catch(e){console.warn('approveRemapRequest: status update failed (candidate WAS created):',e.message);}
+    // 15 Oct 2026: this PATCH sent {fields:{…}} to the /fields endpoint (flat map required, Rule 12) and never checked the response, so approved requests silently stayed Pending.
+    const _rp=await fetch(GRAPH+'/sites/'+siteId+'/lists/RemapRequests/items/'+itemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({Status:'Approved',ResolvedBy:(curUser&&curUser.name)||(acct&&acct.name?acct.name:''),ResolvedOn:new Date().toISOString(),NewCandidateCode:res.code})});
+    if(!_rp.ok)throw new Error('HTTP '+_rp.status+' '+(await _rp.text()).slice(0,200));
+  }catch(e){console.warn('approveRemapRequest: status update failed (candidate WAS created):',e.message);toast('warn','Candidate Added, Request Not Closed','The record '+res.code+' was created, but the request could not be marked Approved: '+e.message);}
   hideLoad();
   toast('ok','Approved','Candidate added: '+res.code+' — linked to '+(req.MatchedCode||''));
   updateTopbar();loadDash();renderRec();
@@ -12934,7 +13135,8 @@ async function rejectRemapRequest(itemId){
     showLoad('Rejecting request...');
     try{
       await refreshToken();
-      await fetch(GRAPH+'/sites/'+siteId+'/lists/RemapRequests/items/'+itemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Rejected',ResolvedBy:(curUser&&curUser.name)||(acct&&acct.name?acct.name:''),ResolvedOn:new Date().toISOString(),ResolutionNote:reason||''}})});
+      const _rr=await fetch(GRAPH+'/sites/'+siteId+'/lists/RemapRequests/items/'+itemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({Status:'Rejected',ResolvedBy:(curUser&&curUser.name)||(acct&&acct.name?acct.name:''),ResolvedOn:new Date().toISOString(),ResolutionNote:reason||''})});
+      if(!_rr.ok)throw new Error('HTTP '+_rr.status+' '+(await _rr.text()).slice(0,200));
       hideLoad();toast('ok','Rejected','Request rejected — no candidate created.');
       loadRemapRequests();
     }catch(e){hideLoad();toast('err','Reject Failed',e.message);}
@@ -13163,6 +13365,77 @@ async function viewPoolModal(code){
   const dismissBtn='<button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="closeModal();dismissPoolEntry(\''+p._spItemId+'\')">✕ Dismiss</button>&nbsp;';
   showModal('🌊 '+(p.name||code),'Talent Pool entry '+code,tableHtml,resumeBtn+dismissBtn+'<button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>');
 }
+// ── Engagement history (15 Oct 2026, Anne) ────────────────────────────────
+// A candidate keeps ONE record for life. Each time the record is moved on to a new
+// vacancy (a returning candidate, or a resurfaced match) the engagement being left
+// behind is saved to the CandidateEngagements list: vacancy, client, position,
+// recruiter, sourcing date, how it ended, the full remarks, and a snapshot of the
+// key fields. This is the record of who worked a candidate and when — the reference
+// if ownership of a hired / billed candidate is ever in question. Append-only.
+// List columns (all plain text / multi-line plain text): Title (candidate code),
+// VacancyCode, Client, Position, Recruiter, SourcingDate, FinalStatus, StatusUpdatedOn,
+// Remarks*, Reason, ArchivedBy, ArchivedAt, SnapshotJSON*   (*multi-line)
+const ENG_LIST='CandidateEngagements';
+const ENG_SNAP_KEYS=['vacCode','client','dept','position','recruiter','source','sourcingDate','status','dm','interviewDate','interviewerName','decisionDate','offerDate','offeredSalary','doj','expectedSalary','salaryPA','followupCount','remark','otherComments','updatedBy','updatedOn','prevCode'];
+let _engCache={at:0,rows:null,busy:null};
+async function archiveEngagement(r,reason){
+  try{
+    await refreshToken();
+    const snap={};ENG_SNAP_KEYS.forEach(k=>{if(C[k]&&r[C[k]]!==undefined&&r[C[k]]!=='')snap[k]=r[C[k]];});
+    const fields={Title:String(r[C.code]),VacancyCode:String(r[C.vacCode]||''),Client:String(r[C.client]||''),Position:String(r[C.position]||'').slice(0,250),
+      Recruiter:String(r[C.recruiter]||''),FinalStatus:String(r[C.status]||''),
+      Remarks:String(r[C.remark]||''),Reason:reason||'',ArchivedBy:(acct&&acct.name)||(curUser&&curUser.name)||'',ArchivedAt:new Date().toISOString(),SnapshotJSON:JSON.stringify(snap)};
+    // SourcingDate / StatusUpdatedOn are Date columns: a blank or unparseable value would reject the whole row, so only a real date is sent
+    const _iso=v=>{const n=normDateStr(v);return /^\d{4}-\d{2}-\d{2}/.test(n)?n:null;};
+    const _sd=_iso(r[C.sourcingDate]),_uo=_iso(r[C.updatedOn]);
+    if(_sd)fields.SourcingDate=_sd;if(_uo)fields.StatusUpdatedOn=_uo;
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+ENG_LIST+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    if(!res.ok){const t=await res.text().catch(()=>'');
+      return {ok:false,error:(res.status===404?'The '+ENG_LIST+' list does not exist yet. ':'The engagement history could not be saved (HTTP '+res.status+'). ')+t.slice(0,160)};}
+    if(_engCache.rows)_engCache.rows.push({fields});
+    return {ok:true};
+  }catch(e){return {ok:false,error:'The engagement history could not be saved: '+e.message+'.'};}
+}
+async function engRows(force){
+  if(!force&&_engCache.rows&&Date.now()-_engCache.at<60000)return _engCache.rows;
+  if(_engCache.busy)return _engCache.busy;
+  _engCache.busy=(async()=>{
+    try{
+      await refreshToken();
+      let url=GRAPH+'/sites/'+siteId+'/lists/'+ENG_LIST+'/items?$expand=fields&$top=999',out=[];
+      while(url){
+        const res=await fetch(url,{headers:{Authorization:'Bearer '+tok}});
+        if(res.status===404){out=[];break;}
+        if(!res.ok)throw new Error('HTTP '+res.status);
+        const j=await res.json();out=out.concat(j.value||[]);url=j['@odata.nextLink']||'';
+      }
+      _engCache.rows=out;_engCache.at=Date.now();
+    }finally{_engCache.busy=null;}
+    return _engCache.rows;
+  })();
+  return _engCache.busy;
+}
+function engHistHtml(rows){
+  if(!rows.length)return '';
+  const sorted=rows.map(x=>x.fields).sort((a,b)=>String(b.ArchivedAt||'').localeCompare(String(a.ArchivedAt||'')));
+  const dt=v=>{const d=new Date(v);return isNaN(d)?String(v||'—'):d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});};
+  const rem=t=>String(t||'').split('|').map(x=>x.trim()).filter(Boolean);
+  return '<div style="font-size:11px;color:var(--w60);margin-bottom:5px">📚 <strong style="color:var(--ow)">Previous engagements</strong> — '+sorted.length+' earlier on this record (newest first)</div>'+
+    sorted.map(f=>'<details style="margin-bottom:6px;background:var(--w06);border-radius:6px;padding:6px 10px"><summary style="cursor:pointer;font-size:11px;color:var(--ow)">'+
+      escHtml(f.VacancyCode||'—')+' · '+escHtml(f.Client||'')+' · '+escHtml(f.Position||'')+' — ended as <strong>'+escHtml(f.FinalStatus||'—')+'</strong> · Recruiter: <strong>'+escHtml(f.Recruiter||'—')+'</strong></summary>'+
+      '<div style="font-size:11px;color:var(--w60);margin-top:6px;line-height:1.6">Sourced '+escHtml(dt(f.SourcingDate))+' · last updated '+escHtml(dt(f.StatusUpdatedOn))+' · archived '+escHtml(dt(f.ArchivedAt))+' by '+escHtml(f.ArchivedBy||'—')+(f.Reason?' ('+escHtml(f.Reason)+')':'')+
+      (rem(f.Remarks).length?'<div style="margin-top:6px"><strong style="color:var(--ow)">Remarks then</strong><ul style="margin:4px 0 0;padding-left:16px">'+rem(f.Remarks).map(x=>'<li>'+escHtml(x)+'</li>').join('')+'</ul></div>':'')+'</div></details>').join('');
+}
+async function renderEngagementHistory(code,hostId){
+  const host=document.getElementById(hostId);if(!host||!code)return;
+  host.innerHTML='';host.style.cssText='';
+  try{
+    const rows=(await engRows()).filter(x=>String(x.fields.Title)===String(code));
+    const h=document.getElementById(hostId);if(!h)return;
+    const html=engHistHtml(rows);
+    if(html){h.style.cssText='border-top:1px solid var(--w08);padding-top:8px;margin-top:10px';h.innerHTML=html;}
+  }catch(e){console.warn('renderEngagementHistory',e.message);}
+}
 // Tags an EXISTING candidate (a resurfaced match — Not Interested/On Hold/
 // Rejected by Client/Not Contactable) to a brand-new vacancy. Anne's explicit
 // requirement (19 Sep 2026): only the vacancy linkage changes — Vacancy Code,
@@ -13181,11 +13454,19 @@ async function viewPoolModal(code){
 // continuing down the list. On success it re-renders the same modal with
 // this row removed via _currentMatchModal; the Close button remains the
 // way back whenever they're actually done.
-async function tagCandidateToVacancy(candCode,vacCode){
+async function tagCandidateToVacancy(candCode,vacCode,opts){
+  opts=opts||{};
   const r=MD.find(x=>x[C.code]===candCode);
-  if(!r){toast('err','Not Found','Candidate '+candCode+' could not be found.');return;}
+  if(!r){toast('err','Not Found','Candidate '+candCode+' could not be found.');return {ok:false};}
   const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
-  if(!vac){toast('err','Not Found','Vacancy '+vacCode+' could not be found.');return;}
+  if(!vac){toast('err','Not Found','Vacancy '+vacCode+' could not be found.');return {ok:false};}
+  // 15 Oct 2026 (Anne): the engagement being left behind is archived BEFORE the record changes,
+  // so who sourced / worked it, on which vacancy, with what remarks, is never lost. If the
+  // archive cannot be saved nothing is changed.
+  if(r[C.vacCode]||r[C.remark]){
+    const ar=await archiveEngagement(r,opts.reason||'Reassigned to a new vacancy');
+    if(!ar.ok){toast('err','History Not Saved',ar.error+' The record was NOT changed.');return {ok:false};}
+  }
   const oldVacCode=r[C.vacCode]||'',oldStatus=r[C.status]||'',oldFU=r[C.followupDate]||'';
   const newFU=addDays(today(),1);
   const clRows=[
@@ -13224,7 +13505,7 @@ async function tagCandidateToVacancy(candCode,vacCode){
   try{
     await xlPatchRow(r);
     if(clRows.length)await xlAppendRows('Change Log',clRows);
-    toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+', marked Reassigned, and follow-up set for '+fmtD(newFU)+' — remarks and other history unchanged.');
+    if(!opts.quiet)toast('ok','Tagged to Vacancy',r[C.name]+' is now linked to '+vacCode+', marked Reassigned, and follow-up set for '+fmtD(newFU)+' — remarks and other history unchanged.');
     renderRec();loadDash();
     if(_currentMatchModal&&_currentMatchModal.vacCode===vacCode){
       // 30 Sep 2026: _currentMatchModal now holds `runs` (one entry per
@@ -13239,8 +13520,10 @@ async function tagCandidateToVacancy(candCode,vacCode){
         showModal('🎯 Suggested Matches for '+vacCode,'All matches for this vacancy have been actioned.','','<button class="btn btn-t" onclick="closeModal()">Close</button>');
       }
     }
+    return {ok:true};
   }catch(e){
     toast('err','Tag Failed',e.message);
+    return {ok:false,error:e.message};
   }
 }
 // 1 Oct 2026, Anne: "Reassign & WA" in Profile Matches — same tag as
@@ -13268,7 +13551,8 @@ function reassignAndWA(candCode,vacCode){
   _reassignAndWAFollowup(candCode,vacCode,hasMobile);
 }
 async function _reassignAndWAFollowup(candCode,vacCode,hasMobile){
-  await tagCandidateToVacancy(candCode,vacCode);
+  const _tg=await tagCandidateToVacancy(candCode,vacCode);
+  if(_tg&&_tg.ok===false)return; // tag failed (error already shown) — don't record a WhatsApp / follow-up against an unchanged record
   if(!hasMobile){
     toast('warn','No Mobile on File',candCode+' was tagged to '+vacCode+', but no WhatsApp message was sent — no valid mobile on record.');
     return;
@@ -14729,7 +15013,10 @@ const SPLIST_VAC_FIELD_MAP={
   // codebase reading this same List) never matched against "Yes". Root-caused
   // together with the Candidate Portal side 21 Aug 2026; see that project's
   // lib/graph.ts for the corresponding read-side accommodation.
-  'Externally Visible':'ExternallyVisible'
+  'Externally Visible':'ExternallyVisible',
+  // 15 Oct 2026 (Anne): billing grade — a Choice column on the Vacancies list (Frontline-Flat, Frontline, Mid to Senior, Senior).
+  // Choices are read from the list itself (loadGradeChoices) so the dropdown can never offer a value the list would reject.
+  'Grade':'Grade'
 };
 const SPLIST_VAC_REVERSE_MAP=Object.fromEntries(Object.entries(SPLIST_VAC_FIELD_MAP).map(([k,v])=>[v,k]));
 // 'Externally Visible' is a Choice column (Yes/No strings only, not a real
@@ -14762,6 +15049,30 @@ function listItemToVacancyRecord(item){
   }
   v._spItemId=item.id;
   return v;
+}
+// Grade choices come from the Vacancies list's own Grade column, so the form, Billing Config and the list always agree.
+let GRADES=['Frontline-Flat','Frontline','Mid to Senior','Senior'];
+async function loadGradeChoices(){
+  try{
+    const res=await graphGet(`/sites/${siteId}/lists/Vacancies/columns?$select=name,choice&$top=200`);
+    const col=(res.value||[]).find(c=>c.name==='Grade');
+    if(col&&col.choice&&Array.isArray(col.choice.choices)&&col.choice.choices.length){GRADES=col.choice.choices.slice();}
+  }catch(e){console.warn('loadGradeChoices failed — using defaults:',e.message);}
+  fillGradeDrops();
+}
+function fillGradeDrops(){
+  [['avGrade','— Not set —'],['bp-ov-grade','— Use experience band —']].forEach(([id,first])=>{
+    const el=document.getElementById(id);if(!el)return;const cur=el.value;
+    el.innerHTML='<option value="">'+first+'</option>'+GRADES.map(g=>'<option value="'+escHtml(g)+'">'+escHtml(g)+'</option>').join('');
+    if(cur&&GRADES.includes(cur))el.value=cur;
+  });
+}
+// Billing grade of a candidate = the grade on the vacancy they are tagged to.
+function gradeForCandidate(code){
+  if(!code)return '';
+  const r=MD.find(x=>x[C.code]===code);if(!r||!r[C.vacCode])return '';
+  const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===r[C.vacCode]);
+  return v?String(v['Grade']||'').trim():'';
 }
 async function loadVacanciesFromList(){
   const out=[];
