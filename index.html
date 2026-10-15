@@ -1034,8 +1034,8 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 </div>
 <div class="card hidden" id="scrResultsCard">
-<div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Screening Results</div><span id="scrCount" style="font-size:12px;color:var(--w60)"></span></div>
-<div class="tw"><table><thead><tr><th>File</th><th>Parsed Name</th><th>Contact</th><th>Company</th><th>Score</th><th>Recommendation</th><th>Status</th><th></th></tr></thead><tbody id="scrBody"></tbody></table></div>
+<div class="card-hdr"><div class="card-title"><span class="ac">📋</span> Screening Results</div><div class="flex gap8" style="align-items:center"><span id="scrCount" style="font-size:12px;color:var(--w60)"></span><button class="btn btn-ghost btn-sm" onclick="screenToggleAll(true)">Expand all</button><button class="btn btn-ghost btn-sm" onclick="screenToggleAll(false)">Collapse all</button></div></div>
+<div class="tw"><table><thead><tr><th style="width:24px"></th><th>File</th><th>Parsed Name</th><th>Contact</th><th>Company</th><th>Score</th><th>Recommendation</th><th>Status</th><th></th></tr></thead><tbody id="scrBody"></tbody></table></div>
 </div>
 </div>
 
@@ -1849,7 +1849,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 
 <div class="sl2" style="margin-bottom:10px">Standard Fee Slabs <span style="font-size:10px;color:var(--w60);font-weight:400">(by candidate experience)</span></div>
 <div style="margin-bottom:14px">
-<div class="tw"><table id="bp-slabs-table"><thead><tr><th>Experience From (yrs)</th><th>Experience To (yrs)</th><th>Fee Type</th><th>Rate / Amount</th><th></th></tr></thead><tbody id="bp-slabs-body"></tbody></table></div>
+<div class="tw"><table id="bp-slabs-table"><thead><tr><th>Experience From (yrs)</th><th>Experience To (yrs)</th><th>Grade</th><th>Fee Type</th><th>Rate / Amount</th><th></th></tr></thead><tbody id="bp-slabs-body"></tbody></table></div>
 <button class="btn btn-ghost btn-sm" onclick="addSlabRow()" style="margin-top:8px">+ Add Slab</button>
 </div>
 
@@ -1954,10 +1954,12 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <select id="avf-rec" onchange="renderAVacs()" style="flex:1;min-width:120px;max-width:155px;font-size:11px"><option value="">All Recruiters</option></select>
   <select id="avf-dept" onchange="renderAVacs()" style="flex:1;min-width:120px;max-width:155px;font-size:11px"><option value="">All Departments</option></select>
   <input type="text" id="avf-role" oninput="renderAVacs()" placeholder="Search role..." style="flex:1;min-width:120px;max-width:155px;font-size:11px">
+  <select id="avf-grade" onchange="renderAVacs()" style="flex:1;min-width:110px;max-width:145px;font-size:11px"><option value="">All Grades</option></select>
+  <span id="avf-gradenote" style="font-size:11px"></span>
   <select id="avf-stat" onchange="renderAVacs()" style="flex:1;min-width:110px;max-width:145px;font-size:11px"><option value="">All Statuses</option><option>Open</option><option>On Hold</option><option>Closed</option><option>Cancelled</option></select>
-  <button class="btn btn-ghost btn-sm" onclick="['avf-cli','avf-rec','avf-dept','avf-stat'].forEach(function(id){var e=document.getElementById(id);if(e)e.selectedIndex=0;});var r=document.getElementById('avf-role');if(r)r.value='';renderAVacs()">✕ Clear</button>
+  <button class="btn btn-ghost btn-sm" onclick="['avf-cli','avf-rec','avf-dept','avf-grade','avf-stat'].forEach(function(id){var e=document.getElementById(id);if(e)e.selectedIndex=0;});var r=document.getElementById('avf-role');if(r)r.value='';renderAVacs()">✕ Clear</button>
 </div>
-<div class="tw"><table><thead><tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Recruiter</th><th>Status</th><th>Active</th><th>Actions</th></tr></thead><tbody id="avBody"></tbody></table></div>
+<div class="tw"><table><thead><tr><th>Code</th><th>Client</th><th>Role</th><th>Dept</th><th>Location</th><th>Budget</th><th>Grade</th><th>Recruiter</th><th>Status</th><th>Active</th><th>Actions</th></tr></thead><tbody id="avBody"></tbody></table></div>
 </div></div>
 <!-- DASHBOARD CONFIG -->
 <div id="ap-dashconfig" class="hidden"><div class="card" style="text-align:center;padding:36px"><div style="font-size:44px;margin-bottom:12px">📊</div><div style="font-size:15px;font-weight:600;margin-bottom:7px">Dashboard Configuration — Coming in Session 5</div><div style="font-size:12px;color:var(--w60);max-width:380px;margin:0 auto;line-height:1.7">Chart visibility, default date ranges, client-facing layout, KPI thresholds and export branding will be configured here once dashboards are built.</div></div></div>
@@ -5117,17 +5119,23 @@ function renderAVacs(){
   const fDept=document.getElementById('avf-dept')&&document.getElementById('avf-dept').value||'';
   const fRole=(document.getElementById('avf-role')&&document.getElementById('avf-role').value||'').toLowerCase();
   const fStat=document.getElementById('avf-stat')&&document.getElementById('avf-stat').value||'';
+  const fGrade=document.getElementById('avf-grade')&&document.getElementById('avf-grade').value||'';
   const tb=document.getElementById('avBody');if(!tb)return;
+  // 15 Oct 2026 (Anne): see which vacancies have no billing Grade without opening each one. Counted over active, open vacancies.
+  const _noGrade=VD.filter(v=>!String(v['Grade']||'').trim()&&v['Active']!=='N'&&(v['Current Status']||'Open')==='Open').length;
+  const _gn=document.getElementById('avf-gradenote');if(_gn)_gn.innerHTML=_noGrade?'<a href="#" style="color:var(--gold);text-decoration:none" onclick="event.preventDefault();var g=document.getElementById(\'avf-grade\');g.value=\'__none\';renderAVacs()">⚠ '+_noGrade+' open without a grade</a>':'<span style="color:var(--teal)">✓ every open vacancy has a grade</span>';
   const vis=VD.filter(v=>{
     if(fCli&&(v['Company']||'')!==fCli)return false;
     if(fRec&&(v['Recruiter']||'')!==fRec)return false;
     if(fDept&&(v['Department']||'')!==fDept)return false;
     if(fRole&&!(v['Designation']||'').toLowerCase().includes(fRole))return false;
     if(fStat&&(v['Current Status']||'Open')!==fStat)return false;
+    if(fGrade==='__none'&&String(v['Grade']||'').trim())return false;
+    if(fGrade&&fGrade!=='__none'&&(v['Grade']||'')!==fGrade)return false;
     return true;
   });
-  if(!vis.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies yet.')+'</td></tr>';return;}
-  tb.innerHTML=vis.map(v=>{const i=VD.indexOf(v);const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
+  if(!vis.length){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--w60)">'+(VD.length?'No vacancies match filters':'No vacancies yet.')+'</td></tr>';return;}
+  tb.innerHTML=vis.map(v=>{const i=VD.indexOf(v);const code=v['Vacancy code']||v['Vacancy Code']||'—';const st=v['Current Status']||'Open';const act=v['Active']!=='N';return'<tr style="'+(act?'':'opacity:.5')+'"><td class="mono" style="font-size:10px">'+code+'</td><td class="m">'+v['Company']+'</td><td><strong>'+v['Designation']+'</strong></td><td class="m">'+v['Department']+'</td><td class="m">'+v['Location']+'</td><td class="m">'+v['Monthly Budget']+'</td><td class="m">'+(String(v['Grade']||'').trim()?escHtml(v['Grade']):'<span class="badge" style="background:rgba(233,152,43,.15);color:var(--gold);font-size:10px">Not set</span>')+'</td><td class="m">'+v['Recruiter']+'</td><td><span class="badge '+bdg(st)+'">'+st+'</span></td><td><span class="badge '+(act?'b-active':'b-inactive')+'">'+(act?'Active':'Inactive')+'</span></td><td><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="editAVac('+i+')">Edit</button><button class="btn btn-ghost btn-sm" style="color:'+(act?'#ff6b6b':'var(--teal)')+'" onclick="toggleVacAct('+i+')">'+(act?'Inactive':'Activate')+'</button></div></td></tr>';}).join('');}
 function editAVac(idx){vacEIdx=idx;const v=VD[idx];if(!v)return;fillDrops();['avCli','avDept','avLoc','avRec','avPriority','avStat','avGrade'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const map=[['avCli','Company'],['avRole','Designation'],['avDept','Department'],['avLoc','Location'],['avBudgetMin','Budget Min'],['avBudgetMax','Budget Max'],['avExp','Experience'],['avRec','Recruiter'],['avTgt','Target Fill Date'],['avStat','Current Status'],['avHiringMgr','Hiring Manager'],['avMgrName','Manager Name'],['avDateVac','Date of Vacancy'],['avRemarks','Remarks'],['avJDLink','JD Link'],['avPositions','Positions Count'],['avPriority','Priority'],['avGrade','Grade']];map.forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.value=v[key]||'';});const a=document.getElementById('avAct');if(a)a.value=v['Active']!=='N'?'Y':'N';const ev=document.getElementById('avExtVis');if(ev)ev.value=v['Externally Visible']==='Y'?'Y':'N';populateAvJDSel(v['JD Link']||'');showVacFormModal('✏ Edit Vacancy');}
 async function saveVac(){
 const cli=gv('avCli'),role=gv('avRole'),dept=gv('avDept');
@@ -7061,7 +7069,12 @@ function calcFirmFee(expYears, annualFixedPay, client, onDate, candidateCode, gr
     if(ov.model === 'pct')   return annualFixedPay * ((ov.rate || 0) / 100);
   }
   const sortedSlabs = period.slabs.slice().sort((a,b)=>a.expFrom-b.expFrom);
-  let slab = sortedSlabs.find(s => exp >= s.expFrom && exp < s.expTo);
+  // 15 Oct 2026 (Anne): a standard-template row can be tagged with a Grade as well as an experience
+  // band. A row whose grade matches this candidate's / vacancy's grade is used first; otherwise the
+  // plain (no-grade) experience rows apply exactly as before.
+  const _inBand = s => exp >= s.expFrom && exp < s.expTo;
+  const _gradeSlabs = gradeNorm ? sortedSlabs.filter(s => s.grade && String(s.grade).trim().toLowerCase() === gradeNorm) : [];
+  let slab = _gradeSlabs.find(_inBand) || sortedSlabs.filter(s => !s.grade).find(_inBand);
   if(!slab){
     // No configured slab actually covers this experience value — a genuine
     // gap between bands, not "no data available". The old fallback
@@ -7074,7 +7087,9 @@ function calcFirmFee(expYears, annualFixedPay, client, onDate, candidateCode, gr
     // falling back to the lowest slab only if they're below all of them —
     // and logs it, since a real gap here means Admin → Billing Config's
     // slabs need fixing, not that this should keep happening quietly.
-    slab = sortedSlabs.slice().reverse().find(s => exp >= s.expFrom) || sortedSlabs[0];
+    const _plain = sortedSlabs.filter(s => !s.grade);
+    const _fb = _plain.length ? _plain : sortedSlabs;
+    slab = _fb.slice().reverse().find(s => exp >= s.expFrom) || _fb[0];
     console.warn('calcFirmFee: experience',exp,'years does not fall inside any configured fee slab range — used the nearest slab as a fallback. Check Admin → Billing Config for a gap between slabs.');
   }
   if(!slab) return 0;
@@ -7322,9 +7337,10 @@ function buildPlanRows(){
   const tbody = document.getElementById('plan-body');
   if(!tbody || !p) return;
   const slabLabels = p.slabs.map(s => {
-    if(s.expFrom===0 && s.expTo<=1) return '0 – 1 Year';
-    if(s.expTo>=999) return 'More than '+s.expFrom+' Years';
-    return 'More than '+s.expFrom+' up to '+s.expTo+' Years';
+    const g = s.grade ? ' · '+s.grade : '';
+    if(s.expFrom===0 && s.expTo<=1) return '0 – 1 Year'+g;
+    if(s.expTo>=999) return 'More than '+s.expFrom+' Years'+g;
+    return 'More than '+s.expFrom+' up to '+s.expTo+' Years'+g;
   });
   const feeLabel = s => s.model==='fixed'
     ? 'Flat ₹'+s.amount.toLocaleString('en-IN')+' per hire'
@@ -7435,7 +7451,7 @@ function dlPlanEarnings(){
   p.slabs.forEach((s,i)=>{
     const inp=_planInputs[i]||{};
     const hires=inp.hires||0; const salary=inp.salary||0;
-    const lbl=s.expFrom===0&&s.expTo<=1?'0 – 1 Year':s.expTo>=999?'More than '+s.expFrom+' Years':'More than '+s.expFrom+' up to '+s.expTo+' Years';
+    const lbl=(s.expFrom===0&&s.expTo<=1?'0 – 1 Year':s.expTo>=999?'More than '+s.expFrom+' Years':'More than '+s.expFrom+' up to '+s.expTo+' Years')+(s.grade?' · '+s.grade:'');
     const fee=s.model==='fixed'?s.amount:salary*12*(s.rate/100);
     rows.push([lbl,s.model==='fixed'?'Flat ₹'+s.amount:s.rate+'% of Fixed Pay',hires,salary,Math.round(fee),Math.round(fee*hires)]);
     totHires+=hires;totFirm+=fee*hires;
@@ -8570,6 +8586,9 @@ function renderSlabTable(slabs){
     <tr>
       <td><input type="number" value="${s.expFrom}" step="0.5" min="0" style="width:80px" data-slab="${i}" data-field="expFrom" onchange="updateSlab(this)"></td>
       <td><input type="number" value="${s.expTo>=999?'':s.expTo}" step="0.5" min="0" placeholder="∞" style="width:80px" data-slab="${i}" data-field="expTo" onchange="updateSlab(this)"></td>
+      <td><select data-slab="${i}" data-field="grade" onchange="updateSlab(this)" title="Leave on Any grade for a plain experience band. Pick a grade to apply this row only to vacancies of that grade.">
+        <option value="">Any grade</option>${GRADES.map(g=>'<option value="'+escHtml(g)+'" '+(s.grade===g?'selected':'')+'>'+escHtml(g)+'</option>').join('')}
+      </select></td>
       <td><select data-slab="${i}" data-field="model" onchange="updateSlab(this)">
         <option value="pct" ${s.model==='pct'?'selected':''}>% of Fixed Pay</option>
         <option value="fixed" ${s.model==='fixed'?'selected':''}>Flat ₹ per hire</option>
@@ -8583,8 +8602,9 @@ function updateSlab(el){
   const p = getActivePolicyPeriod();if(!p)return;
   const i = parseInt(el.getAttribute('data-slab'));
   const field = el.getAttribute('data-field');
-  const val = field==='model' ? el.value : parseFloat(el.value)||0;
-  if(field==='expFrom') p.slabs[i].expFrom = val;
+  const val = (field==='model'||field==='grade') ? el.value : parseFloat(el.value)||0;
+  if(field==='grade'){ if(val) p.slabs[i].grade = val; else delete p.slabs[i].grade; }
+  else if(field==='expFrom') p.slabs[i].expFrom = val;
   else if(field==='expTo') p.slabs[i].expTo = val||999;
   else if(field==='model') p.slabs[i].model = val;
   else if(field==='rateOrAmount'){
@@ -8669,17 +8689,35 @@ function cancelOverrideEdit(){
   const cb=document.getElementById('bp-ov-cancel'); if(cb) cb.classList.add('hidden');
   renderClientOverridesList();
 }
+// Overrides are shown one row per client (collapsed) with its tiers underneath when expanded.
+const _ovOpen = new Set();
+function toggleOvClient(k){ if(_ovOpen.has(k)) _ovOpen.delete(k); else _ovOpen.add(k); renderClientOverridesList(); }
+function addTierFor(client){ cancelOverrideEdit(); sv('bp-ov-client',client); const f=document.getElementById('bp-ov-formtitle'); if(f) f.scrollIntoView({behavior:'smooth',block:'center'}); const r=document.getElementById('bp-ov-rate'); if(r) r.focus(); }
 function renderClientOverridesList(){
   const el = document.getElementById('bp-overrides-list');if(!el)return;
   const list = incPolicy.clientOverrides;
   if(!list.length){el.innerHTML='<div style="color:var(--w60);font-size:11px;padding:6px 0">No client overrides saved. Every client uses the standard template.</div>';return;}
-  const order = list.map((o,i)=>i).sort((a,b)=>String(list[a].client).localeCompare(String(list[b].client))||_ovBand(list[a]).ef-_ovBand(list[b]).ef);
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Applies To</th><th>Fee Model</th><th>Rate / Amount</th><th></th></tr></thead><tbody>'+
-    order.map(i=>{const o=list[i];const ov=_ovOverlaps(o.client,_ovBand(o).ef,_ovBand(o).et,i);
-      const val=o.model==='pct'?(o.rate+'%'):('₹'+Math.round(o.amount!=null?o.amount:o.rate).toLocaleString('en-IN'));
-      return '<tr'+(i===_ovEditIdx?' style="outline:1px solid var(--gold)"':'')+'><td>'+escHtml(o.client)+'</td><td class="m">'+_ovBandLabel(o)+(ov.length?' <span style="color:var(--gold);font-size:10px" title="Where bands overlap, the narrower band is used">⚠ overlaps '+ov.map(x=>_ovBandLabel(x.o)).join(', ')+'</span>':'')+'</td><td class="m">'+(o.model==='pct'?'% of Fixed Pay':'Flat ₹ per hire')+'</td><td class="m">'+val+'</td>'+
-      '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="editClientOverride('+i+')">✏ Edit</button> <button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="removeClientOverride('+i+')">✕</button></td></tr>';}).join('')+
-    '</tbody></table></div>';
+  const tierKey = o => o.grade ? (1000 + Math.max(0,GRADES.indexOf(o.grade))) : _ovBand(o).ef;
+  const val = o => o.model==='pct'?(o.rate+'%'):('₹'+Math.round(o.amount!=null?o.amount:o.rate).toLocaleString('en-IN'));
+  const groups = {};
+  list.forEach((o,i)=>{ const k=String(o.client||'').trim().toLowerCase(); (groups[k]=groups[k]||{name:o.client,items:[]}).items.push(i); });
+  // a client being edited stays open
+  if(_ovEditIdx>=0 && list[_ovEditIdx]) _ovOpen.add(String(list[_ovEditIdx].client||'').trim().toLowerCase());
+  const keys = Object.keys(groups).sort((a,b)=>groups[a].name.localeCompare(groups[b].name));
+  let rows = '';
+  keys.forEach(k=>{
+    const g = groups[k]; g.items.sort((a,b)=>tierKey(list[a])-tierKey(list[b]));
+    const open = _ovOpen.has(k);
+    const kq = k.replace(/'/g,"\\'");
+    const summary = g.items.map(i=>_ovBandLabel(list[i]).replace('Grade: ','').replace(' yrs','y').replace('All experience','All')+' '+val(list[i])).join(' · ');
+    rows += '<tr style="background:var(--w06);cursor:pointer" onclick="toggleOvClient(\''+kq+'\')"><td><strong>'+(open?'▾ ':'▸ ')+escHtml(g.name)+'</strong></td><td class="m" colspan="3">'+g.items.length+' tier'+(g.items.length>1?'s':'')+' — <span style="color:var(--w60)">'+escHtml(summary)+'</span></td><td style="white-space:nowrap" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" onclick="addTierFor(\''+escHtml(g.name).replace(/'/g,"\\'")+'\')">+ Tier</button></td></tr>';
+    if(open) g.items.forEach(i=>{
+      const o=list[i]; const ov=o.grade?[]:_ovOverlaps(o.client,_ovBand(o).ef,_ovBand(o).et,i);
+      rows += '<tr'+(i===_ovEditIdx?' style="outline:1px solid var(--gold)"':'')+'><td></td><td class="m">'+escHtml(_ovBandLabel(o))+(ov.length?' <span style="color:var(--gold);font-size:10px" title="Where bands overlap, the narrower band is used">⚠ overlaps '+ov.map(x=>escHtml(_ovBandLabel(x.o))).join(', ')+'</span>':'')+'</td><td class="m">'+(o.model==='pct'?'% of Fixed Pay':'Flat ₹ per hire')+'</td><td class="m">'+val(o)+'</td>'+
+        '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="editClientOverride('+i+')">✏ Edit</button> <button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="removeClientOverride('+i+')">✕</button></td></tr>';
+    });
+  });
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Applies To</th><th>Fee Model</th><th>Rate / Amount</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 async function removeClientOverride(i){
   const o=incPolicy.clientOverrides[i]; if(!o) return;
@@ -13632,6 +13670,10 @@ function screenStatusBadge(st){
   const[c,l]=map[st]||map.queued;
   return'<span style="font-size:10px;font-weight:600;color:'+c+';background:'+c+'18;border:1px solid '+c+'44;border-radius:12px;padding:2px 8px">'+l+'</span>';
 }
+// 15 Oct 2026 (Anne): each result is a compact row (file, name, score, one-line recommendation) that the
+// recruiter expands where they want the full recommendation and profile summary. Rows start collapsed.
+function screenToggle(i){const q=screenQueue[i];if(!q)return;q._open=!q._open;renderScreenQueue();}
+function screenToggleAll(open){screenQueue.forEach(q=>{q._open=!!open;});renderScreenQueue();}
 function renderScreenQueue(){
   const card=document.getElementById('scrResultsCard');const body=document.getElementById('scrBody');
   if(!card||!body)return;
@@ -13640,20 +13682,30 @@ function renderScreenQueue(){
   body.innerHTML=screenQueue.map((q,i)=>{
     const scoreTxt=q.score!=null?('<strong>'+q.score+'/10</strong>'):'—';
     const canPush=q.status==='scored';
-    return'<tr>'+
-      '<td>'+q.file.name+'</td>'+
-      '<td>'+(q.name||'—')+'</td>'+
-      '<td>'+[q.email,q.phone].filter(Boolean).join('<br>')+'</td>'+
-      '<td>'+(q.company||'—')+'</td>'+
+    const open=!!q._open;
+    const rec=String(q.recommendations||'');
+    const oneLine=rec.length>90?rec.slice(0,90).replace(/\s+\S*$/,'')+'…':rec;
+    const hasMore=!!(rec||q.profileSummary);
+    const main='<tr'+(open?' style="background:var(--w06)"':'')+'>'+
+      '<td onclick="screenToggle('+i+')" style="cursor:pointer;color:var(--teal);user-select:none" title="'+(open?'Collapse':'Expand to read the summary')+'">'+(hasMore?(open?'▾':'▸'):'')+'</td>'+
+      '<td onclick="screenToggle('+i+')" style="cursor:pointer">'+escHtml(q.file.name)+'</td>'+
+      '<td>'+(escHtml(q.name)||'—')+'</td>'+
+      '<td>'+[q.email,q.phone].filter(Boolean).map(escHtml).join('<br>')+'</td>'+
+      '<td>'+(escHtml(q.company)||'—')+'</td>'+
       '<td>'+scoreTxt+'</td>'+
-      '<td style="max-width:260px;white-space:normal;font-size:12px">'+(q.recommendations||'—')+'</td>'+
-      '<td>'+screenStatusBadge(q.status)+(q.status==='error'?'<div style="font-size:10px;color:#9f4a47;margin-top:2px">'+(q.error||'')+'</div>':'')+'</td>'+
+      '<td style="max-width:260px;white-space:normal;font-size:12px">'+(open?'<span style="color:var(--w60)">full text below</span>':(escHtml(oneLine)||'—'))+'</td>'+
+      '<td>'+screenStatusBadge(q.status)+(q.status==='error'?'<div style="font-size:10px;color:#9f4a47;margin-top:2px">'+escHtml(q.error||'')+'</div>':'')+'</td>'+
       '<td><div class="flex gap8">'+
         (canPush?'<button class="btn btn-t btn-sm" onclick="screenPushToTHP('+i+')">→ Push to THP</button>':'')+
         (q.status==='error'?'<button class="btn btn-ghost btn-sm" onclick="screenOne('+i+')">Retry</button>':'')+
         (q.status!=='pushed'?'<button class="btn btn-ghost btn-sm" onclick="screenRemove('+i+')">✕</button>':'')+
       '</div></td>'+
     '</tr>';
+    const detail=(open&&hasMore)?'<tr style="background:var(--w06)"><td></td><td colspan="8" style="white-space:normal;font-size:12px;line-height:1.7;padding:6px 12px 12px">'+
+      (rec?'<div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.5px;margin-bottom:3px">RECOMMENDATION</div><div style="margin-bottom:8px">'+escHtml(rec)+'</div>':'')+
+      (q.profileSummary?'<div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.5px;margin-bottom:3px">PROFILE SUMMARY</div><div>'+escHtml(q.profileSummary)+'</div>':'')+
+    '</td></tr>':'';
+    return main+detail;
   }).join('');
 }
 function screenRemove(i){_markScreenedDropped(screenQueue[i]);screenQueue.splice(i,1);renderScreenQueue();}
@@ -15061,10 +15113,10 @@ async function loadGradeChoices(){
   fillGradeDrops();
 }
 function fillGradeDrops(){
-  [['avGrade','— Not set —'],['bp-ov-grade','— Use experience band —']].forEach(([id,first])=>{
+  [['avGrade','— Not set —',''],['bp-ov-grade','— Use experience band —',''],['avf-grade','All Grades','<option value="__none">Not set</option>']].forEach(([id,first,extra])=>{
     const el=document.getElementById(id);if(!el)return;const cur=el.value;
-    el.innerHTML='<option value="">'+first+'</option>'+GRADES.map(g=>'<option value="'+escHtml(g)+'">'+escHtml(g)+'</option>').join('');
-    if(cur&&GRADES.includes(cur))el.value=cur;
+    el.innerHTML='<option value="">'+first+'</option>'+extra+GRADES.map(g=>'<option value="'+escHtml(g)+'">'+escHtml(g)+'</option>').join('');
+    if(cur&&(cur==='__none'||GRADES.includes(cur)))el.value=cur;
   });
 }
 // Billing grade of a candidate = the grade on the vacancy they are tagged to.
