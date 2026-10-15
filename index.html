@@ -2283,6 +2283,10 @@ holidays:[],
 // it should read to the candidate and may include a Google Maps link. Empty
 // until Admin adds venues in Config → Masters → Interview Venues.
 venues:[],
+// 15 Oct 2026, Anne: clients whose hires are NOT revenue for the firm (e.g. WithAWill's own hiring, where the
+// "5k" is a discretionary payment). They are left out of every fee, billing and incentive figure.
+// Edited in Config → Masters → Non-revenue Clients.
+nonRevenueClients:[{name:'WithAWill Internal',active:true}],
 // 12 Oct 2026, Anne: recruiters whose "My Priorities Today" pop-up opens by
 // itself at login (pilot = Alisha and Upasana). Anyone can still open it from
 // Home; Admin can view any recruiter's.
@@ -4945,7 +4949,7 @@ function loadCL(){const tb=document.getElementById('clBody');if(!tb)return;try{i
 const cl=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;');const rows=XLSX.utils.sheet_to_json(WB.Sheets['Change Log'],{header:1,defval:''}).slice(1).filter(r=>r[0]).reverse();document.getElementById('adm-cl-cnt').textContent=rows.length;tb.innerHTML=rows.slice(0,100).map(r=>{const d=new Date(r[0]);return '<tr><td class="mono" style="font-size:10px">'+(isNaN(d)?cl(r[0]):d.toLocaleString('en-IN'))+'</td><td class="m">'+cl(r[1])+'</td><td class="mono" style="font-size:10px">'+cl(r[2])+'</td><td><span class="badge b-wip" style="font-size:10px">'+cl(r[3])+'</span></td><td class="m" style="font-size:10px">'+cl(r[4])+'</td><td class="m" style="font-size:10px">'+cl(String(r[5]||'').substring(0,30))+'</td><td style="font-size:10px">'+cl(String(r[6]||'').substring(0,30))+'</td><td style="font-size:10px;color:var(--teal)">'+cl(String(r[7]||'').substring(0,30))+'</td></tr>';}).join('');}catch(e){tb.innerHTML='<tr><td colspan="8" style="color:#ff6b6b">Error: '+e.message+'</td></tr>';}}
 // CONFIG / MASTERS
 let mgridInited=false;
-function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm'],['dropReasons','🚪 Drop Reasons','ma-drop'],['holidays','🌴 Holidays (YYYY-MM-DD Name)','ma-hol'],['priorityPilot','☀️ Priorities Pilot (recruiters)','ma-pp'],['venues','📍 Interview Venues (full address; may include a Google Maps link)','ma-ven']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div style="margin-bottom:8px"><button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="backfillWATimes()" title="One-time: fills First Contact / last Follow-up times for candidates already messaged, so the 24-hour and 5-day send rules apply to them">🔄 Backfill WhatsApp timing</button></div><div id="wa-ed"></div></div>';loadCfg();}
+function initMastersGrid(){const mg=document.getElementById('mgrid');if(!mg||mgridInited)return;mgridInited=true;const defs=[['clients','🏢 Clients','ma-cli'],['recruiters','👤 Recruiters','ma-rec'],['departments','🏗 Departments','ma-dept'],['sources','📡 Sources','ma-src'],['cities','📍 Cities','ma-city'],['noticePeriods','📅 Notice Periods','ma-not'],['expLevels','⭐ Exp Levels','ma-exp'],['statuses','🔄 Statuses','ma-stat'],['vacStatuses','📌 Vac Statuses','ma-vs'],['decisionMakers','⚖ Decision Makers','ma-dm'],['dropReasons','🚪 Drop Reasons','ma-drop'],['holidays','🌴 Holidays (YYYY-MM-DD Name)','ma-hol'],['priorityPilot','☀️ Priorities Pilot (recruiters)','ma-pp'],['venues','📍 Interview Venues (full address; may include a Google Maps link)','ma-ven'],['nonRevenueClients','🚫 Non-revenue Clients (excluded from fees &amp; incentive)','ma-nrc']];mg.innerHTML=defs.map(([k,lbl,aid])=>'<div style="background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">'+lbl+'</div><div class="flex gap8" style="margin-bottom:7px"><input type="text" id="'+aid+'" placeholder="Add new..." style="flex:1;font-size:11px;padding:5px 8px" onkeydown="if(event.key===\'Enter\')addMaster(\''+k+'\',\''+aid+'\')"><button class="btn btn-t btn-sm" style="padding:4px 9px;font-size:11px" onclick="addMaster(\''+k+'\',\''+aid+'\')">+ Add</button></div><div id="mt-'+k+'" style="max-height:150px;overflow-y:auto"></div></div>').join('')+'<div style="grid-column:span 2;background:rgba(255,255,255,.02);border:1px solid var(--w08);border-radius:var(--r);padding:12px 13px"><div class="sl2" style="margin-top:0">💬 WhatsApp Templates</div><div style="margin-bottom:8px"><button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="backfillWATimes()" title="One-time: fills First Contact / last Follow-up times for candidates already messaged, so the 24-hour and 5-day send rules apply to them">🔄 Backfill WhatsApp timing</button></div><div id="wa-ed"></div></div>';loadCfg();}
 function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));const we=document.getElementById('wa-ed');if(we)we.innerHTML='<div style="font-size:10px;color:var(--w60);margin-bottom:10px;line-height:1.5">Placeholders: {N} candidate name · {R} your first name · {P} role · {C} client · {CO} candidate\'s current company · {LOC} role location · {D}/{T} interview date/time · {L} meeting link · {IL} invite link</div>'+Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');}
 function renderMT(key){
   const el=document.getElementById('mt-'+key);
@@ -5014,8 +5018,10 @@ function recruiterSalary(name){const r=(M.recruiters||[]).find(x=>x.name===name)
 function autoFillSalary(inputId,recName){
   const el=document.getElementById(inputId);if(!el)return;
   const sal=recName?recruiterSalary(recName):0;
-  const untouched=el.value===''||(el.dataset.auto==='1'&&el.value===el.dataset.autoVal);
+  const recChanged=el.dataset.autoFor!==(recName||'');
+  const untouched=recChanged||el.value===''||(el.dataset.auto==='1'&&el.value===el.dataset.autoVal);
   if(untouched){
+    el.dataset.autoFor=recName||'';
     el.value=sal?String(sal):'';el.dataset.auto=sal?'1':'';el.dataset.autoVal=sal?String(sal):'';
     el.title=sal?'Filled from Config — type a different figure to try a what-if':'No salary set in Config for this recruiter';
   }
@@ -7008,7 +7014,13 @@ function isJoinedInPeriod(r, from, to){
   return r[C.status]==='Joined' && r[C.doj] && r[C.doj]>=from && r[C.doj]<=to;
 }
 
+// A client in the Non-revenue Clients master earns the firm nothing, so no fee or incentive is ever counted for it.
+function isRevenueClient(client){
+  const c=String(client||'').trim().toLowerCase();
+  return !c||!mA('nonRevenueClients').some(n=>String(n).trim().toLowerCase()===c);
+}
 function calcFirmFee(expYears, annualFixedPay, client, onDate, candidateCode, gradeArg){
+  if(!isRevenueClient(client)) return 0;
   // Per-candidate fee override (25 Sep 2026, Anne's decision) — a one-off
   // exception distinct from the general client/experience rules below: this
   // specific hire was genuinely billed at a different rate than the
@@ -7073,8 +7085,17 @@ function calcFirmFee(expYears, annualFixedPay, client, onDate, candidateCode, gr
   // band. A row whose grade matches this candidate's / vacancy's grade is used first; otherwise the
   // plain (no-grade) experience rows apply exactly as before.
   const _inBand = s => exp >= s.expFrom && exp < s.expTo;
+  const _nearest = arr => arr.slice().reverse().find(s => exp >= s.expFrom) || arr[0];
   const _gradeSlabs = gradeNorm ? sortedSlabs.filter(s => s.grade && String(s.grade).trim().toLowerCase() === gradeNorm) : [];
-  let slab = _gradeSlabs.find(_inBand) || sortedSlabs.filter(s => !s.grade).find(_inBand);
+  let slab;
+  if(_gradeSlabs.length){
+    // The grade has its own row(s): use only those, never another grade's or a plain experience row.
+    // With a single row for the grade it applies whatever the experience (a flat-fee grade must not fall
+    // through to a % row because the hire's experience is outside the row's band — found live 15 Oct 2026).
+    slab = _gradeSlabs.find(_inBand) || _nearest(_gradeSlabs);
+  } else {
+    slab = sortedSlabs.filter(s => !s.grade).find(_inBand);
+  }
   if(!slab){
     // No configured slab actually covers this experience value — a genuine
     // gap between bands, not "no data available". The old fallback
@@ -10337,7 +10358,9 @@ async function openPriorities(recOverride,auto){
   }catch(e){if(!auto)hideLoad();console.error(e);toast('err','My Priorities',e.message);return;}
   if(!auto)hideLoad();
   if(rows&&auto&&rows.some(r=>r.kind==='Card'&&r.agreedAt)){return;}   // already agreed today: do not pop up again
-  _prioCur={rec,live:d,rows,listNote,isAdmin};
+  let outlook='';
+  try{outlook=incentiveOutlookHtml(await calcIncentiveOutlook(rec));}catch(e){console.warn('incentive outlook',e.message);}
+  _prioCur={rec,live:d,rows,listNote,isAdmin,outlook};
   renderPrioModal();
 }
 function prioMaybeAutoOpen(){
@@ -10348,6 +10371,53 @@ function prioMaybeAutoOpen(){
   setTimeout(()=>{const m=document.getElementById('modal');if(m&&!m.classList.contains('show'))openPriorities(null,true);},700);
 }
 function prioFmtTime(iso){if(!iso)return '';const d=new Date(iso);return isNaN(d)?'':d.toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});}
+// ── Incentive outlook on My Priorities (15 Oct 2026, Anne) ─────────────────
+// (1) Opportunity: firm fees if every open role is filled — the same mid-budget x positions figure the
+//     Incentive → Projections sheet totals, using the vacancy's grade / client / experience billing rules.
+// (2) Expected: each live candidate on those roles is weighted by this recruiter's OWN historical chance of
+//     joining from the stage they are at (calcFunnelPrediction), capped at the positions open on the role.
+// Incentive amounts apply the policy slab to the figure as if it were booked in one month. A projection
+// to guide focus — never shown as earned.
+const inrL=n=>{n=Math.round(n||0);return n>=100000?'₹'+(n/100000).toFixed(2).replace(/\.?0+$/,'')+' L':'₹'+n.toLocaleString('en-IN');};
+async function calcIncentiveOutlook(recName){
+  const vacs=VD.filter(v=>v['Current Status']==='Open'&&v['Active']!=='N'&&v['Recruiter']===recName);
+  if(!vacs.length)return null;
+  const per=vacs.map(v=>{
+    const mn=parseFloat(v['Budget Min']||0),mx=parseFloat(v['Budget Max']||0),mid=(mn&&mx)?(mn+mx)/2:(mn||mx||0);
+    const fee=mid?calcFirmFee(parseExp(v['Experience']||'2'),mid,v['Company'],undefined,undefined,v['Grade']):0;
+    return {v,mid,fee,pos:parseInt(v['Positions Count']||1)||1};
+  });
+  const openFee=per.reduce((a,x)=>a+x.fee*x.pos,0);
+  let expected=null;
+  const fp=await calcFunnelPrediction(recName);
+  if(fp&&fp.enough){
+    expected=0;
+    per.forEach(x=>{
+      const code=x.v['Vacancy code']||x.v['Vacancy Code'];
+      const live=MD.filter(r=>r[C.recruiter]===recName&&r[C.archive]!=='Y'&&r[C.vacCode]===code&&!TERMINAL.has(r[C.status]));
+      let sumP=0,sumPF=0;
+      live.forEach(r=>{
+        const stage=r[C.offerDate]?'offered':(r[C.interviewDate]&&interviewCounts(r)?'interviewed':'sourced');
+        const p=fp.winRate[stage]||0;
+        const fee=calcFirmFee(parseExp(r[C.expYrs]),(parseFloat(r[C.expectedSalary])||x.mid),x.v['Company'],undefined,r[C.code],x.v['Grade'])||0;
+        sumP+=p;sumPF+=p*fee;
+      });
+      expected+=sumPF*((sumP>x.pos&&sumP>0)?x.pos/sumP:1);
+    });
+  }
+  const salary=recruiterSalary(recName);
+  const revPhase=getRecruiterPhase(recName,today()).phase==='revenue';
+  const inc=f=>(revPhase&&salary&&f>0)?calcRecIncentive(f,salary):null;
+  return {n:per.length,openFee,expected,incOpen:inc(openFee),incExp:expected!=null?inc(expected):null,enough:!!(fp&&fp.enough),needed:FUNNEL_PREDICTION_MIN_SAMPLE};
+}
+function incentiveOutlookHtml(o){
+  if(!o)return '';
+  const incTxt=i=>i&&i.incentive>0?' — about <b>'+inrL(i.incentive)+'</b> incentive ('+i.rate+'% slab) if they all land in one month':'';
+  let t='If all <b>'+o.n+'</b> open role'+(o.n>1?'s are':' is')+' filled, firm fees come to <b>'+inrL(o.openFee)+'</b>'+incTxt(o.incOpen)+'. ';
+  if(o.expected!=null)t+='On your current pipeline and your own conversion history, the expected figure is <b>'+inrL(o.expected)+'</b>'+incTxt(o.incExp)+'. ';
+  else t+='A pipeline-based expected figure needs at least '+o.needed+' profiles of history — not enough yet. ';
+  return '<div class="pr-iv" style="margin:0 0 10px"><div class="pr-tag" style="color:var(--gold)">💰 Incentive opportunity <em>· A projection to guide focus. Not earned until a candidate joins.</em></div><p style="margin:4px 0 0;font-size:12px;line-height:1.7">'+t+'</p></div>';
+}
 function renderPrioModal(){
   const P=_prioCur;if(!P)return;
   const E=escHtml,d=P.live,rows=P.rows;
@@ -10390,7 +10460,7 @@ function renderPrioModal(){
   const flags=d.flags.length?'<p class="pr-note pr-flag">⚠ Data to fix: '+d.flags.map(E).join(' ')+'</p>':'';
   const sugHtml=suggestions.length?'<p class="pr-note">💬 Your suggestions are with your manager.</p>':'';
   const listNote=P.listNote?'<p class="pr-note pr-flag">'+E(P.listNote)+'</p>':'';
-  const body=strip+(cardHtml?'<div class="pr-grid">'+cardHtml+'</div>':'<p class="pr-note">No open vacancies with work to do are assigned to '+E(d.recName)+' right now.</p>')+addedHtml+pushedHtml+alsoHtml+flags+listNote+sugHtml+
+  const body=strip+(P.outlook||'')+(cardHtml?'<div class="pr-grid">'+cardHtml+'</div>':'<p class="pr-note">No open vacancies with work to do are assigned to '+E(d.recName)+' right now.</p>')+addedHtml+pushedHtml+alsoHtml+flags+listNote+sugHtml+
     '<p class="pr-note">Closing this never blocks your work. Reopen any time from Home → ☀️ My Priorities. Ticks appear on their own from the updates you already make. A successful paid placement may increase your incentive. This screen is a guide: it does not count as an action in your reports.</p>';
   const recSel=P.isAdmin?('<select id="pr-rec-sel" style="width:auto;margin-right:auto" onchange="openPriorities(this.value)">'+mA('recruiters').map(r=>'<option value="'+E(r)+'"'+(r===d.recName?' selected':'')+'>'+E(r)+'</option>').join('')+'</select>'):'';
   const agreed=rows&&rows.some(r=>r.kind==='Card'&&r.agreedAt);
