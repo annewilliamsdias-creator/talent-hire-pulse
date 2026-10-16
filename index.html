@@ -1236,7 +1236,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div id="uActionsRow" class="flex gap8" style="flex-wrap:wrap;border-top:1px solid var(--w08);padding-top:10px;margin-top:12px">
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:var(--teal);border-color:rgba(52,186,198,.3)" onclick="openEPPopup()">✏ Edit Profile</button>
-<button class="btn btn-ghost btn-sm" id="uOfferBtn" style="display:none;padding:4px 8px;font-size:10px;color:var(--gold);border-color:rgba(233,152,43,.4)" onclick="openOfferModal()">📄 Issue Offer</button>
+<button class="btn btn-ghost btn-sm" id="uOfferBtn" style="display:none;padding:4px 8px;font-size:10px;color:var(--gold);border-color:rgba(233,152,43,.4)" onclick="openOfferModal()">📄 Offer Letter</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showWAMenu()"><svg width="12" height="12" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> WA</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px" onclick="showSched()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
 <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:10px;color:var(--teal);border-color:rgba(52,186,198,.3)" onclick="openInterviewGuide()">📋 Interview Guide</button>
@@ -1244,6 +1244,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 <div id="uWAHist"></div>
 <div id="uEngHist"></div>
+<div id="uOfferDraft"></div>
 </div>
 <div class="card">
 <div class="card-title mb0" style="margin-bottom:14px"><span class="ac">↺</span> Status Update</div>
@@ -4086,7 +4087,7 @@ else await doAdd();}
 // ══════════════════════════════════════════════════════
 // Candidate header on the Update form (avatar, identity line, role line). Also re-run after the Edit Profile pop-up saves.
 function renderUpdHeader(r){
-{const ob=document.getElementById('uOfferBtn');if(ob)ob.style.display=offerEligible(r)?'':'none';}
+{const ob=document.getElementById('uOfferBtn');if(ob)ob.style.display=offerEligible(r)?'':'none';renderOfferDraft(r);}
 const init=(r[C.name]||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
 document.getElementById('uAv').textContent=init;
 // 28 Aug 2026: condensed to exactly 2 lines per Anne's feedback — line 1 is
@@ -4280,14 +4281,31 @@ function offerCalc(fixed,reimb,type){
   const ctcA=fixed*12+variableA;
   return {m,a,variableA,ctcA,ctcM:Math.round(ctcA/12),inc};
 }
-function offerFill(txt,d){return String(txt||'').replace(/\{(\w+)\}/g,(x,k)=>(k in d)?d[k]:x);}
+// Placeholders are matched ignoring case, spaces and underscores, so {NAME}, {Name} and {Expected DOJ} all work.
+// An unknown placeholder is left as written and is caught by offerUnknownPlaceholders() before anything is sent.
+const _phKey=k=>String(k).replace(/[\s_]+/g,'').toUpperCase();
+const OFFER_PH_ALIASES={DOJ:'EXPECTEDDOJ',JOININGDATE:'EXPECTEDDOJ',DATEOFJOINING:'EXPECTEDDOJ',CANDIDATENAME:'NAME',DESIGNATION:'ROLE'};
+function offerFill(txt,d){
+  return String(txt||'').replace(/\{([^{}]+)\}/g,(x,k)=>{let n=_phKey(k);n=OFFER_PH_ALIASES[n]||n;return (n in d&&d[n]!==undefined&&d[n]!=='')?String(d[n]):x;});
+}
+function offerUnknownPlaceholders(subs){
+  const bad=new Set();
+  Object.keys(OFFER_TPL_DEFAULTS).forEach(k=>{if(typeof OFFER_TPL[k]!=='string')return;(OFFER_TPL[k].match(/\{([^{}]+)\}/g)||[]).forEach(m=>{let n=_phKey(m.slice(1,-1));n=OFFER_PH_ALIASES[n]||n;if(!(n in subs)||subs[n]===undefined||subs[n]==='')bad.add(m);});});
+  return [...bad];
+}
+// Values available to the template text. Blank ones count as "not available" (a placeholder using one blocks the send).
+function offerSubs(d,calc){
+  const inr=n=>'Rs. '+_inrN(n);
+  return {NAME:d.name,ROLE:d.role,SENDER:d.sender||'',GRADE:d.grade||'',LOCATION:d.location||'',OFFERDATE:d.offerDate||'',EXPECTEDDOJ:d.dojText||'',
+    FIXEDMONTHLY:calc?inr(calc.m.fixed):'',CTC:calc?inr(calc.ctcA):'',RAMPMAX:calc&&calc.inc?_inrN(calc.inc.rampTotal):'',MAXRATE:calc&&calc.inc?String(calc.inc.maxRate):''};
+}
 // PDF of the offer, laid out like the fitment-sheet template (A4, mm). JsPDF is passed in so it can be tested outside the page.
 // Amounts are plain Indian-grouped numbers (the standard PDF fonts have no rupee sign).
 function buildOfferPDF(d,JsPDF){
   const doc=new JsPDF({unit:'mm',format:'a4'});
   const L=20,R=190,W=R-L;
   const calc=offerCalc(d.fixed,d.reimb,d.type);
-  const subs={NAME:d.name,ROLE:d.role,SENDER:d.sender||'',RAMPMAX:calc.inc?_inrN(calc.inc.rampTotal):'',MAXRATE:calc.inc?calc.inc.maxRate:''};
+  const subs=offerSubs(d,calc);
   let y=0;
   const ensure=h=>{if(y+h>278){doc.addPage();y=18;}};
   const box=(x,yy,w,h)=>{doc.setDrawColor(0);doc.setLineWidth(0.4);doc.rect(x,yy,w,h);};
@@ -4295,11 +4313,11 @@ function buildOfferPDF(d,JsPDF){
 
   // header
   try{doc.addImage(OFFER_LOGO,'JPEG',L,14,28,26.3);}catch(e){}
-  const lines=String(OFFER_TPL.companyLines||'').split('\n');
+  const lines=offerFill(OFFER_TPL.companyLines,subs).split('\n');
   lines.forEach((ln,i)=>txt(ln,104,22+i*5.2,{size:9}));
   y=52;
   // title
-  box(L,y,W,8);txt(OFFER_TPL.title||'Offer Details',L+W/2,y+5.6,{bold:true,size:12,align:'center'});
+  box(L,y,W,8);txt(offerFill(OFFER_TPL.title,subs)||'Offer Details',L+W/2,y+5.6,{bold:true,size:12,align:'center'});
   y+=16;
   // details box
   const det=[['Candidate Name',d.name],['Designation',d.role],['Grade',d.grade],['Location',d.location],null,['Education',d.education],['Total Experience',d.experience],['Mobile',d.mobile],['Email',d.email],null,['Offer Date',d.offerDate]];
@@ -4343,8 +4361,8 @@ function buildOfferPDF(d,JsPDF){
   y+=ch+6;
   // notes
   ensure(18);
-  txt(OFFER_TPL.pfNote||'',L,y,{size:8.5});y+=6;
-  if(calc.inc){doc.setFont('helvetica','normal');doc.setFontSize(8.5);const vn=doc.splitTextToSize(OFFER_TPL.variableNote||'',W);vn.forEach(l=>{txt(l,L,y,{size:8.5});y+=4.4;});}
+  txt(offerFill(OFFER_TPL.pfNote,subs),L,y,{size:8.5});y+=6;
+  if(calc.inc){doc.setFont('helvetica','normal');doc.setFontSize(8.5);const vn=doc.splitTextToSize(offerFill(OFFER_TPL.variableNote,subs),W);vn.forEach(l=>{txt(l,L,y,{size:8.5});y+=4.4;});}
   y+=4;
 
   // incentive potential (Recruiter offers)
@@ -4391,7 +4409,7 @@ function offerData(){
   const iso=_ofv('of_date');
   const [y,m,dd]=iso?iso.split('-'):['','',''];
   return {name:_ofv('of_name'),role:_ofv('of_role'),grade:_ofv('of_grade'),location:_ofv('of_loc'),education:_ofv('of_edu'),experience:_ofv('of_exp'),
-    mobile:_ofv('of_mob'),email:_ofv('of_em'),offerDateISO:iso,offerDate:iso?(dd+'/'+m+'/'+y):'',fixed:parseFloat(_ofv('of_fixed'))||0,reimb:parseFloat(_ofv('of_reimb'))||0,
+    mobile:_ofv('of_mob'),email:_ofv('of_em'),dojISO:_ofv('of_doj'),dojText:_ofv('of_doj')?fmtD(_ofv('of_doj')):'',offerDateISO:iso,offerDate:iso?(dd+'/'+m+'/'+y):'',fixed:parseFloat(_ofv('of_fixed'))||0,reimb:parseFloat(_ofv('of_reimb'))||0,
     type:_ofv('of_type')||'recruiter',sender:(acct&&acct.name)||''};
 }
 function offerRecalc(){
@@ -4407,31 +4425,34 @@ function offerRecalc(){
     row('Total Fixed Cash / Total Gross',_inrN(c.m.fixed),_inrN(c.a.fixed),true)+row('Professional Tax',_inrN(c.m.pt),_inrN(c.a.pt))+row('Take home (pre tax)',_inrN(c.m.take),_inrN(c.a.take))+
     row('Variable (projection)','-',c.variableA?_inrN(c.variableA):'-')+row('CTC',_inrN(c.ctcM),_inrN(c.ctcA),true)+'</tbody></table>'+inc;
 }
-function openOfferModal(){
+function openOfferModal(draftData){
   const r=eIdx>=0?MD[eIdx]:null;
   if(curRole!=='Super Admin'){toast('warn','Not allowed','Only a Super Admin can issue offers.');return;}
   if(!r){toast('warn','No Candidate','Open a candidate first.');return;}
-  if(isRevenueClient(r[C.client])){toast('warn','WithAWill hires only','Offer letters are issued from THP for WithAWill\'s own hires for now.');return;}
+  if(isRevenueClient(r[C.client])){toast('warn','WithAWill HR hires only','Offer letters are issued from THP for WithAWill HR\'s own hires for now.');return;}
   if(TERMINAL.has(r[C.status])||r[C.status]==='Joined'){toast('warn','Closed record','This candidate is '+r[C.status]+'. Reopen or retag the candidate before issuing an offer.');return;}
+  const dd=draftData||{};
   const grades=offerGradeOptions();
   const exp=String(r[C.expYrs]||'').trim();
-  const inp=(id,label,val,extra)=>'<div class="field" style="margin:0"><label>'+label+'</label><input type="text" id="'+id+'" value="'+escHtml(val||'').replace(/"/g,'&quot;')+'" '+(extra||'')+'></div>';
+  const g=(k,def)=>(dd[k]!==undefined&&dd[k]!==null)?dd[k]:def;
+  const inp=(id,label,val)=>'<div class="field" style="margin:0"><label>'+label+'</label><input type="text" id="'+id+'" value="'+escHtml(String(val||'')).replace(/"/g,'&quot;')+'"></div>';
   const form='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;text-align:left">'+
-    '<div class="field" style="margin:0"><label>Offer type</label><select id="of_type" onchange="offerRecalc()"><option value="recruiter">Recruiter (shows incentive potential)</option><option value="other">Other role (no incentive section yet)</option></select></div>'+
-    inp('of_role','Designation',r[C.position]||'')+
-    inp('of_name','Candidate name',r[C.name]||'')+
-    '<div class="field" style="margin:0"><label>Grade (G-scale) *</label><select id="of_grade"><option value="">— Select —</option>'+grades.map(g=>'<option>'+g+'</option>').join('')+'</select></div>'+
-    inp('of_loc','Location',r[C.location]||'')+
-    inp('of_edu','Education (enter here — not on the record)','')+
-    inp('of_exp','Total experience',exp?(/^[\d.\-\s+]+$/.test(exp)?exp+' yrs':exp):'')+
-    inp('of_mob','Mobile',r[C.contact]||'')+
-    inp('of_em','Email',r[C.email]||'')+
-    '<div class="field" style="margin:0"><label>Offer date</label><input type="date" id="of_date" value="'+today()+'"></div>'+
-    '<div class="field" style="margin:0"><label>Total Fixed Cash — monthly ₹ *</label><input type="number" id="of_fixed" min="0" oninput="offerRecalc()" placeholder="e.g. 35000"></div>'+
-    '<div class="field" style="margin:0"><label>of which Reimbursements — monthly ₹</label><input type="number" id="of_reimb" min="0" value="0" oninput="offerRecalc()"></div>'+
+    '<div class="field" style="margin:0"><label>Offer type</label><select id="of_type" onchange="offerRecalc()"><option value="recruiter"'+(g('type','recruiter')==='recruiter'?' selected':'')+'>Recruiter (shows incentive potential)</option><option value="other"'+(g('type','')==='other'?' selected':'')+'>Other role (no incentive section yet)</option></select></div>'+
+    inp('of_role','Designation',g('role',r[C.position]||''))+
+    inp('of_name','Candidate name',g('name',r[C.name]||''))+
+    '<div class="field" style="margin:0"><label>Grade (G-scale) *</label><select id="of_grade"><option value="">— Select —</option>'+grades.map(x=>'<option'+(g('grade','')===x?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+    inp('of_loc','Location',g('location',r[C.location]||''))+
+    inp('of_edu','Education (enter here — not on the record)',g('education',''))+
+    inp('of_exp','Total experience',g('experience',exp?(/^[\d.\-\s+]+$/.test(exp)?exp+' yrs':exp):''))+
+    inp('of_mob','Mobile',g('mobile',r[C.contact]||''))+
+    inp('of_em','Email',g('email',r[C.email]||''))+
+    '<div class="field" style="margin:0"><label>Offer date</label><input type="date" id="of_date" value="'+g('offerDateISO',today())+'"></div>'+
+    '<div class="field" style="margin:0"><label>Expected date of joining <span style="font-size:9px;color:var(--w60)">(fills {Expected DOJ})</span></label><input type="date" id="of_doj" value="'+g('dojISO',_ofIso(normDateStr(r[C.doj]))||'')+'"></div>'+
+    '<div class="field" style="margin:0"><label>Total Fixed Cash — monthly ₹ *</label><input type="number" id="of_fixed" min="0" oninput="offerRecalc()" placeholder="e.g. 35000" value="'+g('fixed','')+'"></div>'+
+    '<div class="field" style="margin:0"><label>of which Reimbursements — monthly ₹</label><input type="number" id="of_reimb" min="0" value="'+g('reimb',0)+'" oninput="offerRecalc()"></div>'+
     '</div><div id="of_prev" style="margin-top:12px;padding:10px 12px;background:var(--w06);border-radius:var(--rs)"></div>';
-  showModal('📄 Issue Offer — '+(r[C.name]||''),'WithAWill hire. Issuing builds the offer letter PDF, saves a copy to SharePoint, emails it to the candidate and marks the record <strong>Offered</strong>. Acceptance is updated by you through the status change.',form,
-    '<button class="btn btn-ghost" onclick="offerPreview()">👁 Preview PDF</button><button class="btn btn-t" onclick="issueOffer()">✉ Issue &amp; Email</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>',true);
+  showModal('📄 Offer Letter — '+(r[C.name]||''),'WithAWill HR hire. <strong>Step 1 of 2 — Generate.</strong> This builds the PDF and saves it to SharePoint. Nothing is emailed and the record is not changed. You then review the PDF and send it as a separate step.',form,
+    '<button class="btn btn-ghost" onclick="offerPreview()">👁 Preview PDF</button><button class="btn btn-t" onclick="generateOffer()">📄 Generate offer</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>',true);
   offerRecalc();
 }
 function _offerValidate(d){
@@ -4443,6 +4464,9 @@ function _offerValidate(d){
   if(d.reimb>d.fixed)return 'Reimbursements cannot exceed Total Fixed Cash.';
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email))return 'A valid candidate email is required.';
   if(d.type==='recruiter'&&!offerIncentiveProjection(d.fixed))return 'No active incentive policy found, so the incentive section cannot be built. Choose "Other role" or fix the policy.';
+  // never produce a letter that still contains a {placeholder}
+  const unk=offerUnknownPlaceholders(offerSubs(d,offerCalc(d.fixed,d.reimb,d.type)));
+  if(unk.length)return unk.some(u=>/doj|join/i.test(u))&&!d.dojISO?'Enter the Expected date of joining — the template uses it.':'The template contains placeholder(s) the offer cannot fill: '+unk.join(', ')+'. Fix them in Config → Offer Letter Template.';
   return '';
 }
 function offerPreview(){
@@ -4450,47 +4474,126 @@ function offerPreview(){
   if(err&&!/email|grade/i.test(err)){toast('warn','Check the form',err);return;}
   try{const doc=buildOfferPDF(d,window.jspdf.jsPDF);window.open(doc.output('bloburl'),'_blank');}catch(e){toast('err','Preview failed',e.message);}
 }
-async function issueOffer(){
+
+// ── Step 1: generate (PDF built and saved; nothing sent, record untouched) ───────────
+// A generated-but-unsent offer is a "draft", kept in the Change Log ('Offer Generated' row carrying the form data and the saved
+// file), so it survives a reload and shows on the candidate until it is sent, regenerated or discarded.
+let _offerCL={at:0,rows:null};
+async function offerClRows(force){
+  if(!force&&_offerCL.rows&&Date.now()-_offerCL.at<20000)return _offerCL.rows;
+  const all=await fetchLiveChangeLog();
+  _offerCL={at:Date.now(),rows:all.filter(r=>r[4]==='Offer Generated'||r[4]==='Offer Issued'||r[4]==='Offer Discarded')};
+  return _offerCL.rows;
+}
+async function offerPendingDraft(code,force){
+  const rows=(await offerClRows(force)).filter(r=>String(r[3])===String(code)).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  const last=rows[rows.length-1];
+  if(!last||last[4]!=='Offer Generated')return null;
+  try{return JSON.parse(last[7]);}catch(e){return null;}
+}
+async function generateOffer(){
   const r=eIdx>=0?MD[eIdx]:null;
   if(curRole!=='Super Admin'||!r)return;
   const d=offerData();const err=_offerValidate(d);if(err){toast('warn','Check the form',err);return;}
-  if(!confirm('Issue this offer to '+d.name+' ('+d.email+')?\n\nThe letter is emailed now and saved to SharePoint. This cannot be recalled.'))return;
-  const calc=offerCalc(d.fixed,d.reimb,d.type);
   const fname=String(r[C.code]).replace(/[^\w]+/g,'_')+'_Offer_'+d.offerDateISO+'.pdf';
-  showLoad('Issuing offer...');
-  let b64,webUrl='';
+  showLoad('Generating offer...');
+  let item,blobUrl='';
   try{
     const doc=buildOfferPDF(d,window.jspdf.jsPDF);
-    b64=doc.output('datauristring').split(',')[1];
-    // 1. keep a copy first, so a mail failure never leaves an offer with no record of it
+    const blob=doc.output('blob');blobUrl=URL.createObjectURL(blob);
     await refreshToken();
-    const up=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Offer Letters/'+fname+':/content?@microsoft.graph.conflictBehavior=rename',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/pdf'},body:doc.output('blob')});
-    if(!up.ok)throw new Error('Saving the copy to SharePoint failed ('+up.status+') — nothing was sent.');
-    webUrl=(await up.json()).webUrl||'';
-  }catch(e){hideLoad();toast('err','Offer not issued',e.message);return;}
+    const up=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+CFG.folder+'/Offer Letters/'+fname+':/content?@microsoft.graph.conflictBehavior=rename',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/pdf'},body:blob});
+    if(!up.ok)throw new Error('Saving the PDF to SharePoint failed ('+up.status+').');
+    item=await up.json();
+  }catch(e){hideLoad();toast('err','Offer not generated',e.message);return;}
+  const calc=offerCalc(d.fixed,d.reimb,d.type);
+  const draft={file:item.name||fname,path:CFG.folder+'/Offer Letters/'+(item.name||fname),webUrl:item.webUrl||'',generatedOn:new Date().toISOString(),summary:d.grade+' · gross ₹'+_inrN(calc.m.fixed)+'/m · CTC ₹'+_inrN(calc.ctcA),data:d};
   try{
-    const subs={NAME:d.name,ROLE:d.role,SENDER:d.sender};
+    const row=writeCL('Offer Generated',r[C.code],'Offer Letter','',JSON.stringify(draft),r[C.name]);
+    if(row)await xlAppendRows('Change Log',[row]);
+  }catch(e){hideLoad();toast('warn','PDF saved, draft not recorded','The PDF is in SharePoint ('+draft.file+') but recording the draft failed: '+e.message+'. Generate again, or send it from SharePoint manually.');return;}
+  hideLoad();
+  _offerCL.rows=null;window._offerBlobUrl=blobUrl;
+  showModal('✅ Offer generated — not yet sent',escHtml(d.name)+' · '+escHtml(draft.summary)+'<br><br>The PDF is saved to SharePoint as <strong>'+escHtml(draft.file)+'</strong>. Nothing has been emailed and the record has not changed. Open the PDF and check it, then continue to the email step when you are ready.','',
+    '<button class="btn btn-ghost" onclick="window.open(window._offerBlobUrl||\'\',\'_blank\')">👁 Open PDF</button><button class="btn btn-t" onclick="offerReview()">✉ Review email &amp; send</button><button class="btn btn-ghost" onclick="closeModal()">Close — send later</button>');
+  renderOfferDraft(r);
+}
+// Banner on the candidate for a pending draft.
+async function renderOfferDraft(r){
+  const host=document.getElementById('uOfferDraft');if(!host)return;
+  if(!offerEligible(r)){host.innerHTML='';host.style.cssText='';return;}
+  try{
+    const dr=await offerPendingDraft(r[C.code]);
+    if(eIdx<0||MD[eIdx]!==r){return;}
+    if(!dr){host.innerHTML='';host.style.cssText='';return;}
+    host.style.cssText='margin-top:10px;padding:10px 12px;border:1px solid rgba(233,152,43,.4);border-radius:var(--rs);background:rgba(233,152,43,.08)';
+    host.innerHTML='<div style="font-size:12px;color:var(--ow);margin-bottom:6px">📄 <strong>Offer generated, not yet sent</strong> — '+escHtml(dr.data.role||'')+' · '+escHtml(dr.summary||'')+' · '+escHtml(fmtD(dr.generatedOn))+'</div>'+
+      '<div class="flex gap8" style="flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="offerOpenDraft()">👁 Open PDF</button><button class="btn btn-t btn-sm" onclick="offerReview()">✉ Review email &amp; send</button><button class="btn btn-ghost btn-sm" onclick="offerRegenerate()">↻ Regenerate</button><button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="offerDiscard()">✕ Discard</button></div>';
+  }catch(e){console.warn('renderOfferDraft',e.message);}
+}
+async function offerOpenDraft(){const r=MD[eIdx];const dr=r&&await offerPendingDraft(r[C.code]);if(!dr){toast('warn','No draft','There is no generated offer waiting.');return;}if(dr.webUrl)window.open(dr.webUrl,'_blank');else toast('warn','No link','The draft has no SharePoint link; find '+dr.file+' in the Offer Letters folder.');}
+async function offerRegenerate(){const r=MD[eIdx];const dr=r&&await offerPendingDraft(r[C.code]);openOfferModal(dr?dr.data:null);}
+async function offerDiscard(){
+  const r=MD[eIdx];if(curRole!=='Super Admin'||!r)return;
+  const dr=await offerPendingDraft(r[C.code]);if(!dr)return;
+  if(!confirm('Discard the generated offer for '+r[C.name]+'? Nothing was sent. The PDF stays in SharePoint.'))return;
+  try{const row=writeCL('Offer Discarded',r[C.code],'Offer Letter',dr.file,'',r[C.name]);if(row)await xlAppendRows('Change Log',[row]);_offerCL.rows=null;toast('ok','Draft discarded','The PDF remains in SharePoint.');renderOfferDraft(r);}
+  catch(e){toast('err','Not discarded',e.message);}
+}
+
+// ── Step 2: review the email, then send ───────────────────────────────────────────────
+async function offerReview(){
+  const r=eIdx>=0?MD[eIdx]:null;if(curRole!=='Super Admin'||!r)return;
+  const dr=await offerPendingDraft(r[C.code],true);
+  if(!dr){toast('warn','No draft','Generate the offer first.');return;}
+  const d=dr.data,calc=offerCalc(d.fixed,d.reimb,d.type),subs=offerSubs(d,calc);
+  const unk=offerUnknownPlaceholders(subs);
+  if(unk.length){toast('err','Email not ready','The email template contains placeholder(s) that cannot be filled: '+unk.join(', ')+'. Fix them in Config → Offer Letter Template.');return;}
+  const subject=offerFill(OFFER_TPL.emailSubject,subs),body=offerFill(OFFER_TPL.emailBody,subs);
+  showModal('✉ Step 2 of 2 — Review and send',
+    'This is exactly what will be sent. Check the details, then send.',
+    '<div style="text-align:left;font-size:12px;line-height:1.7;max-height:55vh;overflow:auto"><div><strong>To:</strong> '+escHtml(d.name)+' &lt;'+escHtml(d.email)+'&gt;</div><div><strong>Subject:</strong> '+escHtml(subject)+'</div><div><strong>Attachment:</strong> '+escHtml(dr.file)+' <span style="color:var(--w60)">(the PDF saved in SharePoint, exactly as generated)</span></div>'+
+    '<div style="margin-top:8px;padding:10px 12px;background:var(--w06);border-radius:var(--rs);white-space:pre-wrap">'+escHtml(body)+'</div>'+
+    '<div style="margin-top:8px;color:var(--w60)">On sending, the record moves to <strong>Offered</strong> with the offer date, expected joining date and offered salary, and a follow-up is set two days out.</div></div>',
+    '<button class="btn btn-ghost" onclick="offerOpenDraft()">👁 Open PDF</button><button class="btn btn-t" id="of_sendbtn" onclick="sendOffer()">✉ Send now</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>',true);
+}
+async function sendOffer(){
+  const r=eIdx>=0?MD[eIdx]:null;if(curRole!=='Super Admin'||!r)return;
+  const btn=document.getElementById('of_sendbtn');if(btn){if(btn.disabled)return;btn.disabled=true;}   // no double send
+  const dr=await offerPendingDraft(r[C.code],true);
+  if(!dr){if(btn)btn.disabled=false;toast('warn','No draft','There is no generated offer waiting — it may already have been sent.');return;}
+  const d=dr.data,calc=offerCalc(d.fixed,d.reimb,d.type),subs=offerSubs(d,calc);
+  if(!confirm('Send the offer to '+d.name+' ('+d.email+') now?\n\nThis cannot be recalled.')){if(btn)btn.disabled=false;return;}
+  showLoad('Sending offer...');
+  let b64;
+  try{
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/drive/root:'+dr.path+':/content',{headers:{Authorization:'Bearer '+tok}});
+    if(!res.ok)throw new Error('could not read the saved PDF ('+res.status+')');
+    const bytes=new Uint8Array(await res.arrayBuffer());let bin='';for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
+    b64=btoa(bin);
     const body=offerFill(OFFER_TPL.emailBody,subs).split('\n').map(l=>escHtml(l)).join('<br>');
-    await sendResumeEmail([d.email],offerFill(OFFER_TPL.emailSubject,subs),'<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">'+body+'</div>',fname,'application/pdf',b64);
-  }catch(e){hideLoad();toast('err','Email not sent',e.message+' The letter copy was saved to SharePoint ('+fname+'), but the record was not changed.');return;}
-  // 2. the offer has gone out — update the record and audit trail
+    await sendResumeEmail([d.email],offerFill(OFFER_TPL.emailSubject,subs),'<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">'+body+'</div>',dr.file,'application/pdf',b64);
+  }catch(e){hideLoad();if(btn)btn.disabled=false;toast('err','Email not sent',e.message+' The offer is still a draft; nothing was changed.');return;}
+  // the offer has gone out — update the record and audit trail
   const oldStatus=r[C.status];
   try{
     if(mA('statuses').includes('Offered')||M.statuses.some(s=>s.name==='Offered')){r[C.status]='Offered';r[C.dm]=STATUS_DM['Offered']||r[C.dm];}
     r[C.offerDate]=d.offerDateISO;r[C.offeredSalary]=String(calc.a.fixed);
+    if(d.dojISO)r[C.doj]=d.dojISO;
     const note='Offer issued '+fmtD(d.offerDateISO)+' — '+d.grade+', ₹'+_inrN(calc.m.fixed)+' per month'+(d.type==='recruiter'?' (with incentive potential)':'');
     r[C.remark]=r[C.remark]?(r[C.remark]+' | '+note):note;
     r[C.followupDate]=addDays(today(),2);
     r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();
-    const cl=[writeCL('Offer Issued',r[C.code],'Offer Letter','',fname+' · '+d.grade+' · gross ₹'+_inrN(calc.m.fixed)+'/m · CTC ₹'+_inrN(calc.ctcA)+(webUrl?' · '+webUrl:''),r[C.name])];
+    const cl=[writeCL('Offer Issued',r[C.code],'Offer Letter','',dr.file+' · '+dr.summary+(dr.webUrl?' · '+dr.webUrl:''),r[C.name])];
     if(oldStatus!==r[C.status])cl.push(writeCL('Status Update',r[C.code],C.status,oldStatus,r[C.status],r[C.name]));
     await xlPatchRow(r);
     await xlAppendRows('Change Log',cl.filter(Boolean));
-  }catch(e){hideLoad();toast('warn','Offer SENT — record not updated','The offer was emailed and saved to SharePoint, but updating the record failed: '+e.message+'. Please set the status to Offered and the offer date manually.');return;}
-  hideLoad();closeModal();
-  toast('ok','Offer issued',d.name+' · emailed and saved to SharePoint ('+fname+')');
+  }catch(e){hideLoad();_offerCL.rows=null;toast('warn','Offer SENT — record not updated','The offer was emailed, but updating the record failed: '+e.message+'. Please set the status to Offered, the offer date and the joining date manually.');renderOfferDraft(r);return;}
+  hideLoad();closeModal();_offerCL.rows=null;
+  toast('ok','Offer sent',d.name+' · emailed with '+dr.file);
   renderRec();loadDash();
-  if(eIdx>=0&&MD[eIdx]===r){renderUpdHeader(r);sv('uS',r[C.status]||'');sv('uFU',r[C.followupDate]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');const rm=document.getElementById('uRem');if(rm)rm.value=r[C.remark]||'';}
+  if(eIdx>=0&&MD[eIdx]===r){renderUpdHeader(r);sv('uS',r[C.status]||'');sv('uFU',r[C.followupDate]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');sv('uDOJ',r[C.doj]||'');const rm=document.getElementById('uRem');if(rm)rm.value=r[C.remark]||'';}
 }
 
 // ── Config → Offer Letter Template (Super Admin) ────────────────────────────
@@ -4503,22 +4606,33 @@ const OFFER_TPL_FIELDS=[
   ['pfNote','Provident Fund footnote','text'],
   ['variableNote','Variable footnote','area',2],
   ['grades','Grade structure (one per line: Role | G5, G6) — also drives the Grade picker','area',8],
-  ['incentiveIntro','Incentive section — introduction (placeholders: {RAMPMAX})','area',5],
-  ['incentiveFootnote','Incentive section — footnote (placeholders: {MAXRATE})','area',3],
-  ['emailSubject','Email subject (placeholders: {NAME} {ROLE} {SENDER})','text'],
-  ['emailBody','Email body (placeholders: {NAME} {ROLE} {SENDER})','area',9]
+  ['incentiveIntro','Incentive section — introduction (also {RAMPMAX})','area',5],
+  ['incentiveFootnote','Incentive section — footnote (also {MAXRATE})','area',3],
+  ['emailSubject','Email subject','text'],
+  ['emailBody','Email body','area',12]
+];
+// Editor sections: only one needs to be open at a time, so the page never becomes one long list of fields.
+// Each role type with its own offer will get its own section here (incentive wording etc.).
+const OFFER_TPL_GROUPS=[
+  ['Letter layout and break-up',['companyLines','title','basicPct','hraPct','ptMonthly','pfNote','variableNote'],true],
+  ['Grade structure',['grades']],
+  ['Recruiter offers — incentive section',['incentiveIntro','incentiveFootnote']],
+  ['Email to the candidate',['emailSubject','emailBody']]
 ];
 function renderOfferTplCfg(){
   const host=document.getElementById('offer-tpl-card');if(!host)return;
   if(curRole!=='Super Admin'){host.classList.add('hidden');return;}
   host.classList.remove('hidden');
+  const openIds=new Set([...host.querySelectorAll('details[open]')].map(d=>d.getAttribute('data-g')));
+  const first=!host.querySelector('details');
+  const fld=k=>{const f=OFFER_TPL_FIELDS.find(x=>x[0]===k);if(!f)return '';const [,lbl,type,rows]=f;const v=OFFER_TPL[k];const id='otf_'+k;
+    const el=type==='area'?'<textarea id="'+id+'" rows="'+(rows||3)+'" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:12px">'+escHtml(String(v))+'</textarea>'
+      :'<input type="'+(type==='num'?'number':'text')+'" id="'+id+'" value="'+escHtml(String(v)).replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box">';
+    return '<div class="field" style="margin:0 0 10px"><label>'+lbl+'</label>'+el+'</div>';};
   host.innerHTML='<div class="card-hdr"><div class="card-title"><span class="ac">📄</span> Offer Letter Template</div><div class="flex gap8"><button class="btn btn-ghost btn-sm" onclick="previewOfferSample()">👁 Preview sample</button><button class="btn btn-ghost btn-sm" onclick="resetOfferTpl()">↺ Restore defaults</button><button class="btn btn-t btn-sm" onclick="saveOfferTpl()">✓ Save template</button></div></div>'+
-    '<div style="font-size:12px;color:#5f6470;margin-bottom:10px">Wording and break-up rules for the offer letter issued from Update Candidate (WithAWill hires, Super Admin only). The incentive figures on the letter are not typed here — they are worked out from the active Incentive Policy.</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+OFFER_TPL_FIELDS.map(([k,lbl,type,rows])=>{
-      const v=OFFER_TPL[k];const id='otf_'+k;
-      const el=type==='area'?'<textarea id="'+id+'" rows="'+(rows||3)+'" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:12px">'+escHtml(String(v))+'</textarea>'
-        :'<input type="'+(type==='num'?'number':'text')+'" id="'+id+'" value="'+escHtml(String(v)).replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box">';
-      return '<div class="field" style="margin:0;'+(type==='area'&&(rows||0)>=5?'grid-column:span 2':'')+'"><label>'+lbl+'</label>'+el+'</div>';}).join('')+'</div>';
+    '<div style="font-size:12px;color:#5f6470;margin-bottom:6px">Wording and break-up rules for the offer letter issued from Update Candidate (WithAWill HR hires, Super Admin only). The incentive figures on the letter are worked out from the active Incentive Policy, not typed here.</div>'+
+    '<div style="font-size:12px;color:#5f6470;margin-bottom:12px">Placeholders you can use in any text below (capitals and spaces do not matter): <code>{NAME}</code> <code>{ROLE}</code> <code>{SENDER}</code> <code>{GRADE}</code> <code>{LOCATION}</code> <code>{OFFER DATE}</code> <code>{Expected DOJ}</code> <code>{FIXED MONTHLY}</code> <code>{CTC}</code> <code>{RAMPMAX}</code> <code>{MAXRATE}</code>. A letter is never sent while it still contains one that cannot be filled.</div>'+
+    OFFER_TPL_GROUPS.map(([title,keys,dflt],i)=>'<details data-g="'+i+'" style="margin-bottom:8px;border:1px solid var(--w08);border-radius:var(--rs);padding:8px 12px"'+((first?dflt:openIds.has(String(i)))?' open':'')+'><summary style="cursor:pointer;font-weight:600;font-size:13px;padding:2px 0">'+title+'</summary><div style="margin-top:10px">'+keys.map(fld).join('')+'</div></details>').join('');
 }
 function _readOfferTplForm(){
   const out={};
