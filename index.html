@@ -2909,6 +2909,7 @@ async function xlPatchRow(r){
   const itemId=await resolveSpItemId(r);
   if(!itemId)throw new Error('No Candidates List item id for '+r[C.code]+' — cannot patch. Please refresh and retry.');
   await writeCandidateListItem('PATCH',`/sites/${siteId}/lists/Candidates/items/${itemId}/fields`,buildCandidateListFields(r));
+  delete r._clearCols;   // cleared fields are now cleared in the List
   _lastOwnWriteAt=Date.now();
   _listLastModified=new Date().toISOString();
 }
@@ -4123,6 +4124,7 @@ renderUpdGateway(r,r[C.code]);renderWAHistory(r[C.code],'uWAHist');renderEngagem
 sv('uS',r[C.status]||'Active');sv('uDropR','');sv('uDM',r[C.dm]||'');sv('uIvr',r[C.interviewerName]||'');sv('uRI',r[C.roleInterested]||'');
 // Pre-fill existing values (including dates) so user sees current state
 sv('uFU',r[C.followupDate]||'');sv('uIvD',r[C.interviewDate]||'');sv('uDecD',r[C.decisionDate]||'');sv('uDOJ',r[C.doj]||'');sv('uOffS',r[C.offeredSalary]||'');sv('uOffD',r[C.offerDate]||'');
+_updSnapTake(r);
 const remEl=document.getElementById('uRem');if(remEl)remEl.value=r[C.remark]||'';
   const cmtEl=document.getElementById('uCmt');if(cmtEl)cmtEl.value=r[C.otherComments]||'';
 fillDrops(); // Refresh all form dropdowns from current admin config
@@ -4141,6 +4143,18 @@ function updStatDrop(){if(eIdx===-1)return;const r=MD[eIdx];let cur=r[C.status]|
 // Legacy 'Active' status — treat as WIP for flow purposes, log warning
 if(cur==='Active'){console.warn('[THP] Legacy status "Active" on record '+r[C.code]+' — treating as WIP for status flow. Record can be saved/updated.');cur='WIP';}
 ensureStatusOptions();const valid=getValidStatuses(cur);const sel=document.getElementById('uS');if(!sel)return;Array.from(sel.options).forEach(o=>{if(!o.value)return;o.disabled=!valid.includes(o.value);o.style.color=valid.includes(o.value)?'':'rgba(255,255,255,.2)';o.style.opacity=valid.includes(o.value)?'1':'0.3';});}
+// Clearing interview / offer data (17 Oct 2026, Anne: "removing interview data does not save the change").
+// A blank box used to be ignored on save (an old guard against accidental wipes) and blank values are never sent to the List,
+// so a cleared field always came back. Now: when a box that SHOWED a value on load is emptied, that is a deliberate clear —
+// confirmed first, written to the List as null, and recorded in the Change Log. A box that was already blank on load is still
+// left alone, so a stale or unfilled form can never wipe data.
+const UPD_CLEARABLE=[['uIvr','interviewerName','Interviewer name'],['uIvD','interviewDate','Interview date'],['uDecD','decisionDate','Client decision date'],['uDOJ','doj','Expected joining date'],['uOffS','offeredSalary','Offered salary'],['uOffD','offerDate','Offer date']];
+let _updSnap=null;
+function _updSnapTake(r){const v={};UPD_CLEARABLE.forEach(([id])=>{v[id]=gv(id);});_updSnap={code:r[C.code],v};}
+function updDetectCleared(r){
+  if(!_updSnap||_updSnap.code!==r[C.code])return [];
+  return UPD_CLEARABLE.filter(([id])=>_updSnap.v[id]&&!gv(id)).map(([id,key,lbl])=>({id,col:C[key],lbl,old:_updSnap.v[id]}));
+}
 async function submitUpd(){
 if(eIdx===-1)return;
 if(myRecName&&(MD[eIdx]||{})[C.recruiter]!==myRecName){showAlert('uUpdAlert','err','You can only update candidates assigned to you.');return;}
@@ -4148,6 +4162,11 @@ const stat=gv('uS'),dm=gv('uDM'),fu=gv('uFU');
 if(!NO_FOLLOWUP.has(stat)&&!fu){showAlert('uUpdAlert','err','Follow-up date required.');return;}
 if(['On Hold','Offer Revoked'].includes(stat)&&!dm){showAlert('uUpdAlert','err','Decision Maker required for On Hold / Offer Revoked.');return;}
 const r=MD[eIdx];const oldStat=r[C.status];
+const _cleared=updDetectCleared(r);
+if(_cleared.length){
+  if(_cleared.some(x=>x.id==='uIvD')&&['Consultant Interview in Progress','Shortlisted for Client I/W','Client I/W in Progress'].includes(stat)){showAlert('uUpdAlert','err','The status is an interview stage, which needs an Interview Date. Change the status as well, or keep the date.');return;}
+  if(!confirm('Remove this from the record?\n\n'+_cleared.map(x=>'• '+x.lbl+' (was '+x.old+')').join('\n')+'\n\nThis clears it in SharePoint and is recorded in the Change Log.'))return;
+}
 // 5 Oct 2026, Anne: a closing move (to Dropped / Not Interested) needs a reason
 // from the Drop Reasons master — it feeds the AI recruiter assessment, which
 // otherwise only has free-text remarks to go on. Not asked again on a
@@ -4176,12 +4195,15 @@ r[C.status]=stat;if(dm)r[C.dm]=dm;if(NO_FOLLOWUP.has(stat)){r[C.followupDate]=''
 const rmk=gv('uRem');r[C.remark]=rmk;
 const cmt=gv('uCmt');r[C.otherComments]=cmt;
 const ivr=gv('uIvr');if(ivr)r[C.interviewerName]=ivr;
-// Bug M fix: only write date/offer fields if form has a value — prevents accidental wipe
+// Bug M fix: a blank box is never written over a value (prevents accidental wipe) — except a box that showed a value on load and was
+// deliberately emptied, handled below via _cleared (confirmed above, written as null, logged).
 const _ivd=gv('uIvD');if(_ivd)r[C.interviewDate]=_ivd;
 const _decd=gv('uDecD');if(_decd)r[C.decisionDate]=_decd;
 const _doj=gv('uDOJ');if(_doj)r[C.doj]=_doj;
 const _offs=gv('uOffS');if(_offs)r[C.offeredSalary]=_offs;
 const _offd=gv('uOffD');if(_offd)r[C.offerDate]=_offd;
+const _clClear=[];
+_cleared.forEach(x=>{r[x.col]='';(r._clearCols=r._clearCols||[]).push(x.col);const row=writeCL('Field Cleared',r[C.code],x.lbl,x.old,'',r[C.name]);if(row)_clClear.push(row);});
 const fd=gv('uFinalDesig');if(fd)r['Final Designation Offered']=fd;
 const ri=gv('uRI');if(ri)r[C.roleInterested]=ri;
 if(stat==='Not Contactable'){const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);if(cnt>=3){r[C.followupDate]='';toast('warn','3 NC Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}}
@@ -4204,7 +4226,7 @@ const _clDR=(CLOSING_STATUSES.includes(stat)&&stat!==oldStat)?writeCL('Drop Reas
 if(stat!==oldStat&&stat!=='Not Contactable'){
   _clMCA=writeCL('Meaningful Candidate Action',r[C.code],'Vacancy Code',r[C.vacCode],stat,r[C.name]);
 }
-try{showLoad('Updating record...');await xlPatchRow(r);const _clRows=[_clEU,_clMCA,_clDR].filter(Boolean);if(_clRows.length)await xlAppendRows('Change Log',_clRows);hideLoad();hideSyncBanner();}catch(e){hideLoad();showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
+try{showLoad('Updating record...');await xlPatchRow(r);const _clRows=[_clEU,_clMCA,_clDR].concat(_clClear).filter(Boolean);if(_clRows.length)await xlAppendRows('Change Log',_clRows);hideLoad();hideSyncBanner();}catch(e){hideLoad();showAlert('uUpdAlert','err','Save failed: '+e.message+'. Changes were NOT written to SharePoint. Please try again.');return;}
 document.getElementById('uStat').innerHTML='<span class="badge '+bdg(stat)+'">'+stat+'</span>';
 toast('ok','Updated',r[C.name]+' → '+stat);loadDash();renderRec();updateTopbar();
   const updCode=r[C.code];const updName=r[C.name];
@@ -15491,6 +15513,9 @@ function buildCandidateListFields(r){
       fields[internalName]=String(v);
     }
   }
+  // Fields deliberately cleared on this save (see submitUpd / UPD_CLEARABLE) are sent as null — a blank is otherwise never written,
+  // so without this a cleared value would simply reappear on the next load.
+  (r._clearCols||[]).forEach(col=>{const n=SPLIST_FIELD_MAP[col];if(n&&(r[col]===''||r[col]==null))fields[n]=null;});
   return fields;
 }
 // Inverse of SPLIST_FIELD_MAP — internal List field name -> Excel display-name
