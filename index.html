@@ -110,6 +110,12 @@ padding:4px 10px;border-radius:20px}
 /* PANELS */
 .panel{display:none;animation:fadeIn .3s ease}
 .panel.active{display:block}
+/* 21 Oct 2026: the candidate banner on Update Candidate was growing tall once WhatsApp history, earlier engagements and an offer draft were added. Tighter padding, smaller avatar, one line per history. */
+#uForm .cc{padding:10px 16px;margin-bottom:12px}
+#uForm .cav{width:34px;height:34px;font-size:14px}
+#uForm #uActionsRow{margin-top:8px!important;padding-top:8px!important}
+#uForm .hist-sum{cursor:pointer;font-size:11px;color:var(--w60);padding:2px 0;list-style:none}
+#uForm .hist-sum::-webkit-details-marker{display:none}
 /* 15 Oct 2026: Edit Profile as a pop-up over Update Candidate (same form, same ids — shown as an overlay instead of a page) */
 #p-ep .ep-popbar{display:none}
 #p-ep.ep-popup{display:block;position:fixed;inset:0;z-index:2150;background:rgba(10,12,20,.84);backdrop-filter:blur(4px);overflow-y:auto;padding:24px 16px;animation:none}
@@ -1895,6 +1901,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 </div>
 </div>
 <div class="card hidden" id="offer-tpl-card" style="margin-top:14px"></div>
+<div class="card" id="client-prof-card" style="margin-top:14px"></div>
 <div class="card" style="margin-top:14px"><div class="card-hdr"><div class="card-title"><span class="ac">📌</span> Vacancy Budget Migration</div></div>
 <div style="max-width:600px;padding:4px 0">
   <div style="font-size:12px;color:#5f6470;margin-bottom:10px">One-time fix (18 Sep 2026): Vacancy Budget Min/Max now store an <strong>annual</strong> figure instead of monthly, matching how they're entered going forward — this also fixes the "Potential Fee Per Vacancy" report and the compensation shown on the Candidate Portal. Existing vacancies still hold the old monthly number — run this once to convert them.</div>
@@ -2334,7 +2341,10 @@ interview_confirmation:'Hi {N}, your interview for *{P}* with *{C}* is confirmed
 interview_tips:'💡*What can make a good first impression?*\n* Joining online meetings 5 mins ahead of time or arriving at the F2F venue 10 mins earlier - allows time for last minute exigencies.\n* Groom yourself & Dress well - this reflects your respect towards the interviewer and the role\n* F2F meetings: carry a printed copy of your resume, ensure it is clean copy and not folded\n* Online meetings: ensure apps are downloaded / updated, background is clear and you are seated in a well lit room\n* Online meetings: when attending on phone, ensure the phone rests on a table and is not held in your hand\n* Go through the company social pages and if available interviewer LinkedIn profile',
 selected:'Hi {N}, great news! You have been selected for *{P}* with *{C}*. We will share next steps shortly. - {R}, WithAWill HR',
 offered:'Hi {N}, an offer has been extended for *{P}* with *{C}*. Please revert with your confirmation. - {R}, WithAWill HR',
-send_jd:'Hi {N}, please find the Job Description for the *{P}* role with *{C}* attached.\n\nKindly review and let us know your interest and availability.\n\n- {R}, WithAWill HR',
+// 21 Oct 2026: the JD goes as a link (WhatsApp links cannot carry attachments). {JD LINK} is the vacancy's JD file served by the Gateway;
+// {JOB LINK} is the Gateway job page (portal-live roles only — the whole line is dropped when a link is not available).
+send_jd:'Hi {N}, here is the Job Description for the *{P}* role with *{C}*:\n{JD LINK}\n\nKnow more and apply: {JOB LINK}\n\nKindly review and let us know your interest and availability.\n\n- {R}, WithAWill HR',
+client_links:'Hi {N}, here is more about *{C}*, the company for the *{P}* role:\n{CLIENT LINKS}\n\n- {R}, WithAWill HR',
 // 28 Aug 2026: {IL} ("invite link") is a second dynamic-link placeholder,
 // separate from {L} (which fillWA() ties specifically to r[C.docLink], the
 // scheduled-meeting venue/Teams link — wrong link entirely for these two).
@@ -2356,6 +2366,7 @@ general:'Hi {N}, '};
 // 5 Oct 2026 are upgraded for a workbook that saved the old text untouched.
 const WA_DEFAULTS=Object.assign({},WA);
 const WA_OLD_DEFAULTS={
+  send_jd:'Hi {N}, please find the Job Description for the *{P}* role with *{C}* attached.\n\nKindly review and let us know your interest and availability.\n\n- {R}, WithAWill HR',
   wip:'Hi {N}, I am {R} from WithAWill HR. We found your profile for a {P} opportunity with {C}. Are you available for a quick discussion?',
   not_contactable:'Hi {N}, this is {R} from WithAWill HR following up on the {P} role with {C}. Please let us know a convenient time to connect.'
 };
@@ -2363,7 +2374,7 @@ const WA_OLD_DEFAULTS={
 // by the Send WhatsApp menu, the Admin → Config template editor (which showed
 // only the internal key — "wip", "not contactable" — so "First Contact" and
 // "📞 Follow-up" didn't look like the same templates) and the reports.
-const WA_MENU=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['before_we_move_ahead','⏳ Before We Move Ahead'],['send_jd','📄 Share JD'],['resume_upload_invite','📤 Resume Upload Invite'],['ai_interview_invite','🎥 AI Interview Invite'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
+const WA_MENU=[['wip','👋 First Contact'],['not_contactable','📞 Follow-up'],['before_we_move_ahead','⏳ Before We Move Ahead'],['send_jd','📄 Share JD'],['client_links','🔗 Share Client Profile'],['resume_upload_invite','📤 Resume Upload Invite'],['ai_interview_invite','🎥 AI Interview Invite'],['interview_confirmation','📅 Interview Confirmation'],['selected','🎉 Selection'],['offered','📋 Offer Follow-up'],['general','💬 General']];
 const WA_LABELS=Object.fromEntries(WA_MENU.concat([['reassign_resurface','🔁 Reassign & WA'],['interview_tips','💡 Interview tips (confirmation email only)']]));
 // 'followupCount' is what every WhatsApp Sent row's Field column held before
 // 5 Oct 2026, when the template used wasn't recorded.
@@ -2459,6 +2470,7 @@ async function backfillWATimes(){
   showModal('🔄 Backfill Complete',ok+' candidate(s) updated, '+failed+' failed.<div style="max-height:240px;overflow-y:auto;margin-top:10px;font-size:12px">'+log.slice().reverse().join('')+'</div>','','<button class="btn btn-t" onclick="closeModal()">Close</button>',true);
 }
 function fillWA(tpl,r,extraLink){
+tpl=waApplyLinkPh(tpl,r);
 const rn=(acct&&acct.name)?acct.name.split(' ')[0]:'WithAWill HR';
 // {CO} = candidate's current company, {LOC} = location of the role (the
 // candidate's Location of Posting, else the vacancy's Location) — both fall
@@ -3138,7 +3150,7 @@ loadUsersCfg();resolveRole();fillDrops();loadIncPolicyFromSP();
 (function(){try{const k=getMetadata('notify_key');if(k&&k.trim())localStorage.setItem('thp_notify_key',k.trim());}catch(e){}})();
 // Saved WhatsApp template edits override the built-in defaults key by key, so a
 // template added to the defaults later still appears.
-loadOfferTpl();
+loadOfferTpl();loadClientProfiles();
 (function(){try{const j=getMetadata('wa_templates');if(j){const o=JSON.parse(j);Object.keys(o).forEach(k=>{if(k in WA&&typeof o[k]==='string'&&o[k]!==WA_OLD_DEFAULTS[k])WA[k]=o[k];});}}catch(e){console.warn('wa_templates load',e.message);}})();
 // Load evaluations from dedicated Evaluations sheet
 (function(){try{const ws=WB.Sheets['Evaluations'];if(!ws)return;const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(1).filter(r=>r[0]);rows.forEach(r=>{try{const code=String(r[0]);const d=r[3]?JSON.parse(r[3]):{};if(code&&d)igEvalData[code]=d;}catch(e){}});}catch(e){console.warn('Eval load',e);}})();
@@ -5213,7 +5225,7 @@ const jdTitle=jdEntry?jdEntry.title:jdLink;
 const tpls=WA_MENU;
 // View JD button (opens SP file) + WhatsApp templates including send_jd
 const jdSection=hasJD
-  ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="viewJDLink()">📄 View JD — '+jdTitle+'</button>'
+  ?'<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:4px;border-color:rgba(52,186,198,.3)" onclick="viewJDLink()">📄 View JD — '+jdTitle+'</button>'+(curRole==='Super Admin'||curRole==='Admin'?'<div style="text-align:right;margin-bottom:4px"><a href="#" style="font-size:10px;color:var(--w60)" onclick="event.preventDefault();rotateJDShareToken()">↻ Issue a new JD link (the old one stops working)</a></div>':'')
   :'<div style="font-size:11px;color:var(--w40);padding:4px 0 8px">No JD linked to this vacancy</div>';
 // 28 Aug 2026: #modal-btns is a plain `display:flex` row (.flex class, no
 // wrap) — fine for the usual 2-3 button footer, but each of these template
@@ -5226,11 +5238,12 @@ const jdSection=hasJD
 // Template list itself is now a scrollable sub-container (max-height +
 // overflow-y:auto) with Cancel pinned below it, outside the scroll area —
 // so the menu stays usable as more templates get added, per Anne's ask.
+{const _v=vacForCandidate(r);if(_v&&String(_v['JD Link']||'').trim()&&!_v['JD Share Token'])ensureJDShareToken(_v).catch(e=>toast('warn','JD link not prepared',e.message));}
 showModal('Send WhatsApp','To '+r[C.name]+' ('+r[C.contact]+')',
   jdSection+'<div style="border-top:1px solid rgba(255,255,255,.08);margin:8px 0"></div>',
   '<div style="display:flex;flex-direction:column;gap:4px;width:100%">'+
   '<div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">'+
-  tpls.map(([k,l])=>{const blk=waSendBlock(r,k);return blk?'<button class="btn btn-ghost" disabled title="'+blk.why.replace(/"/g,'&quot;')+'" style="width:100%;text-align:left;flex-shrink:0;color:var(--w60);cursor:not-allowed">'+l+' <span style="font-size:10px">— available '+fmtWAWhen(blk.until)+'</span></button>':'<button class="btn btn-ghost" style="width:100%;text-align:left;flex-shrink:0" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>';}).join('')+
+  tpls.map(([k,l])=>{const blk=waSendBlock(r,k);const lb=waLinkBlock(r,k);if(lb)return '<button class="btn btn-ghost" disabled title="'+lb.replace(/"/g,'&quot;')+'" style="width:100%;text-align:left;flex-shrink:0;color:var(--w60);cursor:not-allowed">'+l+' <span style="font-size:10px">— '+(WA_REQUIRES[k]==='jd'?'no JD for this vacancy':'no client links saved')+'</span></button>';return blk?'<button class="btn btn-ghost" disabled title="'+blk.why.replace(/"/g,'&quot;')+'" style="width:100%;text-align:left;flex-shrink:0;color:var(--w60);cursor:not-allowed">'+l+' <span style="font-size:10px">— available '+fmtWAWhen(blk.until)+'</span></button>':'<button class="btn btn-ghost" style="width:100%;text-align:left;flex-shrink:0" onclick="closeModal();sendWA(\''+k+'\')">'+l+'</button>';}).join('')+
   '</div>'+
   '<button class="btn btn-ghost btn-sm mt8" onclick="closeModal()">Cancel</button></div>');}
 
@@ -5262,23 +5275,142 @@ function waHistAdd(entry){
   if(document.getElementById('uWAHist')&&eIdx!==-1&&MD[eIdx]&&MD[eIdx][C.code]===code)renderWAHistory(code,'uWAHist');
 }
 function waHistHtml(rows){
-  if(!rows.length)return '<div style="font-size:11px;color:var(--w60)">💬 <strong style="color:var(--ow)">WhatsApp history</strong> — none sent from the app yet.</div>';
+  if(!rows.length)return '<div style="font-size:11px;color:var(--w60)">💬 <strong style="color:var(--ow)">WhatsApp</strong> — none sent from the app yet.</div>';
   const sorted=rows.slice().sort((a,b)=>String(b[0]).localeCompare(String(a[0])));
   const when=ts=>{const d=new Date(ts);return isNaN(d)?String(ts):d.toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});};
   const last=sorted[0];
   const line=r=>'<div style="display:flex;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span style="color:var(--w60);white-space:nowrap;min-width:108px">'+escHtml(when(r[0]))+'</span><span style="color:var(--ow);flex:1">'+escHtml(waLabel(r[5]))+'</span><span style="color:var(--w60);white-space:nowrap">'+escHtml(r[1]||'')+'</span></div>';
-  return '<div style="font-size:11px;color:var(--w60);margin-bottom:5px">💬 <strong style="color:var(--ow)">WhatsApp history</strong> — '+sorted.length+' sent · last: '+escHtml(waLabel(last[5]))+' by '+escHtml(last[1]||'—')+', '+escHtml(when(last[0]))+'</div>'+
-    '<div style="max-height:150px;overflow:auto">'+sorted.map(line).join('')+'</div>';
+  return '<details><summary class="hist-sum">▸ 💬 <strong style="color:var(--ow)">WhatsApp</strong> — '+sorted.length+' sent · last: '+escHtml(waLabel(last[5]))+' by '+escHtml(last[1]||'—')+', '+escHtml(when(last[0]))+'</summary>'+
+    '<div style="max-height:150px;overflow:auto;margin-top:4px">'+sorted.map(line).join('')+'</div></details>';
 }
 async function renderWAHistory(code,hostId){
   const host=document.getElementById(hostId);if(!host||!code)return;
-  host.style.cssText='border-top:1px solid var(--w08);padding-top:8px;margin-top:10px';
+  host.style.cssText='border-top:1px solid var(--w08);padding-top:4px;margin-top:6px';
   host.innerHTML='<div style="font-size:11px;color:var(--w60)">💬 Loading WhatsApp history…</div>';
   try{
     const rows=(await waHistRows()).filter(r=>String(r[3])===String(code));
     const h=document.getElementById(hostId);if(h)h.innerHTML=waHistHtml(rows);
   }catch(e){const h=document.getElementById(hostId);if(h)h.innerHTML='<div style="font-size:11px;color:var(--w60)">💬 WhatsApp history could not be loaded.</div>';}
 }
+// ── Client profile links + JD links in WhatsApp (21 Oct 2026, Anne) ──────────────────────────
+// Client profiles (LinkedIn, website, one "other" link — each optional) live in the workbook sheet Client_Profiles and are edited in
+// Config → Client Profiles. A vacancy's JD is shared as a link to the Gateway (/jd/<code>?k=<token>), which serves the current JD file
+// from SharePoint; the token is a random per-vacancy string kept in the Vacancies list (column JDShareToken). WhatsApp cannot carry
+// attachments, so links are the way. Templates that need a link are disabled when it is not available: Share JD needs a JD on the
+// vacancy, Share Client Profile needs at least one saved link. In every other template a link placeholder whose value is missing
+// simply drops its line.
+const PORTAL_BASE='https://talentplus.withawill.in';
+const WA_REQUIRES={send_jd:'jd',client_links:'clientlinks'};
+let CLIENT_PROFILES={};
+function _cpKey(n){return String(n||'').trim().toLowerCase();}
+function loadClientProfiles(){
+  CLIENT_PROFILES={};
+  try{
+    const ws=WB&&WB.Sheets['Client_Profiles'];if(!ws)return;
+    XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(1).forEach(r=>{if(r[0])CLIENT_PROFILES[_cpKey(r[0])]={name:String(r[0]),linkedin:String(r[1]||''),website:String(r[2]||''),otherLabel:String(r[3]||''),otherUrl:String(r[4]||'')};});
+  }catch(e){console.warn('loadClientProfiles',e.message);}
+}
+function clientLinkList(name){
+  const p=CLIENT_PROFILES[_cpKey(name)];if(!p)return [];
+  const out=[];
+  if(p.linkedin)out.push(['LinkedIn',p.linkedin]);
+  if(p.website)out.push(['Website',p.website]);
+  if(p.otherUrl)out.push([p.otherLabel||'Link',p.otherUrl]);
+  return out;
+}
+function _normUrl(u){
+  u=String(u||'').trim();if(!u)return '';
+  if(!/^https?:\/\//i.test(u))u='https://'+u;
+  try{const x=new URL(u);if(!x.hostname.includes('.'))return null;return x.href;}catch(e){return null;}
+}
+function renderClientProfilesCfg(){
+  const host=document.getElementById('client-prof-card');if(!host)return;
+  const names=M.clients.filter(c=>c.active).map(c=>c.name);
+  const inp=(id,v,ph,w)=>'<input type="text" id="'+id+'" value="'+escHtml(v||'').replace(/"/g,'&quot;')+'" placeholder="'+ph+'" style="width:'+w+';box-sizing:border-box;font-size:11px;padding:4px 6px">';
+  host.innerHTML='<div class="card-hdr"><div class="card-title"><span class="ac">🔗</span> Client Profiles (links you can share with candidates)</div><button class="btn btn-t btn-sm" onclick="saveClientProfiles()">✓ Save client profiles</button></div>'+
+    '<div style="font-size:12px;color:#5f6470;margin-bottom:10px">Each link is optional. A client with no links cannot be shared from the WhatsApp menu, and the recruiter sees that none are available. Shared with {CLIENT LINKS} in a WhatsApp template.</div>'+
+    '<div class="tw"><table><thead><tr><th>Client</th><th>LinkedIn</th><th>Website</th><th>Other — name</th><th>Other — link</th></tr></thead><tbody>'+
+    names.map((n,i)=>{const p=CLIENT_PROFILES[_cpKey(n)]||{};return '<tr><td><strong>'+escHtml(n)+'</strong></td><td>'+inp('cp_li_'+i,p.linkedin,'linkedin.com/company/…','230px')+'</td><td>'+inp('cp_web_'+i,p.website,'www.…','200px')+'</td><td>'+inp('cp_ol_'+i,p.otherLabel,'e.g. Careers page','130px')+'</td><td>'+inp('cp_ou_'+i,p.otherUrl,'https://…','200px')+'</td></tr>';}).join('')+'</tbody></table></div>';
+  cfgCollapsibles();
+}
+async function saveClientProfiles(){
+  const names=M.clients.filter(c=>c.active).map(c=>c.name);
+  const next=Object.assign({},CLIENT_PROFILES);const bad=[];
+  names.forEach((n,i)=>{
+    const g=id=>(document.getElementById(id)||{value:''}).value.trim();
+    const li=_normUrl(g('cp_li_'+i)),web=_normUrl(g('cp_web_'+i)),ou=_normUrl(g('cp_ou_'+i)),ol=g('cp_ol_'+i);
+    if(li===null||web===null||ou===null){bad.push(n);return;}
+    if(!li&&!web&&!ou)delete next[_cpKey(n)];
+    else next[_cpKey(n)]={name:n,linkedin:li,website:web,otherLabel:ou?ol:'',otherUrl:ou};
+  });
+  if(bad.length){toast('warn','Check the links','A link for '+bad.join(', ')+' is not a valid web address.');return;}
+  try{
+    const aoa=[['client','linkedin','website','otherLabel','otherUrl']].concat(Object.values(next).map(p=>[p.name,p.linkedin,p.website,p.otherLabel,p.otherUrl]));
+    WB.Sheets['Client_Profiles']=XLSX.utils.aoa_to_sheet(aoa);
+    if(!WB.SheetNames.includes('Client_Profiles'))WB.SheetNames.push('Client_Profiles');
+    await saveWB(false,true,['Client_Profiles']);
+    CLIENT_PROFILES=next;toast('ok','Client profiles saved','Available in the WhatsApp menu from now on.');
+  }catch(e){toast('err','Not saved',e.message);}
+}
+// JD share token: issued the first time a vacancy's JD is shared; random, per vacancy, written to the Vacancies list.
+function vacForCandidate(r){return VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===r[C.vacCode])||null;}
+async function ensureJDShareToken(vac,force){
+  if(!force&&vac['JD Share Token'])return vac['JD Share Token'];
+  if(vac._tokBusy)return vac._tokBusy;
+  vac._tokBusy=(async()=>{
+    const a=new Uint8Array(24);crypto.getRandomValues(a);
+    const newTok=btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const itemId=await resolveVacSpItemId(vac);
+    if(!itemId)throw new Error('the vacancy was not found in the Vacancies list');
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/Vacancies/items/'+itemId+'/fields',{method:'PATCH',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({JDShareToken:newTok})});
+    if(!res.ok){const t=await res.text().catch(()=>'');throw new Error(/column|field|not exist/i.test(t)?'the JDShareToken column does not exist on the Vacancies list yet':'HTTP '+res.status);}
+    vac['JD Share Token']=newTok;return newTok;
+  })().finally(()=>{vac._tokBusy=null;});
+  return vac._tokBusy;
+}
+async function rotateJDShareToken(){
+  const r=eIdx>=0?MD[eIdx]:null;const vac=r&&vacForCandidate(r);if(!vac)return;
+  if(!confirm('Issue a new JD link for '+(vac['Vacancy code']||'this vacancy')+'?\n\nThe old link stops working for anyone who has it.'))return;
+  try{await ensureJDShareToken(vac,true);toast('ok','New JD link issued','Links sent from now on use the new one.');}catch(e){toast('err','Not changed',e.message);}
+}
+function waLinkSubs(r){
+  const vac=vacForCandidate(r)||{};
+  const code=vac['Vacancy code']||vac['Vacancy Code']||'';
+  const hasJd=!!String(vac['JD Link']||'').trim()&&!!vac['JD Share Token'];
+  const publicRole=vac['Externally Visible']==='Y'&&(vac['Current Status']||'Open')==='Open'&&vac['Active']!=='N';
+  const cl=clientLinkList(r[C.client]);
+  return {
+    JDLINK:hasJd?PORTAL_BASE+'/jd/'+encodeURIComponent(code)+'?k='+encodeURIComponent(vac['JD Share Token']):'',
+    JOBLINK:(code&&publicRole)?PORTAL_BASE+'/vacancies/'+encodeURIComponent(code):'',
+    CLIENTLINKS:cl.map(([l,u])=>l+': '+u).join('\n'),
+    LINKEDIN:(cl.find(x=>x[0]==='LinkedIn')||[])[1]||'',
+    WEBSITE:(cl.find(x=>x[0]==='Website')||[])[1]||'',
+    OTHERLINK:(cl.find(x=>x[0]!=='LinkedIn'&&x[0]!=='Website')||[])[1]||''
+  };
+}
+// Replace the link placeholders; a line whose link is not available is dropped whole.
+function waApplyLinkPh(tpl,r){
+  const subs=waLinkSubs(r);
+  const lines=String(tpl).split('\n').map(line=>{
+    let drop=false;
+    const out=line.replace(/\{([^{}]+)\}/g,(x,k)=>{const n=String(k).replace(/[\s_]+/g,'').toUpperCase();if(!(n in subs))return x;const v=subs[n];if(!v){drop=true;return '';}return v;});
+    return drop?null:out;
+  }).filter(l=>l!==null);
+  return lines.join('\n').replace(/\n{3,}/g,'\n\n');
+}
+// Why a template cannot be sent for this candidate (empty string = fine).
+function waLinkBlock(r,key){
+  const need=WA_REQUIRES[key];if(!need)return '';
+  if(need==='jd'){
+    const vac=vacForCandidate(r);
+    if(!r[C.vacCode])return 'This candidate has no vacancy tagged.';
+    if(!vac||!String(vac['JD Link']||'').trim())return 'No JD is linked to this vacancy. Add one under Vacancies → Edit.';
+  }
+  if(need==='clientlinks'&&!clientLinkList(r[C.client]).length)return 'No client links are saved for '+(r[C.client]||'this client')+'. Add them in Config → Client Profiles.';
+  return '';
+}
+
 async function sendWA(tplKey){if(eIdx===-1)return;const r=MD[eIdx];const mob=r[C.contact];if(!mob||!/^\d{10}$/.test(mob)){toast('warn','No mobile','No valid mobile on record.');return;}
 // 28 Aug 2026: ai_interview_invite/resume_upload_invite need a link derived
 // from r[C.vacCode] at send time (same formula inviteToVideoInterview()/
@@ -5289,7 +5421,7 @@ if(tplKey==='ai_interview_invite'||tplKey==='resume_upload_invite'){
   if(!r[C.vacCode]){toast('warn','No Vacancy','This candidate has no vacancy code tagged.');return;}
   extraLink=(tplKey==='ai_interview_invite'?'https://talentplus.withawill.in/interview/':'https://talentplus.withawill.in/resume-upload/')+encodeURIComponent(r[C.vacCode]);
 }
-const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();const _waKey=WA[tplKey]?tplKey:(Object.keys(WA).find(k=>WA[k]===tpl)||'general');const _blk=waSendBlock(r,_waKey);if(_blk){toast('warn','Not Yet',_blk.why+' — available from '+fmtWAWhen(_blk.until)+'.');return;}window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _waNow=new Date().toISOString(),_waTimes={};if(_waKey===WA_FIRST_CONTACT_KEY&&!r[C.firstWA]){r[C.firstWA]=_waNow;_waTimes.FirstWhatsAppAt=_waNow;}if(_waKey===WA_FOLLOWUP_KEY){r[C.lastFollowupWA]=_waNow;_waTimes.LastFollowupWAAt=_waNow;}const _clWA=writeCL('WhatsApp Sent',r[C.code],_waKey,String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA){await xlAppendRows('Change Log',[_clWA]);waHistAdd(_clWA);}await saveWATimes(r,_waTimes);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
+const tpl=WA[tplKey]||(()=>{const s=(r[C.status]||'').toLowerCase();if(s==='Active')return WA.wip;if(s.includes('not contact'))return WA.not_contactable;if(s.includes('interview')||s.includes('shortlisted'))return WA.interview_confirmation;if(s==='selected')return WA.selected;if(s.includes('offer'))return WA.offered;return WA.general;})();const _waKey=WA[tplKey]?tplKey:(Object.keys(WA).find(k=>WA[k]===tpl)||'general');const _blk=waSendBlock(r,_waKey);if(_blk){toast('warn','Not Yet',_blk.why+' — available from '+fmtWAWhen(_blk.until)+'.');return;}const _lb=waLinkBlock(r,_waKey);if(_lb){toast('warn','Cannot send',_lb);return;}if(/\{\s*JD[\s_]*LINK\s*\}/i.test(tpl)&&String((vacForCandidate(r)||{})['JD Link']||'').trim()&&!(vacForCandidate(r)||{})['JD Share Token']){const _v=vacForCandidate(r);ensureJDShareToken(_v).then(()=>toast('info','JD link ready','Click the message again to send it.')).catch(e=>toast('err','JD link not prepared',e.message));toast('info','Preparing the JD link','One moment — click again once it is ready.');return;}window.open('https://wa.me/91'+mob+'?text='+encodeURIComponent(fillWA(tpl,r,extraLink)),'_blank');const cnt=parseInt(r[C.followupCount]||'0')+1;r[C.followupCount]=String(cnt);r[C.updatedBy]=acct&&acct.name?acct.name:'';r[C.updatedOn]=today();if(r[C.status]==='Not Contactable'&&cnt>=3){r[C.followupDate]='';toast('warn','3 WA Attempts Reached','Follow-up cleared for '+r[C.name]+'. Candidate removed from queue.');}const _waNow=new Date().toISOString(),_waTimes={};if(_waKey===WA_FIRST_CONTACT_KEY&&!r[C.firstWA]){r[C.firstWA]=_waNow;_waTimes.FirstWhatsAppAt=_waNow;}if(_waKey===WA_FOLLOWUP_KEY){r[C.lastFollowupWA]=_waNow;_waTimes.LastFollowupWAAt=_waNow;}const _clWA=writeCL('WhatsApp Sent',r[C.code],_waKey,String(cnt-1),String(cnt),r[C.name]);try{await xlPatchRow(r);if(_clWA){await xlAppendRows('Change Log',[_clWA]);waHistAdd(_clWA);}await saveWATimes(r,_waTimes);}catch(e){console.warn('sendWA patch',e.message);toast('warn','Not Saved','WhatsApp sent, but the follow-up count could not be saved to SharePoint: '+e.message+'. Please retry from Update Candidate.');}
 showModal('📱 Message Sent','WhatsApp opened for <strong>'+r[C.name]+'</strong>. What would you like to do next?','',
   '<button class="btn btn-t btn-sm" onclick="closeModal()">Stay Here</button>&nbsp;'+
   '<button class="btn btn-ghost btn-sm" onclick="closeModal();goPanel(\'rec\')">All Records</button>&nbsp;'+
@@ -5532,7 +5664,7 @@ document.addEventListener('click',e=>{
   if(_cfgOpen.has(key))_cfgOpen.delete(key);else _cfgOpen.add(key);
   _cfgApply(holder,key,hdr,body);
 });
-function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));renderOfferTplCfg();const we=document.getElementById('wa-ed');if(we)we.innerHTML='<div style="font-size:10px;color:var(--w60);margin-bottom:10px;line-height:1.5">Placeholders: {N} candidate name · {R} your first name · {P} role · {C} client · {CO} candidate\'s current company · {LOC} role location · {D}/{T} interview date/time · {L} meeting link · {IL} invite link</div>'+Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');cfgCollapsibles();}
+function loadCfg(){Object.keys(M).forEach(k=>renderMT(k));renderOfferTplCfg();renderClientProfilesCfg();const we=document.getElementById('wa-ed');if(we)we.innerHTML='<div style="font-size:10px;color:var(--w60);margin-bottom:10px;line-height:1.5">Placeholders: {N} candidate name · {R} your first name · {P} role · {C} client · {CO} candidate\'s current company · {LOC} role location · {D}/{T} interview date/time · {L} meeting link · {IL} invite link · {JD LINK} JD file link · {JOB LINK} Gateway job page (portal roles) · {CLIENT LINKS} client profile links · {LINKEDIN} · {WEBSITE}</div>'+Object.entries(WA).map(([k,v])=>'<div style="margin-bottom:9px"><label style="color:var(--teal);font-size:9px;letter-spacing:1px;text-transform:capitalize">'+(WA_LABELS[k]?WA_LABELS[k]+' ('+k+')':k.replace(/_/g,' '))+'</label><textarea id="wt_'+k+'" style="min-height:50px;font-size:10px;font-family:monospace;margin-top:2px">'+v+'</textarea></div>').join('');cfgCollapsibles();}
 function renderMT(key){
   try{cfgCounts();}catch(e){}
   const el=document.getElementById('mt-'+key);
@@ -14111,11 +14243,11 @@ function engHistHtml(rows){
   const sorted=rows.map(x=>x.fields).sort((a,b)=>String(b.ArchivedAt||'').localeCompare(String(a.ArchivedAt||'')));
   const dt=v=>{const d=new Date(v);return isNaN(d)?String(v||'—'):d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});};
   const rem=t=>String(t||'').split('|').map(x=>x.trim()).filter(Boolean);
-  return '<div style="font-size:11px;color:var(--w60);margin-bottom:5px">📚 <strong style="color:var(--ow)">Previous engagements</strong> — '+sorted.length+' earlier on this record (newest first)</div>'+
+  return '<details><summary class="hist-sum">▸ 📚 <strong style="color:var(--ow)">Previous engagements</strong> — '+sorted.length+' earlier on this record (newest first)</summary><div style="margin-top:4px">'+
     sorted.map(f=>'<details style="margin-bottom:6px;background:var(--w06);border-radius:6px;padding:6px 10px"><summary style="cursor:pointer;font-size:11px;color:var(--ow)">'+
       escHtml(f.VacancyCode||'—')+' · '+escHtml(f.Client||'')+' · '+escHtml(f.Position||'')+' — ended as <strong>'+escHtml(f.FinalStatus||'—')+'</strong> · Recruiter: <strong>'+escHtml(f.Recruiter||'—')+'</strong></summary>'+
       '<div style="font-size:11px;color:var(--w60);margin-top:6px;line-height:1.6">Sourced '+escHtml(dt(f.SourcingDate))+' · last updated '+escHtml(dt(f.StatusUpdatedOn))+' · archived '+escHtml(dt(f.ArchivedAt))+' by '+escHtml(f.ArchivedBy||'—')+(f.Reason?' ('+escHtml(f.Reason)+')':'')+
-      (rem(f.Remarks).length?'<div style="margin-top:6px"><strong style="color:var(--ow)">Remarks then</strong><ul style="margin:4px 0 0;padding-left:16px">'+rem(f.Remarks).map(x=>'<li>'+escHtml(x)+'</li>').join('')+'</ul></div>':'')+'</div></details>').join('');
+      (rem(f.Remarks).length?'<div style="margin-top:6px"><strong style="color:var(--ow)">Remarks then</strong><ul style="margin:4px 0 0;padding-left:16px">'+rem(f.Remarks).map(x=>'<li>'+escHtml(x)+'</li>').join('')+'</ul></div>':'')+'</div></details>').join('')+'</div></details>';
 }
 async function renderEngagementHistory(code,hostId){
   const host=document.getElementById(hostId);if(!host||!code)return;
@@ -14124,7 +14256,7 @@ async function renderEngagementHistory(code,hostId){
     const rows=(await engRows()).filter(x=>String(x.fields.Title)===String(code));
     const h=document.getElementById(hostId);if(!h)return;
     const html=engHistHtml(rows);
-    if(html){h.style.cssText='border-top:1px solid var(--w08);padding-top:8px;margin-top:10px';h.innerHTML=html;}
+    if(html){h.style.cssText='border-top:1px solid var(--w08);padding-top:4px;margin-top:4px';h.innerHTML=html;}
   }catch(e){console.warn('renderEngagementHistory',e.message);}
 }
 // Tags an EXISTING candidate (a resurfaced match — Not Interested/On Hold/
@@ -15725,7 +15857,9 @@ const SPLIST_VAC_FIELD_MAP={
   'Externally Visible':'ExternallyVisible',
   // 15 Oct 2026 (Anne): billing grade — a Choice column on the Vacancies list (Frontline-Flat, Frontline, Mid to Senior, Senior).
   // Choices are read from the list itself (loadGradeChoices) so the dropdown can never offer a value the list would reject.
-  'Grade':'Grade'
+  'Grade':'Grade',
+  // 21 Oct 2026: random per-vacancy token for the JD file link shared over WhatsApp (single line text column on the Vacancies list)
+  'JD Share Token':'JDShareToken'
 };
 const SPLIST_VAC_REVERSE_MAP=Object.fromEntries(Object.entries(SPLIST_VAC_FIELD_MAP).map(([k,v])=>[v,k]));
 // 'Externally Visible' is a Choice column (Yes/No strings only, not a real
