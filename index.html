@@ -111,9 +111,11 @@ padding:4px 10px;border-radius:20px}
 .panel{display:none;animation:fadeIn .3s ease}
 .panel.active{display:block}
 /* 21 Oct 2026: the candidate banner on Update Candidate was growing tall once WhatsApp history, earlier engagements and an offer draft were added. Tighter padding, smaller avatar, one line per history. */
-#uForm .cc{padding:10px 16px;margin-bottom:12px}
-#uForm .cav{width:34px;height:34px;font-size:14px}
-#uForm #uActionsRow{margin-top:8px!important;padding-top:8px!important}
+#uForm .cc{padding:8px 14px;margin-bottom:10px;gap:0}   /* gap:0 — the card is a flex column and every empty history box below used to add 14px of blank space */
+#uForm .cav{width:32px;height:32px;font-size:13px}
+#uForm #uActionsRow{margin-top:6px!important;padding-top:6px!important;gap:4px 6px!important}
+#uForm #uActionsRow .btn{padding:3px 8px!important;font-size:10.5px!important;line-height:1.3}   /* gateway buttons were larger than the rest and wrapped onto a second row */
+#uForm #uActionsRow .btn svg{width:11px;height:11px}
 #uForm .hist-sum{cursor:pointer;font-size:11px;color:var(--w60);padding:2px 0;list-style:none}
 #uForm .hist-sum::-webkit-details-marker{display:none}
 /* 15 Oct 2026: Edit Profile as a pop-up over Update Candidate (same form, same ids — shown as an overlay instead of a page) */
