@@ -11015,23 +11015,91 @@ function prioCardFields(rec,date,slot,c,extra){
     Action:c.action,Why:c.why,Source:'System',State:'Proposed',ChangedBy:'',ChangedAt:prioNowIso(),Baseline:JSON.stringify(c.base||{}),Evidence:'',Completion:'Not confirmed',
     CompletedAt:'',RulesVersion:PRIO_RULES_VERSION,ScoreDetail:JSON.stringify(c.details||[]),AgreedAt:'',Suggestion:'',Streak:String(c.streak||1)},extra||{});
 }
+// ── Plan safety (22 Oct 2026, Anne): a plan is saved for the whole day, so one built from incomplete data (Upasana, 22 Oct: a
+// plan with a single card because the candidates had not finished loading) stayed wrong all day. Now:
+//  1. Before a first plan of the day is saved, the data is checked — the candidate count against the last known good count, and
+//     the number of work cards against yesterday's plan. If it looks short, the data is refreshed from SharePoint and the cards
+//     are worked out again before anything is saved. If it cannot be refreshed (the user is mid-edit), nothing is saved and the
+//     live view is shown with a note.
+//  2. When a saved plan is opened and it looks far thinner than the live picture while nothing has been acted on (and no manager
+//     edit, added focus item or suggestion is on it), it is rebuilt once, automatically, and the recruiter is told.
+//  3. A "Rebuild plan" button remains for the recruiter (until a card has been acted on) and for Admin.
+// Rebuilt cards are marked Removed (never deleted), so the earlier version stays in the list for audit.
+const _prioRebuilt={};
+function prioDataSuspect(live,prevWork){
+  if(_lastGoodCount>0&&MD.length<_lastGoodCount*0.95)return true;
+  return prevWork>=4&&live.cards.length<=Math.floor(prevWork/2);
+}
+async function prioRefreshData(){
+  try{
+    for(let i=0;i<30&&_syncInProgress;i++)await new Promise(r=>setTimeout(r,500));
+    if(typeof hasDirtyForm==='function'&&hasDirtyForm())return false;   // never disturb something being typed
+    await syncFromServer(true);
+    return true;
+  }catch(e){console.warn('prioRefreshData',e.message);return false;}
+}
+function prioStaleVerdict(rows,live){
+  const cards=rows.filter(r=>r.kind==='Card'&&r.state!=='Removed');
+  if(!cards.length)return false;
+  // anything a person has done to the plan protects it
+  if(rows.some(r=>r.kind==='Added'||r.source==='Manager'||r.state==='Edited'||r.suggestion||(r.kind==='Card'&&r.completion==='Confirmed')))return false;
+  const need=Math.min(live.cards.length,6);
+  if(need<3)return false;
+  const liveCodes=new Set(live.cards.map(c=>c.code));
+  const overlap=cards.filter(c=>liveCodes.has(c.code)).length;
+  return overlap<Math.ceil(need/2);
+}
+async function prioCreateCards(recName,td,live,prevItems){
+  // streak: how many working days in a row this vacancy+lead has been a card without being confirmed
+  const prev={};(prevItems||[]).map(prioItemToRow).filter(r=>r.kind==='Card'&&r.state!=='Removed').forEach(r=>{prev[r.code+'|'+r.lead]=r;});
+  const created=[];
+  for(let i=0;i<live.cards.length;i++){
+    const c=live.cards[i],p=prev[c.code+'|'+c.lead];
+    c.streak=(p&&p.completion!=='Confirmed')?(p.streak||1)+1:1;
+    created.push(await prioPost(prioCardFields(recName,td,i+1,c)));
+  }
+  return created.map(it=>({id:it.id,fields:it.fields}));
+}
 async function prioLoadOrCreatePlan(recName,live,opts){
+  opts=opts||{};
   const td=today(),q=m=>"fields/PlanDate eq '"+m+"' and fields/Recruiter eq '"+recName+"'";
   let items=await prioFetchRows(q(td));
   if(items===null)return null;
-  if(!items.length&&!(opts&&opts.noCreate)){
-    // streak: how many working days in a row this vacancy+lead has been a card without being confirmed
+  if(!items.length&&!opts.noCreate){
     const prevItems=await prioFetchRows(q(prioPrevWorkingDay(td)))||[];
-    const prev={};prevItems.map(prioItemToRow).filter(r=>r.kind==='Card'&&r.state!=='Removed').forEach(r=>{prev[r.code+'|'+r.lead]=r;});
-    const created=[];
-    for(let i=0;i<live.cards.length;i++){
-      const c=live.cards[i],p=prev[c.code+'|'+c.lead];
-      c.streak=(p&&p.completion!=='Confirmed')?(p.streak||1)+1:1;
-      created.push(await prioPost(prioCardFields(recName,td,i+1,c)));
+    const prevWork=prevItems.map(prioItemToRow).filter(r=>r.kind==='Card'&&r.state!=='Removed').length;
+    if(prioDataSuspect(live,prevWork)){
+      const ok=await prioRefreshData();
+      if(!ok){opts.note='Your candidate data may still be loading, so today\'s plan was not saved. This is the live view; please reopen My Priorities in a minute.';return [];}
+      live=await buildPriorities(recName);opts.live=live;   // fresh data: work the cards out again before saving
     }
-    items=created.map(it=>({id:it.id,fields:it.fields}));
+    items=await prioCreateCards(recName,td,live,prevItems);
   }
   return items.map(prioItemToRow);
+}
+async function prioRebuildPlan(recName,live,reason){
+  const td=today(),q=m=>"fields/PlanDate eq '"+m+"' and fields/Recruiter eq '"+recName+"'";
+  const cur=await prioFetchRows(q(td))||[];
+  const prevItems=await prioFetchRows(q(prioPrevWorkingDay(td)))||[];
+  for(const it of cur){
+    const row=prioItemToRow(it);
+    if(row.kind==='Card'&&row.state!=='Removed')await prioPatch(it.id,{State:'Removed',ChangedBy:'System (plan rebuilt'+(reason?': '+reason:'')+')',ChangedAt:prioNowIso()});
+  }
+  const created=await prioCreateCards(recName,td,live,prevItems);
+  return created.map(prioItemToRow);
+}
+async function prioManualRebuild(){
+  const P=_prioCur;if(!P)return;
+  if(!confirm('Rebuild today\'s plan for '+P.rec+' from the latest data?\n\nThe current cards are replaced and the agreement is reset.'))return;
+  showLoad('Rebuilding plan...');
+  try{
+    await prioRefreshData();
+    const d=await buildPriorities(P.rec);
+    await prioRebuildPlan(P.rec,d,'rebuilt on request by '+prioUser());
+    _prioRebuilt[P.rec+'|'+today()]=true;
+  }catch(e){hideLoad();toast('err','Plan not rebuilt',String(e.message||e).slice(0,160));return;}
+  hideLoad();toast('ok','Plan rebuilt','Today\'s cards are refreshed from the latest data.');
+  openPriorities(P.rec,false);
 }
 // cards in display order with their tier; manager "urgent focus" rows carry a negative slot and come first
 function prioDisplayCards(rows){
@@ -11062,12 +11130,25 @@ async function openPriorities(recOverride,auto){
   if(!rec&&isAdmin)rec=effortRecSel||mA('priorityPilot')[0]||mA('recruiters')[0]||'';
   if(!rec){toast('warn','My Priorities','No recruiter selected.');return;}
   if(!auto)showLoad('Working out priorities...');
-  let d,rows=null,listNote='';
+  let d,rows=null,listNote='',rebuildNote='';
   try{
     d=await buildPriorities(rec);
     if(_prioListState!=='missing'){
-      try{rows=await prioLoadOrCreatePlan(rec,d,{noCreate:isAdmin&&rec!==myRecName});
-        if(rows&&!rows.length){rows=null;listNote=rec+' has not opened today\'s plan yet, so this is the live view.';}}
+      try{
+        const popts={noCreate:isAdmin&&rec!==myRecName};
+        rows=await prioLoadOrCreatePlan(rec,d,popts);
+        if(popts.live)d=popts.live;
+        if(rows&&!rows.length){rows=null;listNote=popts.note||(rec+' has not opened today\'s plan yet, so this is the live view.');}
+        // a saved plan that is far thinner than the live picture, with nothing acted on, is rebuilt once (the recruiter's own session only)
+        if(rows&&rows.length&&rec===myRecName&&!_prioRebuilt[rec+'|'+today()]&&prioStaleVerdict(rows,d)){
+          _prioRebuilt[rec+'|'+today()]=true;
+          if(await prioRefreshData())d=await buildPriorities(rec);
+          if(prioStaleVerdict(rows,d)){
+            rows=await prioRebuildPlan(rec,d,'first version built from incomplete data');
+            rebuildNote='Today\'s plan was rebuilt because the first version was built before your data had fully loaded. Please agree to the new plan.';
+          }
+        }
+      }
       catch(e){console.error(e);listNote='The saved plan could not be read or written ('+String(e.message||e).slice(0,120)+'), so this is today\'s live view.';}
     }
     if(rows===null&&!listNote)listNote=_prioListState==='missing'?'The DailyPriorities list is not set up yet, so this is today\'s live view.':'';
@@ -11077,7 +11158,7 @@ async function openPriorities(recOverride,auto){
   if(rows&&auto&&rows.some(r=>r.kind==='Card'&&r.agreedAt)){return;}   // already agreed today: do not pop up again
   let outlook='';
   try{outlook=incentiveOutlookHtml(await calcIncentiveOutlook(rec));}catch(e){console.warn('incentive outlook',e.message);}
-  _prioCur={rec,live:d,rows,listNote,isAdmin,outlook};
+  _prioCur={rec,live:d,rows,listNote,rebuildNote,isAdmin,outlook};
   renderPrioModal();
 }
 function prioMaybeAutoOpen(){
@@ -11176,12 +11257,12 @@ function renderPrioModal(){
   const alsoHtml=d.also.length?'<p class="pr-note">Also on your list ('+d.also.length+'): '+d.also.map(a=>E(a.code)+' '+E(a.role)+(a.lead==='check'?' (feedback only — see the Interviews card)':'')).join(' · ')+'</p>':'';
   const flags=d.flags.length?'<p class="pr-note pr-flag">⚠ Data to fix: '+d.flags.map(E).join(' ')+'</p>':'';
   const sugHtml=suggestions.length?'<p class="pr-note">💬 Your suggestions are with your manager.</p>':'';
-  const listNote=P.listNote?'<p class="pr-note pr-flag">'+E(P.listNote)+'</p>':'';
+  const listNote=(P.rebuildNote?'<p class="pr-note pr-flag">🔄 '+E(P.rebuildNote)+'</p>':'')+(P.listNote?'<p class="pr-note pr-flag">'+E(P.listNote)+'</p>':'');
   const body=strip+(P.outlook||'')+(cardHtml?'<div class="pr-grid">'+cardHtml+'</div>':'<p class="pr-note">No open vacancies with work to do are assigned to '+E(d.recName)+' right now.</p>')+addedHtml+pushedHtml+alsoHtml+flags+listNote+sugHtml+
     '<p class="pr-note">Closing this never blocks your work. Reopen any time from Home → ☀️ My Priorities. Ticks appear on their own from the updates you already make. A successful paid placement may increase your incentive. This screen is a guide: it does not count as an action in your reports.</p>';
   const recSel=P.isAdmin?('<select id="pr-rec-sel" style="width:auto;margin-right:auto" onchange="openPriorities(this.value)">'+mA('recruiters').map(r=>'<option value="'+E(r)+'"'+(r===d.recName?' selected':'')+'>'+E(r)+'</option>').join('')+'</select>'):'';
   const agreed=rows&&rows.some(r=>r.kind==='Card'&&r.agreedAt);
-  const btns=recSel+(rows&&own?('<button class="btn btn-ghost" onclick="prioAddFocus()">➕ Add a focus item</button><button class="btn btn-ghost" onclick="prioSuggest()">💬 Suggest a change</button>'):'')+
+  const btns=recSel+(rows&&(P.isAdmin||(own&&!rows.some(r=>r.kind==='Card'&&r.completion==='Confirmed')))?'<button class="btn btn-ghost btn-sm" onclick="prioManualRebuild()" title="Rebuild today\'s cards from the latest data">↻ Rebuild plan</button>':'')+(rows&&own?('<button class="btn btn-ghost" onclick="prioAddFocus()">➕ Add a focus item</button><button class="btn btn-ghost" onclick="prioSuggest()">💬 Suggest a change</button>'):'')+
     (rows&&own&&!agreed?'<button class="btn btn-t" onclick="prioAgree()">👍 Agree, let\'s go</button>':'<button class="btn btn-t" onclick="closeModal()">'+(agreed?'✓ Agreed · Close':'👍 Got it, let\'s go')+'</button>');
   const first=(d.recName||'').split(' ')[0];
   showModal('☀️ My Priorities Today',(d.workingDay?'':'Today is not a working day. ')+(P.isAdmin&&d.recName!==myRecName?'Viewing '+E(first)+'. ':'Good morning, '+E(first)+'! ')+'Six things that will move your roles the most today.'+(rows?(' <span class="pr-prog">'+doneCount+' of '+cards.length+' done</span>'):''),body,btns,false);
