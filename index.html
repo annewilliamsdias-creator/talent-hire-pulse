@@ -1449,7 +1449,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <div class="field"><label>Client</label><select id="jd-client"><option value="">All / Generic</option></select></div>
       <div class="field"><label>Department</label><select id="jd-dept"><option value="">— Select —</option></select></div>
       <div class="field"><label>Experience Range</label><input type="text" id="jd-exp" placeholder="e.g. 3–6 years"></div>
-      <div class="field"><label>Work Model</label><select id="jd-workmodel"><option value="">— Select —</option><option>Office</option><option>Hybrid</option><option>Remote</option><option>Field</option></select></div>
+      <div class="field"><div style="display:flex;align-items:center;justify-content:space-between;gap:6px"><label style="margin:0">Work Model</label><button type="button" class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 8px" onclick="aiGenerateJDQuestions()" title="Draft the interview questions, pre-read and role context from the JD link and the details above">✨ AI Generate</button></div><select id="jd-workmodel" style="margin-top:5px"><option value="">— Select —</option><option>Office</option><option>Hybrid</option><option>Remote</option><option>Field</option></select></div>
       <div class="field s2"><label>SharePoint / Drive Link <span class="req">*</span></label><input type="text" id="jd-link" placeholder="Paste SharePoint or Drive link here"></div>
       <div class="field"><label>Tags</label><input type="text" id="jd-tags" placeholder="e.g. operations, mid-level, pune"></div>
     </div>
@@ -1461,7 +1461,6 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
       <div class="field" style="margin:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <label>10 Core Interview Questions</label>
-          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="aiGenerateJDQuestions()">✨ AI Generate</button>
         </div>
         <div id="jd-q-list" style="display:grid;gap:6px">
           <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--w60);min-width:18px">1.</span><input type="text" id="jd-q1" placeholder="Question 1" style="flex:1"></div>
