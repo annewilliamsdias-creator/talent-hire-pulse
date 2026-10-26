@@ -1036,6 +1036,13 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
 <div style="font-size:11px;color:var(--w60)">PDF, Word (.docx), PowerPoint (.pptx), TXT, JPG/PNG — max 5MB each</div>
 </div>
 <input type="file" id="scrFI" accept=".pdf,.docx,.pptx,.txt,.jpg,.jpeg,.png" multiple style="display:none" onchange="onScreenFiles(event)">
+<div class="sl2" style="margin-top:16px">📡 Step 3 — Where did these resumes come from?</div>
+<div class="fg3">
+<div class="field"><label>Source for all resumes <span class="req">*</span></label><select id="scrSrcAll"><option value="">— Select —</option></select></div>
+<div class="field"><label>Source Details <span class="fhint">(optional)</span></label><input type="text" id="scrSrcDAll" placeholder="e.g. Naukri search 24 Oct, referred by..."></div>
+<div class="field"><label>&nbsp;</label><button type="button" class="btn btn-ghost" onclick="screenApplySourceAll()" title="Sets this source on every resume in the list, replacing anything chosen individually">Apply to all</button></div>
+</div>
+<div style="font-size:11px;color:var(--w60);margin:-2px 0 10px">Pick one source for the whole batch, then change it on an individual resume (open its card) if that one came from somewhere else. It is saved with the resume, even if you do not push it to THP.</div>
 <div class="btn-row">
 <button class="btn btn-t btn-lg" id="scrRunBtn" onclick="runScreening()">▶ Run Fitment Scoring</button>
 <button class="btn btn-ghost" onclick="clearScreenQueue()">Clear All</button>
@@ -3435,7 +3442,7 @@ async function saveUsersCfg(){if(!WB||!WB.Sheets['Config'])return;try{const ws=W
 // ══════════════════════════════════════════════════════
 // DROPDOWNS
 // ══════════════════════════════════════════════════════
-const DMAP={nRec:'recruiters',nSrc:'sources',nLoc:'cities',nNot:'noticePeriods',nCli:'clients',nDept:'departments',epLoc:'cities',epNot:'noticePeriods',epCli:'clients',epDept:'departments',epRec:'recruiters',avCli:'clients',avDept:'departments',avLoc:'cities',avRec:'recruiters',uRI:'departments',uUC:'clients',uDropR:'dropReasons'};
+const DMAP={nRec:'recruiters',nSrc:'sources',scrSrcAll:'sources',nLoc:'cities',nNot:'noticePeriods',nCli:'clients',nDept:'departments',epLoc:'cities',epNot:'noticePeriods',epCli:'clients',epDept:'departments',epRec:'recruiters',avCli:'clients',avDept:'departments',avLoc:'cities',avRec:'recruiters',uRI:'departments',uUC:'clients',uDropR:'dropReasons'};
 function fillDrops(){
 syncActiveStatusesFromMasters();ensureStatusOptions();
 Object.entries(DMAP).forEach(([id,key])=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;const first=el.options[0];el.innerHTML='';if(first)el.appendChild(first);else{const o=document.createElement('option');o.value='';o.textContent='— Select —';el.appendChild(o);}mA(key).forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;el.appendChild(o);});if(cur)el.value=cur;});
@@ -13812,6 +13819,31 @@ function _screenedScoringFields(q){
   const sc=parseFloat(q.score);if(!isNaN(sc))f.FitmentScore=sc;
   return f;
 }
+// 26 Oct 2026 (Anne): Source and Source Details are saved on the row too, so a
+// resume that was ignored and later matched to another vacancy still tells the
+// recruiter where it came from. Blank values are never sent (a blank cannot
+// clear a List field here). Columns: Source, SourceDetails (single line of text).
+function _screenedSourceFields(q){
+  const f={};
+  if(q.source)f.Source=q.source;
+  if(q.sourceDetails)f.SourceDetails=String(q.sourceDetails).slice(0,255);
+  return f;
+}
+async function updateResumeScreenedSource(spItemId,q){
+  if(!spItemId)return;
+  const f=_screenedSourceFields(q);if(!Object.keys(f).length)return;
+  try{
+    await refreshToken();
+    const res=await fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items/'+spItemId+'/fields',{method:'PATCH',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(f)});
+    if(!res.ok)_warnScreenedSourceColsOnce((await res.text().catch(()=>'')).slice(0,200));
+  }catch(e){console.warn('ResumeScreened source update failed:',e.message);}
+}
+let _screenedSrcColsWarned=false;
+function _warnScreenedSourceColsOnce(detail){
+  console.warn('ResumeScreened source fields not saved:',detail);
+  if(_screenedSrcColsWarned)return;_screenedSrcColsWarned=true;
+  toast('warn','Screening List','Source was not saved — add the Source and SourceDetails columns (single line of text) to the ResumeScreened list.');
+}
 function _warnScreenedColsOnce(detail){
   console.warn('ResumeScreened scoring fields not saved:',detail);
   if(_screenedColsWarned)return;_screenedColsWarned=true;
@@ -13834,11 +13866,20 @@ async function saveResumeScreenedRecord(q,vacCode){
     // Recruiter-role users and only fixes the Admin/Super Admin case.
     const base={Title:nm,CandidateName:nm,Email:q.email||'',PhoneNo:q.phone||'',VacancyCode:vacCode||'',Recruiter:(curUser&&curUser.name)||(acct&&acct.name?acct.name:'')};
     const post=async(fields)=>fetch(GRAPH+'/sites/'+siteId+'/lists/'+RESUME_SCREENED_LIST_ID+'/items',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-    let res=await post({...base,..._screenedScoringFields(q)});
+    let res=await post({...base,..._screenedScoringFields(q),..._screenedSourceFields(q)});
     if(!res.ok){
+      // Source columns missing is a separate, narrower failure than the scoring columns —
+      // retry without Source first so a missing Source column never costs the score.
       const detail=await res.text().catch(()=>'');
-      res=await post(base);
-      if(res.ok)_warnScreenedColsOnce(detail.slice(0,200));
+      const srcF=_screenedSourceFields(q);
+      if(Object.keys(srcF).length){
+        res=await post({...base,..._screenedScoringFields(q)});
+        if(res.ok)_warnScreenedSourceColsOnce(detail.slice(0,200));
+      }
+      if(!res.ok){
+        res=await post(base);
+        if(res.ok)_warnScreenedColsOnce(detail.slice(0,200));
+      }
     }
     if(res.ok){const item=await res.json();return item.id;}
   }catch(e){console.warn('ResumeScreened save failed:',e.message);}
@@ -14155,6 +14196,8 @@ async function promoteScreenedMatchForVacancy(ref,vacCode){
   sv('nNm',r.name);sv('nMob',r.phone);sv('nEm',r.email);
   sv('nRem','From resume screening on '+(r.screenedOn?fmtD(r.screenedOn):'—')+' (screened for '+(r.vacCode||'another vacancy')+(r.score!=null?', scored '+r.score+'/10':'')+'). Screening remarks: '+(r.remarks||'—')+' Profile summary: '+(r.summary||'—'));
   sv('nStat','WIP');
+  if(r.source){const ss=document.getElementById('nSrc');if(ss&&[...ss.options].some(o=>o.value===r.source))ss.value=r.source;}
+  if(r.sourceDetails)sv('nSrcD',r.sourceDetails);
   if(vacCode){
     const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
     if(vac){
@@ -14173,7 +14216,7 @@ async function viewScreenedModal(ref){
   if(!r){closeModal();toast('err','Not Found','This screened resume could not be found.');return;}
   const row=(k,v)=>'<tr><td style="padding:4px 10px 4px 0;color:var(--w60);white-space:nowrap;vertical-align:top">'+k+'</td><td style="padding:4px 0">'+escHtml(String(v==null||v===''?'—':v))+'</td></tr>';
   showModal('📄 '+(r.name||ref),'Screened '+(r.screenedOn?fmtD(r.screenedOn):'—')+' by '+escHtml(r.recruiter||'—')+' for '+escHtml(r.vacCode||'—')+'. The resume file itself was not kept.',
-    '<table style="font-size:12px;width:100%">'+row('Phone',r.phone)+row('Email',r.email)+row('Score (for that role)',r.score!=null?r.score+'/10':'—')+row('Screening remarks',r.remarks)+row('Profile summary',r.summary)+'</table>',
+    '<table style="font-size:12px;width:100%">'+row('Phone',r.phone)+row('Email',r.email)+row('Source',r.source)+row('Source details',r.sourceDetails)+row('Score (for that role)',r.score!=null?r.score+'/10':'—')+row('Screening remarks',r.remarks)+row('Profile summary',r.summary)+'</table>',
     '<button class="btn btn-ghost" onclick="closeModal()">Close</button>',true);
 }
 // 5 Oct 2026, Anne: one-time backfill for ResumeScreened rows written before
@@ -14519,7 +14562,7 @@ function addScreenFiles(fileList){
     if(SCREEN_LEGACY_EXT.has(ext)){toast('warn','Skipped '+file.name,'Legacy .doc/.ppt format isn\'t supported — re-save as .docx/.pptx or PDF and re-upload.');return;}
     if(!SCREEN_TEXT_EXT.has(ext)&&!SCREEN_IMAGE_EXT.has(ext)){toast('warn','Skipped '+file.name,'Unsupported file type. Use PDF, DOCX, PPTX, TXT, or JPG/PNG.');return;}
     if(file.size>RESUME_MAX_BYTES){toast('warn','Skipped '+file.name,'File must be under 5MB.');return;}
-    screenQueue.push({file,kind:SCREEN_IMAGE_EXT.has(ext)?'image':'text',name:'',email:'',phone:'',company:'',score:null,recommendations:'',status:'queued'});
+    screenQueue.push({file,kind:SCREEN_IMAGE_EXT.has(ext)?'image':'text',name:'',email:'',phone:'',company:'',score:null,recommendations:'',status:'queued',source:gv('scrSrcAll')||'',sourceDetails:gv('scrSrcDAll')||''});
   });
   renderScreenQueue();
 }
@@ -14566,6 +14609,7 @@ function renderScreenQueue(){
       '<span style="color:var(--teal);width:14px;flex-shrink:0">'+(open?'▾':'▸')+'</span>'+
       '<span style="font-weight:600;flex-shrink:0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(q.name||q.file.name)+'</span>'+
       '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--w60)">'+(open?'':escHtml(rec)||escHtml(q.name?q.file.name:''))+'</span>'+
+      '<span style="flex-shrink:0;font-size:11px;color:'+(q.source?'#1f5c93':'#9f4a47')+'">'+(q.source?escHtml(q.source):'No source')+'</span>'+
       '<span style="flex-shrink:0">'+scoreTxt+'</span><span style="flex-shrink:0">'+screenStatusBadge(q.status)+'</span>'+acts+'</div>';
     const err=q.status==='error'?'<div style="font-size:11px;color:#9f4a47;padding:0 10px 6px 34px">'+escHtml(q.error||'')+'</div>':'';
     const lbl=t=>'<div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.5px;margin:8px 0 3px">'+t+'</div>';
@@ -14573,11 +14617,24 @@ function renderScreenQueue(){
       '<div style="color:var(--w60)">'+escHtml(q.file.name)+'</div>'+
       lbl('CONTACT')+'<div>'+([q.email,q.phone].filter(Boolean).map(escHtml).join(' · ')||'—')+'</div>'+
       lbl('CURRENT COMPANY')+'<div>'+(escHtml(q.company)||'—')+'</div>'+
+      lbl('SOURCE')+'<div onclick="event.stopPropagation()" style="display:flex;gap:8px;flex-wrap:wrap"><select onchange="screenSetSource('+i+',this.value)" style="min-width:170px"><option value="">— Select —</option>'+mA('sources').map(n=>'<option value="'+escHtml(n)+'"'+(n===q.source?' selected':'')+'>'+escHtml(n)+'</option>').join('')+'</select>'+
+      '<input type="text" value="'+escHtml(q.sourceDetails||'')+'" placeholder="Source details (optional)" onchange="screenSetSourceD('+i+',this.value)" style="flex:1;min-width:200px"></div>'+
       (rec?lbl('RECOMMENDATION')+'<div>'+escHtml(rec)+'</div>':'')+
       (q.profileSummary?lbl('PROFILE SUMMARY')+'<div>'+escHtml(q.profileSummary)+'</div>':'')+'</div>':'';
     return '<div style="border:1px solid var(--w08);border-radius:var(--rs);margin-bottom:6px;'+(open?'background:var(--w06)':'')+'">'+head+err+body+'</div>';
   }).join('');
 }
+// Bulk source: one choice for the whole batch, then per-resume overrides in each card.
+function screenApplySourceAll(){
+  const src=gv('scrSrcAll'),det=gv('scrSrcDAll');
+  if(!src){showAlert('scrAlert','err','Choose a source first.');return;}
+  if(!screenQueue.length){showAlert('scrAlert','warn','Upload resumes first — the source you chose will be applied to each as it is added.');return;}
+  screenQueue.forEach(q=>{q.source=src;q.sourceDetails=det;if(q.screenedSpItemId)updateResumeScreenedSource(q.screenedSpItemId,q);});
+  renderScreenQueue();
+  showAlert('scrAlert','ok','Source set to '+src+' on '+screenQueue.length+' resume(s).');
+}
+function screenSetSource(i,val){const q=screenQueue[i];if(!q)return;q.source=val;renderScreenQueue();if(q.screenedSpItemId)updateResumeScreenedSource(q.screenedSpItemId,q);}
+function screenSetSourceD(i,val){const q=screenQueue[i];if(!q)return;q.sourceDetails=val;if(q.screenedSpItemId)updateResumeScreenedSource(q.screenedSpItemId,q);}
 function screenRemove(i){_markScreenedDropped(screenQueue[i]);screenQueue.splice(i,1);renderScreenQueue();}
 async function runScreening(){
   const vacCode=gv('scrVac');
@@ -14586,6 +14643,10 @@ async function runScreening(){
   if(!jdEntry){showAlert('scrAlert','err','No JD linked to this vacancy — add one in Repositories first.');return;}
   const toRun=screenQueue.map((q,i)=>i).filter(i=>screenQueue[i].status==='queued'||screenQueue[i].status==='error');
   if(!toRun.length){showAlert('scrAlert','warn','Nothing queued to score. Upload resumes first.');return;}
+  const bulkSrc=gv('scrSrcAll');
+  toRun.forEach(i=>{if(!screenQueue[i].source&&bulkSrc){screenQueue[i].source=bulkSrc;screenQueue[i].sourceDetails=screenQueue[i].sourceDetails||gv('scrSrcDAll')||'';}});
+  const noSrc=toRun.filter(i=>!screenQueue[i].source).length;
+  if(noSrc){renderScreenQueue();showAlert('scrAlert','err','Choose a source before scoring: '+noSrc+' resume(s) have none. Pick one for the whole batch in Step 3 and click Apply to all, or set it on each resume.');return;}
   const btn=document.getElementById('scrRunBtn');if(btn)btn.disabled=true;
   screenSetupToggle(true);   // get the setup out of the way so the results are in view
   for(const i of toRun){await screenOne(i);}
@@ -14668,7 +14729,8 @@ Respond with ONLY valid JSON, no other text: {"name":"<string>","email":"<string
     // existing row's scoring fields so the stored score matches what the
     // recruiter is now looking at.
     if(!q.screenedSpItemId){
-      saveResumeScreenedRecord(q,vacCode).then(id=>{q.screenedSpItemId=id;});
+      const _s0=q.source,_d0=q.sourceDetails;
+      saveResumeScreenedRecord(q,vacCode).then(id=>{q.screenedSpItemId=id;if(id&&(q.source!==_s0||q.sourceDetails!==_d0))updateResumeScreenedSource(id,q);});
     }else{
       updateResumeScreenedScoring(q.screenedSpItemId,q);
     }
@@ -14745,6 +14807,8 @@ async function screenPushToTHP(i){
     clearNew();
     _screenPush={resumeLink,score:q.score,recommendations:q.recommendations};
     sv('nNm',q.name);sv('nMob',(q.phone||'').replace(/\D/g,'').slice(-10));sv('nEm',q.email);sv('nCo',q.company);
+    if(q.source){const ss=document.getElementById('nSrc');if(ss&&[...ss.options].some(o=>o.value===q.source))ss.value=q.source;}
+    if(q.sourceDetails)sv('nSrcD',q.sourceDetails);
     const vacCode=gv('scrVac');
     const vac=VD.find(v=>(v['Vacancy code']||v['Vacancy Code'])===vacCode);
     if(vac){
@@ -16117,6 +16181,7 @@ async function loadScreenedPoolFromList(){
         vacCode:f.VacancyCode||'',recruiter:f.Recruiter||'',status:f.Status||'',
         score:(f.FitmentScore===undefined||f.FitmentScore===null||f.FitmentScore==='')?null:Number(f.FitmentScore),
         remarks:f.ScreeningRemarks||'',summary:f.ProfileSummary||'',
+        source:f.Source||'',sourceDetails:f.SourceDetails||'',
         screenedOn:(f.ScreenedOn||it.createdDateTime||'').slice(0,10),created:it.createdDateTime||'',hasScreenedOn:!!f.ScreenedOn,hasScore:!(f.FitmentScore===undefined||f.FitmentScore===null||f.FitmentScore==='')
       });
     });
@@ -16339,7 +16404,9 @@ function renderMatchResultsModal(vacCode,runs){
     const industryTag=m.industryMatch
       ?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(52,186,198,.15);color:var(--teal);font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid rgba(52,186,198,.35)">Same industry</span>'
       :'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(91,159,212,.15);color:#5b9fd4;font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid rgba(91,159,212,.35)">Role fit only</span>';
-    return '<tr><td>'+(m.kind==='pool'?'🌊':m.kind==='screened'?'📄':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+scoreTag+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
+    const _se=m.kind==='screened'?SCREENED_ENTRIES.find(x=>x.ref===m.ref):null;
+    const srcTag=(_se&&_se.source)?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:#1f5c9318;color:#1f5c93;font-weight:700;margin-right:5px;white-space:nowrap;border:1px solid #1f5c9344" title="'+escHtml(_se.sourceDetails||'')+'">Source: '+escHtml(_se.source)+(_se.sourceDetails?' · '+escHtml(_se.sourceDetails):'')+'</span>':'';
+    return '<tr><td>'+(m.kind==='pool'?'🌊':m.kind==='screened'?'📄':'👤')+' '+nameHtml+'</td><td class="mono" style="font-size:10px">'+escHtml(m.ref||'')+'</td><td class="m">'+scoreTag+srcTag+industryTag+escHtml(m.rationale||'')+'</td><td>'+action+'</td></tr>';
   }).join('');
   // max-height+overflow-y matches viewVacModal()'s convention for long modal
   // content (index.html ~line 3994) — the .tw class alone only scrolls
