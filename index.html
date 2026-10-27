@@ -875,6 +875,7 @@ border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-
   <div class="atab" id="ht-focus" onclick="switchHomeTab('focus')">🔎 Today's Effort</div>
   <div class="atab" id="ht-portfolio" onclick="switchHomeTab('portfolio')">📋 My Portfolio</div>
   <div class="atab" id="ht-prio" onclick="openPriorities()" title="Six things that will move your roles most today">☀️ My Priorities</div>
+  <div class="atab" id="ht-prio-inbox" style="display:none;color:#e9982b;border-color:#e9982b" onclick="prioGoInbox()" title="Focus items and suggestions from recruiters, waiting for your Accept or Decline">🔔 <span id="ht-prio-inbox-n"></span></div>
   <div id="effort-rec-picker" style="display:none;align-items:center;gap:8px;margin-left:auto"></div>
   <button class="btn btn-ghost btn-sm" id="ht-print" style="display:none" onclick="printHomeEffortTab()">🖨 Print / PDF</button>
 </div>
@@ -3503,7 +3504,7 @@ function goPanel(name){
   // Always refresh dropdowns from current M when entering any panel with forms
   if(['new','upd','bulk','repos','incentive','rec','vac'].includes(name))fillDrops();
   if(name==='adm')initAdmin();
-  if(name==='home'){loadDash();prioMaybeAutoOpen();}
+  if(name==='home'){loadDash();prioMaybeAutoOpen();prioInboxStart();}
   if(name==='analytics'){
     setTimeout(renderDash,200);
     const isAdmin = curRole==='Admin'||curRole==='Super Admin';
@@ -11262,7 +11263,7 @@ function renderPrioModal(){
   const pushedHtml=pushed.length?'<p class="pr-note">Pushed down by a management focus: '+pushed.map(a=>E(a.code)+' '+E(vacInfo(a.code).role)).join(' · ')+'</p>':'';
   const alsoHtml=d.also.length?'<p class="pr-note">Also on your list ('+d.also.length+'): '+d.also.map(a=>E(a.code)+' '+E(a.role)+(a.lead==='check'?' (feedback only — see the Interviews card)':'')).join(' · ')+'</p>':'';
   const flags=d.flags.length?'<p class="pr-note pr-flag">⚠ Data to fix: '+d.flags.map(E).join(' ')+'</p>':'';
-  const sugHtml=suggestions.length?'<p class="pr-note">💬 Your suggestions are with your manager.</p>':'';
+  const sugHtml=rows?prioMyRequestsHtml(rows):'';
   const listNote=(P.rebuildNote?'<p class="pr-note pr-flag">🔄 '+E(P.rebuildNote)+'</p>':'')+(P.listNote?'<p class="pr-note pr-flag">'+E(P.listNote)+'</p>':'');
   const body=strip+(P.outlook||'')+(cardHtml?'<div class="pr-grid">'+cardHtml+'</div>':'<p class="pr-note">No open vacancies with work to do are assigned to '+E(d.recName)+' right now.</p>')+addedHtml+pushedHtml+alsoHtml+flags+listNote+sugHtml+
     '<p class="pr-note">Closing this never blocks your work. Reopen any time from Home → ☀️ My Priorities. Ticks appear on their own from the updates you already make. A successful paid placement may increase your incentive. This screen is a guide: it does not count as an action in your reports.</p>';
@@ -11331,6 +11332,136 @@ async function prioSaveSuggestion(){
 }
 
 // ── manager view (Admin / Super Admin), inside the Manager Report ──
+// ── Manager decisions on recruiter requests (27 Oct 2026, Anne) ──
+// A recruiter can add a focus item or send a suggestion (about one card, or general). Each now waits for the manager's
+// Accept or Decline, with an optional note the recruiter sees. No new List columns: the decision is one extra line in the
+// row's existing Suggestion text — "↳ ACCEPTED|Anne|2026-10-27|note" — and a declined focus item also goes to State
+// 'Removed' (an existing value). A request is pending until a ↳ line follows it. Accept cannot change the plan by itself
+// (a suggestion is free text); on a card it offers "Accept and edit card" so the manager can apply it straight away.
+const PRIO_REQ_WINDOW_DAYS=7;
+const _prioReqRows={};
+let _prioDec=null,_prioScrollMgr=false;
+let _prioInbox={n:0,date:'',byDate:{}};
+let _prioInboxTimer=null;
+function prioThreadGroups(s){
+  const groups=[];let cur=[];
+  String(s||'').split('\n').forEach(l=>{
+    const t=l.trim();if(!t)return;
+    if(t.charAt(0)==='↳'){const p=t.slice(1).trim().split('|');groups.push({texts:cur,res:{verdict:(p[0]||'').trim(),by:p[1]||'',on:p[2]||'',note:p.slice(3).join('|')}});cur=[];}
+    else cur.push(t);
+  });
+  if(cur.length)groups.push({texts:cur,res:null});
+  return groups;
+}
+function prioStripStamp(t){return String(t||'').replace(/^\[[^\]]*\]\s*/,'');}
+function prioRequests(rows){
+  const out=[];
+  (rows||[]).forEach(r=>{
+    const g=prioThreadGroups(r.suggestion);
+    if(r.kind==='Added'){
+      const res=g.length?g[g.length-1].res:null;
+      if(r.state==='Removed'&&!res)return;
+      out.push({id:r.id,rec:r.recruiter,date:r.planDate,kind:'focus',code:r.code,text:r.action,res,pending:!res});
+    }else if(r.kind==='Suggestion'||(r.kind==='Card'&&r.state!=='Removed')){
+      g.forEach(x=>{if(!x.texts.length)return;out.push({id:r.id,rec:r.recruiter,date:r.planDate,kind:r.kind==='Card'?'card':'general',code:r.code,text:x.texts.map(prioStripStamp).join(' / '),res:x.res,pending:!x.res});});
+    }
+  });
+  return out;
+}
+function prioVerdictHtml(res){
+  if(!res)return '';
+  const ok=res.verdict==='ACCEPTED',c=ok?'#5e7855':'#9f4a47';
+  return '<span style="font-size:11px;font-weight:700;color:'+c+'">'+(ok?'✓ Accepted':'✕ Declined')+' by '+escHtml(String(res.by||'').split(' ')[0])+(res.on?' · '+escHtml(fmtD(res.on)):'')+'</span>'+(res.note?'<span style="font-size:11px;color:var(--w60)"> — '+escHtml(res.note)+'</span>':'');
+}
+function prioReqPanelHtml(rec,date,rows){
+  const reqs=prioRequests(rows);if(!reqs.length)return '';
+  rows.forEach(r=>{_prioReqRows[r.id]=r;});
+  const pend=reqs.filter(x=>x.pending).length,first=rec.split(' ')[0];
+  const isToday=date===today();
+  const items=reqs.map(x=>{
+    const what=x.kind==='focus'?'Focus item added':x.kind==='card'?'Suggestion on '+escHtml(x.code):'Suggestion';
+    const q="\'"+x.id+"\'",r2="\'"+escHtml(rec)+"\'";
+    const act=x.pending
+      ?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn btn-t btn-sm" onclick="prioDecide('+q+',\'ACCEPTED\','+r2+')">✓ Accept</button>'+
+        (x.kind==='card'&&isToday?'<button class="btn btn-ghost btn-sm" onclick="prioDecide('+q+',\'ACCEPTED\','+r2+',true)" title="Accept, then open the card editor so you can apply the change">✓ Accept and edit card</button>':'')+
+        '<button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="prioDecide('+q+',\'DECLINED\','+r2+')">✕ Decline</button></div>'
+      :'<div style="margin-top:4px">'+prioVerdictHtml(x.res)+'</div>';
+    return '<div style="padding:8px 0;border-top:1px solid var(--w08)"><div style="font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--gold)">'+what.toUpperCase()+'</div><div style="font-size:12px;white-space:normal">'+escHtml(x.text)+'</div>'+act+'</div>';
+  }).join('');
+  return '<div style="margin-bottom:10px;padding:8px 12px;border:1px solid '+(pend?'#e9982b':'var(--w08)')+';border-radius:var(--r);background:'+(pend?'rgba(233,152,43,.08)':'transparent')+'"><div style="font-size:12px;font-weight:700;color:'+(pend?'var(--gold)':'var(--w60)')+'">💬 Requests from '+escHtml(first)+(pend?' — '+pend+' waiting for your decision':' — all decided')+'</div>'+items+'</div>';
+}
+function prioDecide(id,verdict,rec,thenEdit){
+  const r=_prioReqRows[id];if(!r)return;
+  const rq=prioRequests([r]).find(x=>x.pending);if(!rq){toast('info','Already decided','This request has already been decided.');renderPriorityManager();return;}
+  _prioDec={id,verdict,rec,thenEdit:!!thenEdit};
+  const acc=verdict==='ACCEPTED';
+  showModal((acc?'✓ Accept':'✕ Decline')+' — '+rec.split(' ')[0],escHtml(rq.text),
+    '<div class="field" style="margin:0"><label>Note to '+escHtml(rec.split(' ')[0])+' <span class="fhint">(optional — shown on her priorities screen)</span></label><textarea id="pr-dec-note" rows="3" maxlength="150" style="width:100%;box-sizing:border-box;font-family:inherit" placeholder="'+(acc?'e.g. Agreed, I have moved it up':'e.g. Keep it as is until the client confirms')+'"></textarea></div>',
+    '<button class="btn btn-t" onclick="prioDecideSave()">'+(acc?'Accept':'Decline')+'</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>',false);
+}
+async function prioDecideSave(){
+  const d=_prioDec;if(!d)return;
+  const note=(gv('pr-dec-note')||'').replace(/[|\r\n]+/g,' ').trim().slice(0,150);
+  try{
+    const it=await graphGet('/sites/'+siteId+'/lists/'+PRIO_LIST+'/items/'+d.id+'?$expand=fields');
+    const row=prioItemToRow(it);
+    if(!prioRequests([row]).some(x=>x.pending)){closeModal();toast('info','Already decided','This request was already decided.');renderPriorityManager();return;}
+    const line='↳ '+d.verdict+'|'+prioUser().split(' ')[0]+'|'+today()+'|'+note;
+    const f={Suggestion:(row.suggestion?row.suggestion+'\n':'')+line};
+    if(row.kind==='Added'&&d.verdict==='DECLINED'){f.State='Removed';}
+    await prioPatch(d.id,f);
+  }catch(e){toast('err','Could not save',String(e.message||e).slice(0,160));return;}
+  closeModal();
+  toast('ok',d.verdict==='ACCEPTED'?'Accepted':'Declined',d.rec.split(' ')[0]+' will see this on her priorities screen.');
+  renderPriorityManager();prioInboxScan();
+  if(d.thenEdit)prioMgrEdit(d.id,d.rec);
+  _prioDec=null;
+}
+function prioMyRequestsHtml(rows){
+  const reqs=prioRequests(rows);if(!reqs.length)return '';
+  const E=escHtml;
+  return '<div class="pr-sec">💬 Your requests</div><ul class="pr-added">'+reqs.map(x=>{
+    const what=x.kind==='focus'?'Focus item':x.kind==='card'?'Suggestion on '+E(x.code):'Suggestion';
+    return '<li>'+E(what)+': “'+E(x.text.length>110?x.text.slice(0,110)+'…':x.text)+'” — '+(x.pending?'<span style="color:var(--w60)">waiting for your manager</span>':prioVerdictHtml(x.res))+'</li>';
+  }).join('')+'</ul>';
+}
+// Home badge for Admin / Super Admin: how many requests are waiting, across the last week, for pilot recruiters.
+async function prioInboxScan(){
+  const badge=document.getElementById('ht-prio-inbox');if(!badge)return;
+  if(!prioIsAdmin()||_prioListState==='missing'){badge.style.display='none';return;}
+  try{
+    let items=null;
+    try{items=await prioFetchRows("fields/PlanDate ge '"+addDays(today(),-PRIO_REQ_WINDOW_DAYS)+"'");}
+    catch(e){items=await prioFetchRows("fields/PlanDate eq '"+today()+"'");}
+    if(!items){badge.style.display='none';return;}
+    const pilot=mA('priorityPilot').filter(n=>mA('recruiters').includes(n));
+    const pend=prioRequests(items.map(prioItemToRow)).filter(x=>x.pending&&pilot.includes(x.rec));
+    const byDate={};pend.forEach(x=>{byDate[x.date]=(byDate[x.date]||0)+1;});
+    const dates=Object.keys(byDate).sort();
+    _prioInbox={n:pend.length,date:dates[0]||'',byDate};
+    const nEl=document.getElementById('ht-prio-inbox-n');
+    if(nEl)nEl.textContent=pend.length+(pend.length===1?' priorities request waiting':' priorities requests waiting');
+    badge.style.display=pend.length?'':'none';
+  }catch(e){console.warn('priorities inbox scan',e);}
+}
+function prioInboxStart(){
+  if(!prioIsAdmin())return;
+  prioInboxScan();
+  if(_prioInboxTimer)return;
+  _prioInboxTimer=setInterval(()=>{if(!document.hidden&&prioIsAdmin())prioInboxScan();},120000);
+}
+function prioGoInbox(){
+  _prioMgrDate=(_prioInbox.date&&_prioInbox.date!==today())?_prioInbox.date:'';
+  _prioScrollMgr=true;
+  goPanel('analytics');
+  setTimeout(()=>switchAnalyticsTab('manager'),500);
+}
+function prioOtherDaysHtml(date){
+  const other=Object.keys(_prioInbox.byDate||{}).filter(d=>d!==date).sort();
+  if(!other.length)return '';
+  return '<div style="font-size:11px;margin-bottom:10px;color:var(--gold)">Waiting on other days: '+other.map(d=>'<a href="javascript:void(0)" style="color:var(--gold);text-decoration:underline;margin-right:8px" onclick="_prioMgrDate=\''+d+'\';renderPriorityManager()">'+escHtml(fmtD(d))+' ('+_prioInbox.byDate[d]+')</a>').join('')+'</div>';
+}
+
 let _prioMgrDate='';
 function prioIsAdmin(){return curRole==='Admin'||curRole==='Super Admin';}
 async function renderPriorityManager(){
@@ -11339,7 +11470,8 @@ async function renderPriorityManager(){
   el.innerHTML='<div class="sl2" style="margin:18px 0 8px">☀️ Priorities — manager view</div><div style="font-size:11px;color:var(--w60)">Loading…</div>';
   const pilot=mA('priorityPilot').filter(n=>mA('recruiters').includes(n));
   let html='<div class="sl2" style="margin:18px 0 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">☀️ Priorities — manager view <input type="date" id="pr-mgr-date" value="'+date+'" style="width:auto" onchange="_prioMgrDate=this.value;renderPriorityManager()"> <button class="btn btn-ghost btn-sm" onclick="renderPriorityManager()">↻ Refresh</button></div>'+
-    '<div style="font-size:11px;color:var(--w60);margin-bottom:10px">You do not need to approve anything. Edits are optional, visible to the recruiter as "Changed by", and saved with who changed what and when. Not confirmed means no update on record yet — it is not a failure.</div>';
+    '<div style="font-size:11px;color:var(--w60);margin-bottom:10px">Focus items and suggestions from a recruiter wait here for your Accept or Decline. Your own edits are optional, visible to the recruiter as "Changed by", and saved with who changed what and when. Not confirmed means no update on record yet — it is not a failure.</div>';
+  html+=prioOtherDaysHtml(date);
   if(!pilot.length)html+='<div style="font-size:11px;color:var(--w60)">No pilot recruiters set (Config → Masters → Priorities Pilot).</div>';
   for(const rec of pilot){
     let rows=null,err='';
@@ -11353,6 +11485,7 @@ async function renderPriorityManager(){
       html+='<span style="color:var(--w60);font-size:11px">Has not opened today\'s plan yet.</span>'+(date===today()?' <button class="btn btn-ghost btn-sm" onclick="prioMgrCreatePlan(\''+escHtml(rec)+'\')">Create today\'s plan</button>':'')+'</div></div>';continue;}
     const done=cards.shown.filter(c=>c.completion==='Confirmed').length;
     html+='<span style="font-size:11px;color:var(--w60)">'+done+' of '+cards.shown.length+' confirmed'+(agreed?' · agreed '+prioFmtTime(agreed.agreedAt):' · not agreed yet')+'</span>'+(date===today()?' <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="prioMgrAddFocus(\''+escHtml(rec)+'\')">+ Urgent focus</button>':'')+'</div>';
+    html+=prioReqPanelHtml(rec,date,rows);
     // exceptions
     const exc=[];
     cards.shown.forEach(c=>{const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===c.code)||{};
@@ -11365,14 +11498,12 @@ async function renderPriorityManager(){
     html+='<div class="tw"><table><thead><tr><th>#</th><th>Vacancy</th><th>Action</th><th>Source</th><th>Progress</th>'+(date===today()?'<th></th>':'')+'</tr></thead><tbody>'+
       cards.shown.map((c,i)=>{const v=VD.find(x=>(x['Vacancy code']||x['Vacancy Code'])===c.code)||{};
         const st=c.completion==='Confirmed'?'<span style="color:#5dd5df">✓ Confirmed</span><div style="font-size:10px;color:var(--w60)">'+escHtml(c.evidence||'')+'</div>':'<span style="color:var(--w60)">Not confirmed</span>'+(c.progress?'<div style="font-size:10px;color:var(--w60)">'+escHtml(c.progress)+'</div>':'');
-        return '<tr><td class="m">'+({must:'🔥',should:'⭐',wait:'🌿'}[c.tier])+'</td><td class="mono">'+escHtml(c.code)+'<div style="font-size:10px;color:var(--w60)">'+escHtml(v['Designation']||'')+'</div></td><td class="m" style="white-space:normal;max-width:380px">'+escHtml(c.action)+(c.streak>1?' <span class="pr-day">Day '+c.streak+'</span>':'')+(c.suggestion?'<div style="font-size:10px;color:var(--gold);white-space:pre-wrap">💬 '+escHtml(c.suggestion)+'</div>':'')+'</td><td class="m">'+escHtml(c.source)+(c.state==='Edited'&&c.changedBy?' · edited by '+escHtml(c.changedBy.split(' ')[0]):'')+'</td><td class="m">'+st+'</td>'+
+        return '<tr><td class="m">'+({must:'🔥',should:'⭐',wait:'🌿'}[c.tier])+'</td><td class="mono">'+escHtml(c.code)+'<div style="font-size:10px;color:var(--w60)">'+escHtml(v['Designation']||'')+'</div></td><td class="m" style="white-space:normal;max-width:380px">'+escHtml(c.action)+(c.streak>1?' <span class="pr-day">Day '+c.streak+'</span>':'')+'</td><td class="m">'+escHtml(c.source)+(c.state==='Edited'&&c.changedBy?' · edited by '+escHtml(c.changedBy.split(' ')[0]):'')+'</td><td class="m">'+st+'</td>'+
         (date===today()?'<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="prioMgrEdit(\''+c.id+'\',\''+escHtml(rec)+'\')">✏</button> <button class="btn btn-ghost btn-sm" '+(i===0?'disabled':'')+' onclick="prioMgrMove(\''+c.id+'\',-1,\''+escHtml(rec)+'\')">↑</button> <button class="btn btn-ghost btn-sm" '+(i===cards.shown.length-1?'disabled':'')+' onclick="prioMgrMove(\''+c.id+'\',1,\''+escHtml(rec)+'\')">↓</button> <button class="btn btn-ghost btn-sm" style="color:#ff6b6b" onclick="prioMgrRemove(\''+c.id+'\',\''+escHtml(rec)+'\')">✕</button></td>':'')+'</tr>';}).join('')+'</tbody></table></div>';
-    const added=rows.filter(r=>r.kind==='Added'&&r.state!=='Removed'),sugg=rows.filter(r=>r.kind==='Suggestion');
-    if(added.length)html+='<div style="margin-top:8px;font-size:11px"><strong>➕ Added by '+escHtml(rec)+':</strong> '+added.map(a=>(a.completion==='Confirmed'?'✓ ':'')+escHtml(a.action)).join(' · ')+'</div>';
-    if(sugg.length)html+='<div style="margin-top:6px;font-size:11px;color:var(--gold)">💬 General suggestions: '+sugg.map(s=>escHtml(s.suggestion)).join(' · ')+'</div>';
     html+='</div>';
   }
   el.innerHTML=html;
+  if(_prioScrollMgr){_prioScrollMgr=false;el.scrollIntoView({behavior:'smooth',block:'start'});}
 }
 async function prioMgrCreatePlan(rec){
   showLoad('Creating plan...');
